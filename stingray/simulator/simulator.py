@@ -1,5 +1,6 @@
 from __future__ import division, print_function, absolute_import
 import numpy as np
+from scipy import signal
 
 from ..utils import simon
 from ..lightcurve import Lightcurve
@@ -42,6 +43,7 @@ class Simulator(object):
             np.random.seed(seed)
 
         assert rms<=1, 'Fractional rms must be less than 1.'
+        assert dt>0, 'Time resolution must be greater than 0'
 
     def simulate(self, *args):
         """
@@ -117,12 +119,41 @@ class Simulator(object):
             return self._simulate_model(args[0], args[1])
 
         elif len(args) == 2:
+            self.red_noise = 1
             return self._simulate_impulse_response(args[0], args[1])
 
         else:
             raise AssertionError("Length of arguments must be 1 or 2.")
 
+    def construct_ir(start=0, width=1000, intensity=10**-4):
+        """
+        Construct impulse response using start time, width and scaling
+        intensity.
 
+        Parameters
+        ----------
+        start: int
+            start time of impulse response
+        width: int
+            width of impulse response
+        intensity: int
+            scaling parameter to set the intensity of delayed emission
+            corresponding to direct emission.
+
+        Returns
+        -------
+        h: numpy.ndarray
+            Constructed impulse response
+        """
+
+        # Fill in 0 entries until the start time
+        h_zeros = np.zeros(np.linspace(0,start,start/self.dt))
+
+        # Define constant impulse response
+        h_ones = np.ones(np.linspace(start, start+width, width/self.dt)) * intensity
+
+        return np.append(h_zeros, h_ones)
+        
     def _simulate_power_law(self, B):
         """
         Generate LightCurve from a power law spectrum.
@@ -221,20 +252,24 @@ class Simulator(object):
 
     def _simulate_impulse_response(self, s, h):
         """
-        Generate LightCurve from a power law spectrum.
+        Generate LightCurve from impulse response.
 
         Parameters
         ----------
         s: array-like
-                Underlying variability signal
+            Underlying variability signal
         h: array-like
-                Impulse response
+            Impulse response
 
         Returns
         -------
-        lightCurve: array-like
+        lightCurve: `LightCurve` object
         """
-        pass
+        
+        lc = signal.fftconvolve(s, h)
+        self.lc = self._extract_and_scale(lc)
+
+        return self.lc
 
     def _find_inverse(self, real, imaginary):
         """
