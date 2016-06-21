@@ -1,6 +1,7 @@
 import numpy as np
 
 from astropy.tests.helper import pytest
+from stingray import sampledata
 from stingray.simulator import simulator, models
 from scipy.stats import chisquare
 
@@ -97,11 +98,20 @@ class TestSimulator(object):
 
         assert np.all(np.abs(actual_prob - simulated_prob) < 3 * np.sqrt(actual_prob))
 
+    def test_construct_ir(self):
+        """
+        Construct impulse response.
+        """
+        t0, w = 100, 500
+        assert len(self.simulator.construct_ir(t0, w)), (t0+w)/self.simulator.dt
+
     def test_simulate_impulse(self):
         """
         Simulate light curve from impulse response.
         """
-        self.simulator.simulate([],[])
+        s = sampledata.sample_data().counts
+        h = self.simulator.construct_ir(100,500)
+        self.simulator.simulate(s,h)
 
     def test_periodogram_with_lc(self):
         """

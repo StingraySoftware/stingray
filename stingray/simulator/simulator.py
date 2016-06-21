@@ -125,7 +125,7 @@ class Simulator(object):
         else:
             raise AssertionError("Length of arguments must be 1 or 2.")
 
-    def construct_ir(start=0, width=1000, intensity=10**-4):
+    def construct_ir(self, start=0, width=1000, intensity=10**-4):
         """
         Construct impulse response using start time, width and scaling
         intensity.
@@ -147,10 +147,10 @@ class Simulator(object):
         """
 
         # Fill in 0 entries until the start time
-        h_zeros = np.zeros(np.linspace(0,start,start/self.dt))
+        h_zeros = np.zeros(start/self.dt)
 
         # Define constant impulse response
-        h_ones = np.ones(np.linspace(start, start+width, width/self.dt)) * intensity
+        h_ones = np.ones(width/self.dt) * intensity
 
         return np.append(h_zeros, h_ones)
         
