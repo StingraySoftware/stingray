@@ -37,7 +37,6 @@ class Simulator(object):
         self.rms = rms
         self.red_noise = red_noise
         self.time = dt*np.arange(N)
-        self.lc = None
 
         if seed is not None:
             np.random.seed(seed)
@@ -107,6 +106,27 @@ class Simulator(object):
             Returns
             -------
             lightCurve: `LightCurve` object
+
+        - x = simulate(s,h, 'same')
+            For generating a light curve of same length as input
+            signal, using impulse response.
+
+            Parameters
+            ----------
+            s: array-like
+                Underlying variability signal
+            h: array-like
+                Impulse response
+            mode: str
+                mode can be either 'same' or 'full'.
+                'same' indicates that the length of output light
+                curve is same as that of input signal.
+                'full' indicates that the length of output light
+                curve is len(s)+len(h)-1
+
+            Returns
+            -------
+            lightCurve: `LightCurve` object
         """
 
         if type(args[0]) == int:
@@ -119,16 +139,19 @@ class Simulator(object):
             return self._simulate_model(args[0], args[1])
 
         elif len(args) == 2:
-            self.red_noise = 1
             return self._simulate_impulse_response(args[0], args[1])
 
-        else:
-            raise AssertionError("Length of arguments must be 1 or 2.")
+        elif len(args) == 3:
+            return self._simulate_impulse_response(args[0], args[1], args[2])
 
-    def construct_ir(self, start=0, width=1000, intensity=10**-4):
+        else:
+            raise AssertionError("Length of arguments must be 1, 2 or 3.")
+
+    def mono_ir(self, start=0, width=1000, intensity=1):
         """
-        Construct impulse response using start time, width and scaling
-        intensity.
+        Construct monochromatic impulse response using start time, 
+        width and scaling intensity.
+        To create a delta impulse response, set width to 1.
 
         Parameters
         ----------
@@ -181,9 +204,9 @@ class Simulator(object):
 
         # Obtain time series
         long_lc = self._find_inverse(real, imaginary)
-        self.lc = Lightcurve(self.time, self._extract_and_scale(long_lc))
+        lc = Lightcurve(self.time, self._extract_and_scale(long_lc))
 
-        return self.lc
+        return lc
 
     def _simulate_power_spectrum(self, s):
         """
@@ -209,9 +232,9 @@ class Simulator(object):
         a2 = np.random.normal(size=len(s))
 
         lc = self._find_inverse(a1*s, a2*s)
-        self.lc = Lightcurve(self.time, self._extract_and_scale(lc))
+        lc = Lightcurve(self.time, self._extract_and_scale(lc))
 
-        return self.lc
+        return lc
 
     def _simulate_model(self, mod, p):
         """
@@ -243,16 +266,18 @@ class Simulator(object):
             a2 = np.random.normal(size=len(s))
 
             long_lc = self._find_inverse(a1*s, a2*s)
-            self.lc = Lightcurve(self.time, self._extract_and_scale(long_lc))
+            lc = Lightcurve(self.time, self._extract_and_scale(long_lc))
 
-            return self.lc
+            return lc
         
         else:
             simon('Model is not defined!')
 
-    def _simulate_impulse_response(self, s, h):
+    def _simulate_impulse_response(self, s, h, mode='full'):
         """
-        Generate LightCurve from impulse response.
+        Generate LightCurve from impulse response. To get
+        accurate results, binning intervals (dt) of variability 
+        signal 's' and impulse response 'h' must be equal.
 
         Parameters
         ----------
@@ -265,12 +290,13 @@ class Simulator(object):
         -------
         lightCurve: `LightCurve` object
         """
-        
         lc = signal.fftconvolve(s, h)
-        self.lc = self._extract_and_scale(lc)
+        if mode == 'same':
+            lc = lc[:-(len(h) - 1)]
 
-        return self.lc
-
+        time = self.dt * np.arange(len(lc))
+        return Lightcurve(time, lc)
+        
     def _find_inverse(self, real, imaginary):
         """
         Forms complex numbers corresponding to real and imaginary
@@ -350,6 +376,6 @@ class Simulator(object):
 
         """
         if seg_size is None:
-            seg_size = self.lc.tseg
+            seg_size = lc.tseg
 
         return AveragedPowerspectrum(lc, seg_size).ps

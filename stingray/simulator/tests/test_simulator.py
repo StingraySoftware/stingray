@@ -1,15 +1,14 @@
 import numpy as np
 
 from astropy.tests.helper import pytest
-from stingray import sampledata
+from stingray import Lightcurve, Crossspectrum, sampledata
 from stingray.simulator import simulator, models
-from scipy.stats import chisquare
 
 class TestSimulator(object):
 
     @classmethod
     def setup_class(self):
-        self.simulator = simulator.Simulator(N=1024)
+        self.simulator = simulator.Simulator(N=1024, mean=0.5, dt=0.125)
 
     def test_simulate_with_seed(self):
         """
@@ -103,25 +102,38 @@ class TestSimulator(object):
         Construct impulse response.
         """
         t0, w = 100, 500
-        assert len(self.simulator.construct_ir(t0, w)), (t0+w)/self.simulator.dt
+        assert len(self.simulator.mono_ir(t0, w)), (t0+w)/self.simulator.dt
 
     def test_simulate_impulse(self):
         """
         Simulate light curve from impulse response.
         """
-        s = sampledata.sample_data().counts
-        h = self.simulator.construct_ir(100,500)
-        self.simulator.simulate(s,h)
+        lc = sampledata.sample_data()
+        s = lc.counts
 
-    def test_periodogram_with_lc(self):
+        h = self.simulator.mono_ir(start=14, width=1)
+        output = self.simulator.simulate(s,h)
+
+
+    def test_lag_spectrum(self):
+        """
+        Simulate light curve from impulse response and 
+        compute lag spectrum.
+        """
+        lc = sampledata.sample_data()
+        s = lc.counts
+        h = self.simulator.mono_ir(start=14, width=1)
+        output = self.simulator.simulate(s,h,'same')
+        time = lc.time
+        
+        lc1 = Lightcurve(time, s)
+        lc2 = Lightcurve(time, output)
+        cross = Crossspectrum(lc1, lc2)
+        lag = np.angle(cross.cs)/ (2 * np.pi * cross.freq)
+
+    def test_periodogram(self):
         """
         Create a periodogram from light curve.
         """
-        self.simulator.simulate(2)
-        self.simulator.periodogram(self.simulator.lc)
-
-    def test_periodogram_without_lc(self):
-        """
-        Create a periodogram without light curve.
-        """
-        self.simulator.periodogram(self.simulator.lc) 
+        lc = self.simulator.simulate(2)
+        self.simulator.periodogram(lc)
