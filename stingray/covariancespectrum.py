@@ -8,7 +8,7 @@ import stingray.utils as utils
 
 class Covariancespectrum(object):
 
-    def __init__(self, event_list, bin_width, band_interest=None,
+    def __init__(self, event_list, dt, band_interest=None,
                  ref_band_interest=None):
         """
         Parameters
@@ -17,9 +17,8 @@ class Covariancespectrum(object):
             A numpy 2D array with first column as time of arrival and second
             column as photon energies associated.
 
-        bin_width : float
-            The width of the energy bin when the spectrum is divided into N
-            divisions.
+        dt : float
+            The time resolution of the Lightcurve formed from the energy bin.
 
         band_interest : iterable of tuples, default All
             An iterable of tuples with minimum and maximum values of the range
@@ -73,7 +72,7 @@ class Covariancespectrum(object):
             self.energy_covar[key] = []
 
         for energy in energy_events.keys():
-            lc = Lightcurve.make_lightcurve(energy_events[energy], bin_width, tstart=min_time, tseg=max_time - min_time)
+            lc = Lightcurve.make_lightcurve(energy_events[energy], dt, tstart=min_time, tseg=max_time - min_time)
 
             # Calculating timestamps for lc_ref
             toa_ref = []
@@ -83,7 +82,7 @@ class Covariancespectrum(object):
 
             toa_ref = np.array(sorted(toa_ref))
 
-            lc_ref = Lightcurve.make_lightcurve(toa_ref, bin_width, tstart=min_time, tseg=max_time - min_time)
+            lc_ref = Lightcurve.make_lightcurve(toa_ref, dt, tstart=min_time, tseg=max_time - min_time)
 
             assert len(lc.time) == len(lc_ref.time)
 
