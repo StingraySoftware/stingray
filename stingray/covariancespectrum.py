@@ -28,8 +28,8 @@ class Covariancespectrum(object):
             An iterable of tuples with minimum and maximum values of the range
             in the band of interest in reference channel.
         """
-        min_energy, max_energy = min(event_list.T[1]), max(event_list.T[1])
-        min_time, max_time = min(event_list.T[0]), max(event_list.T[0])
+        min_energy, max_energy = np.min(event_list.T[1]), np.max(event_list.T[1])
+        min_time, max_time = np.min(event_list.T[0]), np.max(event_list.T[0])
 
         if band_interest is None:
             band_interest = (min_energy, max_energy)
@@ -89,6 +89,8 @@ class Covariancespectrum(object):
             covar = self._compute_covariance(lc, lc_ref)
 
             self.energy_covar[energy] = covar
+
+            self.covar = np.vstack(self.energy_covar.items())
 
     def _compute_covariance(self, lc1, lc2):
         return np.cov(lc1.counts, lc2.counts)[0][1]
