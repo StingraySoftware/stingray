@@ -28,15 +28,16 @@ class Covariancespectrum(object):
             A tuple with minimum and maximum values of the range in the band
             of interest in reference channel.
         """
-        min_energy, max_energy = np.min(event_list.T[1]), np.max(event_list.T[1])
-        min_time, max_time = np.min(event_list.T[0]), np.max(event_list.T[0])
+        self.min_energy, self.max_energy = np.min(event_list.T[1]), np.max(event_list.T[1])
+        self.min_time, self.max_time = np.min(event_list.T[0]), np.max(event_list.T[0])
 
         if ref_band_interest is None:
-            ref_band_interest = (min_energy, max_energy)
+            ref_band_interest = (self.min_energy, self.max_energy)
 
         assert len(ref_band_interest) == 2, "Band interest should be a tuple " \
                                             "with min and max energy value " \
                                             "for the reference band."
+        self.ref_band_interest = ref_band_interest
 
         if band_interest is not None:
             for element in list(band_interest):
@@ -46,8 +47,22 @@ class Covariancespectrum(object):
                 assert len(element) == 2, "Band interest should be a tuple " \
                                           "with min and max energy values."
 
+        self.band_interest = band_interest
+        self.dt = dt
+
+        self.event_list = event_list
+
         # Sorted by energy values as second row
-        event_list_T = event_list[event_list[:, 1].argsort()].T
+        event_list_T = event_list[self.event_list[:, 1].argsort()].T
+
+        self._construct_energy_events(event_list_T)
+
+        self._update_energy_events()
+
+        self._construct_energy_covar()
+
+
+    def _construct_energy_events(self, event_list_T):
 
         least_count = np.diff(np.unique(event_list_T[1])).min()
 
@@ -62,7 +77,7 @@ class Covariancespectrum(object):
 
         # Add time of arrivals to corresponding energy bins
         for energy in self.energy_events.keys():
-            if energy == max_energy - least_count*0.5:  # The last energy bin
+            if energy == self.max_energy - least_count*0.5:  # The last energy bin
                 toa = event_list_T[0][np.logical_and(
                     event_list_T[1] >= energy - least_count*0.5,
                     event_list_T[1] <= energy + least_count*0.5)]
@@ -73,12 +88,12 @@ class Covariancespectrum(object):
                     event_list_T[1] < energy + least_count*0.5)]
                 self.energy_events[energy] = sorted(toa)
 
-        # The dictionary with covariance spectrum for each energy bin
-        self.energy_covar = {}
 
-        if band_interest is not None:
+    def _update_energy_events(self):
+
+        if self.band_interest is not None:
             energy_events_ = {}
-            for band in list(band_interest):
+            for band in list(self.band_interest):
                 mid_bin = (band[0] + band[1]) / 2
                 energy_events_[mid_bin] = []
 
@@ -90,28 +105,38 @@ class Covariancespectrum(object):
 
             self.energy_events.update(energy_events_)
 
+
+    def _init_energy_covar(self):
+        # The dictionary with covariance spectrum for each energy bin
+        self.energy_covar = {}
+
         # Initialize it with empty mapping
-        if band_interest is None:
+        if self.band_interest is None:
             for key in self.energy_events.keys():
                 self.energy_covar[key] = []
         else:
-            for band in list(band_interest):
+            for band in list(self.band_interest):
                 mid_bin = (band[0] + band[1]) / 2
                 self.energy_covar[mid_bin] = []
 
+
+    def _construct_energy_covar(self):
+
+        self._init_energy_covar()
+
         for energy in self.energy_covar.keys():
-            lc = Lightcurve.make_lightcurve(self.energy_events[energy], dt, tstart=min_time, tseg=max_time - min_time)
+            lc = Lightcurve.make_lightcurve(self.energy_events[energy], self.dt, tstart=self.min_time, tseg=self.max_time - self.min_time)
 
             # Calculating timestamps for lc_ref
             toa_ref = []
             for key, value in self.energy_events.items():
-                if key >= ref_band_interest[0] and key <= ref_band_interest[1]:
+                if key >= self.ref_band_interest[0] and key <= self.ref_band_interest[1]:
                     if key != energy:
                         toa_ref.extend(value)
 
             toa_ref = np.array(sorted(toa_ref))
 
-            lc_ref = Lightcurve.make_lightcurve(toa_ref, dt, tstart=min_time, tseg=max_time - min_time)
+            lc_ref = Lightcurve.make_lightcurve(toa_ref, self.dt, tstart=self.min_time, tseg=self.max_time - self.min_time)
 
             assert len(lc.time) == len(lc_ref.time)
 
