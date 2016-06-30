@@ -24,9 +24,9 @@ class Covariancespectrum(object):
             An iterable of tuples with minimum and maximum values of the range
             in the band of interest.
 
-        ref_band_interest : iterable of tuples, default All
-            An iterable of tuples with minimum and maximum values of the range
-            in the band of interest in reference channel.
+        ref_band_interest : tuple of reference band range, default All
+            A tuple with minimum and maximum values of the range in the band
+            of interest in reference channel.
         """
         min_energy, max_energy = np.min(event_list.T[1]), np.max(event_list.T[1])
         min_time, max_time = np.min(event_list.T[0]), np.max(event_list.T[0])
@@ -36,6 +36,10 @@ class Covariancespectrum(object):
 
         if ref_band_interest is None:
             ref_band_interest = (min_energy, max_energy)
+
+        assert len(ref_band_interest) == 2, "Band interest should be a tuple " \
+                                            "with min and max energy value " \
+                                            "for the reference band."
 
         # Sorted by energy values as second row
         event_list_T = event_list[event_list[:, 1].argsort()].T
@@ -77,8 +81,9 @@ class Covariancespectrum(object):
             # Calculating timestamps for lc_ref
             toa_ref = []
             for key, value in energy_events.items():
-                if key != energy:
-                    toa_ref.extend(value)
+                if key >= ref_band_interest[0] and key <= ref_band_interest[1]:
+                    if key != energy:
+                        toa_ref.extend(value)
 
             toa_ref = np.array(sorted(toa_ref))
 
@@ -90,7 +95,7 @@ class Covariancespectrum(object):
 
             self.energy_covar[energy] = covar
 
-            self.covar = np.vstack(self.energy_covar.items())
+        self.covar = np.vstack(self.energy_covar.items())
 
     def _compute_covariance(self, lc1, lc2):
         return np.cov(lc1.counts, lc2.counts)[0][1]
