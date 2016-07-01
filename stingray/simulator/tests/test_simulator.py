@@ -10,6 +10,22 @@ class TestSimulator(object):
     def setup_class(self):
         self.simulator = simulator.Simulator(N=1024, mean=0.5, dt=0.125)
 
+    def calculate_lag(self, lc, h, delay):
+        """
+        Class method to calculate lag between two light curves.
+        """
+        s = lc.counts     
+        output = self.simulator.simulate(s,h,'same')[delay:]
+        s = s[delay:]
+        time = lc.time[delay:]
+        
+        lc1 = Lightcurve(time, s)
+        lc2 = Lightcurve(time, output)        
+        cross = Crossspectrum(lc1, lc2)
+        cross = cross.rebin(0.0075)
+        
+        return np.angle(cross.cs)/ (2 * np.pi * cross.freq)
+
     def test_simulate_with_seed(self):
         """
         Simulate with a random seed value.
@@ -97,39 +113,69 @@ class TestSimulator(object):
 
         assert np.all(np.abs(actual_prob - simulated_prob) < 3 * np.sqrt(actual_prob))
 
-    def test_construct_ir(self):
+    def test_construct_simple_ir(self):
         """
-        Construct impulse response.
+        Construct simple impulse response.
         """
         t0, w = 100, 500
-        assert len(self.simulator.mono_ir(t0, w)), (t0+w)/self.simulator.dt
+        assert len(self.simulator.simple_ir(t0, w)), (t0+w)/self.simulator.dt
 
-    def test_simulate_impulse(self):
+    def test_construct_relativistic_ir(self):
         """
-        Simulate light curve from impulse response.
+        Construct relativistic impulse response.
+        """
+        t1, t3 = 3, 10
+        assert len(self.simulator.relativistic_ir(t1=t1, t3=t3)), (t1+t3)/self.simulator.dt
+
+    def test_simulate_simple_impulse(self):
+        """
+        Simulate light curve from simple impulse response.
         """
         lc = sampledata.sample_data()
         s = lc.counts
 
-        h = self.simulator.mono_ir(start=14, width=1)
+        h = self.simulator.simple_ir(start=14, width=1)
         output = self.simulator.simulate(s,h)
 
-
-    def test_lag_spectrum(self):
+    def test_simulate_relativistic_impulse(self):
         """
-        Simulate light curve from impulse response and 
+        Simulate light curve from relativistic impulse response.
+        """
+        lc = sampledata.sample_data()
+        s = lc.counts
+
+        h = self.simulator.relativistic_ir()
+        output = self.simulator.simulate(s,h)
+
+    def test_simple_lag_spectrum(self):
+        """
+        Simulate light curve from simple impulse response and 
         compute lag spectrum.
         """
         lc = sampledata.sample_data()
-        s = lc.counts
-        h = self.simulator.mono_ir(start=14, width=1)
-        output = self.simulator.simulate(s,h,'same')
-        time = lc.time
-        
-        lc1 = Lightcurve(time, s)
-        lc2 = Lightcurve(time, output)
-        cross = Crossspectrum(lc1, lc2)
-        lag = np.angle(cross.cs)/ (2 * np.pi * cross.freq)
+        h = self.simulator.simple_ir(start=14, width=1)
+        delay = int(15/lc.dt)
+
+        lag = self.calculate_lag(lc, h, delay)
+        v_cutoff = 1.0/(2*10.0)
+        h_cutoff = lag[int((v_cutoff-0.0075)*1/0.0075)]
+
+        assert np.abs(15-h_cutoff) < np.sqrt(15)
+
+    def test_relativistic_lag_spectrum(self):
+        """
+        Simulate light curve from relativistic impulse response and 
+        compute lag spectrum.
+        """
+        lc = sampledata.sample_data()
+        h = self.simulator.relativistic_ir(t1=3,t2=4,t3=10)
+        delay = int(4/lc.dt)
+
+        lag = self.calculate_lag(lc, h, delay)
+        v_cutoff = 1.0/(2*4)
+        h_cutoff = lag[int((v_cutoff-0.0075)*1/0.0075)]
+
+        assert np.abs(4-h_cutoff) < np.sqrt(4)
 
     def test_periodogram(self):
         """

@@ -93,7 +93,7 @@ class Simulator(object):
             -------
             lightCurve: `LightCurve` object
 
-        - x = simulate(s,h)
+        - x = simulate(s, h)
             For generating a light curve using impulse response.
 
             Parameters
@@ -107,7 +107,7 @@ class Simulator(object):
             -------
             lightCurve: `LightCurve` object
 
-        - x = simulate(s,h, 'same')
+        - x = simulate(s, h, 'same')
             For generating a light curve of same length as input
             signal, using impulse response.
 
@@ -122,7 +122,7 @@ class Simulator(object):
                 'same' indicates that the length of output light
                 curve is same as that of input signal.
                 'full' indicates that the length of output light
-                curve is len(s)+len(h)-1
+                curve is len(s) + len(h) -1
 
             Returns
             -------
@@ -145,11 +145,11 @@ class Simulator(object):
             return self._simulate_impulse_response(args[0], args[1], args[2])
 
         else:
-            raise AssertionError("Length of arguments must be 1, 2 or 3.")
+            simon("Length of arguments must be 1, 2 or 3.")
 
-    def mono_ir(self, start=0, width=1000, intensity=1):
+    def simple_ir(self, start=0, width=1000, intensity=1):
         """
-        Construct monochromatic impulse response using start time, 
+        Construct a simple impulse response using start time, 
         width and scaling intensity.
         To create a delta impulse response, set width to 1.
 
@@ -159,7 +159,7 @@ class Simulator(object):
             start time of impulse response
         width: int
             width of impulse response
-        intensity: int
+        intensity: float
             scaling parameter to set the intensity of delayed emission
             corresponding to direct emission.
 
@@ -176,6 +176,61 @@ class Simulator(object):
         h_ones = np.ones(width/self.dt) * intensity
 
         return np.append(h_zeros, h_ones)
+
+    def relativistic_ir(self, t1=3, t2=4, t3=10, p1=1, p2=1.4, rise=0.6, decay=0.1):
+        """
+        Construct a realistic impulse response considering the relativistic
+        effects.
+
+        Parameters
+        ----------
+        t1: int
+            primary peak time
+        t2: int
+            secondary peak time
+        t3: int
+            end time
+        p1: float
+            value of primary peak
+        p2: float
+            value of secondary peak
+        rise: float
+            slope of rising exponential from primary peak to secondary peak
+        decay: float
+            slope of decaying exponential from secondary peak to end time
+
+        Returns
+        -------
+        h: numpy.ndarray
+            Constructed impulse response
+        """
+
+        dt = self.dt
+
+        assert t2>t1, 'Secondary peak must be after primary peak.'
+        assert t3>t2, 'End time must be after secondary peak.'
+        assert p2>p1, 'Secondary peak must be greater than primary peak.'
+
+        # Append zeros before start time
+        h_primary = np.append(np.zeros(int(t1/dt)), p1)
+
+        # Create a rising exponential of user-provided slope
+        x = np.linspace(t1/dt, t2/dt, (t2-t1)/dt)
+        h_rise = np.exp(rise*x)
+        
+        # Evaluate a factor for scaling exponential
+        factor = np.max(h_rise)/(p2-p1)
+        h_secondary = (h_rise/factor) + p1
+
+        # Create a decaying exponential until the end time
+        x = np.linspace(t2/dt, t3/dt, (t3-t2)/dt)
+        h_decay = (np.exp((-decay)*(x-4/dt))) 
+
+        # Add the three responses
+        h = np.append(h_primary, h_secondary)
+        h = np.append(h, h_decay)
+
+        return h
         
     def _simulate_power_law(self, B):
         """
