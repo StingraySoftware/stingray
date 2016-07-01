@@ -5,6 +5,8 @@ import numpy as np
 from stingray import Lightcurve
 import stingray.utils as utils
 
+__all__ = ['Covariancespectrum']
+
 
 class Covariancespectrum(object):
 
@@ -33,6 +35,10 @@ class Covariancespectrum(object):
 
         if ref_band_interest is None:
             ref_band_interest = (self.min_energy, self.max_energy)
+
+        assert type(ref_band_interest) in (list, tuple), "Ref Band interest " \
+                                                         "should be either " \
+                                                         "tuple or list."
 
         assert len(ref_band_interest) == 2, "Band interest should be a tuple " \
                                             "with min and max energy value " \
