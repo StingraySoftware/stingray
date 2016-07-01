@@ -56,8 +56,10 @@ class Covariancespectrum(object):
         max_energy : float
             Energy of the photon with the maximum energy.
         """
-        self.min_energy, self.max_energy = np.min(event_list.T[1]), np.max(event_list.T[1])
-        self.min_time, self.max_time = np.min(event_list.T[0]), np.max(event_list.T[0])
+        self.min_energy = np.min(event_list.T[1])
+        self.max_energy = np.max(event_list.T[1])
+        self.min_time = np.min(event_list.T[0])
+        self.max_time = np.max(event_list.T[0])
 
         if ref_band_interest is None:
             ref_band_interest = (self.min_energy, self.max_energy)
@@ -66,16 +68,15 @@ class Covariancespectrum(object):
                                                          "should be either " \
                                                          "tuple or list."
 
-        assert len(ref_band_interest) == 2, "Band interest should be a tuple " \
-                                            "with min and max energy value " \
+        assert len(ref_band_interest) == 2, "Band interest should be a tuple" \
+                                            " with min and max energy value " \
                                             "for the reference band."
         self.ref_band_interest = ref_band_interest
 
         if band_interest is not None:
             for element in list(band_interest):
-                assert type(element) in (list, tuple), "band_interest should " \
-                                                       "be iterable of either " \
-                                                       "tuple or list."
+                assert type(element) in (list, tuple), \
+                    "band_interest should be iterable of either tuple or list."
                 assert len(element) == 2, "Band interest should be a tuple " \
                                           "with min and max energy values."
 
@@ -92,7 +93,6 @@ class Covariancespectrum(object):
         self._update_energy_events()
 
         self._construct_energy_covar()
-
 
     def _construct_energy_events(self, event_list_T):
 
@@ -111,7 +111,8 @@ class Covariancespectrum(object):
         # For each bin except the last one, the lower bound is included and
         # the upper bound is excluded.
         for energy in self.energy_events.keys():
-            if energy == self.max_energy - least_count*0.5:  # The last energy bin
+            # The last energy bin
+            if energy == self.max_energy - least_count*0.5:
                 toa = event_list_T[0][np.logical_and(
                     event_list_T[1] >= energy - least_count*0.5,
                     event_list_T[1] <= energy + least_count*0.5)]
@@ -121,7 +122,6 @@ class Covariancespectrum(object):
                     event_list_T[1] >= energy - least_count*0.5,
                     event_list_T[1] < energy + least_count*0.5)]
                 self.energy_events[energy] = sorted(toa)
-
 
     def _update_energy_events(self):
         """
@@ -142,7 +142,6 @@ class Covariancespectrum(object):
 
             self.energy_events.update(energy_events_)
 
-
     def _init_energy_covar(self):
         """
         Initialize the energy_covar dictionary for further computations.
@@ -159,24 +158,28 @@ class Covariancespectrum(object):
                 mid_bin = (band[0] + band[1]) / 2
                 self.energy_covar[mid_bin] = []
 
-
     def _construct_energy_covar(self):
         """Form the actual output covaraince dictionary and array."""
         self._init_energy_covar()
 
         for energy in self.energy_covar.keys():
-            lc = Lightcurve.make_lightcurve(self.energy_events[energy], self.dt, tstart=self.min_time, tseg=self.max_time - self.min_time)
+            lc = Lightcurve.make_lightcurve(
+                    self.energy_events[energy], self.dt, tstart=self.min_time,
+                    tseg=self.max_time - self.min_time)
 
             # Calculating timestamps for lc_ref
             toa_ref = []
             for key, value in self.energy_events.items():
-                if key >= self.ref_band_interest[0] and key <= self.ref_band_interest[1]:
+                if key >= self.ref_band_interest[0] and \
+                        key <= self.ref_band_interest[1]:
                     if key != energy:
                         toa_ref.extend(value)
 
             toa_ref = np.array(sorted(toa_ref))
 
-            lc_ref = Lightcurve.make_lightcurve(toa_ref, self.dt, tstart=self.min_time, tseg=self.max_time - self.min_time)
+            lc_ref = Lightcurve.make_lightcurve(
+                    toa_ref, self.dt, tstart=self.min_time,
+                    tseg=self.max_time - self.min_time)
 
             assert len(lc.time) == len(lc_ref.time)
 
