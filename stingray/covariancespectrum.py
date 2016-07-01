@@ -29,6 +29,32 @@ class Covariancespectrum(object):
         ref_band_interest : tuple of reference band range, default All
             A tuple with minimum and maximum values of the range in the band
             of interest in reference channel.
+
+        Attributes
+        ----------
+        energy_events : dictionary
+            A dictionary with energy bins as keys and time of arrivals of
+            photons with the same energy as value.
+
+        energy_covar : dictionary
+            A dictionary with mid point of band_interest and their covariance
+            computed with their individual reference band.
+
+        covar : np.ndarray
+            An array of arrays with mid point band_interest and their
+            covariance. It is the array-form of the dictionary `energy_covar`.
+
+        min_time : int
+            Time of arrival of the earliest photon.
+
+        max_time : int
+            Time of arrival of the last photon.
+
+        min_energy : float
+            Energy of the photon with the minimum energy.
+
+        max_energy : float
+            Energy of the photon with the maximum energy.
         """
         self.min_energy, self.max_energy = np.min(event_list.T[1]), np.max(event_list.T[1])
         self.min_time, self.max_time = np.min(event_list.T[0]), np.max(event_list.T[0])
@@ -82,6 +108,8 @@ class Covariancespectrum(object):
             self.energy_events[unique_energy[i] + least_count*0.5] = []
 
         # Add time of arrivals to corresponding energy bins
+        # For each bin except the last one, the lower bound is included and
+        # the upper bound is excluded.
         for energy in self.energy_events.keys():
             if energy == self.max_energy - least_count*0.5:  # The last energy bin
                 toa = event_list_T[0][np.logical_and(
@@ -96,7 +124,10 @@ class Covariancespectrum(object):
 
 
     def _update_energy_events(self):
-
+        """
+        In case of a specific band interest, merge the required energy bins
+        into one with the new key as the mid-point of the band interest.
+        """
         if self.band_interest is not None:
             energy_events_ = {}
             for band in list(self.band_interest):
@@ -113,6 +144,9 @@ class Covariancespectrum(object):
 
 
     def _init_energy_covar(self):
+        """
+        Initialize the energy_covar dictionary for further computations.
+        """
         # The dictionary with covariance spectrum for each energy bin
         self.energy_covar = {}
 
@@ -127,7 +161,7 @@ class Covariancespectrum(object):
 
 
     def _construct_energy_covar(self):
-
+        """Form the actual output covaraince dictionary and array."""
         self._init_energy_covar()
 
         for energy in self.energy_covar.keys():
@@ -153,4 +187,5 @@ class Covariancespectrum(object):
         self.covar = np.vstack(self.energy_covar.items())
 
     def _compute_covariance(self, lc1, lc2):
+        """Calculate and return the covariance between two time series."""
         return np.cov(lc1.counts, lc2.counts)[0][1]
