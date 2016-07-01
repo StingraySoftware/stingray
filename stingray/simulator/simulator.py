@@ -168,8 +168,8 @@ class Simulator(object):
             lightCurve: `LightCurve` object
         """
 
-        # Add a warning here if channel name already exists
-
+        # Check that channel name does not already exist.
+        assert channel not in [lc[0] for lc in self.channels]
         self.channels.append((channel, self.simulate(args)))
 
     def get_channel(self, channel):
@@ -394,7 +394,7 @@ class Simulator(object):
         else:
             simon('Model is not defined!')
 
-    def _simulate_impulse_response(self, s, h, mode='full'):
+    def _simulate_impulse_response(self, s, h, mode='same'):
         """
         Generate LightCurve from impulse response. To get
         accurate results, binning intervals (dt) of variability 

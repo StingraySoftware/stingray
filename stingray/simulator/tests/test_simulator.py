@@ -212,6 +212,52 @@ class TestSimulator(object):
 
         assert np.abs(4-h_cutoff) < np.sqrt(4)
 
+    def test_position_varying_channels(self):
+        """
+        Tests lags for multiple energy channels with each channel 
+        having same intensity and varying position.
+        """
+        lc = sampledata.sample_data()
+        s = lc.counts
+        h = []
+        h.append(self.simulator.simple_ir(start=4, width=1))
+        h.append(self.simulator.simple_ir(start=9, width=1))
+
+        delays = [int(5/lc.dt), int(10/lc.dt)]
+        outputs = [self.simulator.simulate(s, i) for i in h]
+
+        cross = [Crossspectrum(lc, lc2).rebin(0.0075) for lc2 in outputs]
+        lags = [np.angle(c.cs)/ (2 * np.pi * c.freq) for c in cross]
+
+        v_cutoffs = [1.0/(2.0*5), 1.0/(2.0*10)]  
+        h_cutoffs = [lag[int((v-0.0075)*1/0.0075)] for lag, v in zip(lags, v_cutoffs)]
+
+        assert np.abs(5-h_cutoffs[0]) < np.sqrt(5)
+        assert np.abs(10-h_cutoffs[1]) < np.sqrt(10)
+
+    def test_intensity_varying_channels(self):
+        """
+        Tests lags for multiple energy channels with each channel 
+        having same position and varying intensity.
+        """
+        lc = sampledata.sample_data()
+        s = lc.counts
+        h = []
+        h.append(self.simulator.simple_ir(start=4, width=1, intensity=10))
+        h.append(self.simulator.simple_ir(start=4, width=1, intensity=20))
+
+        delay = int(5/lc.dt)
+        outputs = [self.simulator.simulate(s, i) for i in h]
+
+        cross = [Crossspectrum(lc, lc2).rebin(0.0075) for lc2 in outputs]
+        lags = [np.angle(c.cs)/ (2 * np.pi * c.freq) for c in cross]
+
+        v_cutoff = 1.0/(2.0*5)  
+        h_cutoffs = [lag[int((v_cutoff-0.0075)*1/0.0075)] for lag in lags]
+
+        assert np.abs(5-h_cutoffs[0]) < np.sqrt(5)
+        assert np.abs(5-h_cutoffs[1]) < np.sqrt(5)
+
     def test_periodogram(self):
         """
         Create a periodogram from light curve.
