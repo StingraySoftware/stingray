@@ -38,6 +38,9 @@ class Simulator(object):
         self.red_noise = red_noise
         self.time = dt*np.arange(N)
 
+        # Initialize a tuple of energy ranges with corresponding light curves
+        self.channels = []
+
         if seed is not None:
             np.random.seed(seed)
 
@@ -124,7 +127,7 @@ class Simulator(object):
                 'full' indicates that the length of output light
                 curve is len(s) + len(h) -1
 
-            Returns
+        Returns
             -------
             lightCurve: `LightCurve` object
         """
@@ -146,6 +149,69 @@ class Simulator(object):
 
         else:
             simon("Length of arguments must be 1, 2 or 3.")
+
+    def simulate_channel(self, channel, *args):
+        """
+        Simulate a lightcurve and add it to corresponding energy 
+        channel.
+
+        Parameters
+        ----------
+        channel: str
+            range of energy channel (e.g., 3.5-4.5)
+
+        *args: 
+            see description of simulate() for details
+
+        Returns
+        -------
+            lightCurve: `LightCurve` object
+        """
+
+        # Add a warning here if channel name already exists
+
+        self.channels.append((channel, self.simulate(args)))
+
+    def get_channel(self, channel):
+        """
+        Get lightcurve belonging to the energy channel.
+        """
+
+        return [lc[1] for lc in self.channels if lc[0] == channel]
+
+    def get_channels(self, channels):
+        """
+        Get multiple light curves belonging to the energy channels.
+        """
+        
+        return [lc[1] for lc in self.channels if lc[0] in channels]
+
+    def delete_channel(self, channel):
+        """
+        Delete an energy channel.
+        """
+
+        channel = [lc for lc in self.channels if lc[0] == channel]
+        index = self.channels.index(channel[0])
+        del self.channels[index]
+
+    def delete_channels(self, channels):
+        """
+        Delete multiple energy channels.
+        """
+
+        channels = [lc for lc in self.channels if lc[0] in channels]
+        indices = [self.channels.index(channel) for channel in channels]
+        
+        for i in sorted(indices, reverse=True):
+            del self.channels[i]
+
+    def count_channels(self):
+        """
+        Return total number of energy channels.
+        """
+        
+        return len(self.channels)
 
     def simple_ir(self, start=0, width=1000, intensity=1):
         """

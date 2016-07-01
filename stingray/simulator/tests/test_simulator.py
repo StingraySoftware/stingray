@@ -33,6 +33,41 @@ class TestSimulator(object):
         self.simulator = simulator.Simulator(N=1024, seed=12)
         assert len(self.simulator.simulate(2).counts), 1024
 
+    def test_simulate_channel(self):
+        """
+        Simulate an energy channel.
+        """
+        self.simulator.simulate_channel('3.5-4.5', 2)
+        self.simulator.delete_channel('3.5-4.5')
+
+    def test_get_channel(self):
+        """
+        Retrieve an energy channel after it has been simulated.
+        """
+        self.simulator.simulate_channel('3.5-4.5', 2)
+        lc = self.simulator.get_channel('3.5-4.5')
+
+        self.simulator.delete_channel('3.5-4.5')
+    
+    def test_get_channels(self):
+        """
+        Retrieve multiple energy channel after it has been simulated.
+        """
+        self.simulator.simulate_channel('3.5-4.5', 2)
+        self.simulator.simulate_channel('4.5-5.5', 1)
+        lc = self.simulator.get_channels(['3.5-4.5','4.5-5.5'])
+
+        self.simulator.delete_channels(['3.5-4.5','4.5-5.5'])
+
+    def test_count_channels(self):
+        """
+        Count energy channels after they have been simulated.
+        """
+        self.simulator.simulate_channel('3.5-4.5', 2)
+        self.simulator.simulate_channel('4.5-5.5', 1)
+
+        assert self.simulator.count_channels() == 2
+        
     def test_simulate_powerlaw(self):
         """
         Simulate light curve from power law spectrum.
