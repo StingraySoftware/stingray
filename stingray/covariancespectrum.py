@@ -56,10 +56,16 @@ class Covariancespectrum(object):
         max_energy : float
             Energy of the photon with the maximum energy.
         """
-        self.min_energy = np.min(event_list.T[1])
-        self.max_energy = np.max(event_list.T[1])
-        self.min_time = np.min(event_list.T[0])
-        self.max_time = np.max(event_list.T[0])
+
+        self.event_list = event_list
+
+        # Sorted by energy values as second row
+        event_list_T = event_list[self.event_list[:, 1].argsort()].T
+
+        self.min_energy = np.min(event_list_T[1])
+        self.max_energy = np.max(event_list_T[1])
+        self.min_time = np.min(event_list_T[0])
+        self.max_time = np.max(event_list_T[0])
 
         if ref_band_interest is None:
             ref_band_interest = (self.min_energy, self.max_energy)
@@ -83,10 +89,6 @@ class Covariancespectrum(object):
         self.band_interest = band_interest
         self.dt = dt
 
-        self.event_list = event_list
-
-        # Sorted by energy values as second row
-        event_list_T = event_list[self.event_list[:, 1].argsort()].T
 
         self._construct_energy_events(event_list_T)
 
