@@ -24,7 +24,7 @@ class Simulator(object):
             fractional rms of the simulated light curve,
             actual rms is calculated by mean*rms
         red_noise: int, default 1
-            multiple of real length of light curve, by 
+            multiple of real length of light curve, by
             which to simulate, to avoid red noise leakage
         seed: int, default None
             seed value for random processes
@@ -63,7 +63,7 @@ class Simulator(object):
             Returns
             -------
             lightCurve: `LightCurve` object
-        
+
         - x = simulate(s)
             For generating a light curve from user-provided spectrum.
 
@@ -139,7 +139,7 @@ class Simulator(object):
 
         # Define frequencies at which to compute PSD
         w = np.fft.rfftfreq(self.red_noise*self.N, d=self.dt)[1:]
-        
+
         # Draw two set of 'N' guassian distributed numbers
         a1 = np.random.normal(size=len(w))
         a2 = np.random.normal(size=len(w))
@@ -215,7 +215,7 @@ class Simulator(object):
             self.lc = Lightcurve(self.time, self._extract_and_scale(long_lc))
 
             return self.lc
-        
+
         else:
             simon('Model is not defined!')
 
@@ -259,7 +259,7 @@ class Simulator(object):
         f = [complex(r, i) for r,i in zip(real,imaginary)]
 
         f = np.hstack([self.mean, f])
-        
+
         # Obtain real valued time series
         f_conj = np.conjugate(np.array(f))
 
@@ -290,7 +290,7 @@ class Simulator(object):
         else:
             # Make random cut and extract light curve of length 'N'
             extract = np.random.randint(self.N-1, self.red_noise*self.N - self.N+1)
-            lc = np.take(long_lc, range(extract, extract + self.N)) 
+            lc = np.take(long_lc, range(extract, extract + self.N))
 
         avg = np.mean(lc)
         std = np.std(lc)
@@ -311,10 +311,10 @@ class Simulator(object):
         -------
         ps: numpy.ndarray
             The array of normalized squared absolute values of Fourier
-            amplitudes    
+            amplitudes
 
         """
         if seg_size is None:
             seg_size = self.lc.tseg
 
-        return AveragedPowerspectrum(lc, seg_size).ps
+        return AveragedPowerspectrum(lc, seg_size).power
