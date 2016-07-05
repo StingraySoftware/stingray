@@ -381,9 +381,9 @@ class AveragedCrossspectrum(Crossspectrum):
         nphots2_all = []
 
         while end_ind <= lc1.counts.shape[0]:
-            time_1 = lc1.time[start_ind:end_ind]
+            time_1 = lc1.times[start_ind:end_ind]
             counts_1 = lc1.counts[start_ind:end_ind]
-            time_2 = lc2.time[start_ind:end_ind]
+            time_2 = lc2.times[start_ind:end_ind]
             counts_2 = lc2.counts[start_ind:end_ind]
             lc1_seg = lightcurve.Lightcurve(time_1, counts_1)
             lc2_seg = lightcurve.Lightcurve(time_2, counts_2)

@@ -553,7 +553,7 @@ class AveragedPowerspectrum(Powerspectrum):
         ps_all = []
         nphots_all = []
         while end_ind <= lc.counts.shape[0]:
-            time = lc.time[start_ind:end_ind]
+            time = lc.times[start_ind:end_ind]
             counts = lc.counts[start_ind:end_ind]
             lc_seg = lightcurve.Lightcurve(time, counts)
             ps_seg = Powerspectrum(lc_seg, norm=self.norm)

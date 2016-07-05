@@ -15,14 +15,14 @@ __all__ = ["Lightcurve"]
 
 
 class Lightcurve(object):
-    def __init__(self, time, counts, input_counts=True):
+    def __init__(self, times, counts, input_counts=True):
         """
         Make a light curve object from an array of time stamps and an
         array of counts.
 
         Parameters
         ----------
-        time: iterable
+        times: iterable
             A list or array of time stamps for a light curve
 
         counts: iterable, optional, default None
@@ -60,20 +60,20 @@ class Lightcurve(object):
 
         """
 
-        assert np.all(np.isfinite(time)), "There are inf or NaN values in " \
+        assert np.all(np.isfinite(times)), "There are inf or NaN values in " \
                                           "your time array!"
 
         assert np.all(np.isfinite(counts)), "There are inf or NaN values in " \
                                             "your counts array!"
 
-        assert len(time) == len(counts), "time are counts array are not " \
+        assert len(times) == len(counts), "time are counts array are not " \
                                          "of the same length!"
 
-        assert len(time) > 1, "A single or no data points can not create " \
+        assert len(times) > 1, "A single or no data points can not create " \
                               "a lightcurve!"
 
-        self.time = np.asarray(time)
-        self.dt = time[1] - time[0]
+        self.times = np.asarray(times)
+        self.dt = times[1] - times[0]
 
         if input_counts:
             self.counts = np.asarray(counts)
@@ -86,14 +86,14 @@ class Lightcurve(object):
 
         # Issue a warning if the input time iterable isn't regularly spaced,
         # i.e. the bin sizes aren't equal throughout.
-        dt_array = np.diff(self.time)
+        dt_array = np.diff(self.times)
         if not (np.allclose(dt_array, np.repeat(self.dt, dt_array.shape[0]))):
             simon("Bin sizes in input time array aren't equal throughout! "
                   "This could cause problems with Fourier transforms. "
                   "Please make the input time evenly sampled.")
 
-        self.tseg = self.time[-1] - self.time[0] + self.dt
-        self.tstart = self.time[0] - 0.5*self.dt
+        self.tseg = self.times[-1] - self.times[0] + self.dt
+        self.tstart = self.times[0] - 0.5*self.dt
 
     def __add__(self, other):
         """
@@ -117,14 +117,14 @@ class Lightcurve(object):
         # ValueError is raised by Numpy while asserting np.equal over arrays
         # with different dimensions.
         try:
-            assert np.all(np.equal(self.time, other.time))
+            assert np.all(np.equal(self.times, other.times))
         except (ValueError, AssertionError):
             raise AssertionError("Time arrays of both light curves must be "
                                  "of same dimension and equal.")
 
         new_counts = np.add(self.counts, other.counts)
 
-        lc_new = Lightcurve(self.time, new_counts)
+        lc_new = Lightcurve(self.times, new_counts)
 
         return lc_new
 
@@ -151,14 +151,14 @@ class Lightcurve(object):
         # ValueError is raised by Numpy while asserting np.equal over arrays
         # with different dimensions.
         try:
-            assert np.all(np.equal(self.time, other.time))
+            assert np.all(np.equal(self.times, other.times))
         except (ValueError, AssertionError):
             raise AssertionError("Time arrays of both light curves must be "
                                  "of same dimension and equal.")
 
         new_counts = np.subtract(self.counts, other.counts)
 
-        lc_new = Lightcurve(self.time, new_counts)
+        lc_new = Lightcurve(self.times, new_counts)
 
         return lc_new
 
@@ -180,7 +180,7 @@ class Lightcurve(object):
         >>> lc_new.counts
         array([100, 100, 100])
         """
-        lc_new = Lightcurve(self.time, -1*self.counts)
+        lc_new = Lightcurve(self.times, -1*self.counts)
 
         return lc_new
 
@@ -229,7 +229,7 @@ class Lightcurve(object):
             return self.counts[index]
         elif isinstance(index, slice):
             new_counts = self.counts[index.start:index.stop:index.step]
-            new_time = self.time[index.start:index.stop:index.step]
+            new_time = self.times[index.start:index.stop:index.step]
             return Lightcurve(new_time, new_counts)
         else:
             raise IndexError("The index must be either an integer or a slice "
@@ -295,11 +295,11 @@ class Lightcurve(object):
 
         dt = histbins[1] - histbins[0]
 
-        time = histbins[:-1] + 0.5*dt
+        times = histbins[:-1] + 0.5*dt
 
         counts = np.asarray(counts)
 
-        return Lightcurve(time, counts)
+        return Lightcurve(times, counts)
 
     def rebin_lightcurve(self, dt_new, method='sum'):
         """
@@ -327,7 +327,7 @@ class Lightcurve(object):
         assert dt_new >= self.dt, "New time resolution must be larger than " \
                                   "old time resolution!"
 
-        bin_time, bin_counts, _ = utils.rebin_data(self.time,
+        bin_time, bin_counts, _ = utils.rebin_data(self.times,
                                                    self.counts,
                                                    dt_new, method)
 
@@ -373,11 +373,11 @@ class Lightcurve(object):
             utils.simon("The two light curves have different bin widths.")
 
         if self.tstart <= other.tstart:
-            new_time = np.unique(np.concatenate([self.time, other.time]))
+            new_time = np.unique(np.concatenate([self.times, other.times]))
         else:
-            new_time = np.unique(np.concatenate([other.time, self.time]))
+            new_time = np.unique(np.concatenate([other.times, self.times]))
 
-        if len(new_time) != len(self.time) + len(other.time):
+        if len(new_time) != len(self.times) + len(other.times):
             utils.simon("The two light curves have overlapping time ranges. "
                         "In the common time range, the resulting count will "
                         "be the average of the counts in the two light "
@@ -389,12 +389,12 @@ class Lightcurve(object):
         # For every time stamp, get the individual time counts and add them.
         for time in new_time:
             try:
-                count1 = self.counts[np.where(self.time == time)[0][0]]
+                count1 = self.counts[np.where(self.times == time)[0][0]]
             except IndexError:
                 count1 = None
 
             try:
-                count2 = other.counts[np.where(other.time == time)[0][0]]
+                count2 = other.counts[np.where(other.times == time)[0][0]]
             except IndexError:
                 count2 = None
 
@@ -471,7 +471,7 @@ class Lightcurve(object):
 
     def _truncate_by_index(self, start, stop):
         """Private method for truncation using index values."""
-        time_new = self.time[start:stop]
+        time_new = self.times[start:stop]
         counts_new = self.counts[start:stop]
 
         return Lightcurve(time_new, counts_new)
@@ -482,10 +482,10 @@ class Lightcurve(object):
             assert start < stop, "start time must be less than stop time!"
 
         if not start == 0:
-            start = np.where(self.time == start)[0][0]
+            start = np.where(self.times == start)[0][0]
 
         if stop is not None:
-            stop = np.where(self.time == stop)[0][0]
+            stop = np.where(self.times == stop)[0][0]
 
         return self._truncate_by_index(start, stop)
 
@@ -520,15 +520,15 @@ class Lightcurve(object):
             arrays.
         """
         new_counts = sorted(self.counts, reverse=reverse)
-        new_time = []
+        new_time= []
         for count in np.unique(new_counts):
             for index in np.where(self.counts == count)[0]:
-                new_time.append(self.time[index])
+                new_time.append(self.times[index])
 
         if reverse:
             new_time.reverse()
 
-        self.time = np.asarray(new_time)
+        self.times = np.asarray(new_time)
         self.counts = np.asarray(new_counts)
 
     def plot(self, labels=None, axis=None, title=None, marker='-', save=False,
@@ -569,7 +569,7 @@ class Lightcurve(object):
             raise ImportError("Matplotlib required for plot()")
 
         fig = plt.figure()
-        fig = plt.plot(self.time, self.counts, marker)
+        fig = plt.plot(self.times, self.counts, marker)
 
         if labels is not None:
             try:
@@ -611,7 +611,7 @@ class Lightcurve(object):
         """
 
         if format_ == 'ascii':
-            io.write(np.array([self.time, self.counts]).T,
+            io.write(np.array([self.times, self.counts]).T,
               filename, format_, fmt=["%s", "%s"])
 
         elif format_ == 'pickle':

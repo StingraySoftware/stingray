@@ -16,8 +16,7 @@ import numpy as np
 
 
 class EventList(object):
-    def __init__(self, times, energies=None, mjdref=0, dt=0, notes="", gti=None, pi=None,
-                 pha=None):
+    def __init__(self, times, energies=None, mjdref=0, dt=0, notes="", gti=None, pi=None):
         """
         Make an event list object from an array of time stamps
 
@@ -44,12 +43,9 @@ class EventList(object):
         pi : integer, numpy.ndarray
             PI channels
 
-        pha : float, numpy.ndarray
-            Photon energies
-
         Attributes
         ----------
-        time: numpy.ndarray
+        times: numpy.ndarray
             The array of event arrival times, in seconds from the reference
             MJD (self.mjdref)
 
@@ -72,19 +68,15 @@ class EventList(object):
         pi : integer, numpy.ndarray
             PI channels
 
-        pha : float, numpy.ndarray
-            Photon energies
-
         """
-        self.time = np.array(times, dtype=np.longdouble)
-        self.energy = np.array(energies)
+        self.times = np.array(times, dtype=np.longdouble)
+        self.energies = np.array(energies)
         self.ncounts = len(times)
         self.notes = notes
         self.dt = dt
         self.mjdref = mjdref
         self.gti = gti
         self.pi = pi
-        self.pha = pha
 
     @staticmethod
     def from_fits(fname, **kwargs):
@@ -103,7 +95,7 @@ class EventList(object):
 
         return EventList(times, gti=gti, pi=pi, pha=pha, dt=dt, mjdref=mjdref)
 
-    def to_lc(self, bin_time, start_time=None, stop_time=None, center_time=True):
+    def to_lc(self, bin_time, start_time=None):
         """
         Convert event list to a light curve object.
 
@@ -116,31 +108,26 @@ class EventList(object):
         ----------------
         start_time : float
             Initial time of the light curve
-        stop_time : float
-            Stop time of the light curve
-        center_time: bool
-            If False, time is the start of the bin. Otherwise, the center
 
         Returns
         -------
         lc: `Lightcurve` object
         """
 
-        times, counts = events_to_lc(self.time, bin_time, start_time,
-            stop_time, center_time)
-
-        return Lightcurve(times, counts)
+        return Lightcurve.make_lightcurve(self.times, bin_time, tstart=start_time)
 
     def set_times(self, lc):
         """
-        Assign photon arrival times to event list.
+        Assign photon arrival times to event list, using acception-rejection
+        method.
 
         Parameters
         ----------
         lc: `Lightcurve` object
         """ 
-        times = lc_to_events(lc.time, lc.counts)
-        self.time = EventList(times)
+
+        times = lc_to_events(lc.times, lc.counts)
+        self.times = EventList(times)
 
     def set_energies(self, spectrum):
         """
@@ -154,7 +141,7 @@ class EventList(object):
             second one.
         """
 
-        self.energy = assign_energies(self.ncounts, spectrum)
+        self.energies = assign_energies(self.ncounts, spectrum)
 
     def read(self, filename, format_='pickle'):
         """
@@ -198,7 +185,7 @@ class EventList(object):
         """
 
         if format_ == 'ascii':
-            io.write(np.array([self.time]).T,
+            io.write(np.array([self.times]).T,
               filename, format_, fmt=["%s"])
 
         elif format_ == 'pickle':

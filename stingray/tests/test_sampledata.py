@@ -12,26 +12,26 @@ class TestSampleData(object):
         """ Test if file exists by checking the length
         of times and counts lists """
         lc = sample_data()
-        assert len(lc.time) != 0
+        assert len(lc.times) != 0
         assert len(lc.counts) != 0
 
     def test_file_first_line(self):
         """ Test if the first line matches with the
         actual data """
         lc = sample_data()
-        assert lc.time[0] == self.FIRST_LINE[0]
+        assert lc.times[0] == self.FIRST_LINE[0]
         assert lc.counts[0] == self.FIRST_LINE[1]
 
     def test_file_last_line(self):
         """ Test if last line matches with the
         actual data """
         lc = sample_data()
-        assert lc.time[-1] == self.LAST_LINE[0]
+        assert lc.times[-1] == self.LAST_LINE[0]
         assert lc.counts[-1] == self.LAST_LINE[1]
 
     def test_file_length(self):
         """ Test if file length is equal to actual
          length """
         lc = sample_data()
-        assert len(lc.time) == self.FILE_LENGTH
+        assert len(lc.times) == self.FILE_LENGTH
         assert len(lc.counts) == self.FILE_LENGTH

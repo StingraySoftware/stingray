@@ -52,7 +52,7 @@ class TestLightcurve(object):
         tstart = 0.0
         lc = Lightcurve.make_lightcurve(self.times, self.dt, tstart=0.0)
         assert lc.tstart == tstart
-        assert lc.time[0] == tstart + 0.5*self.dt
+        assert lc.times[0] == tstart + 0.5*self.dt
 
     def test_tseg(self):
         tstart = 0.0
@@ -61,7 +61,7 @@ class TestLightcurve(object):
                                         tseg=tseg, tstart=tstart)
 
         assert lc.tseg == tseg
-        assert lc.time[-1] - lc.time[0] == tseg - self.dt
+        assert lc.times[-1] - lc.times[0] == tseg - self.dt
 
     def test_nondivisble_tseg(self):
         """
@@ -249,7 +249,7 @@ class TestLightcurve(object):
 
         lc = lc1.join(lc2)
 
-        assert len(lc.counts) == len(lc.time) == 8
+        assert len(lc.counts) == len(lc.times) == 8
         assert np.all(lc.counts == 2)
 
     def test_join_overlapping_time_arrays(self):
@@ -263,18 +263,18 @@ class TestLightcurve(object):
             lc = lc1.join(lc2)
             assert "overlapping time ranges" in str(w[0].message)
 
-        assert len(lc.counts) == len(lc.time) == 6
+        assert len(lc.counts) == len(lc.times) == 6
         assert np.all(lc.counts == np.array([2, 2, 3, 3, 4, 4]))
 
     def test_truncate_by_index(self):
         lc = Lightcurve(self.times, self.counts)
 
         lc1 = lc.truncate(start=1)
-        assert np.all(lc1.time == np.array([2, 3, 4]))
+        assert np.all(lc1.times == np.array([2, 3, 4]))
         assert np.all(lc1.counts == np.array([2, 2, 2]))
 
         lc2 = lc.truncate(stop=2)
-        assert np.all(lc2.time == np.array([1, 2]))
+        assert np.all(lc2.times == np.array([1, 2]))
         assert np.all(lc2.counts == np.array([2, 2]))
 
     def test_truncate_by_time_stop_less_than_start(self):
@@ -287,11 +287,11 @@ class TestLightcurve(object):
         lc = Lightcurve(self.times, self.counts)
 
         lc1 = lc.truncate(start=1, method='time')
-        assert np.all(lc1.time == np.array([1, 2, 3, 4]))
+        assert np.all(lc1.times == np.array([1, 2, 3, 4]))
         assert np.all(lc1.counts == np.array([2, 2, 2, 2]))
 
         lc2 = lc.truncate(stop=3, method='time')
-        assert np.all(lc2.time == np.array([1, 2]))
+        assert np.all(lc2.times == np.array([1, 2]))
         assert np.all(lc2.counts == np.array([2, 2]))
 
     def test_sort(self):
@@ -302,12 +302,12 @@ class TestLightcurve(object):
         lc.sort()
 
         assert np.all(lc.counts == np.array([ 5, 10, 20, 40]))
-        assert np.all(lc.time == np.array([4, 2, 3, 1]))
+        assert np.all(lc.times == np.array([4, 2, 3, 1]))
 
         lc.sort(reverse=True)
 
         assert np.all(lc.counts == np.array([40, 20, 10,  5]))
-        assert np.all(lc.time == np.array([1, 3, 2, 4]))
+        assert np.all(lc.times == np.array([1, 3, 2, 4]))
 
     def test_plot_matplotlib_not_installed(self):
         try:
@@ -372,7 +372,7 @@ class TestLightcurve(object):
         lc = Lightcurve(self.times, self.counts)
         lc.write('lc.pickle', format_='pickle')
         lc.read('lc.pickle',format_='pickle')
-        assert np.all(lc.time == self.times)
+        assert np.all(lc.times == self.times)
         assert np.all(lc.counts == self.counts)
         os.remove('lc.pickle')
 
@@ -382,13 +382,13 @@ class TestLightcurve(object):
         
         if _H5PY_INSTALLED:
             data = lc.read('lc.hdf5',format_='hdf5')
-            assert np.all(data['time'] == self.times)
+            assert np.all(data['times'] == self.times)
             assert np.all(data['counts'] == self.counts)
             os.remove('lc.hdf5')
 
         else:
             lc.read('lc.pickle',format_='pickle')
-            assert np.all(lc.time == self.times)
+            assert np.all(lc.times == self.times)
             assert np.all(lc.counts == self.counts)
             os.remove('lc.pickle')
 
@@ -408,7 +408,7 @@ class TestLightcurveRebin(object):
         dt_new = 2.0
         lc_binned = self.lc.rebin_lightcurve(dt_new)
         assert np.isclose(lc_binned.dt, dt_new)
-        counts_test = np.zeros_like(lc_binned.time) + \
+        counts_test = np.zeros_like(lc_binned.times) + \
             self.lc.counts[0]*dt_new/self.lc.dt
         assert np.allclose(lc_binned.counts, counts_test)
 
@@ -417,7 +417,7 @@ class TestLightcurveRebin(object):
         lc_binned = self.lc.rebin_lightcurve(dt_new)
         assert np.isclose(lc_binned.dt, dt_new)
 
-        counts_test = np.zeros_like(lc_binned.time) + \
+        counts_test = np.zeros_like(lc_binned.times) + \
             self.lc.counts[0]*dt_new/self.lc.dt
         assert np.allclose(lc_binned.counts, counts_test)
 
@@ -426,7 +426,7 @@ class TestLightcurveRebin(object):
         TODO: Not sure how to write tests for the rebin method!
         """
         lc_binned = self.lc.rebin_lightcurve(dt)
-        assert len(lc_binned.time) == len(lc_binned.counts)
+        assert len(lc_binned.times) == len(lc_binned.counts)
 
     def test_rebin_equal_numbers(self):
         dt_all = [2, 3, np.pi, 5]

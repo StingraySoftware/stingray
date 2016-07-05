@@ -44,7 +44,7 @@ class TestPowerspectrum(object):
         assert ps.df == 1.0 / self.lc.tseg
         assert ps.norm == "rms"
         assert ps.m == 1
-        assert ps.n == self.lc.time.shape[0]
+        assert ps.n == self.lc.times.shape[0]
         assert ps.nphots == np.sum(self.lc.counts)
 
     def test_periodogram_types(self):
@@ -167,7 +167,7 @@ class TestPowerspectrum(object):
         assert bin_ps.df == rebin_factor * 1.0 / self.lc.tseg
         assert bin_ps.norm.lower() == "leahy"
         assert bin_ps.m == 2
-        assert bin_ps.n == self.lc.time.shape[0]
+        assert bin_ps.n == self.lc.times.shape[0]
         assert bin_ps.nphots == np.sum(self.lc.counts)
 
     def test_rebin_uses_mean(self):
