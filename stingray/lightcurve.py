@@ -236,7 +236,7 @@ class Lightcurve(object):
                              "object !")
 
     @staticmethod
-    def make_lightcurve(toa, dt, tseg=None, tstart=None):
+    def make_lightcurve(toa, dt, tseg=None, tstart=None, tend=None):
 
         """
         Make a light curve out of photon arrival times.
@@ -271,32 +271,28 @@ class Lightcurve(object):
 
         """
 
-        # tstart is an optional parameter to set a starting time for
-        # the light curve in case this does not coincide with the first photon
+        # If 'tstart' or 'tend' is 'None', assign them the arrival times
+        # of first and last photons respectively.
+
         if tstart is None:
-            # if tstart is not set, assume light curve starts with first photon
             tstart = toa[0]
 
-        # compute the number of bins in the light curve
-        # for cases where tseg/dt are not integer, computer one
-        # last time bin more that we have to subtract in the end
-        if tseg is None:
-            tseg = toa[-1] - toa[0]
+        if tend is None:
+            tend = toa[-1]
 
-        logging.info("make_lightcurve: tseg: " + str(tseg))
+        # Compute the number of bins in the light curve. If 
+        # (tend-tstart)/dt is not an integer, drop last bin.
+
+        if tseg is None:
+            tseg = np.int((tend - tstart)/dt)
 
         timebin = np.int(tseg/dt)
-        logging.info("make_lightcurve: timebin:  " + str(timebin))
-
-        tend = tstart + timebin*dt
 
         counts, histbins = np.histogram(toa, bins=timebin,
                                         range=[tstart, tend])
 
         dt = histbins[1] - histbins[0]
-
         time = histbins[:-1] + 0.5*dt
-
         counts = np.asarray(counts)
 
         return Lightcurve(time, counts)

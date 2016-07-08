@@ -5,17 +5,16 @@ Definition of :class:`EventList`.
 """
 from __future__ import absolute_import, division, print_function
 
-from stingray.simulator.events import lc_to_events, assign_energies
-
 from .lightcurve import Lightcurve
 import stingray.io as io
 import stingray.utils as utils
 
 import numpy as np
+import numpy.random as ra
 
 
 class EventList(object):
-    def __init__(self, time=None, energies=None, ncounts = None, mjdref=0, dt=0, notes="", 
+    def __init__(self, time=None, energies=None, ncounts=None, mjdref=0, dt=0, notes="", 
             gti=None, pi=None):
         """
         Make an event list object from an array of time stamps
@@ -81,9 +80,13 @@ class EventList(object):
         self.pi = pi
         self.ncounts = ncounts
 
-        if self.ncounts is not None:
-            self.ncounts = len(time)
-        
+        if self.ncounts is None:
+            
+            try:
+                self.ncounts = len(time)
+            except:
+                # In case of a 0-d array, pass
+                pass
 
     @staticmethod
     def from_fits(fname, **kwargs):
@@ -102,32 +105,32 @@ class EventList(object):
 
         return EventList(times, gti=gti, pi=pi, pha=pha, dt=dt, mjdref=mjdref)
 
-    def to_lc(self, bin_time, start_time=None):
+    def to_lc(self, dt, tstart=None, tend=None):
         """
         Convert event list to a light curve object.
 
         Parameters
         ----------
-        bin_time : float
+        dt: float
             Binning time of the light curve
 
         Other Parameters
         ----------------
-        start_time : float
+        tstart : float
             Initial time of the light curve
-        stop_time : float
-            Stop time of the light curve
-        center_time: bool
-            If False, time is the start of the bin. Otherwise, the center
 
+        tend: float
+            End time of the light curve
+        
         Returns
         -------
         lc: `Lightcurve` object
         """
 
-        return Lightcurve.make_lightcurve(self.time, bin_time, tstart=start_time)
+        return Lightcurve.make_lightcurve(self.time, dt, tstart=tstart, 
+            tend=tend)
 
-    def set_times(self, lc):
+    def set_times(self, lc, use_spline=False, bin_time=None):
         """
         Assign photon arrival times to event list, using acception-rejection
         method.
@@ -136,8 +139,85 @@ class EventList(object):
         ----------
         lc: `Lightcurve` object
         """ 
-        times = lc_to_events(lc.time, lc.counts)
-        self.time = EventList(times)
+        
+        try:
+            import scipy.interpolate as sci
+        
+        except:
+            if use_spline:
+                utils.simon("Scipy not available. Cannot use spline.")
+                use_spline = False
+
+        times = lc.time
+        counts = lc.counts
+
+        bin_time = utils.assign_value_if_none(bin_time, times[1] - times[0])
+        n_bin = len(counts)
+        bin_start = 0
+        maxlc = np.max(counts)
+        intlc = maxlc * n_bin
+        n_events_predict = int(intlc + 10 * np.sqrt(intlc))
+
+        # Max number of events per chunk must be < 100000
+        events_per_bin_predict = n_events_predict / n_bin
+        
+        if use_spline:
+            max_bin = np.max([4, 1000000 / events_per_bin_predict])
+            
+        else:
+            max_bin = np.max([4, 5000000 / events_per_bin_predict])
+
+        ev_list = np.zeros(n_events_predict)
+        nev = 0
+
+        while bin_start < n_bin:
+            
+            t0 = times[bin_start]
+            bin_stop = min([bin_start + max_bin, n_bin + 1])
+            lc_filt = counts[bin_start:bin_stop]
+            t_filt = times[bin_start:bin_stop]
+            length = t_filt[-1] - t_filt[0]
+            n_bin_filt = len(lc_filt)
+            n_to_simulate = n_bin_filt * max(lc_filt)
+            safety_factor = 10
+
+            if n_to_simulate > 10000:
+                safety_factor = 4.
+
+            n_to_simulate += safety_factor * np.sqrt(n_to_simulate)
+            n_to_simulate = int(np.ceil(n_to_simulate))
+            n_predict = ra.poisson(np.sum(lc_filt))
+
+            random_ts = ra.uniform(t_filt[0] - bin_time / 2,
+                                   t_filt[-1] + bin_time / 2, n_to_simulate)
+
+            random_amps = ra.uniform(0, max(lc_filt), n_to_simulate)
+            
+            if use_spline:
+                lc_spl = sci.splrep(t_filt, lc_filt, s=np.longdouble(0), k=1)
+                pts = sci.splev(random_ts, lc_spl)
+            
+            else:
+                rough_bins = np.rint((random_ts - t0) / bin_time)
+                rough_bins = rough_bins.astype(int)
+                pts = lc_filt[rough_bins]
+            
+            good = random_amps < pts
+            len1 = len(random_ts)
+            random_ts = random_ts[good]
+            len2 = len(random_ts)
+            random_ts = random_ts[:n_predict]
+            random_ts.sort()
+            new_nev = len(random_ts)
+            ev_list[nev:nev + new_nev] = random_ts[:]
+            nev += new_nev
+            bin_start += max_bin
+
+        # Discard all zero entries at the end
+        time = ev_list[:nev]
+        time.sort()
+        
+        self.time = EventList(time).time
 
     def set_energies(self, spectrum):
         """
@@ -151,8 +231,38 @@ class EventList(object):
             second one.
         """
 
-        if self.ncounts is not None:
-            self.energies = assign_energies(self.ncounts, spectrum)
+        if self.ncounts is None:
+            utils.simon("Either set time values or explicity provide counts.")
+            return
+
+        if isinstance(spectrum, list):
+            try:
+                energies = np.array(spectrum[0])
+                fluxes = np.array(spectrum[1])
+            
+            except TypeError:
+                utils.simon("Spectrum must be a 2-d array or list")
+
+        else:
+            try:
+                energies = spectrum[0]
+                fluxes = spectrum[1]
+
+            except IndexError:
+                utils.simon("Spectrum must be a 2-d array or list")
+        
+        # Create a set of probability values
+        prob = fluxes / float(sum(fluxes))
+
+        # Calculate cumulative probability
+        cum_prob = np.cumsum(prob)
+
+        # Draw N random numbers between 0 and 1, where N is the size of event list
+        R = ra.uniform(0, 1, self.ncounts)
+
+        # Assign energies to events corresponding to the random numbers drawn
+        self.energies = np.array([energies[np.argwhere(cum_prob == 
+            min(cum_prob[(cum_prob - r) > 0]))] for r in R])
 
     def read(self, filename, format_='pickle'):
         """

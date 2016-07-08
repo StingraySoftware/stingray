@@ -25,7 +25,7 @@ class TestEvents(object):
 		Create a light curve from event list
 		"""
 		ev = EventList(self.time)
-		lc = ev.to_lc(0.5)
+		lc = ev.to_lc(1)
 
 	def test_set_times(self):
 		"""
@@ -33,15 +33,59 @@ class TestEvents(object):
 		from light curve.
 		"""
 		lc = Lightcurve(self.time, self.counts)
-		ev = EventList(self.time)
+		ev = EventList()
 		ev.set_times(lc)
+
+	def test_set_times_with_spline(self):
+		"""
+		Set photon arrival times, with use_spline option
+		enabled.
+		"""
+		lc = Lightcurve(self.time, self.counts)
+		ev = EventList()
+		ev.set_times(lc, use_spline = True)
+
+	def test_recover_lc(self):
+		"""
+		Test that the original light curve can be recovered from 
+		event list, which was used to simulate it.
+		"""
+		lc = Lightcurve(self.time, self.counts)
+		ev = EventList()
+		ev.set_times(lc)
+
+		lc_rcd = ev.to_lc(dt=1, tstart=0, tend=4)
+
+		assert np.all(np.abs(lc_rcd.counts - lc.counts) < 3 * np.sqrt(lc.counts))
 
 	def test_set_energies(self):
 		"""
 		Assign photon energies to an event list.
 		"""
-		ev = EventList(self.time)
+		ev = EventList(100)
 		ev.set_energies(self.spectrum)
+
+	def test_compare_energies(self):
+		"""
+		Compare the simulated energy distribution to actual distribution.
+		"""
+		fluxes = np.array(self.spectrum[1])
+		ev = EventList(ncounts=1000)
+		ev.set_energies(self.spectrum)
+		energies = [int(energy) for energy in ev.energies]
+
+		# Histogram energies to get shape approximation
+		gen_energies = ((np.array(energies) - 1) / 1).astype(int)
+		lc = np.bincount(energies)
+
+		# Remove first entry as it contains occurences of '0' element
+		lc = lc[1:len(lc)]
+
+		# Calculate probabilities and compare
+		lc_prob = (lc/float(sum(lc)))
+		fluxes_prob = fluxes/float(sum(fluxes))
+		
+		assert np.all(np.abs(lc_prob - fluxes_prob) < 3 * np.sqrt(fluxes_prob))
 
 	def test_io_with_ascii(self):
 		"""
