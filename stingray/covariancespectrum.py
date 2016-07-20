@@ -11,7 +11,7 @@ __all__ = ['Covariancespectrum']
 class Covariancespectrum(object):
 
     def __init__(self, event_list, dt, band_interest=None,
-                 ref_band_interest=None):
+                 ref_band_interest=None, error=None):
         """
         Parameters
         ----------
@@ -30,6 +30,15 @@ class Covariancespectrum(object):
             A tuple with minimum and maximum values of the range in the band
             of interest in reference channel.
 
+        error : float or np.array or list of numbers
+            The term error is used to cacluate the excess variance of a band.
+            If error is set to None, default Poisson case is taken and the
+            error is calculated as `mean(lc)**0.5`. In the case of a single
+            float as input, the same is used as the standard deviation which
+            is also used as the error. And if the error is a list or array of
+            numbers, the mean is used for the same purpose.
+
+
         Attributes
         ----------
         energy_events : dictionary
@@ -38,11 +47,16 @@ class Covariancespectrum(object):
 
         energy_covar : dictionary
             A dictionary with mid point of band_interest and their covariance
-            computed with their individual reference band.
+            computed with their individual reference band. The covaraince
+            values are normalized.
 
-        covar : np.ndarray
+        unnorm_covar : np.ndarray
             An array of arrays with mid point band_interest and their
             covariance. It is the array-form of the dictionary `energy_covar`.
+            The covariance values are unnormalized.
+
+        covar : np.ndarray
+            Normalized covaraiance spectrum.
 
         min_time : int
             Time of arrival of the earliest photon.
@@ -89,6 +103,7 @@ class Covariancespectrum(object):
         self.band_interest = band_interest
         self.dt = dt
 
+        self.error = error
 
         self._construct_energy_events(event_list_T)
 
@@ -164,6 +179,8 @@ class Covariancespectrum(object):
         """Form the actual output covaraince dictionary and array."""
         self._init_energy_covar()
 
+        xs_var = dict()
+
         for energy in self.energy_covar.keys():
             lc = Lightcurve.make_lightcurve(
                     self.energy_events[energy], self.dt, tstart=self.min_time,
@@ -188,6 +205,23 @@ class Covariancespectrum(object):
             covar = self._compute_covariance(lc, lc_ref)
 
             self.energy_covar[energy] = covar
+
+            # Calculate error
+            if self.error is None:
+                std = np.mean(lc_ref)**0.5
+            elif type(self.error) in [list, np.array]: # Array of numbers
+                std = np.mean(self.error)
+            else:  # Single float number
+                std = self.error
+
+            xs_var[energy] = np.var(lc_ref) - std**2  # Excess variance in ref band
+
+        self.unnorm_covar = np.vstack(self.energy_covar.items())
+
+        for key, value in self.energy_covar.items():
+            if not xs_var[key] > 0 :
+                utils.simon('xs_var must not take non-positive values.')
+            self.energy_covar[key] = value / (xs_var[key])**0.5
 
         self.covar = np.vstack(self.energy_covar.items())
 
