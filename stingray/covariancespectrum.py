@@ -206,14 +206,7 @@ class Covariancespectrum(object):
 
             self.energy_covar[energy] = covar
 
-            # Calculate error
-            if self.error is None:
-                std = np.mean(lc_ref)**0.5
-            elif isinstance(self.error, collections.Iterable):
-                std = np.mean(self.error)  # Iterable of numbers
-            else:  # Single float number
-                std = self.error
-
+            std = self._calculate_error(lc_ref)
             xs_var[energy] = np.var(lc_ref) - std**2  # Excess variance in ref band
 
         self.unnorm_covar = np.vstack(self.energy_covar.items())
@@ -224,6 +217,17 @@ class Covariancespectrum(object):
             self.energy_covar[key] = value / (xs_var[key])**0.5
 
         self.covar = np.vstack(self.energy_covar.items())
+
+    def _calculate_error(self, lc):
+        """Return error calculated for the possible types of `error`"""
+        if self.error is None:
+            std = np.mean(lc)**0.5
+        elif isinstance(self.error, collections.Iterable):
+            std = np.mean(self.error)  # Iterable of numbers
+        else:  # Single float number
+            std = self.error
+
+        return std
 
     def _compute_covariance(self, lc1, lc2):
         """Calculate and return the covariance between two time series."""
