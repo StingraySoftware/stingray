@@ -213,7 +213,10 @@ class Covariancespectrum(object):
 
         for key, value in self.energy_covar.items():
             if not xs_var[key] > 0 :
-                utils.simon('xs_var must not take non-positive values.')
+                utils.simon("The excess variance in the reference band is " \
+                            "negative. This implies that the reference " \
+                            "band was badly chosen. Beware that the " \
+                            "covariance spectra will have NaNs!")
             self.energy_covar[key] = value / (xs_var[key])**0.5
 
         self.covar = np.vstack(self.energy_covar.items())
