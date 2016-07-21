@@ -1,5 +1,5 @@
 from __future__ import division
-
+import collections
 import numpy as np
 
 from stingray import Lightcurve
@@ -35,8 +35,8 @@ class Covariancespectrum(object):
             If error is set to None, default Poisson case is taken and the
             error is calculated as `mean(lc)**0.5`. In the case of a single
             float as input, the same is used as the standard deviation which
-            is also used as the error. And if the error is a list or array of
-            numbers, the mean is used for the same purpose.
+            is also used as the error. And if the error is an iterable of
+            numbers, their mean is used for the same purpose.
 
 
         Attributes
@@ -209,8 +209,8 @@ class Covariancespectrum(object):
             # Calculate error
             if self.error is None:
                 std = np.mean(lc_ref)**0.5
-            elif type(self.error) in [list, np.array]: # Array of numbers
-                std = np.mean(self.error)
+            elif isinstance(self.error, collections.Iterable):
+                std = np.mean(self.error)  # Iterable of numbers
             else:  # Single float number
                 std = self.error
 
