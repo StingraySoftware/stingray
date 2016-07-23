@@ -58,6 +58,9 @@ class Covariancespectrum(object):
         covar : np.ndarray
             Normalized covaraiance spectrum.
 
+        covar_error : np.ndarray
+            Errors of the normalized covariance spectrum.
+
         min_time : int
             Time of arrival of the earliest photon.
 
@@ -175,6 +178,9 @@ class Covariancespectrum(object):
                 mid_bin = (band[0] + band[1]) / 2
                 self.energy_covar[mid_bin] = []
 
+        # Error in covariance
+        self.covar_error = {}
+
     def _construct_energy_covar(self):
         """Form the actual output covaraince dictionary and array."""
         self._init_energy_covar()
@@ -206,20 +212,28 @@ class Covariancespectrum(object):
 
             self.energy_covar[energy] = covar
 
-            std = self._calculate_std(lc_ref)
-            xs_var[energy] = np.var(lc_ref) - std**2  # Excess variance in ref band
+            self.covar_error[energy] = self._calculate_covariance_error(
+                                            lc, lc_ref)
+
+            # Excess variance in ref band
+            xs_var[energy] = self._calculate_excess_variance(lc_ref)
 
         self.unnorm_covar = np.vstack(self.energy_covar.items())
 
         for key, value in self.energy_covar.items():
-            if not xs_var[key] > 0 :
-                utils.simon("The excess variance in the reference band is " \
-                            "negative. This implies that the reference " \
-                            "band was badly chosen. Beware that the " \
+            if not xs_var[key] > 0:
+                utils.simon("The excess variance in the reference band is "
+                            "negative. This implies that the reference "
+                            "band was badly chosen. Beware that the "
                             "covariance spectra will have NaNs!")
             self.energy_covar[key] = value / (xs_var[key])**0.5
 
         self.covar = np.vstack(self.energy_covar.items())
+        self.covar_error = np.vstack(self.covar_error.items())
+
+    def _calculate_excess_variance(self, lc):
+        std = self._calculate_std(lc)
+        return np.var(lc) - std**2
 
     def _calculate_std(self, lc):
         """Return std calculated for the possible types of `std`"""
@@ -235,3 +249,23 @@ class Covariancespectrum(object):
     def _compute_covariance(self, lc1, lc2):
         """Calculate and return the covariance between two time series."""
         return np.cov(lc1.counts, lc2.counts)[0][1]
+
+    def _calculate_covariance_error(self, lc_x, lc_y):
+        """Calculate the error of the normalized covariance spectrum."""
+        # Excess Variance of reference band
+        xs_x = self._calculate_excess_variance(lc_x)
+        # Standard deviation of light curve
+        err_y = self._calculate_std(lc_y)
+        # Excess Variance of reference band
+        xs_y = self._calculate_excess_variance(lc_y)
+        # Standard deviation of light curve
+        err_x = self._calculate_std(lc_x)
+        # Number of time bins in lightcurve
+        N = lc_x.ncounts
+        # Number of segments averaged
+        M = 1
+
+        num = xs_x*err_y + xs_y*err_x + err_x*err_y
+        denom = N * M * xs_y
+
+        return (num / denom)**0.5
