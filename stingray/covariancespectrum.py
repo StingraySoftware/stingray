@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import division
 import collections
 import numpy as np
@@ -72,6 +73,13 @@ class Covariancespectrum(object):
 
         max_energy : float
             Energy of the photon with the maximum energy.
+
+        Reference
+        ---------
+        [1] Wilkinson, T. and Uttley, P. (2009), Accretion disc variability
+            in the hard state of black hole X-ray binaries. Monthly Notices
+            of the Royal Astronomical Society, 397: 666–676.
+            doi: 10.1111/j.1365-2966.2009.15008.x
         """
 
         self.event_list = event_list
