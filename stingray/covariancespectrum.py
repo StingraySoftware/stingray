@@ -11,7 +11,7 @@ __all__ = ['Covariancespectrum']
 class Covariancespectrum(object):
 
     def __init__(self, event_list, dt, band_interest=None,
-                 ref_band_interest=None, error=None):
+                 ref_band_interest=None, std=None):
         """
         Parameters
         ----------
@@ -30,12 +30,12 @@ class Covariancespectrum(object):
             A tuple with minimum and maximum values of the range in the band
             of interest in reference channel.
 
-        error : float or np.array or list of numbers
-            The term error is used to cacluate the excess variance of a band.
-            If error is set to None, default Poisson case is taken and the
-            error is calculated as `mean(lc)**0.5`. In the case of a single
+        std : float or np.array or list of numbers
+            The term std is used to cacluate the excess variance of a band.
+            If std is set to None, default Poisson case is taken and the
+            std is calculated as `mean(lc)**0.5`. In the case of a single
             float as input, the same is used as the standard deviation which
-            is also used as the error. And if the error is an iterable of
+            is also used as the std. And if the std is an iterable of
             numbers, their mean is used for the same purpose.
 
 
@@ -103,7 +103,7 @@ class Covariancespectrum(object):
         self.band_interest = band_interest
         self.dt = dt
 
-        self.error = error
+        self.std = std
 
         self._construct_energy_events(event_list_T)
 
@@ -206,7 +206,7 @@ class Covariancespectrum(object):
 
             self.energy_covar[energy] = covar
 
-            std = self._calculate_error(lc_ref)
+            std = self._calculate_std(lc_ref)
             xs_var[energy] = np.var(lc_ref) - std**2  # Excess variance in ref band
 
         self.unnorm_covar = np.vstack(self.energy_covar.items())
@@ -221,14 +221,14 @@ class Covariancespectrum(object):
 
         self.covar = np.vstack(self.energy_covar.items())
 
-    def _calculate_error(self, lc):
-        """Return error calculated for the possible types of `error`"""
-        if self.error is None:
+    def _calculate_std(self, lc):
+        """Return std calculated for the possible types of `std`"""
+        if self.std is None:
             std = np.mean(lc)**0.5
-        elif isinstance(self.error, collections.Iterable):
-            std = np.mean(self.error)  # Iterable of numbers
+        elif isinstance(self.std, collections.Iterable):
+            std = np.mean(self.std)  # Iterable of numbers
         else:  # Single float number
-            std = self.error
+            std = self.std
 
         return std
 
