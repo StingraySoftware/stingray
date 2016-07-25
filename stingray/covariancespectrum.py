@@ -6,7 +6,7 @@ import numpy as np
 from stingray import Lightcurve
 import stingray.utils as utils
 
-__all__ = ['Covariancespectrum']
+__all__ = ['Covariancespectrum', 'AveragedCovariancespectrum']
 
 
 class Covariancespectrum(object):
@@ -81,16 +81,26 @@ class Covariancespectrum(object):
             of the Royal Astronomical Society, 397: 666–676.
             doi: 10.1111/j.1365-2966.2009.15008.x
         """
+        self._init_vars(event_list, dt, band_interest,
+                        ref_band_interest, std)
 
+        self._construct_energy_events()
+
+        self._update_energy_events()
+
+        self._construct_energy_covar()
+
+    def _init_vars(self, event_list, dt, band_interest,
+                   ref_band_interest, std):
         self.event_list = event_list
 
         # Sorted by energy values as second row
-        event_list_T = event_list[self.event_list[:, 1].argsort()].T
+        self.event_list_T = event_list[self.event_list[:, 1].argsort()].T
 
-        self.min_energy = np.min(event_list_T[1])
-        self.max_energy = np.max(event_list_T[1])
-        self.min_time = np.min(event_list_T[0])
-        self.max_time = np.max(event_list_T[0])
+        self.min_energy = np.min(self.event_list_T[1])
+        self.max_energy = np.max(self.event_list_T[1])
+        self.min_time = np.min(self.event_list_T[0])
+        self.max_time = np.max(self.event_list_T[0])
 
         if ref_band_interest is None:
             ref_band_interest = (self.min_energy, self.max_energy)
@@ -116,18 +126,12 @@ class Covariancespectrum(object):
 
         self.std = std
 
-        self._construct_energy_events(event_list_T)
+    def _construct_energy_events(self):
 
-        self._update_energy_events()
-
-        self._construct_energy_covar()
-
-    def _construct_energy_events(self, event_list_T):
-
-        least_count = np.diff(np.unique(event_list_T[1])).min()
+        least_count = np.diff(np.unique(self.event_list_T[1])).min()
 
         # An array of unique energy values
-        unique_energy = np.unique(event_list_T[1])
+        unique_energy = np.unique(self.event_list_T[1])
 
         # A dictionary with energy bin as key and events as value of the key
         self.energy_events = {}
@@ -141,14 +145,14 @@ class Covariancespectrum(object):
         for energy in self.energy_events.keys():
             # The last energy bin
             if energy == self.max_energy - least_count*0.5:
-                toa = event_list_T[0][np.logical_and(
-                    event_list_T[1] >= energy - least_count*0.5,
-                    event_list_T[1] <= energy + least_count*0.5)]
+                toa = self.event_list_T[0][np.logical_and(
+                    self.event_list_T[1] >= energy - least_count*0.5,
+                    self.event_list_T[1] <= energy + least_count*0.5)]
                 self.energy_events[energy] = sorted(toa)
             else:
-                toa = event_list_T[0][np.logical_and(
-                    event_list_T[1] >= energy - least_count*0.5,
-                    event_list_T[1] < energy + least_count*0.5)]
+                toa = self.event_list_T[0][np.logical_and(
+                    self.event_list_T[1] >= energy - least_count*0.5,
+                    self.event_list_T[1] < energy + least_count*0.5)]
                 self.energy_events[energy] = sorted(toa)
 
     def _update_energy_events(self):
@@ -277,3 +281,82 @@ class Covariancespectrum(object):
         denom = N * M * xs_y
 
         return (num / denom)**0.5
+
+
+class AveragedCovariancespectrum(Covariancespectrum):
+    def __init__(self, event_list, dt, segment_size, band_interest=None,
+                 ref_band_interest=None, std=None):
+        """
+        Make an averaged covariance spectrum by segmenting the light curve
+        formed, calculating covariance for each segment and then averaging
+        the resulting covariance spectra.
+
+        Parameters
+        ----------
+        event_list : numpy 2D array
+            A numpy 2D array with first column as time of arrival and second
+            column as photon energies associated.
+
+        dt : float
+            The time resolution of the Lightcurve formed from the energy bin.
+
+        segment_size : float
+            The size of each segment to average. Note that if the total
+            duration of each Lightcurve object formed is not an integer
+            multiple of the segment_size, then any fraction left-over at the
+            end of the time series will be lost.
+
+
+        band_interest : iterable of tuples, default All
+            An iterable of tuples with minimum and maximum values of the range
+            in the band of interest. e.g list of tuples, tuple of tuples.
+
+        ref_band_interest : tuple of reference band range, default All
+            A tuple with minimum and maximum values of the range in the band
+            of interest in reference channel.
+
+        std : float or np.array or list of numbers
+            The term std is used to cacluate the excess variance of a band.
+            If std is set to None, default Poisson case is taken and the
+            std is calculated as `mean(lc)**0.5`. In the case of a single
+            float as input, the same is used as the standard deviation which
+            is also used as the std. And if the std is an iterable of
+            numbers, their mean is used for the same purpose.
+
+
+        Attributes
+        ----------
+        energy_events : dictionary
+            A dictionary with energy bins as keys and time of arrivals of
+            photons with the same energy as value.
+
+        energy_covar : dictionary
+            A dictionary with mid point of band_interest and their covariance
+            computed with their individual reference band. The covaraince
+            values are normalized.
+
+        unnorm_covar : np.ndarray
+            An array of arrays with mid point band_interest and their
+            covariance. It is the array-form of the dictionary `energy_covar`.
+            The covariance values are unnormalized.
+
+        covar : np.ndarray
+            Normalized covaraiance spectrum.
+
+        covar_error : np.ndarray
+            Errors of the normalized covariance spectrum.
+
+        min_time : int
+            Time of arrival of the earliest photon.
+
+        max_time : int
+            Time of arrival of the last photon.
+
+        min_energy : float
+            Energy of the photon with the minimum energy.
+
+        max_energy : float
+            Energy of the photon with the maximum energy.
+
+        """
+        self._init_vars(event_list, dt, band_interest, ref_band_interest, std)
