@@ -19,6 +19,8 @@ class Covariancespectrum(object):
         event_list : numpy 2D array
             A numpy 2D array with first column as time of arrival and second
             column as photon energies associated.
+            Note : The event list must be in sorted order with respect to the
+            times of arrivals.
 
         dt : float
             The time resolution of the Lightcurve formed from the energy bin.
@@ -92,9 +94,13 @@ class Covariancespectrum(object):
 
     def _init_vars(self, event_list, dt, band_interest,
                    ref_band_interest, std):
+        if np.all(np.diff(event_list, axis=0).T[0] >= 0) == False:
+            utils.simon("The event list must be sorted with respect to times of arrivals.")
+            event_list = event_list[event_list[:, 0].argsort()]
+
         self.event_list = event_list
 
-        # Sorted by energy values as second row
+        # Sort by energy values as second row
         self.event_list_T = event_list[self.event_list[:, 1].argsort()].T
 
         self.min_energy = np.min(self.event_list_T[1])
@@ -359,4 +365,12 @@ class AveragedCovariancespectrum(Covariancespectrum):
             Energy of the photon with the maximum energy.
 
         """
+
+        self.segment_size = segment_size
+
         self._init_vars(event_list, dt, band_interest, ref_band_interest, std)
+        self._construct_energy_events()
+        self._update_energy_events()
+
+
+
