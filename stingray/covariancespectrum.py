@@ -107,8 +107,7 @@ class Covariancespectrum(object):
 
         self.event_list = event_list
 
-        # Sort by energy values as second row
-        self.event_list_T = event_list[self.event_list[:, 1].argsort()].T
+        self.event_list_T = event_list.T
 
         self._init_special_vars()
 
@@ -137,27 +136,14 @@ class Covariancespectrum(object):
         self.std = std
 
     def _init_special_vars(self, T_start=None, T_end=None):
-        if self.avg_covar:
-            self.min_energy = np.min(self.event_list.T[1][T_start:T_end])
-            self.max_energy = np.max(self.event_list.T[1][T_start:T_end])
-            self.min_time = np.min(self.event_list.T[0][T_start:T_end])
-            self.max_time = np.max(self.event_list.T[0][T_start:T_end])
-        else:
-            self.min_energy = np.min(self.event_list_T[1][T_start:T_end])
-            self.max_energy = np.max(self.event_list_T[1][T_start:T_end])
-            self.min_time = np.min(self.event_list_T[0][T_start:T_end])
-            self.max_time = np.max(self.event_list_T[0][T_start:T_end])
-
-
-
+        self.min_energy = np.min(self.event_list_T[1][T_start:T_end])
+        self.max_energy = np.max(self.event_list_T[1][T_start:T_end])
+        self.min_time = np.min(self.event_list_T[0][T_start:T_end])
+        self.max_time = np.max(self.event_list_T[0][T_start:T_end])
 
     def _construct_energy_events(self, T_start=None, T_end=None):
-        if self.avg_covar:
-            event_list_T = np.array([self.event_list.T[0][T_start: T_end],
-                                     self.event_list.T[1][T_start: T_end]])
-        else:
-            event_list_T = np.array([self.event_list_T[0][T_start: T_end],
-                                     self.event_list_T[1][T_start: T_end]])
+        event_list_T = np.array([self.event_list_T[0][T_start: T_end],
+                                 self.event_list_T[1][T_start: T_end]])
         least_count = np.diff(np.unique(event_list_T[1])).min()
 
         # An array of unique energy values
@@ -402,8 +388,8 @@ class AveragedCovariancespectrum(Covariancespectrum):
         for i in range(nbins):
             tstart = self.min_time + i*self.segment_size
             tend = self.min_time + self.segment_size*(i+1) - 1
-            indices = np.intersect1d(np.where(self.event_list.T[0] >= tstart),
-                                     np.where(self.event_list.T[0] <= tend))
+            indices = np.intersect1d(np.where(self.event_list_T[0] >= tstart),
+                                     np.where(self.event_list_T[0] <= tend))
             self._init_special_vars(T_start=indices[0], T_end=indices[-1]+1)
             energy_events = self._construct_energy_events(T_start=indices[0],
                                                           T_end=indices[-1]+1)
