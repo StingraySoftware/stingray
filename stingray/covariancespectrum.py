@@ -83,14 +83,21 @@ class Covariancespectrum(object):
             of the Royal Astronomical Society, 397: 666–676.
             doi: 10.1111/j.1365-2966.2009.15008.x
         """
+
+        self.avg_covar = False  # This parameter is used for the purpose of
+                                # AveragedCovariancespectrum.
+
         self._init_vars(event_list, dt, band_interest,
                         ref_band_interest, std)
 
-        self._construct_energy_events()
+        self.energy_events = self._construct_energy_events()
 
-        self._update_energy_events()
+        self._update_energy_events(self.energy_events)
 
-        self._construct_energy_covar()
+        # The dictionary with covariance spectrum for each energy bin
+        self.energy_covar = {}
+
+        self._construct_energy_covar(self.energy_events, self.energy_covar)
 
     def _init_vars(self, event_list, dt, band_interest,
                    ref_band_interest, std):
@@ -103,10 +110,7 @@ class Covariancespectrum(object):
         # Sort by energy values as second row
         self.event_list_T = event_list[self.event_list[:, 1].argsort()].T
 
-        self.min_energy = np.min(self.event_list_T[1])
-        self.max_energy = np.max(self.event_list_T[1])
-        self.min_time = np.min(self.event_list_T[0])
-        self.max_time = np.max(self.event_list_T[0])
+        self._init_special_vars()
 
         if ref_band_interest is None:
             ref_band_interest = (self.min_energy, self.max_energy)
@@ -132,36 +136,58 @@ class Covariancespectrum(object):
 
         self.std = std
 
-    def _construct_energy_events(self):
+    def _init_special_vars(self, T_start=None, T_end=None):
+        if self.avg_covar:
+            self.min_energy = np.min(self.event_list.T[1][T_start:T_end])
+            self.max_energy = np.max(self.event_list.T[1][T_start:T_end])
+            self.min_time = np.min(self.event_list.T[0][T_start:T_end])
+            self.max_time = np.max(self.event_list.T[0][T_start:T_end])
+        else:
+            self.min_energy = np.min(self.event_list_T[1][T_start:T_end])
+            self.max_energy = np.max(self.event_list_T[1][T_start:T_end])
+            self.min_time = np.min(self.event_list_T[0][T_start:T_end])
+            self.max_time = np.max(self.event_list_T[0][T_start:T_end])
 
-        least_count = np.diff(np.unique(self.event_list_T[1])).min()
+
+
+
+    def _construct_energy_events(self, T_start=None, T_end=None):
+        if self.avg_covar:
+            event_list_T = np.array([self.event_list.T[0][T_start: T_end],
+                                     self.event_list.T[1][T_start: T_end]])
+        else:
+            event_list_T = np.array([self.event_list_T[0][T_start: T_end],
+                                     self.event_list_T[1][T_start: T_end]])
+        least_count = np.diff(np.unique(event_list_T[1])).min()
 
         # An array of unique energy values
-        unique_energy = np.unique(self.event_list_T[1])
+        unique_energy = np.unique(event_list_T[1])
 
         # A dictionary with energy bin as key and events as value of the key
-        self.energy_events = {}
+        energy_events = {}
 
         for i in range(len(unique_energy) - 1):
-            self.energy_events[unique_energy[i] + least_count*0.5] = []
+            energy_events[unique_energy[i] + least_count*0.5] = []
 
         # Add time of arrivals to corresponding energy bins
         # For each bin except the last one, the lower bound is included and
         # the upper bound is excluded.
-        for energy in self.energy_events.keys():
+        for energy in energy_events.keys():
             # The last energy bin
             if energy == self.max_energy - least_count*0.5:
-                toa = self.event_list_T[0][np.logical_and(
-                    self.event_list_T[1] >= energy - least_count*0.5,
-                    self.event_list_T[1] <= energy + least_count*0.5)]
-                self.energy_events[energy] = sorted(toa)
+                toa = event_list_T[0][np.logical_and(
+                    event_list_T[1] >= energy - least_count*0.5,
+                    event_list_T[1] <= energy + least_count*0.5)]
+                energy_events[energy] = sorted(toa)
             else:
-                toa = self.event_list_T[0][np.logical_and(
-                    self.event_list_T[1] >= energy - least_count*0.5,
-                    self.event_list_T[1] < energy + least_count*0.5)]
-                self.energy_events[energy] = sorted(toa)
+                toa = event_list_T[0][np.logical_and(
+                    event_list_T[1] >= energy - least_count*0.5,
+                    event_list_T[1] < energy + least_count*0.5)]
+                energy_events[energy] = sorted(toa)
 
-    def _update_energy_events(self):
+        return energy_events
+
+    def _update_energy_events(self, energy_events):
         """
         In case of a specific band interest, merge the required energy bins
         into one with the new key as the mid-point of the band interest.
@@ -175,44 +201,43 @@ class Covariancespectrum(object):
                 # Modify self.energy_events to form a band with one key
                 for key in list(self.energy_events.keys()):
                     if key >= band[0] and key <= band[1]:
-                        energy_events_[mid_bin] += self.energy_events[key]
-                        del self.energy_events[key]
+                        energy_events_[mid_bin] += energy_events[key]
+                        del energy_events[key]
 
-            self.energy_events.update(energy_events_)
+            energy_events.update(energy_events_)
 
-    def _init_energy_covar(self):
+    def _init_energy_covar(self, energy_events, energy_covar):
         """
         Initialize the energy_covar dictionary for further computations.
         """
-        # The dictionary with covariance spectrum for each energy bin
-        self.energy_covar = {}
-
         # Initialize it with empty mapping
         if self.band_interest is None:
-            for key in self.energy_events.keys():
-                self.energy_covar[key] = []
+            for key in energy_events.keys():
+                energy_covar[key] = []
         else:
             for band in list(self.band_interest):
                 mid_bin = (band[0] + band[1]) / 2
-                self.energy_covar[mid_bin] = []
+                energy_covar[mid_bin] = []
 
-        # Error in covariance
-        self.covar_error = {}
+        if self.avg_covar is False:
+            # Error in covariance
+            self.covar_error = {}
 
-    def _construct_energy_covar(self):
+    def _construct_energy_covar(self, energy_events, energy_covar):
         """Form the actual output covaraince dictionary and array."""
-        self._init_energy_covar()
+        self._init_energy_covar(energy_events, energy_covar)
 
-        xs_var = dict()
+        if self.avg_covar is False:
+            xs_var = dict()
 
-        for energy in self.energy_covar.keys():
+        for energy in energy_covar.keys():
             lc = Lightcurve.make_lightcurve(
-                    self.energy_events[energy], self.dt, tstart=self.min_time,
+                    energy_events[energy], self.dt, tstart=self.min_time,
                     tseg=self.max_time - self.min_time)
 
             # Calculating timestamps for lc_ref
             toa_ref = []
-            for key, value in self.energy_events.items():
+            for key, value in energy_events.items():
                 if key >= self.ref_band_interest[0] and \
                         key <= self.ref_band_interest[1]:
                     if key != energy:
@@ -228,26 +253,28 @@ class Covariancespectrum(object):
 
             covar = self._compute_covariance(lc, lc_ref)
 
-            self.energy_covar[energy] = covar
+            energy_covar[energy] = covar
+            if self.avg_covar is False:
+                self.covar_error[energy] = self._calculate_covariance_error(
+                                                lc, lc_ref)
 
-            self.covar_error[energy] = self._calculate_covariance_error(
-                                            lc, lc_ref)
+                # Excess variance in ref band
+                xs_var[energy] = self._calculate_excess_variance(lc_ref)
 
-            # Excess variance in ref band
-            xs_var[energy] = self._calculate_excess_variance(lc_ref)
+        self.unnorm_covar = np.vstack(energy_covar.items())
+        if self.avg_covar is False:
+            for key, value in energy_covar.items():
+                if not xs_var[key] > 0:
+                    utils.simon("The excess variance in the reference band is "
+                                "negative. This implies that the reference "
+                                "band was badly chosen. Beware that the "
+                                "covariance spectra will have NaNs!")
+                energy_covar[key] = value / (xs_var[key])**0.5
 
-        self.unnorm_covar = np.vstack(self.energy_covar.items())
+            self.covar = np.vstack(energy_covar.items())
 
-        for key, value in self.energy_covar.items():
-            if not xs_var[key] > 0:
-                utils.simon("The excess variance in the reference band is "
-                            "negative. This implies that the reference "
-                            "band was badly chosen. Beware that the "
-                            "covariance spectra will have NaNs!")
-            self.energy_covar[key] = value / (xs_var[key])**0.5
-
-        self.covar = np.vstack(self.energy_covar.items())
-        self.covar_error = np.vstack(self.covar_error.items())
+        if self.avg_covar is False:
+            self.covar_error = np.vstack(self.covar_error.items())
 
     def _calculate_excess_variance(self, lc):
         std = self._calculate_std(lc)
@@ -302,6 +329,8 @@ class AveragedCovariancespectrum(Covariancespectrum):
         event_list : numpy 2D array
             A numpy 2D array with first column as time of arrival and second
             column as photon energies associated.
+            Note : The event list must be in sorted order with respect to the
+            times of arrivals.
 
         dt : float
             The time resolution of the Lightcurve formed from the energy bin.
@@ -365,12 +394,28 @@ class AveragedCovariancespectrum(Covariancespectrum):
             Energy of the photon with the maximum energy.
 
         """
-
-        self.segment_size = segment_size
-
+        self.avg_covar = True
         self._init_vars(event_list, dt, band_interest, ref_band_interest, std)
-        self._construct_energy_events()
-        self._update_energy_events()
+        self.segment_size = segment_size
+        nbins = int((self.max_time - self.min_time + 1) / self.segment_size)
 
+        for i in range(nbins):
+            tstart = self.min_time + i*self.segment_size
+            tend = self.min_time + self.segment_size*(i+1) - 1
+            indices = np.intersect1d(np.where(self.event_list.T[0] >= tstart),
+                                     np.where(self.event_list.T[0] <= tend))
+            self._init_special_vars(T_start=indices[0], T_end=indices[-1])
+            energy_events = self._construct_energy_events(T_start=indices[0],
+                                                          T_end=indices[-1])
+            self._update_energy_events(energy_events)
+            energy_covar = {}
+            self._construct_energy_covar(energy_events, energy_covar)
+            if i == 0:
+                self.energy_covar = energy_covar
+            else:
+                for key in energy_covar.keys():
+                    self.energy_covar[key] = self.energy_covar.get(key, 0) + energy_covar[key]
 
-
+        for key, value in self.energy_covar.items():
+            self.energy_covar[key] /= nbins
+        self.unnorm_covar = np.vstack(self.energy_covar.items())
