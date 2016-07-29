@@ -396,8 +396,8 @@ class AveragedCovariancespectrum(Covariancespectrum):
         nbins = int((self.max_time - self.min_time + 1) / self.segment_size)
 
         for n in range(nbins):
-            tstart = self.min_time + i*self.segment_size
-            tend = self.min_time + self.segment_size*(i+1) - 1
+            tstart = self.min_time + n*self.segment_size
+            tend = self.min_time + self.segment_size*(n+1) - 1
             indices = np.intersect1d(np.where(self.event_list_T[0] >= tstart),
                                      np.where(self.event_list_T[0] <= tend))
 
