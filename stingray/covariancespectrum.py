@@ -404,9 +404,9 @@ class AveragedCovariancespectrum(Covariancespectrum):
             tend = self.min_time + self.segment_size*(i+1) - 1
             indices = np.intersect1d(np.where(self.event_list.T[0] >= tstart),
                                      np.where(self.event_list.T[0] <= tend))
-            self._init_special_vars(T_start=indices[0], T_end=indices[-1])
+            self._init_special_vars(T_start=indices[0], T_end=indices[-1]+1)
             energy_events = self._construct_energy_events(T_start=indices[0],
-                                                          T_end=indices[-1])
+                                                          T_end=indices[-1]+1)
             self._update_energy_events(energy_events)
             energy_covar = {}
             self._construct_energy_covar(energy_events, energy_covar)
