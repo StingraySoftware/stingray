@@ -90,7 +90,10 @@ class Covariancespectrum(object):
         self._init_vars(event_list, dt, band_interest,
                         ref_band_interest, std)
 
-        self.energy_events = self._construct_energy_events()
+        # A dictionary with energy bin as key and events as value of the key
+        self.energy_events = {}
+
+        self._construct_energy_events(self.energy_events)
 
         self._update_energy_events(self.energy_events)
 
@@ -136,21 +139,26 @@ class Covariancespectrum(object):
         self.std = std
 
     def _init_special_vars(self, T_start=None, T_end=None):
+        """
+        Method to set mininum and maximum time and energy parameters. It has
+        been separated from the main init method due to multiple calls from
+        AveragedCovariancespectrum.
+        """
         self.min_energy = np.min(self.event_list_T[1][T_start:T_end])
         self.max_energy = np.max(self.event_list_T[1][T_start:T_end])
         self.min_time = np.min(self.event_list_T[0][T_start:T_end])
         self.max_time = np.max(self.event_list_T[0][T_start:T_end])
 
-    def _construct_energy_events(self, T_start=None, T_end=None):
+    def _construct_energy_events(self, energy_events, T_start=None, T_end=None):
+        # The T_start and T_end parameters are for the purpose of
+        # AveragedCovariancespectrum where the range of consideration
+        # is defined.
         event_list_T = np.array([self.event_list_T[0][T_start: T_end],
                                  self.event_list_T[1][T_start: T_end]])
         least_count = np.diff(np.unique(event_list_T[1])).min()
 
         # An array of unique energy values
         unique_energy = np.unique(event_list_T[1])
-
-        # A dictionary with energy bin as key and events as value of the key
-        energy_events = {}
 
         for i in range(len(unique_energy) - 1):
             energy_events[unique_energy[i] + least_count*0.5] = []
@@ -170,8 +178,6 @@ class Covariancespectrum(object):
                     event_list_T[1] >= energy - least_count*0.5,
                     event_list_T[1] < energy + least_count*0.5)]
                 energy_events[energy] = sorted(toa)
-
-        return energy_events
 
     def _update_energy_events(self, energy_events):
         """
@@ -380,28 +386,43 @@ class AveragedCovariancespectrum(Covariancespectrum):
             Energy of the photon with the maximum energy.
 
         """
-        self.avg_covar = True
+        self.avg_covar = True  # Set parameter to distinguish between parent
+                               # class and derived class.
+
         self._init_vars(event_list, dt, band_interest, ref_band_interest, std)
+
         self.segment_size = segment_size
+
         nbins = int((self.max_time - self.min_time + 1) / self.segment_size)
 
-        for i in range(nbins):
+        for n in range(nbins):
             tstart = self.min_time + i*self.segment_size
             tend = self.min_time + self.segment_size*(i+1) - 1
             indices = np.intersect1d(np.where(self.event_list_T[0] >= tstart),
                                      np.where(self.event_list_T[0] <= tend))
+
+            # Set minimum and maximum values for the specified indices value
             self._init_special_vars(T_start=indices[0], T_end=indices[-1]+1)
-            energy_events = self._construct_energy_events(T_start=indices[0],
-                                                          T_end=indices[-1]+1)
+
+            energy_events = {}
+
+            self._construct_energy_events(energy_events, T_start=indices[0],
+                                          T_end=indices[-1]+1)
+
             self._update_energy_events(energy_events)
+
             energy_covar = {}
+
             self._construct_energy_covar(energy_events, energy_covar)
-            if i == 0:
+
+            if n == 0:
                 self.energy_covar = energy_covar
             else:
                 for key in energy_covar.keys():
                     self.energy_covar[key] = self.energy_covar.get(key, 0) + energy_covar[key]
 
+        # Now divide with total number of bins for averaging
         for key, value in self.energy_covar.items():
             self.energy_covar[key] /= nbins
+
         self.unnorm_covar = np.vstack(self.energy_covar.items())
