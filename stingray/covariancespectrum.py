@@ -84,8 +84,9 @@ class Covariancespectrum(object):
             doi: 10.1111/j.1365-2966.2009.15008.x
         """
 
-        self.avg_covar = False  # This parameter is used for the purpose of
-                                # AveragedCovariancespectrum.
+        # This parameter is used to identify whether the current object is
+        # an instance of Covariancespectrum or AveragedCovariancespectrum.
+        self.avg_covar = False
 
         self._init_vars(event_list, dt, band_interest,
                         ref_band_interest, std)
@@ -105,7 +106,8 @@ class Covariancespectrum(object):
     def _init_vars(self, event_list, dt, band_interest,
                    ref_band_interest, std):
         if np.all(np.diff(event_list, axis=0).T[0] >= 0) == False:
-            utils.simon("The event list must be sorted with respect to times of arrivals.")
+            utils.simon("The event list must be sorted with respect to "
+                        "times of arrivals.")
             event_list = event_list[event_list[:, 0].argsort()]
 
         self.event_list = event_list
@@ -211,15 +213,15 @@ class Covariancespectrum(object):
                 mid_bin = (band[0] + band[1]) / 2
                 energy_covar[mid_bin] = []
 
-        if self.avg_covar is False:
+        if not self.avg_covar:
             # Error in covariance
             self.covar_error = {}
 
-    def _construct_energy_covar(self, energy_events, energy_covar):
+    def _construct_energy_covar(self, energy_events, energy_covar, xs_var=None):
         """Form the actual output covaraince dictionary and array."""
         self._init_energy_covar(energy_events, energy_covar)
 
-        if self.avg_covar is False:
+        if not self.avg_covar:
             xs_var = dict()
 
         for energy in energy_covar.keys():
@@ -246,26 +248,26 @@ class Covariancespectrum(object):
             covar = self._compute_covariance(lc, lc_ref)
 
             energy_covar[energy] = covar
-            if self.avg_covar is False:
+            if not self.avg_covar:
                 self.covar_error[energy] = self._calculate_covariance_error(
                                                 lc, lc_ref)
 
-                # Excess variance in ref band
-                xs_var[energy] = self._calculate_excess_variance(lc_ref)
+            # Excess variance in ref band
+            xs_var[energy] = self._calculate_excess_variance(lc_ref)
 
-        self.unnorm_covar = np.vstack(energy_covar.items())
-        if self.avg_covar is False:
-            for key, value in energy_covar.items():
-                if not xs_var[key] > 0:
-                    utils.simon("The excess variance in the reference band is "
-                                "negative. This implies that the reference "
-                                "band was badly chosen. Beware that the "
-                                "covariance spectra will have NaNs!")
-                energy_covar[key] = value / (xs_var[key])**0.5
+        for key, value in energy_covar.items():
+            if not xs_var[key] > 0:
+                utils.simon("The excess variance in the reference band is "
+                            "negative. This implies that the reference "
+                            "band was badly chosen. Beware that the "
+                            "covariance spectra will have NaNs!")
+
+        if not self.avg_covar:
+            self.unnorm_covar = np.vstack(energy_covar.items())
+            energy_covar[key] = value / (xs_var[key])**0.5
 
             self.covar = np.vstack(energy_covar.items())
 
-        if self.avg_covar is False:
             self.covar_error = np.vstack(self.covar_error.items())
 
     def _calculate_excess_variance(self, lc):
@@ -386,16 +388,18 @@ class AveragedCovariancespectrum(Covariancespectrum):
             Energy of the photon with the maximum energy.
 
         """
-        self.avg_covar = True  # Set parameter to distinguish between parent
-                               # class and derived class.
+        # Set parameter to distinguish between parent class and derived class.
+        self.avg_covar = True
 
         self._init_vars(event_list, dt, band_interest, ref_band_interest, std)
-
         self.segment_size = segment_size
 
-        nbins = int((self.max_time - self.min_time + 1) / self.segment_size)
+        self._make_averaged_covar_spectrum()
 
-        for n in range(nbins):
+    def _make_averaged_covar_spectrum(self):
+        self.nbins = int((self.max_time - self.min_time + 1) / self.segment_size)
+
+        for n in range(self.nbins):
             tstart = self.min_time + n*self.segment_size
             tend = self.min_time + self.segment_size*(n+1) - 1
             indices = np.intersect1d(np.where(self.event_list_T[0] >= tstart),
@@ -412,17 +416,26 @@ class AveragedCovariancespectrum(Covariancespectrum):
             self._update_energy_events(energy_events)
 
             energy_covar = {}
-
-            self._construct_energy_covar(energy_events, energy_covar)
+            xs_var = {}
+            self._construct_energy_covar(energy_events, energy_covar, xs_var)
 
             if n == 0:
                 self.energy_covar = energy_covar
+                self.xs_var = xs_var
             else:
                 for key in energy_covar.keys():
-                    self.energy_covar[key] = self.energy_covar.get(key, 0) + energy_covar[key]
+                    self.energy_covar[key] = self.energy_covar.get(key, 0) + \
+                                             energy_covar[key]
+                    self.xs_var[key] = self.xs_var.get(key, 0) + xs_var[key]
 
         # Now divide with total number of bins for averaging
-        for key, value in self.energy_covar.items():
-            self.energy_covar[key] /= nbins
+        for key in self.energy_covar.keys():
+            self.energy_covar[key] /= self.nbins
+            self.xs_var[key] /= self.nbins
 
         self.unnorm_covar = np.vstack(self.energy_covar.items())
+
+        for key, value in self.energy_covar.items():
+            self.energy_covar[key] = value / (xs_var[key])**0.5
+
+        self.covar = np.vstack(self.energy_covar.items())
