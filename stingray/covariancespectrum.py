@@ -217,7 +217,8 @@ class Covariancespectrum(object):
             # Error in covariance
             self.covar_error = {}
 
-    def _construct_energy_covar(self, energy_events, energy_covar, xs_var=None):
+    def _construct_energy_covar(self, energy_events, energy_covar,
+                                covar_error=None, xs_var=None):
         """Form the actual output covaraince dictionary and array."""
         self._init_energy_covar(energy_events, energy_covar)
 
@@ -251,7 +252,9 @@ class Covariancespectrum(object):
             if not self.avg_covar:
                 self.covar_error[energy] = self._calculate_covariance_error(
                                                 lc, lc_ref)
-
+            else:
+                covar_error[energy] = self._calculate_covariance_error(
+                                           lc, lc_ref)
             # Excess variance in ref band
             xs_var[energy] = self._calculate_excess_variance(lc_ref)
 
@@ -302,7 +305,10 @@ class Covariancespectrum(object):
         # Number of time bins in lightcurve
         N = lc_x.ncounts
         # Number of segments averaged
-        M = 1
+        if not self.avg_covar:
+            M = 1
+        else:
+            M = self.segment_size
 
         num = xs_x*err_y + xs_y*err_x + err_x*err_y
         denom = N * M * xs_y
@@ -417,25 +423,32 @@ class AveragedCovariancespectrum(Covariancespectrum):
 
             energy_covar = {}
             xs_var = {}
-            self._construct_energy_covar(energy_events, energy_covar, xs_var)
+            covar_error = {}
+            self._construct_energy_covar(energy_events, energy_covar,
+                                         covar_error, xs_var)
 
             if n == 0:
                 self.energy_covar = energy_covar
                 self.xs_var = xs_var
+                self.covar_error = covar_error
             else:
                 for key in energy_covar.keys():
                     self.energy_covar[key] = self.energy_covar.get(key, 0) + \
                                              energy_covar[key]
                     self.xs_var[key] = self.xs_var.get(key, 0) + xs_var[key]
+                    self.covar_error[key] = self.covar_error.get(key, 0) + \
+                                            covar_error[key]
 
         # Now divide with total number of bins for averaging
         for key in self.energy_covar.keys():
             self.energy_covar[key] /= self.nbins
             self.xs_var[key] /= self.nbins
+            self.covar_error[key] /= self.nbins
 
         self.unnorm_covar = np.vstack(self.energy_covar.items())
 
         for key, value in self.energy_covar.items():
-            self.energy_covar[key] = value / (xs_var[key])**0.5
+            self.energy_covar[key] = value / (self.xs_var[key])**0.5
 
         self.covar = np.vstack(self.energy_covar.items())
+        self.covar_error = np.vstack(self.covar_error.items())

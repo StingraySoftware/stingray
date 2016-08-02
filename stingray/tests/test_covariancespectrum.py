@@ -29,10 +29,6 @@ class TestCovariancespectrum(object):
         with pytest.raises(AssertionError):
             c = Covariancespectrum(self.event_list, 1, ref_band_interest=(0))
 
-    def test_covar_with_ref_band_interest(self):
-        c = Covariancespectrum(self.event_list, 1, ref_band_interest=(2, 3))
-        assert np.isnan(c.energy_covar[2.5])
-
     def test_covar_with_both_bands(self):
         c = Covariancespectrum(self.event_list, 1,
                                band_interest=[(2, 6), (8, 9)],
