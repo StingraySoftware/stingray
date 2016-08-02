@@ -82,6 +82,11 @@ class Covariancespectrum(object):
             in the hard state of black hole X-ray binaries. Monthly Notices
             of the Royal Astronomical Society, 397: 666–676.
             doi: 10.1111/j.1365-2966.2009.15008.x
+
+        Examples
+        --------
+        See https://github.com/StingraySoftware/notebooks repository for
+        detailed notebooks on the code.
         """
 
         # This parameter is used to identify whether the current object is
@@ -105,7 +110,10 @@ class Covariancespectrum(object):
 
     def _init_vars(self, event_list, dt, band_interest,
                    ref_band_interest, std):
-        if np.all(np.diff(event_list, axis=0).T[0] >= 0) == False:
+        """
+        Check for consistency with input variables and declare public ones.
+        """
+        if not np.all(np.diff(event_list, axis=0).T[0] >= 0):
             utils.simon("The event list must be sorted with respect to "
                         "times of arrivals.")
             event_list = event_list[event_list[:, 0].argsort()]
@@ -274,6 +282,7 @@ class Covariancespectrum(object):
             self.covar_error = np.vstack(self.covar_error.items())
 
     def _calculate_excess_variance(self, lc):
+        """Calculate excess variance in a band with the standard deviation."""
         std = self._calculate_std(lc)
         return np.var(lc) - std**2
 
@@ -403,6 +412,10 @@ class AveragedCovariancespectrum(Covariancespectrum):
         self._make_averaged_covar_spectrum()
 
     def _make_averaged_covar_spectrum(self):
+        """
+        Calls methods from base class for every segment and calculates averaged
+        covariance and error.
+        """
         self.nbins = int((self.max_time - self.min_time + 1) / self.segment_size)
 
         for n in range(self.nbins):
@@ -427,11 +440,11 @@ class AveragedCovariancespectrum(Covariancespectrum):
             self._construct_energy_covar(energy_events, energy_covar,
                                          covar_error, xs_var)
 
-            if n == 0:
+            if n == 0:  # Declare
                 self.energy_covar = energy_covar
                 self.xs_var = xs_var
                 self.covar_error = covar_error
-            else:
+            else:  # Sum up
                 for key in energy_covar.keys():
                     self.energy_covar[key] = self.energy_covar.get(key, 0) + \
                                              energy_covar[key]
