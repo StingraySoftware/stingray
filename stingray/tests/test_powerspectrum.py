@@ -4,7 +4,8 @@ import numpy as np
 from astropy.tests.helper import pytest
 
 from stingray import Lightcurve
-from stingray import Powerspectrum, AveragedPowerspectrum
+from stingray import Powerspectrum, AveragedPowerspectrum, \
+                        DynamicalPowerspectrum
 from stingray.powerspectrum import classical_pvalue
 
 np.random.seed(20150907)
@@ -482,3 +483,20 @@ class TestClassicalSignificances(object):
         nspec = 1
         pval = classical_pvalue(power, nspec)
         assert np.isclose(pval, 0.0)
+
+
+class TestDynamicalPowerspectrum(object):
+
+    def setup_class(self):
+        lc = Lightcurve([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+                        [4, 5, 6, 2, 10, 5, 12, 16, 18, 10, 2, 0, 22, 25, 30])
+
+        self.lc = lc
+
+    def test_with_bad_seg_size(self):
+        with pytest.raises(ValueError):
+            dps = DynamicalPowerspectrum(self.lc, segment_size=0)
+
+    def test_matrix(self):
+        dps = DynamicalPowerspectrum(self.lc, segment_size=10)
+        assert dps.matrix.shape == (4, 2)
