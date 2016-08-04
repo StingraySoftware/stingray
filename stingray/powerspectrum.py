@@ -12,7 +12,7 @@ from stingray.utils import simon
 from stingray.crossspectrum import Crossspectrum, AveragedCrossspectrum
 
 
-__all__ = ["Powerspectrum", "AveragedPowerspectrum"]
+__all__ = ["Powerspectrum", "AveragedPowerspectrum", "DynamicalPowerspectrum"]
 
 
 def classical_pvalue(power, nspec):
@@ -351,7 +351,6 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
 
         self.type = "powerspectrum"
 
-
         assert isinstance(norm, str), "norm is not a string!"
 
         assert norm.lower() in ["frac", "abs", "leahy", "none"], \
@@ -390,3 +389,41 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
             end_ind += nbins
 
         return power_all, nphots_all
+
+
+class DynamicalPowerspectrum(AveragedPowerspectrum):
+    def __init__(self, lc, segment_size, norm="frac"):
+        """
+        Parameters
+        ----------
+        lc : lightcurve.Lightcurve object
+            The time series of which the Dynamical powerspectrum is
+            to be calculated.
+
+        segment_size : float, default 1
+             Length of the segment of light curve, default value is 1 second.
+
+        norm: {"leahy" | "rms"}, optional, default "rms"
+            The normaliation of the periodogram to be used. Options are
+            "leahy" or "rms", default is "rms".
+
+        Attributes
+        ----------
+        matrix : np.ndarray
+            The matrix with fourier frequencies in the first column and time
+            in the second column.
+        """
+        if segment_size < 2*lc.dt:
+            raise ValueError("Length of the segment is too short to form a "
+                             "light curve!")
+
+        AveragedPowerspectrum.__init__(self, lc, segment_size, norm)
+        power_all, _ = AveragedPowerspectrum._make_segment_spectrum(
+            self, lc, segment_size)
+        self._make_matrix(power_all)
+
+    def _make_matrix(self, power_all):
+        """Create the matrix with freq and time columns."""
+        row1 = power_all[0].freq
+        row2 = list(range(0, self.segment_size*len(row1), self.segment_size))
+        self.matrix = np.array([row1, row2]).T
