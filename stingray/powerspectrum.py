@@ -130,14 +130,14 @@ class Powerspectrum(Crossspectrum):
         lc: lightcurve.Lightcurve object, optional, default None
             The light curve data to be Fourier-transformed.
 
-        norm: {"leahy" | "rms"}, optional, default "rms"
+        norm: {"leahy" | "frac" | "abs" | "none" }, optional, default "frac"
             The normaliation of the periodogram to be used. Options are
-            "leahy" or "rms", default is "rms".
+            "leahy", "frac", "abs" and "none", default is "frac".
 
 
         Attributes
         ----------
-        norm: {"leahy" | "rms"}
+        norm: {"leahy" | "frac" | "abs" | "none"}
             the normalization of the periodogram
 
         freq: numpy.ndarray
@@ -319,14 +319,14 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
             of the segment_size, then any fraction left-over at the end of the
             time series will be lost.
 
-        norm: {"leahy" | "rms"}, optional, default "rms"
+        norm: {"leahy" | "frac" | "abs" | "none" }, optional, default "frac"
             The normaliation of the periodogram to be used. Options are
-            "leahy" or "rms", default is "rms".
+            "leahy", "frac", "abs" and "none", default is "frac".
 
 
         Attributes
         ----------
-        norm: {"leahy" | "rms"}
+        norm: {"leahy" | "frac" | "abs" | "none"}
             the normalization of the periodogram
 
         freq: numpy.ndarray
@@ -353,14 +353,8 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
 
         self.type = "powerspectrum"
 
-        assert isinstance(norm, str), "norm is not a string!"
-
-        assert norm.lower() in ["frac", "abs", "leahy", "none"], \
-                "norm must be 'frac', 'abs', 'leahy', or 'none'!"
-
-        self.norm = norm.lower()
-
-        assert np.isfinite(segment_size), "segment_size must be finite!"
+        if not np.isfinite(segment_size):
+            raise ValueError("segment_size must be finite!")
 
         self.segment_size = segment_size
 
@@ -406,21 +400,24 @@ class DynamicalPowerspectrum(AveragedPowerspectrum):
         segment_size : float, default 1
              Length of the segment of light curve, default value is 1 second.
 
-        norm: {"leahy" | "rms"}, optional, default "rms"
+        norm: {"leahy" | "frac" | "abs" | "none" }, optional, default "frac"
             The normaliation of the periodogram to be used. Options are
-            "leahy" or "rms", default is "rms".
+            "leahy", "frac", "abs" and "none", default is "frac".
 
         Attributes
         ----------
-        matrix : np.ndarray
+        dyn_ps : np.ndarray
             The matrix with fourier frequencies in the first column and time
             in the second column.
         """
         if segment_size < 2*lc.dt:
             raise ValueError("Length of the segment is too short to form a "
                              "light curve!")
-
-        AveragedPowerspectrum.__init__(self, lc, segment_size, norm)
+        elif segment_size > lc.tseg:
+            raise ValueError("Length of the segment is too long to create "
+                             "any segments of the light curve!")
+        self.segment_size = segment_size
+        self.norm = norm
         power_all, _ = AveragedPowerspectrum._make_segment_spectrum(
             self, lc, segment_size)
         self._make_matrix(power_all)
@@ -429,4 +426,4 @@ class DynamicalPowerspectrum(AveragedPowerspectrum):
         """Create the matrix with freq and time columns."""
         row1 = power_all[0].freq
         row2 = list(range(0, self.segment_size*len(row1), self.segment_size))
-        self.matrix = np.array([row1, row2]).T
+        self.dyn_ps = np.array([row1, row2]).T

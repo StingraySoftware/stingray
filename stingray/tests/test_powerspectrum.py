@@ -493,10 +493,14 @@ class TestDynamicalPowerspectrum(object):
 
         self.lc = lc
 
-    def test_with_bad_seg_size(self):
+    def test_with_short_seg_size(self):
         with pytest.raises(ValueError):
             dps = DynamicalPowerspectrum(self.lc, segment_size=0)
 
+    def test_with_long_seg_size(self):
+        with pytest.raises(ValueError):
+            dps = DynamicalPowerspectrum(self.lc, segment_size=1000)
+
     def test_matrix(self):
         dps = DynamicalPowerspectrum(self.lc, segment_size=10)
-        assert dps.matrix.shape == (4, 2)
+        assert dps.dyn_ps.shape == (4, 2)
