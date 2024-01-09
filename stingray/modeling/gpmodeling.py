@@ -21,7 +21,7 @@ except ImportError:
     can_make_gp = False
 
 try:
-    from jaxns import ExactNestedSampler, TerminationCondition, Prior, Model
+    from jaxns import DefaultNestedSampler, TerminationCondition, Prior, Model
     from jaxns.utils import resample
 
     can_sample = True
@@ -780,14 +780,14 @@ class GPResult:
         nsmodel = Model(prior_model=self.prior_model, log_likelihood=self.log_likelihood_model)
         nsmodel.sanity_check(random.PRNGKey(10), S=100)
 
-        self.exact_ns = ExactNestedSampler(
+        self.exact_ns = DefaultNestedSampler(
             nsmodel, num_live_points=num_live_points, max_samples=max_samples
         )
 
         termination_reason, state = self.exact_ns(
             random.PRNGKey(42), term_cond=TerminationCondition(live_evidence_frac=1e-4)
         )
-        self.results = self.exact_ns.to_results(state, termination_reason)
+        self.results = self.exact_ns.to_results(termination_reason,state)
         print("Simulation Complete")
 
     def get_evidence(self):
