@@ -84,7 +84,12 @@ def _approximate_powerlaw(
     spectral_coefficients = jnp.linalg.solve(spectral_matrix, psd_values)
 
     if approximate_with == "SHO":
-        amplitudes = spectral_coefficients * spectral_points
+        amplitudes = (
+            spectral_coefficients
+            * spectral_points
+            * kernel_params["variance"]
+            / jnp.sum(spectral_coefficients * spectral_points)
+        )
 
         kernel = amplitudes[0] * kernels.quasisep.SHO(
             quality=1 / jnp.sqrt(2), omega=2 * jnp.pi * spectral_points[0]
@@ -93,7 +98,7 @@ def _approximate_powerlaw(
             kernel += amplitudes[j] * kernels.quasisep.SHO(
                 quality=1 / jnp.sqrt(2), omega=2 * jnp.pi * spectral_points[j]
             )
-        return (kernel_params["variance"] / jnp.sum(amplitudes * spectral_points)) * kernel
+        return kernel
     else:
         raise ValueError("Approximation type not implemented")
 
@@ -139,7 +144,15 @@ def _psd_model(kernel_type, kernel_params):
         raise ValueError("PSD type not implemented")
 
 
-def get_kernel(kernel_type, kernel_params,times, n_approx_components=20, approximate_with="SHO"):
+def get_kernel(
+    kernel_type,
+    kernel_params,
+    times,
+    n_approx_components=20,
+    approximate_with="SHO",
+    S_low=20,
+    S_high=20,
+):
     """
     Function for producing the kernel for the Gaussian Process.
     Returns the selected Tinygp kernel for the given parameters.
@@ -192,15 +205,17 @@ def get_kernel(kernel_type, kernel_params,times, n_approx_components=20, approxi
             c=kernel_params["cqpo"],
             d=2 * jnp.pi * kernel_params["freq"],
         )
+        return kernel
     elif kernel_type == "PowL" or kernel_type == "DoubPowL":
         kernel = _approximate_powerlaw(
             kernel_type,
             kernel_params,
-            f_min=1 / (times[-1] - times[0]),
-            f_max=0.5 / jnp.min(jnp.diff(times)),
+            f_min=1 / (times[-1] - times[0]) / S_low,
+            f_max=0.5 / jnp.min(jnp.diff(times)) * S_high,
             n_approx_components=n_approx_components,
             approximate_with=approximate_with,
         )
+        return kernel
     else:
         raise ValueError("Kernel type not implemented")
 
@@ -523,7 +538,7 @@ def get_gp_params(kernel_type, mean_type):
     ----------
     kernel_type: string
         The type of kernel to be used for the Gaussian Process model:
-        ["RN", "QPO", "QPO_plus_RN"]
+        ["RN", "QPO", "QPO_plus_RN", "PowL", "DoubPowL"]
 
     mean_type: string
         The type of mean to be used for the Gaussian Process model:
@@ -616,7 +631,9 @@ def get_prior(params_list, prior_dict):
     return prior_model
 
 
-def get_log_likelihood(params_list, kernel_type, mean_type, times, counts, **kwargs):
+def get_log_likelihood(
+    params_list, kernel_type, mean_type, times, counts, counts_err=None, **kwargs
+):
     """
     A log likelihood generator function based on given values.
     Makes a jaxns specific log likelihood function which takes in the
@@ -647,7 +664,10 @@ def get_log_likelihood(params_list, kernel_type, mean_type, times, counts, **kwa
 
     counts: np.array or jnp.array
         The photon counts array of the lightcurve
-        
+
+    counts_err: np.array or jnp.array
+        The photon counts error array of the lightcurve
+            
     **kwargs:
         n_approx_components: int
             The number of components to use to approximate the power law
@@ -666,9 +686,11 @@ def get_log_likelihood(params_list, kernel_type, mean_type, times, counts, **kwa
 
     if not can_make_gp:
         raise ImportError("Tinygp is required to make the GP model.")
-    
+
     n_approx_components = kwargs.get("n_approx_components", 20)
     approximate_with = kwargs.get("approximate_with", "SHO")
+    S_low = kwargs.get("S_low", 20)
+    S_high = kwargs.get("S_high", 20)
 
     @jit
     def likelihood_model(*args):
@@ -678,9 +700,20 @@ def get_log_likelihood(params_list, kernel_type, mean_type, times, counts, **kwa
                 param_dict[params[4:]] = jnp.exp(args[i])
             else:
                 param_dict[params] = args[i]
-        kernel = get_kernel(kernel_type=kernel_type, kernel_params=param_dict,times=times,n_approx_components=n_approx_components,approximate_with=approximate_with)
+        kernel = get_kernel(
+            kernel_type=kernel_type,
+            kernel_params=param_dict,
+            times=times,
+            n_approx_components=n_approx_components,
+            approximate_with=approximate_with,
+            S_low=S_low,
+            S_high=S_high,
+        )
         mean = get_mean(mean_type=mean_type, mean_params=param_dict)
-        gp = GaussianProcess(kernel, times, mean_value=mean(times))
+        if counts_err is None:
+            gp = GaussianProcess(kernel, times, mean_value=mean(times))
+        else:
+            gp = GaussianProcess(kernel, times, mean_value=mean(times), diag=jnp.square(counts_err))
         return gp.log_probability(counts)
 
     return likelihood_model
