@@ -40,7 +40,106 @@ except ImportError:
 __all__ = ["get_kernel", "get_mean", "get_prior", "get_log_likelihood", "GPResult", "get_gp_params"]
 
 
-def get_kernel(kernel_type, kernel_params):
+def _approximate_powerlaw(
+    kernel_type, kernel_params, f_min, f_max, n_approx_components=20, approximate_with="SHO"
+):
+    """
+    Approximate the power law kernel with a sum of SHO kernels or a sum of DRW+SHO kernels.
+
+    Parameters
+    ----------
+    kernel_type: string
+        The type of kernel to be used for the Gaussian Process
+        Only designed for the following Power spectra ["PowL","DoubPowL]
+    kernel_params: dict
+        Dictionary containing the parameters for the kernel
+        Should contain the parameters for the selected kernel
+    f_min: float
+        The minimum frequency of the approximation grid.
+        Should be the lowest frequency of the power spectrum
+    f_max: float
+        The maximum frequency of the approximation grid.
+        Should be the highest frequency of the power spectrum
+    n_approx_components: int
+        The number of components to use to approximate the power law
+    approximate_with: string
+        The type of kernel to use to approximate the power law power spectra
+        Either "SHO" or "DRWSHO"
+    """
+    # grid of frequencies for the approximation
+    spectral_points = jnp.geomspace(f_min, f_max, n_approx_components)
+    # build the matrix of the approximation
+    if approximate_with == "SHO":
+        spectral_matrix = 1 / (
+            1 + jnp.power(jnp.atleast_2d(spectral_points).T / spectral_points, 4)
+        )
+    # elif approximate_with == "DRWSHO":
+    # spectral_matrix = 1 / (1+ jnp.power( jnp.atleast_2d(spectral_points).T / spectral_points, 6))
+    else:
+        raise ValueError("Approximation type not implemented")
+    # get the psd values and normalize them to the first value
+    psd_values = _psd_model(kernel_type, kernel_params)(spectral_points)
+    psd_values /= psd_values[0]
+    # compute the coefficients of the approximation
+    spectral_coefficients = jnp.linalg.solve(spectral_matrix, psd_values)
+
+    if approximate_with == "SHO":
+        amplitudes = spectral_coefficients * spectral_points
+
+        kernel = amplitudes[0] * kernels.quasisep.SHO(
+            quality=1 / jnp.sqrt(2), omega=2 * jnp.pi * spectral_points[0]
+        )
+        for j in range(1, n_approx_components):
+            kernel += amplitudes[j] * kernels.quasisep.SHO(
+                quality=1 / jnp.sqrt(2), omega=2 * jnp.pi * spectral_points[j]
+            )
+        return (kernel_params["variance"] / jnp.sum(amplitudes * spectral_points)) * kernel
+    else:
+        raise ValueError("Approximation type not implemented")
+
+
+def _psd_model(kernel_type, kernel_params):
+    """Returns the power spectrum model for the given kernel type and parameters
+
+    Parameters
+    ----------
+    kernel_type: string
+        The type of kernel to be used for the Gaussian Process
+        Only designed for the following Power spectra ["PowL","DoubPowL]
+    kernel_params: dict
+        Dictionary containing the parameters for the kernel
+        Should contain the parameters for the selected kernel
+    """
+    if kernel_type == "PowL":
+        return lambda f: jnp.power(f / kernel_params["f_bend"], kernel_params["alpha_1"]) / (
+            1
+            + jnp.power(
+                f / kernel_params["f_bend"], kernel_params["alpha_1"] - kernel_params["alpha_2"]
+            )
+        )
+    elif kernel_type == "DoubPowL":
+        return (
+            lambda f: jnp.power(f / kernel_params["f_bend_1"], kernel_params["alpha_1"])
+            / (
+                1
+                + jnp.power(
+                    f / kernel_params["f_bend_1"],
+                    kernel_params["alpha_1"] - kernel_params["alpha_2"],
+                )
+            )
+            / (
+                1
+                + jnp.power(
+                    f / kernel_params["f_bend_2"],
+                    kernel_params["alpha_2"] - kernel_params["alpha_3"],
+                )
+            )
+        )
+    else:
+        raise ValueError("PSD type not implemented")
+
+
+def get_kernel(kernel_type, kernel_params,times, n_approx_components=20, approximate_with="SHO"):
     """
     Function for producing the kernel for the Gaussian Process.
     Returns the selected Tinygp kernel for the given parameters.
@@ -50,11 +149,19 @@ def get_kernel(kernel_type, kernel_params):
     kernel_type: string
         The type of kernel to be used for the Gaussian Process
         To be selected from the kernels already implemented:
-        ["RN", "QPO", "QPO_plus_RN"]
+        ["RN", "QPO", "QPO_plus_RN","PowL","DoubPowL]
 
     kernel_params: dict
         Dictionary containing the parameters for the kernel
         Should contain the parameters for the selected kernel
+    times: np.array or jnp.array
+        The time array of the lightcurve
+    n_approx_components: int
+        The number of components to use to approximate the power law
+        must be greater than 2, default 20
+    approximate_with: string
+        The type of kernel to use to approximate the power law power spectra
+        Either "SHO" or "DRWSHO", default "SHO"
 
     """
     if not jax_avail:
@@ -85,7 +192,15 @@ def get_kernel(kernel_type, kernel_params):
             c=kernel_params["cqpo"],
             d=2 * jnp.pi * kernel_params["freq"],
         )
-        return kernel
+    elif kernel_type == "PowL" or kernel_type == "DoubPowL":
+        kernel = _approximate_powerlaw(
+            kernel_type,
+            kernel_params,
+            f_min=1 / (times[-1] - times[0]),
+            f_max=0.5 / jnp.min(jnp.diff(times)),
+            n_approx_components=n_approx_components,
+            approximate_with=approximate_with,
+        )
     else:
         raise ValueError("Kernel type not implemented")
 
@@ -365,6 +480,10 @@ def _get_kernel_params(kernel_type):
         return ["log_arn", "log_crn", "log_aqpo", "log_cqpo", "log_freq"]
     elif kernel_type == "QPO":
         return ["log_aqpo", "log_cqpo", "log_freq"]
+    elif kernel_type == "PowL":
+        return ["alpha_1", "f_bend", "alpha_2", "variance"]
+    elif kernel_type == "DoubPowL":
+        return ["alpha_1", "f_bend_1", "alpha_2", "f_bend_2", "alpha_3", "variance"]
     else:
         raise ValueError("Kernel type not implemented")
 
@@ -528,6 +647,14 @@ def get_log_likelihood(params_list, kernel_type, mean_type, times, counts, **kwa
 
     counts: np.array or jnp.array
         The photon counts array of the lightcurve
+        
+    **kwargs:
+        n_approx_components: int
+            The number of components to use to approximate the power law
+            must be greater than 2, default 20
+        approximate_with: string
+            The type of kernel to use to approximate the power law power spectra
+            Either "SHO" or "DRWSHO", default "SHO"
 
     Returns
     -------
@@ -539,6 +666,9 @@ def get_log_likelihood(params_list, kernel_type, mean_type, times, counts, **kwa
 
     if not can_make_gp:
         raise ImportError("Tinygp is required to make the GP model.")
+    
+    n_approx_components = kwargs.get("n_approx_components", 20)
+    approximate_with = kwargs.get("approximate_with", "SHO")
 
     @jit
     def likelihood_model(*args):
@@ -548,7 +678,7 @@ def get_log_likelihood(params_list, kernel_type, mean_type, times, counts, **kwa
                 param_dict[params[4:]] = jnp.exp(args[i])
             else:
                 param_dict[params] = args[i]
-        kernel = get_kernel(kernel_type=kernel_type, kernel_params=param_dict)
+        kernel = get_kernel(kernel_type=kernel_type, kernel_params=param_dict,times=times,n_approx_components=n_approx_components,approximate_with=approximate_with)
         mean = get_mean(mean_type=mean_type, mean_params=param_dict)
         gp = GaussianProcess(kernel, times, mean_value=mean(times))
         return gp.log_probability(counts)
