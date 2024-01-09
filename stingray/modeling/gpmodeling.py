@@ -496,9 +496,9 @@ def _get_kernel_params(kernel_type):
     elif kernel_type == "QPO":
         return ["log_aqpo", "log_cqpo", "log_freq"]
     elif kernel_type == "PowL":
-        return ["alpha_1", "f_bend", "alpha_2", "variance"]
+        return ["alpha_1", "log_f_bend", "alpha_2", "variance"]
     elif kernel_type == "DoubPowL":
-        return ["alpha_1", "f_bend_1", "alpha_2", "f_bend_2", "alpha_3", "variance"]
+        return ["alpha_1", "log_f_bend_1", "alpha_2", "log_f_bend_2", "alpha_3", "variance"]
     else:
         raise ValueError("Kernel type not implemented")
 
