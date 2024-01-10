@@ -116,27 +116,27 @@ def _psd_model(kernel_type, kernel_params):
         Should contain the parameters for the selected kernel
     """
     if kernel_type == "PowL":
-        return lambda f: jnp.power(f / kernel_params["f_bend"], kernel_params["alpha_1"]) / (
+        return lambda f: jnp.power(f / kernel_params["f_bend"], -kernel_params["alpha_1"]) / (
             1
             + jnp.power(
-                f / kernel_params["f_bend"], kernel_params["alpha_1"] - kernel_params["alpha_2"]
+                f / kernel_params["f_bend"], kernel_params["alpha_2"] - kernel_params["alpha_1"]
             )
         )
     elif kernel_type == "DoubPowL":
         return (
-            lambda f: jnp.power(f / kernel_params["f_bend_1"], kernel_params["alpha_1"])
+            lambda f: jnp.power(f / kernel_params["f_bend_1"], -kernel_params["alpha_1"])
             / (
                 1
                 + jnp.power(
                     f / kernel_params["f_bend_1"],
-                    kernel_params["alpha_1"] - kernel_params["alpha_2"],
+                    kernel_params["alpha_2"] - kernel_params["alpha_1"],
                 )
             )
             / (
                 1
                 + jnp.power(
                     f / kernel_params["f_bend_2"],
-                    kernel_params["alpha_2"] - kernel_params["alpha_3"],
+                    kernel_params["alpha_3"] - kernel_params["alpha_2"],
                 )
             )
         )
@@ -496,9 +496,17 @@ def _get_kernel_params(kernel_type):
     elif kernel_type == "QPO":
         return ["log_aqpo", "log_cqpo", "log_freq"]
     elif kernel_type == "PowL":
-        return ["alpha_1", "log_f_bend", "alpha_2", "variance"]
+        return ["alpha_1", "log_f_bend", "alpha_2", "variance", "scale_err"]
     elif kernel_type == "DoubPowL":
-        return ["alpha_1", "log_f_bend_1", "alpha_2", "log_f_bend_2", "alpha_3", "variance"]
+        return [
+            "alpha_1",
+            "log_f_bend_1",
+            "alpha_2",
+            "log_f_bend_2",
+            "alpha_3",
+            "variance",
+            "scale_err",
+        ]
     else:
         raise ValueError("Kernel type not implemented")
 
@@ -632,7 +640,16 @@ def get_prior(params_list, prior_dict):
 
 
 def get_log_likelihood(
-    params_list, kernel_type, mean_type, times, counts, counts_err=None, **kwargs
+    params_list,
+    kernel_type,
+    mean_type,
+    times,
+    counts,
+    counts_err=None,
+    S_low=20,
+    S_high=20,
+    n_approx_components=20,
+    approximate_with="SHO",
 ):
     """
     A log likelihood generator function based on given values.
@@ -667,14 +684,14 @@ def get_log_likelihood(
 
     counts_err: np.array or jnp.array
         The photon counts error array of the lightcurve
-            
-    **kwargs:
-        n_approx_components: int
-            The number of components to use to approximate the power law
-            must be greater than 2, default 20
-        approximate_with: string
-            The type of kernel to use to approximate the power law power spectra
-            Either "SHO" or "DRWSHO", default "SHO"
+
+    n_approx_components: int
+        The number of components to use to approximate the power law
+        must be greater than 2, default 20
+
+    approximate_with: string
+        The type of kernel to use to approximate the power law power spectra
+        Either "SHO" or "DRWSHO", default "SHO"
 
     Returns
     -------
@@ -687,11 +704,6 @@ def get_log_likelihood(
     if not can_make_gp:
         raise ImportError("Tinygp is required to make the GP model.")
 
-    n_approx_components = kwargs.get("n_approx_components", 20)
-    approximate_with = kwargs.get("approximate_with", "SHO")
-    S_low = kwargs.get("S_low", 20)
-    S_high = kwargs.get("S_high", 20)
-
     @jit
     def likelihood_model(*args):
         param_dict = {}
@@ -700,6 +712,7 @@ def get_log_likelihood(
                 param_dict[params[4:]] = jnp.exp(args[i])
             else:
                 param_dict[params] = args[i]
+
         kernel = get_kernel(
             kernel_type=kernel_type,
             kernel_params=param_dict,
@@ -712,6 +725,13 @@ def get_log_likelihood(
         mean = get_mean(mean_type=mean_type, mean_params=param_dict)
         if counts_err is None:
             gp = GaussianProcess(kernel, times, mean_value=mean(times))
+        elif counts_err is not None and "scale_err" in param_dict.keys():
+            gp = GaussianProcess(
+                kernel,
+                times,
+                mean_value=mean(times),
+                diag=param_dict["scale_err"] * jnp.square(counts_err),
+            )
         else:
             gp = GaussianProcess(kernel, times, mean_value=mean(times), diag=jnp.square(counts_err))
         return gp.log_probability(counts)
@@ -787,7 +807,7 @@ class GPResult:
         termination_reason, state = self.exact_ns(
             random.PRNGKey(42), term_cond=TerminationCondition(live_evidence_frac=1e-4)
         )
-        self.results = self.exact_ns.to_results(termination_reason,state)
+        self.results = self.exact_ns.to_results(termination_reason, state)
         print("Simulation Complete")
 
     def get_evidence(self):
