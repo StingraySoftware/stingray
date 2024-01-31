@@ -64,7 +64,7 @@ def _approximate_powerlaw(
         The number of components to use to approximate the power law
     approximate_with: string
         The type of kernel to use to approximate the power law power spectra
-        Either "SHO" or "DRWSHO"
+        Default is "SHO"
     """
     # grid of frequencies for the approximation
     spectral_points = jnp.geomspace(f_min, f_max, n_approx_components)
@@ -73,10 +73,9 @@ def _approximate_powerlaw(
         spectral_matrix = 1 / (
             1 + jnp.power(jnp.atleast_2d(spectral_points).T / spectral_points, 4)
         )
-    # elif approximate_with == "DRWSHO":
-    # spectral_matrix = 1 / (1+ jnp.power( jnp.atleast_2d(spectral_points).T / spectral_points, 6))
     else:
-        raise ValueError("Approximation type not implemented")
+        raise NotImplementedError(f"Approximation {approximate_with} not implemented")
+    
     # get the psd values and normalize them to the first value
     psd_values = _psd_model(kernel_type, kernel_params)(spectral_points)
     psd_values /= psd_values[0]
@@ -100,7 +99,7 @@ def _approximate_powerlaw(
             )
         return kernel
     else:
-        raise ValueError("Approximation type not implemented")
+        raise NotImplementedError(f"Approximation {approximate_with} not implemented")
 
 
 def _psd_model(kernel_type, kernel_params):
@@ -162,7 +161,7 @@ def get_kernel(
     kernel_type: string
         The type of kernel to be used for the Gaussian Process
         To be selected from the kernels already implemented:
-        ["RN", "QPO", "QPO_plus_RN","PowL","DoubPowL]
+        ["RN", "QPO", "QPO_plus_RN","PowL","DoubPowL"]
 
     kernel_params: dict
         Dictionary containing the parameters for the kernel
@@ -174,7 +173,7 @@ def get_kernel(
         must be greater than 2, default 20
     approximate_with: string
         The type of kernel to use to approximate the power law power spectra
-        Either "SHO" or "DRWSHO", default "SHO"
+        Default is "SHO"
 
     """
     if not jax_avail:
@@ -207,6 +206,9 @@ def get_kernel(
         )
         return kernel
     elif kernel_type == "PowL" or kernel_type == "DoubPowL":
+        if n_approx_components<2:
+            raise ValueError("Number of approximation components must be greater than 2")
+        
         kernel = _approximate_powerlaw(
             kernel_type,
             kernel_params,
@@ -496,7 +498,7 @@ def _get_kernel_params(kernel_type):
     elif kernel_type == "QPO":
         return ["log_aqpo", "log_cqpo", "log_freq"]
     elif kernel_type == "PowL":
-        return ["alpha_1", "log_f_bend", "alpha_2", "variance", "scale_err"]
+        return ["alpha_1", "log_f_bend", "alpha_2", "variance"]
     elif kernel_type == "DoubPowL":
         return [
             "alpha_1",
@@ -504,9 +506,7 @@ def _get_kernel_params(kernel_type):
             "alpha_2",
             "log_f_bend_2",
             "alpha_3",
-            "variance",
-            "scale_err",
-        ]
+            "variance"]
     else:
         raise ValueError("Kernel type not implemented")
 
@@ -537,7 +537,7 @@ def _get_mean_params(mean_type):
         raise ValueError("Mean type not implemented")
 
 
-def get_gp_params(kernel_type, mean_type):
+def get_gp_params(kernel_type, mean_type,scale_errors=False):
     """
     Generates a list of the parameters for the GP model based on the kernel and mean type.
     To be used to set the order of the parameters for `get_prior` and `get_likelihood` functions.
@@ -552,6 +552,8 @@ def get_gp_params(kernel_type, mean_type):
         The type of mean to be used for the Gaussian Process model:
         ["gaussian", "exponential", "constant", "skew_gaussian",
          "skew_exponential", "fred"]
+    scale_errors: bool, default False
+        Whether to include a scale parameter on the errors in the GP model
 
     Returns
     -------
@@ -565,6 +567,8 @@ def get_gp_params(kernel_type, mean_type):
     kernel_params = _get_kernel_params(kernel_type)
     mean_params = _get_mean_params(mean_type)
     kernel_params.extend(mean_params)
+    if scale_errors:
+        kernel_params.append("scale_err")
     return kernel_params
 
 
@@ -669,7 +673,7 @@ def get_log_likelihood(
 
     kernel_type:
         The type of kernel to be used in the model:
-        ["RN", "QPO", "QPO_plus_RN"]
+        ["RN", "QPO", "QPO_plus_RN", "PowL", "DoubPowL"]
 
     mean_type:
         The type of mean to be used in the model:
@@ -691,7 +695,7 @@ def get_log_likelihood(
 
     approximate_with: string
         The type of kernel to use to approximate the power law power spectra
-        Either "SHO" or "DRWSHO", default "SHO"
+        Default is "SHO"
 
     Returns
     -------

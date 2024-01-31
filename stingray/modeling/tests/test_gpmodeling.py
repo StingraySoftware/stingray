@@ -22,7 +22,7 @@ try:
 except ImportError:
     _HAS_TINYGP = False
 
-from stingray.modeling.gpmodeling import get_kernel, get_mean, get_gp_params
+from stingray.modeling.gpmodeling import get_kernel, get_mean, get_gp_params, _psd_model
 from stingray.modeling.gpmodeling import get_prior, get_log_likelihood, GPResult
 from stingray import Lightcurve
 
@@ -87,6 +87,39 @@ class Testget_kernel(object):
             kernel_qpo(self.x, jnp.array([0.0])) == kernel_qpo_test(self.x, jnp.array([0.0]))
         ).all()
 
+    def test_get_kernel_powL(self):
+        
+        t = jnp.arange(0,100.05,0.05)
+        f_min, f_max = 1/(t[-1]-t[0])/20, 1/(2*(t[1]-t[0]))*20
+        n_approx_components = 20
+        alpha_1, f_1, alpha_2,variance = 0.3, 0.05, 2.9,0.2
+        
+        kernel_params = {"alpha_1": alpha_1, "log_f_bend": jnp.log(f_1), "alpha_2": alpha_2, "variance": variance}
+        
+        spectral_points = jnp.geomspace(f_min, f_max, 20)
+        spectral_matrix = 1 / (
+            1 + jnp.power(jnp.atleast_2d(spectral_points).T / spectral_points, 4)
+        )
+        psd_values = _psd_model("PowL", kernel_params)(spectral_points)
+        psd_values /= psd_values[0]
+        spectral_coefficients = jnp.linalg.solve(spectral_matrix, psd_values)
+        amplitudes = (
+            spectral_coefficients
+            * spectral_points
+            * kernel_params["variance"]
+            / jnp.sum(spectral_coefficients * spectral_points)
+        )
+        kernel = amplitudes[0] * kernels.quasisep.SHO(
+            quality=1 / jnp.sqrt(2), omega=2 * jnp.pi * spectral_points[0]
+        )
+        for j in range(1, n_approx_components):
+            kernel += amplitudes[j] * kernels.quasisep.SHO(
+                quality=1 / jnp.sqrt(2), omega=2 * jnp.pi * spectral_points[j]
+            )
+            
+        kernel_PowL_test = get_kernel("PowL", kernel_params,t,n_approx_components=n_approx_components)
+        assert (kernel(self.x, jnp.array([0.0])) == kernel_PowL_test(self.x, jnp.array([0.0]))).all()
+    
     def test_value_error(self):
         with pytest.raises(ValueError, match="Kernel type not implemented"):
             get_kernel("periodic", self.kernel_params)
@@ -233,6 +266,44 @@ class Testget_gp_params(object):
             "log_A",
             "t0",
             "log_sig",
+        ]
+
+    def test_get_params_PowL(self):
+        assert get_gp_params("PowL", "const") == [
+            "alpha_1",
+            "log_f_bend",
+            "alpha_2",
+            "variance",
+            "log_A",
+        ]
+        assert get_gp_params("PowL", "const", scale_errors=True) == [
+            "alpha_1",
+            "log_f_bend",
+            "alpha_2",
+            "variance",
+            "log_A",
+            "scale_err",
+        ]
+
+    def test_get_params_DoubPowL(self):
+        assert get_gp_params("DoubPowL", "const") == [
+            "alpha_1",
+            "log_f_bend_1",
+            "alpha_2",
+            "log_f_bend_2",
+            "alpha_3",
+            "variance",
+            "log_A",
+        ]
+        assert get_gp_params("DoubPowL", "const", scale_errors=True) == [
+            "alpha_1",
+            "log_f_bend_1",
+            "alpha_2",
+            "log_f_bend_2",
+            "alpha_3",
+            "variance",
+            "log_A",
+            "scale_err",
         ]
 
 
