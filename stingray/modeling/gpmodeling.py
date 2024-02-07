@@ -75,7 +75,7 @@ def _approximate_powerlaw(
         )
     else:
         raise NotImplementedError(f"Approximation {approximate_with} not implemented")
-    
+
     # get the psd values and normalize them to the first value
     psd_values = _psd_model(kernel_type, kernel_params)(spectral_points)
     psd_values /= psd_values[0]
@@ -206,9 +206,9 @@ def get_kernel(
         )
         return kernel
     elif kernel_type == "PowL" or kernel_type == "DoubPowL":
-        if n_approx_components<2:
+        if n_approx_components < 2:
             raise ValueError("Number of approximation components must be greater than 2")
-        
+
         kernel = _approximate_powerlaw(
             kernel_type,
             kernel_params,
@@ -500,13 +500,7 @@ def _get_kernel_params(kernel_type):
     elif kernel_type == "PowL":
         return ["alpha_1", "log_f_bend", "alpha_2", "variance"]
     elif kernel_type == "DoubPowL":
-        return [
-            "alpha_1",
-            "log_f_bend_1",
-            "alpha_2",
-            "log_f_bend_2",
-            "alpha_3",
-            "variance"]
+        return ["alpha_1", "log_f_bend_1", "alpha_2", "log_f_bend_2", "alpha_3", "variance"]
     else:
         raise ValueError("Kernel type not implemented")
 
@@ -537,7 +531,7 @@ def _get_mean_params(mean_type):
         raise ValueError("Mean type not implemented")
 
 
-def get_gp_params(kernel_type, mean_type,scale_errors=False):
+def get_gp_params(kernel_type, mean_type, scale_errors=False, log_transform=False):
     """
     Generates a list of the parameters for the GP model based on the kernel and mean type.
     To be used to set the order of the parameters for `get_prior` and `get_likelihood` functions.
@@ -554,6 +548,9 @@ def get_gp_params(kernel_type, mean_type,scale_errors=False):
          "skew_exponential", "fred"]
     scale_errors: bool, default False
         Whether to include a scale parameter on the errors in the GP model
+    log_transform: bool, default False
+        Whether to take the log of the data to make the data normally distributed
+        This will add a parameter to the model to model a shifted log normal distribution
 
     Returns
     -------
@@ -569,6 +566,9 @@ def get_gp_params(kernel_type, mean_type,scale_errors=False):
     kernel_params.extend(mean_params)
     if scale_errors:
         kernel_params.append("scale_err")
+    if log_transform:
+        kernel_params.append("log_shift")
+
     return kernel_params
 
 
@@ -696,6 +696,9 @@ def get_log_likelihood(
     approximate_with: string
         The type of kernel to use to approximate the power law power spectra
         Default is "SHO"
+    log_transform: bool, default False
+        Whether to take the log of the data to make the data normally distributed
+        This will add a parameter to the model to model a shifted log normal distribution
 
     Returns
     -------
@@ -727,6 +730,14 @@ def get_log_likelihood(
             S_high=S_high,
         )
         mean = get_mean(mean_type=mean_type, mean_params=param_dict)
+        if "log_shift" in param_dict.keys():
+            x = np.log(counts - param_dict["shift"])
+            if counts_err is not None:
+                xerr = ((counts_err) / (counts - param_dict["shift"]))
+        else:
+            x = counts
+            xerr = counts_err
+
         if counts_err is None:
             gp = GaussianProcess(kernel, times, mean_value=mean(times))
         elif counts_err is not None and "scale_err" in param_dict.keys():
@@ -734,11 +745,11 @@ def get_log_likelihood(
                 kernel,
                 times,
                 mean_value=mean(times),
-                diag=param_dict["scale_err"] * jnp.square(counts_err),
+                diag=param_dict["scale_err"]*np.square(xerr),
             )
         else:
-            gp = GaussianProcess(kernel, times, mean_value=mean(times), diag=jnp.square(counts_err))
-        return gp.log_probability(counts)
+            gp = GaussianProcess(kernel, times, mean_value=mean(times), diag=np.square(xerr))
+        return gp.log_probability(x)
 
     return likelihood_model
 
@@ -759,8 +770,8 @@ class GPResult:
         self.lc = lc
         self.time = lc.time
         self.counts = lc.counts
-        self.result = None
-
+        self.result = None   
+    
     def sample(self, prior_model=None, likelihood_model=None, max_samples=1e4, num_live_points=500):
         """
         Makes a Jaxns nested sampler over the Gaussian Process, given the
