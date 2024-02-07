@@ -730,7 +730,8 @@ def get_log_likelihood(
             S_high=S_high,
         )
         mean = get_mean(mean_type=mean_type, mean_params=param_dict)
-        if "shift" in param_dict.keys():            x = jnp.log(counts - param_dict["shift"])
+        if "shift" in param_dict.keys():
+            x = jnp.log(counts - param_dict["shift"])
             if counts_err is not None:
                 xerr = jnp.divide(counts_err, counts - param_dict["shift"])
         else:
@@ -769,8 +770,8 @@ class GPResult:
         self.lc = lc
         self.time = lc.time
         self.counts = lc.counts
-        self.result = None   
-    
+        self.result = None
+        
     def sample(self, prior_model=None, likelihood_model=None, max_samples=1e4, num_live_points=500):
         """
         Makes a Jaxns nested sampler over the Gaussian Process, given the
