@@ -730,10 +730,9 @@ def get_log_likelihood(
             S_high=S_high,
         )
         mean = get_mean(mean_type=mean_type, mean_params=param_dict)
-        if "log_shift" in param_dict.keys():
-            x = np.log(counts - param_dict["shift"])
+        if "shift" in param_dict.keys():            x = jnp.log(counts - param_dict["shift"])
             if counts_err is not None:
-                xerr = ((counts_err) / (counts - param_dict["shift"]))
+                xerr = jnp.divide(counts_err, counts - param_dict["shift"])
         else:
             x = counts
             xerr = counts_err
@@ -745,10 +744,10 @@ def get_log_likelihood(
                 kernel,
                 times,
                 mean_value=mean(times),
-                diag=param_dict["scale_err"]*np.square(xerr),
+                diag=param_dict["scale_err"] * jnp.square(xerr),
             )
         else:
-            gp = GaussianProcess(kernel, times, mean_value=mean(times), diag=np.square(xerr))
+            gp = GaussianProcess(kernel, times, mean_value=mean(times), diag=jnp.square(xerr))
         return gp.log_probability(x)
 
     return likelihood_model
