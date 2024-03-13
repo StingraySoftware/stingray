@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Dynamical Power Spectra (on real data) &#8212; stingray v2.0.1.dev31+ge4e477ca</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=9d21690f" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=eafc0fe6" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=2afd17ea" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=e29c89f2"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Cross Spectra" href="../Crossspectrum/Crossspectrum_tutorial.html" />
+    <link rel="prev" title="Dynamical Power Spectra (on fake data)" href="DynamicalPowerspectrum_tutorial_%5Bfake_data%5D.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="../Crossspectrum/Crossspectrum_tutorial.html" title="Cross Spectra">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="DynamicalPowerspectrum_tutorial_%5Bfake_data%5D.html" title="Dynamical Power Spectra (on fake data)">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.0.1.dev31+ge4e477ca</a>
+	 &#187;
+      </li>
+      <li><a href="../../core.html" accesskey="U">Core Stingray Functionality</a> &#187;</li>
+      
+      <li>Dynamical Power Spectra (on real data)</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="Dynamical-Power-Spectra-(on-real-data)">
+<h1>Dynamical Power Spectra (on real data)<a class="headerlink" href="#Dynamical-Power-Spectra-(on-real-data)" title="Link to this heading">¶</a></h1>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">matplotlib</span> inline
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># load auxiliary libraries</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">astropy.io</span> <span class="kn">import</span> <span class="n">fits</span>
+
+<span class="c1"># import stingray</span>
+<span class="kn">import</span> <span class="nn">stingray</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">style</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;seaborn-v0_8-talk&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="All-starts-with-a-lightcurve..">
+<h1>All starts with a lightcurve..<a class="headerlink" href="#All-starts-with-a-lightcurve.." title="Link to this heading">¶</a></h1>
+<p>Open the event file with astropy.io.fits</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">f</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;emr_cleaned.fits&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>The time resolution is stored in the header of the first extension under the Keyword <code class="docutils literal notranslate"><span class="pre">TIMEDEL</span></code></p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dt</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;TIMEDEL&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<p>The collumn <code class="docutils literal notranslate"><span class="pre">TIME</span></code> of the first extension stores the time of each event</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">toa</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;Time&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<p>Let’s create a Lightcurve from the Events time of arrival witha a given time resolution</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span> <span class="o">=</span> <span class="n">stingray</span><span class="o">.</span><span class="n">Lightcurve</span><span class="o">.</span><span class="n">make_lightcurve</span><span class="p">(</span><span class="n">toa</span><span class="o">=</span><span class="n">toa</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_DynamicalPowerspectrum_DynamicalPowerspectrum_tutorial_%5Breal_data%5D_12_0.png" src="../../_images/notebooks_DynamicalPowerspectrum_DynamicalPowerspectrum_tutorial_%5Breal_data%5D_12_0.png" />
+</div>
+</div>
+<hr class="docutils" />
+</section>
+<section id="DynamicPowerspectrum">
+<h1>DynamicPowerspectrum<a class="headerlink" href="#DynamicPowerspectrum" title="Link to this heading">¶</a></h1>
+<p>Let’s create a dynamic powerspectrum with the a segment size of 16s and the powers with a “leahy” normalization</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dynspec</span> <span class="o">=</span> <span class="n">stingray</span><span class="o">.</span><span class="n">DynamicalPowerspectrum</span><span class="p">(</span><span class="n">lc</span><span class="o">=</span><span class="n">lc</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s1">&#39;leahy&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>The dyn_ps attribute stores the power matrix, each column corresponds to the powerspectrum of each segment of the light curve</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dynspec</span><span class="o">.</span><span class="n">dyn_ps</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([[  2.01901704e+00,   2.32485459e+00,   5.14704363e+00, ...,
+          9.76872866e-01,   9.49269045e-01,   4.60522187e+02],
+       [  2.93960257e+00,   2.48892516e+00,   3.39280288e+00, ...,
+          6.23511732e+00,   4.27550837e+00,   1.06261843e+02],
+       [  3.64619904e+00,   1.58266627e+00,   3.42614944e-01, ...,
+          1.16952148e+00,   3.54994270e+00,   4.56956463e+01],
+       ...,
+       [  1.69311108e+00,   5.18784072e-01,   1.57151667e+00, ...,
+          1.09923562e+00,   3.40274378e-01,   2.53108287e+00],
+       [  2.95675687e-01,   2.47939959e+00,   2.84930818e+00, ...,
+          2.99674579e-01,   1.48585951e+00,   7.49068264e+00],
+       [  8.84156884e-01,   1.65514790e+00,   4.17385519e-01, ...,
+          7.54942692e+00,   9.99801389e-01,   2.03835451e-01]])
+</pre></div></div>
+</div>
+<p>To plot the DynamicalPowerspectrum matrix, we use the attributes <code class="docutils literal notranslate"><span class="pre">time</span></code> and <code class="docutils literal notranslate"><span class="pre">freq</span></code> to set the extend of the image axis. have a look at the documentation of matplotlib’s <code class="docutils literal notranslate"><span class="pre">imshow()</span></code>.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">extent</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">time</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">time</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">freq</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">freq</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">dyn_ps</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s2">&quot;lower left&quot;</span><span class="p">,</span> <span class="n">aspect</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mf">1.98</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mf">3.0</span><span class="p">,</span>
+           <span class="n">interpolation</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="n">extent</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">700</span><span class="p">,</span><span class="mi">850</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(700, 850)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_DynamicalPowerspectrum_DynamicalPowerspectrum_tutorial_%5Breal_data%5D_20_1.png" src="../../_images/notebooks_DynamicalPowerspectrum_DynamicalPowerspectrum_tutorial_%5Breal_data%5D_20_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The dynamical powerspectrun has </span><span class="si">{}</span><span class="s2"> frequency bins and </span><span class="si">{}</span><span class="s2"> time bins&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">freq</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">time</span><span class="p">)))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+The dynamical powerspectrun has 65535 frequency bins and 104 time bins
+</pre></div></div>
+</div>
+<hr class="docutils" />
+<p># Rebinning in Frequency</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The current frequency resolution is </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">df</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+The current frequency resolution is 0.0625
+</pre></div></div>
+</div>
+<p>Let’s rebin to a frequency resolution of 2 Hz and using the average of the power</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dynspec</span><span class="o">.</span><span class="n">rebin_frequency</span><span class="p">(</span><span class="n">df_new</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;average&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The new frequency resolution is </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">df</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+The new frequency resolution is 2.0
+</pre></div></div>
+</div>
+<p>Let’s see how the Dynamical Powerspectrum looks now</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">extent</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">time</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">time</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">freq</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">freq</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">dyn_ps</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s2">&quot;lower&quot;</span><span class="p">,</span> <span class="n">aspect</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mf">1.98</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mf">3.0</span><span class="p">,</span>
+           <span class="n">interpolation</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="n">extent</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(500, 1000)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_DynamicalPowerspectrum_DynamicalPowerspectrum_tutorial_%5Breal_data%5D_29_1.png" src="../../_images/notebooks_DynamicalPowerspectrum_DynamicalPowerspectrum_tutorial_%5Breal_data%5D_29_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">extent</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">time</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">time</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">freq</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">freq</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">dyn_ps</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s2">&quot;lower&quot;</span><span class="p">,</span> <span class="n">aspect</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mf">3.0</span><span class="p">,</span>
+           <span class="n">interpolation</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="n">extent</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">700</span><span class="p">,</span><span class="mi">850</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(700, 850)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_DynamicalPowerspectrum_DynamicalPowerspectrum_tutorial_%5Breal_data%5D_30_1.png" src="../../_images/notebooks_DynamicalPowerspectrum_DynamicalPowerspectrum_tutorial_%5Breal_data%5D_30_1.png" />
+</div>
+</div>
+</section>
+<section id="Rebin-time">
+<h1>Rebin time<a class="headerlink" href="#Rebin-time" title="Link to this heading">¶</a></h1>
+<p>Let’s try to improve the visualization by rebinnin our matrix in the time axis</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The current time resolution is </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">dt</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+The current time resolution is 16.0
+</pre></div></div>
+</div>
+<p>Let’s rebin to a time resolution of 64 s</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dynspec</span><span class="o">.</span><span class="n">rebin_time</span><span class="p">(</span><span class="n">dt_new</span><span class="o">=</span><span class="mf">64.0</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;average&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The new time resolution is </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">dt</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+The new time resolution is 64.0
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">extent</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">time</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">time</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">freq</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">freq</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">dyn_ps</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s2">&quot;lower&quot;</span><span class="p">,</span> <span class="n">aspect</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mf">3.0</span><span class="p">,</span>
+           <span class="n">interpolation</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="n">extent</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">700</span><span class="p">,</span><span class="mi">850</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(700, 850)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_DynamicalPowerspectrum_DynamicalPowerspectrum_tutorial_%5Breal_data%5D_37_1.png" src="../../_images/notebooks_DynamicalPowerspectrum_DynamicalPowerspectrum_tutorial_%5Breal_data%5D_37_1.png" />
+</div>
+</div>
+</section>
+<section id="Trace-maximun">
+<h1>Trace maximun<a class="headerlink" href="#Trace-maximun" title="Link to this heading">¶</a></h1>
+<p>Let’s use the method <code class="docutils literal notranslate"><span class="pre">trace_maximum()</span></code> to find the index of the maximum on each powerspectrum in a certain frequency range. For example, between 755 and 782Hz)</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">tracing</span> <span class="o">=</span> <span class="n">dynspec</span><span class="o">.</span><span class="n">trace_maximum</span><span class="p">(</span><span class="n">min_freq</span><span class="o">=</span><span class="mi">755</span><span class="p">,</span> <span class="n">max_freq</span><span class="o">=</span><span class="mi">782</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>This is how the trace function looks like</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">dynspec</span><span class="o">.</span><span class="n">freq</span><span class="p">[</span><span class="n">tracing</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_DynamicalPowerspectrum_DynamicalPowerspectrum_tutorial_%5Breal_data%5D_42_0.png" src="../../_images/notebooks_DynamicalPowerspectrum_DynamicalPowerspectrum_tutorial_%5Breal_data%5D_42_0.png" />
+</div>
+</div>
+<p>Let’s plot it on top of the dynamic spectrum</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">extent</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">time</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">time</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">freq</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">freq</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">dyn_ps</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s2">&quot;lower&quot;</span><span class="p">,</span> <span class="n">aspect</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mf">3.0</span><span class="p">,</span>
+           <span class="n">interpolation</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="n">extent</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">740</span><span class="p">,</span><span class="mi">800</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">dynspec</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">dynspec</span><span class="o">.</span><span class="n">freq</span><span class="p">[</span><span class="n">tracing</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_DynamicalPowerspectrum_DynamicalPowerspectrum_tutorial_%5Breal_data%5D_44_0.png" src="../../_images/notebooks_DynamicalPowerspectrum_DynamicalPowerspectrum_tutorial_%5Breal_data%5D_44_0.png" />
+</div>
+</div>
+<p>The spike at 400 Hz is probably a statistical fluctutations, tracing by the maximum power can be dangerous!</p>
+<p>We will implement better methods in the future, stay tunned ;)</p>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Dynamical Power Spectra (on real data)</a></li>
+<li><a class="reference internal" href="#All-starts-with-a-lightcurve..">All starts with a lightcurve..</a></li>
+<li><a class="reference internal" href="#DynamicPowerspectrum">DynamicPowerspectrum</a></li>
+<li><a class="reference internal" href="#Rebin-time">Rebin time</a></li>
+<li><a class="reference internal" href="#Trace-maximun">Trace maximun</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/DynamicalPowerspectrum/DynamicalPowerspectrum_tutorial_[real_data].ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2024, Stingray Developers.<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 7.2.6. &nbsp;
+    Last built 13 Mar 2024. <br/>
+  </p>
+</footer>
+  </body>
+</html>

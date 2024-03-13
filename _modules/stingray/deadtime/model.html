@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>stingray.deadtime.model &#8212; stingray v2.0.1.dev31+ge4e477ca</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/bootstrap-astropy.css?v=9d21690f" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=eafc0fe6" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=2afd17ea" />
+    
+    <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../../_static/documentation_options.js?v=e29c89f2"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script type="text/javascript" src="../../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../../index.html">stingray v2.0.1.dev31+ge4e477ca</a>
+	 &#187;
+      </li>
+      <li><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for stingray.deadtime.model</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">stingray.utils</span> <span class="kn">import</span> <span class="n">njit</span><span class="p">,</span> <span class="n">prange</span>
+<span class="kn">from</span> <span class="nn">stingray.loggingconfig</span> <span class="kn">import</span> <span class="n">setup_logger</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">scipy.special</span> <span class="kn">import</span> <span class="n">factorial</span>
+
+
+<span class="n">__FACTORIALS</span> <span class="o">=</span> <span class="n">factorial</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">160</span><span class="p">))</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">setup_logger</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="r_in">
+<a class="viewcode-back" href="../../../api.html#stingray.deadtime.model.r_in">[docs]</a>
+<span class="k">def</span> <span class="nf">r_in</span><span class="p">(</span><span class="n">td</span><span class="p">,</span> <span class="n">r_0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate incident countrate given dead time and detected countrate.&quot;&quot;&quot;</span>
+    <span class="n">tau</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">r_0</span>
+    <span class="k">return</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">tau</span> <span class="o">-</span> <span class="n">td</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="r_det">
+<a class="viewcode-back" href="../../../api.html#stingray.deadtime.model.r_det">[docs]</a>
+<span class="k">def</span> <span class="nf">r_det</span><span class="p">(</span><span class="n">td</span><span class="p">,</span> <span class="n">r_i</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate detected countrate given dead time and incident countrate.&quot;&quot;&quot;</span>
+    <span class="n">tau</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">r_i</span>
+    <span class="k">return</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">tau</span> <span class="o">+</span> <span class="n">td</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="Gn">
+<a class="viewcode-back" href="../../../api.html#stingray.deadtime.model.Gn">[docs]</a>
+<span class="nd">@njit</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">Gn</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Term in Eq. 34 in Zhang+95.&quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="n">l</span><span class="p">)</span> <span class="o">/</span> <span class="n">__FACTORIALS</span><span class="p">[</span><span class="n">l</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="o">**</span><span class="n">l</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="n">s</span></div>
+
+
+
+<div class="viewcode-block" id="heaviside">
+<a class="viewcode-back" href="../../../api.html#stingray.deadtime.model.heaviside">[docs]</a>
+<span class="nd">@njit</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">heaviside</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Heaviside function. Returns 1 if x&gt;0, and 0 otherwise.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; heaviside(2)</span>
+<span class="sd">    1</span>
+<span class="sd">    &gt;&gt;&gt; heaviside(-1)</span>
+<span class="sd">    0</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span></div>
+
+
+
+<div class="viewcode-block" id="h">
+<a class="viewcode-back" href="../../../api.html#stingray.deadtime.model.h">[docs]</a>
+<span class="nd">@njit</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">h</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Term in Eq. 35 in Zhang+95.&quot;&quot;&quot;</span>
+    <span class="c1"># Typo in Zhang+95 corrected. k * tb, not k * td</span>
+    <span class="k">if</span> <span class="n">k</span> <span class="o">*</span> <span class="n">tb</span> <span class="o">&lt;</span> <span class="n">n</span> <span class="o">*</span> <span class="n">td</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+    <span class="k">return</span> <span class="n">k</span> <span class="o">-</span> <span class="n">n</span> <span class="o">*</span> <span class="p">(</span><span class="n">td</span> <span class="o">+</span> <span class="n">tau</span><span class="p">)</span> <span class="o">/</span> <span class="n">tb</span> <span class="o">+</span> <span class="n">tau</span> <span class="o">/</span> <span class="n">tb</span> <span class="o">*</span> <span class="n">Gn</span><span class="p">((</span><span class="n">k</span> <span class="o">*</span> <span class="n">tb</span> <span class="o">-</span> <span class="n">n</span> <span class="o">*</span> <span class="n">td</span><span class="p">)</span> <span class="o">/</span> <span class="n">tau</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span></div>
+
+
+
+<span class="n">INFINITE</span> <span class="o">=</span> <span class="mi">100</span>
+
+
+<div class="viewcode-block" id="A0">
+<a class="viewcode-back" href="../../../api.html#stingray.deadtime.model.A0">[docs]</a>
+<span class="nd">@njit</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">A0</span><span class="p">(</span><span class="n">r0</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Term in Eq. 38 in Zhang+95.&quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">INFINITE</span><span class="p">):</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="n">h</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">r0</span> <span class="o">*</span> <span class="n">tb</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">s</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="A">
+<a class="viewcode-back" href="../../../api.html#stingray.deadtime.model.A">[docs]</a>
+<span class="nd">@njit</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">A</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">r0</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Term in Eq. 39 in Zhang+95.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">A0</span><span class="p">(</span><span class="n">r0</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">)</span>
+    <span class="c1"># Equation 39</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">INFINITE</span><span class="p">):</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="n">h</span><span class="p">(</span><span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">)</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">h</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">)</span> <span class="o">+</span> <span class="n">h</span><span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">r0</span> <span class="o">*</span> <span class="n">tb</span> <span class="o">*</span> <span class="n">s</span></div>
+
+
+
+<div class="viewcode-block" id="check_A">
+<a class="viewcode-back" href="../../../api.html#stingray.deadtime.model.check_A">[docs]</a>
+<span class="k">def</span> <span class="nf">check_A</span><span class="p">(</span><span class="n">rate</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">max_k</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">save_to</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test that A is well-behaved.</span>
+
+<span class="sd">    Check that Ak -&gt;r0**2tb**2 for k-&gt;infty, as per Eq. 43 in</span>
+<span class="sd">    Zhang+95.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tau</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">rate</span>
+    <span class="n">r0</span> <span class="o">=</span> <span class="n">r_det</span><span class="p">(</span><span class="n">td</span><span class="p">,</span> <span class="n">rate</span><span class="p">)</span>
+
+    <span class="n">value</span> <span class="o">=</span> <span class="n">r0</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">tb</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_k</span><span class="p">):</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">A</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">r0</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">),</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;$k$&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;$A_k$&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">save_to</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">save_to</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="B">
+<a class="viewcode-back" href="../../../api.html#stingray.deadtime.model.B">[docs]</a>
+<span class="nd">@njit</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">B</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">r0</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Term in Eq. 45 in Zhang+95.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">A</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">r0</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">)</span> <span class="o">-</span> <span class="n">r0</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">tb</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">r0</span> <span class="o">*</span> <span class="n">tb</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="mi">4</span> <span class="o">*</span> <span class="p">(</span><span class="n">A</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">r0</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">)</span> <span class="o">-</span> <span class="n">r0</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">tb</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">r0</span> <span class="o">*</span> <span class="n">tb</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="safe_B">
+<a class="viewcode-back" href="../../../api.html#stingray.deadtime.model.safe_B">[docs]</a>
+<span class="nd">@njit</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">safe_B</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">r0</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">limit_k</span><span class="o">=</span><span class="mi">60</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Term in Eq. 39 in Zhang+95, with a cut in the maximum k.</span>
+
+<span class="sd">    This can be risky. Only use if B is really 0 for high k.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">k</span> <span class="o">&gt;</span> <span class="n">limit_k</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+    <span class="k">return</span> <span class="n">B</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">r0</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="check_B">
+<a class="viewcode-back" href="../../../api.html#stingray.deadtime.model.check_B">[docs]</a>
+<span class="k">def</span> <span class="nf">check_B</span><span class="p">(</span><span class="n">rate</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">max_k</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">save_to</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check that B-&gt;0 for k-&gt;infty.&quot;&quot;&quot;</span>
+    <span class="n">tau</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">rate</span>
+    <span class="n">r0</span> <span class="o">=</span> <span class="n">r_det</span><span class="p">(</span><span class="n">td</span><span class="p">,</span> <span class="n">rate</span><span class="p">)</span>
+
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_k</span><span class="p">):</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">B</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">r0</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">),</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;$k$&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;$B_k$&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">save_to</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">save_to</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span></div>
+
+
+
+<span class="nd">@njit</span><span class="p">(</span><span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">_inner_loop_pds_zhang</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">r0</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">limit_k</span><span class="o">=</span><span class="mi">60</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the power spectrum, as per Eq. 44 in Zhang+95.&quot;&quot;&quot;</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">N</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">prange</span><span class="p">(</span><span class="n">N</span> <span class="o">//</span> <span class="mi">2</span><span class="p">):</span>
+        <span class="n">eq8_sum</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">N</span><span class="p">):</span>
+            <span class="n">eq8_sum</span> <span class="o">+=</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">N</span> <span class="o">-</span> <span class="n">k</span><span class="p">)</span>
+                <span class="o">/</span> <span class="n">N</span>
+                <span class="o">*</span> <span class="n">safe_B</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">r0</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">limit_k</span><span class="o">=</span><span class="n">limit_k</span><span class="p">)</span>
+                <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">j</span> <span class="o">*</span> <span class="n">k</span> <span class="o">/</span> <span class="n">N</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="n">P</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">safe_B</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">r0</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">)</span> <span class="o">+</span> <span class="n">eq8_sum</span>
+
+    <span class="k">return</span> <span class="n">P</span>
+
+
+<div class="viewcode-block" id="pds_model_zhang">
+<a class="viewcode-back" href="../../../api.html#stingray.deadtime.model.pds_model_zhang">[docs]</a>
+<span class="k">def</span> <span class="nf">pds_model_zhang</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">rate</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">limit_k</span><span class="o">=</span><span class="mi">60</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the dead-time-modified power spectrum.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    N : int</span>
+<span class="sd">        The number of spectral bins</span>
+<span class="sd">    rate : float</span>
+<span class="sd">        Incident count rate</span>
+<span class="sd">    td : float</span>
+<span class="sd">        Dead time</span>
+<span class="sd">    tb : float</span>
+<span class="sd">        Bin time of the light curve</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    limit_k : int</span>
+<span class="sd">        Limit to this value the number of terms in the inner loops of</span>
+<span class="sd">        calculations. Check the plots returned by  the `check_B` and</span>
+<span class="sd">        `check_A` functions to test that this number is adequate.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    freqs : array of floats</span>
+<span class="sd">        Frequency array</span>
+<span class="sd">    power : array of floats</span>
+<span class="sd">        Power spectrum</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tau</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">rate</span>
+    <span class="n">r0</span> <span class="o">=</span> <span class="n">r_det</span><span class="p">(</span><span class="n">td</span><span class="p">,</span> <span class="n">rate</span><span class="p">)</span>
+    <span class="c1"># Nph = N / tau</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Calculating PDS model (update)&quot;</span><span class="p">)</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="n">_inner_loop_pds_zhang</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">r0</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">limit_k</span><span class="o">=</span><span class="n">limit_k</span><span class="p">)</span>
+
+    <span class="n">maxf</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">/</span> <span class="n">tb</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">maxf</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">P</span><span class="p">)</span>
+    <span class="n">freqs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">maxf</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">freqs</span><span class="p">,</span> <span class="n">P</span></div>
+
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2024, Stingray Developers.<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 7.2.6. &nbsp;
+    Last built 13 Mar 2024. <br/>
+  </p>
+</footer>
+  </body>
+</html>
