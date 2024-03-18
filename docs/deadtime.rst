@@ -8,5 +8,5 @@ In this tutorial, we will show the effects of dead time on X-ray observations, a
 .. toctree::
    :maxdepth: 2
 
-   notebooks/Deadtime/Check dead time model in Stingray.ipynb
-   notebooks/Deadtime/Check FAD correction in Stingray.ipynb
+   notebooks/Deadtime/Dead time model in Stingray.ipynb
+   notebooks/Deadtime/FAD correction in Stingray.ipynb

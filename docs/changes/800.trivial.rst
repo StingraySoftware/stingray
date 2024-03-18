@@ -1,0 +1,1 @@
+Dead time model fixes: more stable computations, a friendlier API for the non-paralyzable model, better plotting of check_A and check_B

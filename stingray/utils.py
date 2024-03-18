@@ -140,7 +140,25 @@ __all__ = [
     "nearest_power_of_two",
     "find_nearest",
     "check_isallfinite",
+    "heaviside",
 ]
+
+
+@njit()
+def heaviside(x):
+    """Heaviside function. Returns 1 if x>0, and 0 otherwise.
+
+    Examples
+    --------
+    >>> heaviside(2)
+    1
+    >>> heaviside(-1)
+    0
+    """
+    if x >= 0:
+        return 1
+    else:
+        return 0
 
 
 @njit
