@@ -236,10 +236,6 @@ class TestCCF(object):
         assert np.all(np.isclose(ccf_norm, avg_seg_ccf, atol=0.01))
         assert np.all(np.isclose(error_ccf, np.zeros(shape=error_ccf.shape), atol=0.01))
 
-    def test_get_mean_phase_difference(self):
-        _, a, b, _ = spec.get_parameters(self.ref_aps.lc1.counts, self.ref_aps.lc1.dt, self.model)
-        assert a == b
-
 
 def test_load_lc_fits():
     dt = 0.1
@@ -395,3 +391,31 @@ def test_compute_rms():
 
     with pytest.raises(ValueError):
         spec.compute_rms(cs, model, criteria="filter")
+
+def test_get_mean_phase_difference():
+    counts = [10, 20, 30, 20, 10, 20, 30, 20]
+    dt = 0.1
+    lc = Lightcurve(time=np.arange(len(counts))*dt, counts=counts, dt=dt)
+
+    cs = Crossspectrum(lc, lc)
+    model = models.Lorentz1D(x_0=2.0) + models.Lorentz1D(x_0=4.0)
+
+    avg_psi, stddev = spec.get_mean_phase_difference(cs, model)
+    tol = 1e-5
+    assert np.isclose(avg_psi, 0.0, tol)
+    assert np.isclose(stddev, 0.0, tol)
+
+def test_get_phase_lag():
+    counts = [10, 20, 30, 20, 10, 20, 30, 20]
+    dt = 0.1
+    lc = Lightcurve(time=np.arange(len(counts))*dt, counts=counts, dt=dt)
+
+    cs = Crossspectrum(lc, lc)
+    model = models.Lorentz1D(x_0=2.0) + models.Lorentz1D(x_0=4.0)
+
+    cap_phi_1, cap_phi_2, small_psi = spec.get_phase_lag(cs, model)
+
+    tol = 1e-5
+    assert np.isclose(cap_phi_1, 1.5708, tol)
+    assert np.isclose(cap_phi_2, 3.1416, tol)
+    assert np.isclose(small_psi, 0.0, tol)
