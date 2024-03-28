@@ -4,6 +4,7 @@ import copy
 import pytest
 import numpy as np
 import matplotlib.pyplot as plt
+from astropy.table import Table
 from stingray.base import StingrayObject, StingrayTimeseries
 
 _HAS_XARRAY = importlib.util.find_spec("xarray") is not None
@@ -878,6 +879,14 @@ class TestStingrayTimeseries:
         ts = so.to_astropy_table()
         new_so = StingrayTimeseries.from_astropy_table(ts)
         assert so == new_so
+
+    def test_setting_property_fails(self):
+        ts = Table(dict(time=[1, 2, 3]))
+        ts.meta["exposure"] = 10
+        with pytest.warns(
+            UserWarning, match=r".*protected attribute\(s\) of StingrayTimeseries: exposure"
+        ):
+            StingrayTimeseries.from_astropy_table(ts)
 
     @pytest.mark.parametrize("highprec", [True, False])
     def test_astropy_ts_roundtrip(self, highprec):

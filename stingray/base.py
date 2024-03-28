@@ -421,9 +421,25 @@ class StingrayObject(object):
                 continue
             setattr(cls, attr.lower(), np.array(ts[attr]))
 
+        attributes_left_unchanged = []
         for key, val in ts.meta.items():
-            setattr(cls, key.lower(), val)
+            if (
+                isinstance(getattr(cls.__class__, key.lower(), None), property)
+                and getattr(cls.__class__, key.lower(), None).fset is None
+            ):
+                attributes_left_unchanged.append(key)
+                continue
 
+            setattr(cls, key.lower(), val)
+        if len(attributes_left_unchanged) > 0:
+            # Only warn once, if multiple properties are affected.
+            attrs = ",".join(attributes_left_unchanged)
+            warnings.warn(
+                f"The input table contains protected attribute(s) of StingrayTimeseries: {attrs}. "
+                "These values will not be set in the new object. "
+                "This issue is common when reading from FITS files using `fmt='fits'`."
+                " If this is the case, please consider using `fmt='ogip'` instead."
+            )
         return cls
 
     def to_xarray(self) -> Dataset:
