@@ -387,8 +387,87 @@ class LombScargleCrossspectrum(Crossspectrum):
         raise AttributeError(
             "Object has no attribute named 'from_lc_iterable' ! Not applicable for unevenly sampled data"
         )
+        
+        if self.df is None:
+            self.df = self.freq[1] - self.freq[0]
+
+    
+        
+       
+    def compute_rms(self, min_freq, max_freq, poisson_noise_level=None):
 
 
+        
+        good = (self.freq >= min_freq) & (self.freq <= max_freq)
+
+        M_freq = self.m
+        K_freq = self.k
+
+        if isinstance(self.k, Iterable):
+            K_freq = self.k[good]
+
+        if isinstance(self.m, Iterable):
+            M_freq = self.m[good]
+
+        if poisson_noise_level is None:
+            poisson_noise_unnorm = poisson_level("none", n_ph=self.nphots)
+        else:
+            poisson_noise_unnorm = unnormalize_periodograms(
+                poisson_noise_level, self.dt, self.n, self.nphots, norm=self.norm
+            )
+
+        rms, rmse = get_rms_from_unnorm_periodogram(
+            self.unnorm_power[good],
+            self.nphots,
+            self.df * K_freq,
+            M=M_freq,
+            poisson_noise_unnorm=poisson_noise_unnorm,
+            segment_size=None,
+            kind="frac",
+        )
+
+        return rms, rmse
+    
+    
+    def _rms_error(self, powers):
+        r"""
+        Compute the error on the fractional rms amplitude using error
+        propagation.
+        Note: this uses the actual measured powers, which is not
+        strictly correct. We should be using the underlying power spectrum,
+        but in the absence of an estimate of that, this will have to do.
+
+        .. math::
+
+           r = \sqrt{P}
+
+        .. math::
+
+           \delta r = \\frac{1}{2 * \sqrt{P}} \delta P
+
+        Parameters
+        ----------
+        powers: iterable
+            The list of powers used to compute the fractional rms amplitude.
+
+        Returns
+        -------
+        delta_rms: float
+            The error on the fractional rms amplitude.
+        """
+        nphots = self.nphots
+        p_err = scipy.stats.chi2(2.0 * self.m).var() * powers / self.m / nphots
+
+        rms = np.sum(powers) / nphots
+        pow = np.sqrt(rms)
+
+        drms_dp = 1 / (2 * pow)
+
+        sq_sum_err = np.sqrt(np.sum(p_err**2))
+        delta_rms = sq_sum_err * drms_dp
+        return delta_rms
+
+    
 class LombScarglePowerspectrum(LombScargleCrossspectrum):
     type = "powerspectrum"
     """
