@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 import stingray.utils as utils
-from stingray.utils import HAS_NUMBA
 from scipy.stats import sem
 
 np.random.seed(20150907)

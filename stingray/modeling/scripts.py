@@ -3,7 +3,6 @@ from astropy.modeling import models
 
 from stingray.modeling import PSDParEst, PSDPosterior, PSDLogLikelihood
 from stingray.modeling import GaussianPosterior, GaussianLogLikelihood
-from stingray import Powerspectrum
 
 __all__ = ["fit_powerspectrum", "fit_crossspectrum", "fit_lorentzians"]
 

@@ -1,7 +1,5 @@
 import numpy as np
-import numpy.random as ra
 import scipy.interpolate as sci
-from stingray import Lightcurve
 from stingray.gti import gti_border_bins
 
 

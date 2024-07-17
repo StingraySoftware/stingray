@@ -15,7 +15,6 @@ own module, ``rxte.py``, which contains functions to interpret RXTE data.
 """
 
 import os
-import warnings
 from .rxte import rxte_calibration_func, rxte_pca_event_file_interpretation
 
 

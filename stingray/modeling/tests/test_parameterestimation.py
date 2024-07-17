@@ -7,7 +7,7 @@ import logging
 import pytest
 from astropy.modeling import models
 
-from stingray import Powerspectrum, AveragedPowerspectrum
+from stingray import Powerspectrum
 from stingray.modeling import ParameterEstimation, PSDParEst, OptimizationResults, SamplingResults
 from stingray.modeling import PSDPosterior, set_logprior, PSDLogLikelihood, LogLikelihood
 from stingray.modeling.posterior import fitter_to_model_params

@@ -1,9 +1,6 @@
 import numpy as np
 from scipy.linalg import toeplitz
-import warnings
 import matplotlib.pyplot as plt
-
-from scipy.linalg import hankel
 
 from stingray import lightcurve
 import stingray.utils as utils

@@ -1,12 +1,9 @@
 import numpy as np
 
 import pytest
-import warnings
-import os
 
 from stingray import Lightcurve
 from stingray.bispectrum import Bispectrum
-from stingray.exceptions import StingrayError
 
 import matplotlib.pyplot as plt
 

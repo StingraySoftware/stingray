@@ -11,7 +11,6 @@ from ..io import high_precision_keyword_read
 from ..io import load_events_and_gtis, read_mission_info
 from ..io import read_header_key
 
-import warnings
 
 curdir = os.path.abspath(os.path.dirname(__file__))
 datadir = os.path.join(curdir, "data")

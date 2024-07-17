@@ -1,5 +1,4 @@
 import pickle
-from os import error
 import numpy as np
 import numbers
 import warnings

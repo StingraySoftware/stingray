@@ -1,16 +1,11 @@
-import copy
 import warnings
 from typing import Optional, Union
 
 import numpy as np
-import numpy.typing as npt
-from astropy.timeseries.periodograms import LombScargle
 
 from .crossspectrum import Crossspectrum
 from .events import EventList
-from .exceptions import StingrayError
 from .fourier import impose_symmetry_lsft, lsft_fast, lsft_slow
-from .lightcurve import Lightcurve
 from .utils import simon
 
 

@@ -1,10 +1,6 @@
 import numpy as np
-import copy
-import warnings
 
 import pytest
-from numpy.random import poisson, standard_cauchy
-from scipy.signal import TransferFunction
 
 from stingray import Lightcurve
 from stingray.events import EventList

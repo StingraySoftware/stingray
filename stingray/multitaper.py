@@ -14,7 +14,7 @@ from astropy.timeseries import LombScargle
 
 from .events import EventList
 from .lightcurve import Lightcurve
-from .utils import rebin_data, simon, fft, rfft, rfftfreq
+from .utils import rebin_data, simon, rfft, rfftfreq
 
 try:
     integration_func = np.trapezoid

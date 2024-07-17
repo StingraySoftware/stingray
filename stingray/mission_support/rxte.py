@@ -1,6 +1,5 @@
 import re
 import numpy as np
-from scipy.interpolate import interp1d
 from astropy.time import Time
 from astropy.table import Table
 

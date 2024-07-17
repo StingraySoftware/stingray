@@ -3,8 +3,6 @@ import numpy as np
 from scipy.signal import fftconvolve
 from .ols import prepareh, olsStep, ols, nextprod
 
-from stingray.utils import fft, fftfreq, fftn, ifftn, HAS_PYFFTW
-
 
 @pytest.mark.skipif("not HAS_PYFFTW")
 def testPyFFTW_complex():

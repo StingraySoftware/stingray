@@ -6,7 +6,6 @@ from collections.abc import Iterable
 
 np.seterr("warn")
 
-from scipy.special import gamma as scipy_gamma
 from scipy.special import gammaln as scipy_gammaln
 
 try:
@@ -16,7 +15,6 @@ except ImportError:
 
 from astropy.modeling import models
 
-from stingray import Lightcurve, Powerspectrum
 from stingray.utils import assign_if_not_finite
 
 

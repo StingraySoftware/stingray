@@ -7,7 +7,7 @@ import copy
 from astropy.io import fits
 from .utils import contiguous_regions, jit, HAS_NUMBA
 from .utils import assign_value_if_none, apply_function_if_none
-from .utils import check_iterables_close, is_sorted
+from .utils import is_sorted
 from stingray.exceptions import StingrayError
 from stingray.loggingconfig import setup_logger
 

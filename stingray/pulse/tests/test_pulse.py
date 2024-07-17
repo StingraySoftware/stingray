@@ -2,14 +2,13 @@ import numpy as np
 from stingray.pulse import fold_events, get_TOA, phase_exposure
 from stingray.pulse import ef_profile_stat, z_n, pulse_phase
 from stingray.pulse import pdm_profile_stat
-from stingray.pulse import z_n, z_n_events, z_n_binned_events, z_n_gauss, htest
+from stingray.pulse import z_n, htest
 from stingray.pulse import z_n_events_all, z_n_binned_events_all, z_n_gauss_all
 from stingray.pulse import get_orbital_correction_from_ephemeris_file, p_to_f
 from stingray.pulse import HAS_PINT
 import pytest
 import os
 import warnings
-import matplotlib.pyplot as plt
 
 
 def _template_fun(phase, ph0, amplitude, baseline=0):
