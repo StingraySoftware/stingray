@@ -140,7 +140,7 @@ def _estimate_source_cr_marginalised(
 def _calculate_bexvar(log_src_crs_grid, pdfs):
     """
     Assumes that the source count rate is log-normal distributed.
-    Returns posterior samples of Bayesian excess varience(bexvar)
+    Returns posterior samples of Bayesian excess variance(bexvar)
     (i.e. standard deviation of that distribution).
 
     Parameters
@@ -206,7 +206,7 @@ def bexvar(time, time_del, src_counts, bg_counts=None, bg_ratio=None, frac_exp=N
     src_counts : iterable, `:class:numpy.array` or `:class:List` of floats
         A list or array of counts observed from source region in each bin.
 
-        **Note**: Each element of ``src_counts`` is a number of counts registerd in each time bin.
+        **Note**: Each element of ``src_counts`` is a number of counts registered in each time bin.
         They are not counts per seconds in each bin.
         The elements of this array are expected to be zero or positive integers
         or positive finite floats with integral values.
@@ -230,7 +230,7 @@ def bexvar(time, time_del, src_counts, bg_counts=None, bg_ratio=None, frac_exp=N
     Returns
     -------
     posterior_log_sigma_src_cr : iterable, `:class:numpy.array` of floats
-        An array of posterior samples of Bayesian excess varience (bexvar).
+        An array of posterior samples of Bayesian excess variance (bexvar).
     """
 
     if not np.all(

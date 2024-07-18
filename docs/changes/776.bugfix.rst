@@ -1,1 +1,0 @@
-Fixed subcs duplication by adding a check in the for loop that copies the attributes from table's meta items.

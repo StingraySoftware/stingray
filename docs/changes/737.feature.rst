@@ -1,2 +1,0 @@
-- Implemented the Lomb Scargle Fourier Transform (fast and slow versions)
-- Using which wrote the corresponding :class:`LombScargleCrossspectrum` and :class:`LombScarglePowerspectrum`

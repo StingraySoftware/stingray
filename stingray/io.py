@@ -1,8 +1,8 @@
-import logging
 import math
 import copy
 import os
-import pickle
+import sys
+import traceback
 import warnings
 from collections.abc import Iterable
 
@@ -11,11 +11,26 @@ from astropy.io import fits
 from astropy.table import Table
 from astropy.logger import AstropyUserWarning
 import matplotlib.pyplot as plt
+from astropy.io import fits as pf
 
 import stingray.utils as utils
+from stingray.loggingconfig import setup_logger
 
-from .utils import assign_value_if_none, is_string, order_list_of_arrays, is_sorted
+from .utils import (
+    assign_value_if_none,
+    is_string,
+    order_list_of_arrays,
+    is_sorted,
+    make_dictionary_lowercase,
+)
 from .gti import get_gti_from_all_extensions, load_gtis
+
+from .mission_support import (
+    read_mission_info,
+    rough_calibration,
+    get_rough_conversion_function,
+    mission_specific_event_interpretation,
+)
 
 # Python 3
 import pickle
@@ -28,48 +43,67 @@ except ImportError:
     _H5PY_INSTALLED = False
 
 
-def rough_calibration(pis, mission):
-    """Make a rough conversion betwenn PI channel and energy.
+HAS_128 = True
+try:
+    np.float128
+except AttributeError:  # pragma: no cover
+    HAS_128 = False
 
-    Only works for NICER, NuSTAR, and XMM.
+logger = setup_logger()
+
+
+def read_rmf(rmf_file):
+    """Load RMF info.
+
+    .. note:: Preliminary: only EBOUNDS are read.
 
     Parameters
     ----------
-    pis: float or array of floats
-        PI channels in data
-    mission: str
-        Mission name
+    rmf_file : str
+        The rmf file used to read the calibration.
 
     Returns
     -------
-    energies : float or array of floats
-        Energy values
-
-    Examples
-    --------
-    >>> rough_calibration(0, 'nustar')
-    1.6
-    >>> rough_calibration(0.0, 'ixpe')
-    0.0
-    >>> # It's case-insensitive
-    >>> rough_calibration(1200, 'XMm')
-    1.2
-    >>> rough_calibration(10, 'asDf')
-    Traceback (most recent call last):
-        ...
-    ValueError: Mission asdf not recognized
-    >>> rough_calibration(100, 'nicer')
-    1.0
+    pis : array-like
+        the PI channels
+    e_mins : array-like
+        the lower energy bound of each PI channel
+    e_maxs : array-like
+        the upper energy bound of each PI channel
     """
-    if mission.lower() == "nustar":
-        return pis * 0.04 + 1.6
-    elif mission.lower() == "xmm":
-        return pis * 0.001
-    elif mission.lower() == "nicer":
-        return pis * 0.01
-    elif mission.lower() == "ixpe":
-        return pis / 375 * 15
-    raise ValueError(f"Mission {mission.lower()} not recognized")
+
+    with pf.open(rmf_file, checksum=True, memmap=False) as lchdulist:
+        lchdulist.verify("warn")
+        lctable = lchdulist["EBOUNDS"].data
+        pis = np.array(lctable.field("CHANNEL"))
+        e_mins = np.array(lctable.field("E_MIN"))
+        e_maxs = np.array(lctable.field("E_MAX"))
+
+    return pis, e_mins, e_maxs
+
+
+def pi_to_energy(pis, rmf_file):
+    """Read the energy channels corresponding to the given PI channels.
+
+    Parameters
+    ----------
+    pis : array-like
+        The channels to lookup in the rmf
+
+    Other Parameters
+    ----------------
+    rmf_file : str
+        The rmf file used to read the calibration.
+    """
+    calp, cal_emin, cal_emax = read_rmf(rmf_file)
+    es = np.zeros(len(pis), dtype=float)
+    for ic, c in enumerate(calp):
+        good = pis == c
+        if not np.any(good):
+            continue
+        es[good] = (cal_emin[ic] + cal_emax[ic]) / 2
+
+    return es
 
 
 def get_file_extension(fname):
@@ -133,70 +167,6 @@ def high_precision_keyword_read(hdr, keyword):
         return None
 
 
-def _patch_mission_info(info, mission=None):
-    """Add some information that is surely missing in xselect.mdb.
-
-    Examples
-    --------
-    >>> info = {'gti': 'STDGTI'}
-    >>> new_info = _patch_mission_info(info, mission=None)
-    >>> new_info['gti'] == info['gti']
-    True
-    >>> new_info = _patch_mission_info(info, mission="xmm")
-    >>> new_info['gti']
-    'STDGTI,GTI0'
-    """
-    if mission is None:
-        return info
-    if mission.lower() == "xmm" and "gti" in info:
-        info["gti"] += ",GTI0"
-    return info
-
-
-def read_mission_info(mission=None):
-    """Search the relevant information about a mission in xselect.mdb."""
-    curdir = os.path.abspath(os.path.dirname(__file__))
-    fname = os.path.join(curdir, "datasets", "xselect.mdb")
-
-    # If HEADAS is defined, search for the most up-to-date version of the
-    # mission database
-    if os.getenv("HEADAS"):
-        hea_fname = os.path.join(os.getenv("HEADAS"), "bin", "xselect.mdb")
-        if os.path.exists(hea_fname):
-            fname = hea_fname
-    if mission is not None:
-        mission = mission.lower()
-
-    db = {}
-    with open(fname) as fobj:
-        for line in fobj.readlines():
-            line = line.strip()
-            if mission is not None and not line.lower().startswith(mission):
-                continue
-            if line.startswith("!") or line == "":
-                continue
-            allvals = line.split()
-            string = allvals[0]
-            value = allvals[1:]
-            if len(value) == 1:
-                value = value[0]
-
-            data = string.split(":")[:]
-            if mission is None:
-                if data[0] not in db:
-                    db[data[0]] = {}
-                previous_db_step = db[data[0]]
-            else:
-                previous_db_step = db
-            data = data[1:]
-            for key in data[:-1]:
-                if key not in previous_db_step:
-                    previous_db_step[key] = {}
-                previous_db_step = previous_db_step[key]
-            previous_db_step[data[-1]] = value
-    return _patch_mission_info(db, mission)
-
-
 def _case_insensitive_search_in_list(string, list_of_strings):
     """Search for a string in a list of strings, in a case-insensitive way.
 
@@ -204,8 +174,7 @@ def _case_insensitive_search_in_list(string, list_of_strings):
     -------
     >>> _case_insensitive_search_in_list("a", ["A", "b"])
     'A'
-    >>> _case_insensitive_search_in_list("a", ["c", "b"]) is None
-    True
+    >>> assert _case_insensitive_search_in_list("a", ["c", "b"]) is None
     """
     for s in list_of_strings:
         if string.lower() == s.lower():
@@ -294,16 +263,22 @@ def get_key_from_mission_info(info, key, default, inst=None, mode=None):
     >>> get_key_from_mission_info(info, "ghghg", "BU", inst="C", mode="M1")
     'BU'
     """
-    filt_info = copy.deepcopy(info)
-    if inst is not None and inst in filt_info:
-        filt_info.update(info[inst])
-        filt_info.pop(inst)
-    if mode is not None and mode in filt_info:
-        filt_info.update(info[inst][mode])
-        filt_info.pop(mode)
+    filt_info = make_dictionary_lowercase(info, recursive=True)
+    key = key.lower()
+    if inst is not None:
+        inst = inst.lower()
+        if inst in filt_info:
+            filt_info.update(filt_info[inst])
+            filt_info.pop(inst)
+    if mode is not None:
+        mode = mode.lower()
+        if mode in filt_info:
+            filt_info.update(filt_info[mode])
+            filt_info.pop(mode)
 
     if key in filt_info:
         return filt_info[key]
+
     return default
 
 
@@ -388,7 +363,7 @@ def lcurve_from_fits(
     except Exception:  # pragma: no cover
         raise (Exception("TSTART and TSTOP need to be specified"))
 
-    # For nulccorr lcs this whould work
+    # For nulccorr lcs this would work
 
     timezero = high_precision_keyword_read(lchdulist[ratehdu].header, "TIMEZERO")
     # Sometimes timezero is "from tstart", sometimes it's an absolute time.
@@ -404,7 +379,7 @@ def lcurve_from_fits(
         timezero = Time(2440000.5 + timezero, scale="tdb", format="jd")
         tstart = Time(2440000.5 + tstart, scale="tdb", format="jd")
         tstop = Time(2440000.5 + tstop, scale="tdb", format="jd")
-        # if None, use NuSTAR defaulf MJDREF
+        # if None, use NuSTAR default MJDREF
         mjdref = assign_value_if_none(
             mjdref,
             Time(np.longdouble("55197.00076601852"), scale="tdb", format="mjd"),
@@ -581,6 +556,10 @@ def load_events_and_gtis(
         mission_key = "TELESCOP"
     mission = probe_header[mission_key].lower()
 
+    mission_specific_processing = mission_specific_event_interpretation(mission)
+
+    mission_specific_processing(hdulist)
+
     db = read_mission_info(mission)
     instkey = get_key_from_mission_info(db, "instkey", "INSTRUME")
     instr = mode = None
@@ -591,7 +570,8 @@ def load_events_and_gtis(
     if modekey is not None and modekey in probe_header:
         mode = probe_header[modekey].strip()
 
-    gtistring = get_key_from_mission_info(db, "gti", "GTI,STDGTI", instr, mode)
+    if gtistring is None:
+        gtistring = get_key_from_mission_info(db, "gti", "GTI,STDGTI", instr, mode)
     if hduname is None:
         hduname = get_key_from_mission_info(db, "events", "EVENTS", instr, mode)
 
@@ -650,10 +630,12 @@ def load_events_and_gtis(
                 accepted_gtistrings=accepted_gtistrings,
                 det_numbers=det_number,
             )
-        except Exception:  # pragma: no cover
+        except Exception as e:  # pragma: no cover
             warnings.warn(
-                "No extensions found with a valid name. "
-                "Please check the `accepted_gtistrings` values.",
+                (
+                    f"No valid GTI extensions found. \nError: {str(e)}\n"
+                    "GTIs will be set to the entire time series."
+                ),
                 AstropyUserWarning,
             )
             gti_list = np.array([[t_start, t_stop]], dtype=np.longdouble)
@@ -694,11 +676,22 @@ def load_events_and_gtis(
     returns.gti_list = gti_list
     returns.pi_list = pi
     returns.cal_pi_list = cal_pi
+
     if "energy" in additional_data and np.any(additional_data["energy"] > 0.0):
         returns.energy_list = additional_data["energy"]
     else:
         try:
-            returns.energy_list = rough_calibration(cal_pi, mission)
+            func = get_rough_conversion_function(
+                mission, instrument=instr, epoch=t_start / 86400 + mjdref
+            )
+            returns.energy_list = func(cal_pi, detector_id=detector_id)
+            logger.info(
+                f"A default calibration was applied to the {mission} data. "
+                "See io.rough_calibration for details. "
+                "Use the `rmf_file` argument in `EventList.read`, or calibrate with "
+                "`EventList.convert_pi_to_energy(rmf_file)`, if you want to apply a specific "
+                "response matrix"
+            )
         except ValueError:
             returns.energy_list = None
     returns.instr = instr.lower()
@@ -722,16 +715,12 @@ class EventReadOutput:
 
 
 def mkdir_p(path):  # pragma: no cover
-    """Safe ``mkdir`` function, found at [so-mkdir]_.
+    """Safe ``mkdir`` function
 
     Parameters
     ----------
     path : str
         The absolute path to the directory to be created
-
-    Notes
-    -----
-    .. [so-mkdir] http://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python
     """
     import os
 
@@ -790,7 +779,7 @@ def ref_mjd(fits_file, hdu=1):
 
     if isinstance(fits_file, Iterable) and not is_string(fits_file):  # pragma: no cover
         fits_file = fits_file[0]
-        logging.info("opening %s" % fits_file)
+        logger.info("opening %s" % fits_file)
 
     hdulist = fits.open(fits_file, ignore_missing_end=True)
 
@@ -834,7 +823,7 @@ def common_name(str1, str2, default="common"):
     common_str = common_str.lstrip("_").lstrip("-")
     if common_str == "":
         common_str = default
-    logging.debug("common_name: %s %s -> %s" % (str1, str2, common_str))
+    logger.debug("common_name: %s %s -> %s" % (str1, str2, common_str))
     return common_str
 
 
@@ -866,17 +855,13 @@ def split_numbers(number, shift=0):
     --------
     >>> n = 12.34
     >>> i, f = split_numbers(n)
-    >>> i == 12
-    True
-    >>> np.isclose(f, 0.34)
-    True
-    >>> split_numbers(n, 2)
-    (12.34, 0.0)
-    >>> split_numbers(n, -1)
-    (10.0, 2.34)
+    >>> assert i == 12
+    >>> assert np.isclose(f, 0.34)
+    >>> assert np.allclose(split_numbers(n, 2), (12.34, 0.0))
+    >>> assert np.allclose(split_numbers(n, -1), (10.0, 2.34))
     """
     if isinstance(number, Iterable):
-        number = np.asarray(number)
+        number = np.asanyarray(number)
         number *= 10**shift
         mods = [math.modf(n) for n in number]
         number_F = [f for f, _ in mods]
@@ -906,7 +891,7 @@ def savefig(filename, **kwargs):
     kwargs : keyword arguments
         Keyword arguments to be passed to ``savefig`` function of
         ``matplotlib.pyplot``. For example use `bbox_inches='tight'` to
-        remove the undesirable whitepace around the image.
+        remove the undesirable whitespace around the image.
     """
 
     if not plt.fignum_exists(1):
@@ -916,3 +901,83 @@ def savefig(filename, **kwargs):
         )
 
     plt.savefig(filename, **kwargs)
+
+
+def _can_save_longdouble(probe_file: str, fmt: str) -> bool:
+    """Check if a given file format can save tables with longdoubles.
+
+    Try to save a table with a longdouble column, and if it doesn't work, catch the exception.
+    If the exception is related to longdouble, return False (otherwise just raise it, this
+    would mean there are larger problems that need to be solved). In this case, also warn that
+    probably part of the data will not be saved.
+
+    If no exception is raised, return True.
+
+    Parameters
+    ----------
+    probe_file : str
+        The name of the file to be used for probing
+    fmt : str
+        The format to be used for probing, in the ``format`` argument of ``Table.write``
+
+    Returns
+    -------
+    yes_it_can : bool
+        Whether the format can serialize the metadata
+    """
+    if not HAS_128:  # pragma: no cover
+        # There are no known issues with saving longdoubles where numpy.float128 is not defined
+        return True
+
+    try:
+        Table({"a": np.arange(0, 3, 1.212314).astype(np.float128)}).write(
+            probe_file, format=fmt, overwrite=True
+        )
+        yes_it_can = True
+        os.unlink(probe_file)
+    except ValueError as e:
+        if "float128" not in str(e):  # pragma: no cover
+            raise
+        warnings.warn(
+            f"{fmt} output does not allow saving metadata at maximum precision. "
+            "Converting to lower precision"
+        )
+        yes_it_can = False
+    return yes_it_can
+
+
+def _can_serialize_meta(probe_file: str, fmt: str) -> bool:
+    """
+    Try to save a table with meta to be serialized, and if it doesn't work, catch the exception.
+    If the exception is related to serialization, return False (otherwise just raise it, this
+    would mean there are larger problems that need to be solved). In this case, also warn that
+    probably part of the data will not be saved.
+
+    If no exception is raised, return True.
+
+    Parameters
+    ----------
+    probe_file : str
+        The name of the file to be used for probing
+    fmt : str
+        The format to be used for probing, in the ``format`` argument of ``Table.write``
+
+    Returns
+    -------
+    yes_it_can : bool
+        Whether the format can serialize the metadata
+    """
+    try:
+        Table({"a": [3]}).write(probe_file, overwrite=True, format=fmt, serialize_meta=True)
+
+        os.unlink(probe_file)
+        yes_it_can = True
+    except TypeError as e:
+        if "serialize_meta" not in str(e):  # pragma: no cover
+            raise
+        warnings.warn(
+            f"{fmt} output does not serialize the metadata at the moment. "
+            "Some attributes will be lost."
+        )
+        yes_it_can = False
+    return yes_it_can

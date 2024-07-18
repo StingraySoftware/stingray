@@ -5,12 +5,57 @@ Stingray API
 
 Library of Time Series Methods For Astronomical X-ray Data.
 
+Base Class
+==========
+Most `stingray`` classes are subclasses of a single class, :class:`stingray.StingrayObject`, which
+implements most of the I/O functionality and common behavior (e.g. strategies to combine data and
+make operations such as the sum, difference, or negation). This class is not intended to be
+instantiated directly, but rather to be used as a base class for other classes. Any class wanting
+to inherit from :class:`stingray.StingrayObject` should define a ``main_array_attr`` attribute, which
+defines the name of the attribute that will be used to store the "independent variable" main data array.
+For example, for all time series-like objects, the main array is the time array, while for the
+periodograms the main array is the frequency array.
+All arrays sharing the length (not the shape: they might be multi-dimensional!) of the main array are called
+"array attributes" and are accessible through the ``array_attrs`` method.
+When applying a mask or any other selection to a :class:`stingray.StingrayObject`,
+all array attributes are filtered in the same way. Some array-like attributes might have the same length
+by chance, in this case the user or the developer should add these to the ``not_array_attr`` attribute.
+For example, :class:`stingray.StingrayTimeseries` has ``gti`` among the not_array_attrs, since it is an
+array but not related 1-to-1 to the main array, even if in some cases it might happen to have the same numbers
+of elements of the main array, which is ``time``.
+
+StingrayObject
+--------------
+
+.. autoclass:: stingray.StingrayObject
+   :members:
+
+----
+
 Data Classes
 ============
 
 These classes define basic functionality related to common data types and typical methods
 that apply to these data types, including basic read/write functionality. Currently
-implemented are :class:`stingray.Lightcurve` and :class:`stingray.events.EventList`.
+implemented are :class:`stingray.StingrayTimeseries`, :class:`stingray.Lightcurve` and
+:class:`stingray.events.EventList`.
+
+All time series-like data classes inherit from :class:`stingray.StingrayTimeseries`, which
+implements most of the common functionality. The main data array is stored in the ``time``
+attribute.
+Good Time Intervals (GTIs) are stored in the ``gti`` attribute, which is a list of 2-tuples or 2-lists
+containing the start and stop times of each GTI. The ``gti`` attribute is not an array attribute, since
+it is not related 1-to-1 to the main array, even if in some cases it might happen to have the same number
+of elements of the main array. It is by default added to the ``not_array_attr`` attribute.
+
+
+StingrayTimeseries
+------------------
+
+.. autoclass:: stingray.StingrayTimeseries
+   :members:
+
+----
 
 Lightcurve
 ----------
@@ -88,7 +133,7 @@ Dynamical Powerspectrum
 .. autoclass:: stingray.DynamicalPowerspectrum
    :members:
    :inherited-members:
-   
+
 ----
 
 CrossCorrelation
@@ -217,6 +262,16 @@ I/O Functionality
 
 .. automodule:: stingray.io
    :members:
+
+Mission-specific I/O
+--------------------
+
+.. automodule:: stingray.mission_support.missions
+   :members:
+
+.. automodule:: stingray.mission_support.rxte
+   :members:
+
 
 Other Utility Functions
 -----------------------

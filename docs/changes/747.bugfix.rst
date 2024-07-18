@@ -1,1 +1,0 @@
-Changes Crossspectrum.plot() function to plot the actual real and imaginary parts instead of their absolute values.

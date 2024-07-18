@@ -39,8 +39,8 @@ def load_lc_fits(file, counts_type=True):
     meta = lc_fits.meta
     dt = meta["DT"]
 
-    ref = np.asarray(lc_fits["REF"].T, dtype=np.float64)
-    ci = np.asarray(lc_fits["CI"].T, dtype=np.float64)
+    ref = np.asanyarray(lc_fits["REF"].T, dtype=np.float64)
+    ci = np.asanyarray(lc_fits["CI"].T, dtype=np.float64)
 
     if not counts_type:
         print(dt)

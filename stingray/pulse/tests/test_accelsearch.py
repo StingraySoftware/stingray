@@ -107,3 +107,27 @@ class TestAccelsearch(object):
             -self.fdot * self.rescale_fdot,
             atol=2 * self.dfdot * self.rescale_fdot,
         )
+
+    def test_signal_with_gaps(self):
+        with pytest.warns(UserWarning, match="Data contain multiple GTIs."):
+            candidate_table = accelsearch(
+                self.times,
+                self.signal,
+                zmax=10,
+                candidate_file="bubu.csv",
+                delta_z=0.5,
+                gti=[[self.tstart, self.tstart + 10], [self.tstart + 20, self.tstop]],
+                debug=True,
+                interbin=True,
+                nproc=1,
+            )
+        best = np.argmax(candidate_table["power"])
+        assert np.isclose(candidate_table["frequency"][best], self.freq, atol=5 * self.df)
+
+        print(candidate_table["fdot"][best] * self.rescale_fdot, self.fdot * self.rescale_fdot)
+
+        assert np.isclose(
+            candidate_table["fdot"][best] * self.rescale_fdot,
+            self.fdot * self.rescale_fdot,
+            atol=2 * self.dfdot * self.rescale_fdot,
+        )

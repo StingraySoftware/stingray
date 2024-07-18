@@ -142,7 +142,9 @@ class TestVarEnergySpectrum(object):
 
     def test_construct_lightcurves_pi(self):
         events = EventList(
-            [0.09, 0.21, 0.23, 0.32, 0.4, 0.54], pi=np.asarray([0, 0, 0, 0, 1, 1]), gti=[[0, 0.65]]
+            [0.09, 0.21, 0.23, 0.32, 0.4, 0.54],
+            pi=np.asanyarray([0, 0, 0, 0, 1, 1]),
+            gti=[[0, 0.65]],
         )
         vespec = DummyVarEnergy(
             events, [0.0, 10000], (0, 1, 2, "lin"), [0.5, 1.1], use_pi=True, bin_time=0.1
@@ -174,11 +176,11 @@ class TestRmsAndCovSpectrum(object):
 
         cls.bin_time = 0.01
 
-        data = np.load(os.path.join(datadir, "sample_variable_lc.npy"))
+        data = Table.read(os.path.join(datadir, "sample_variable_series.fits"))["data"]
         # No need for huge count rates
         flux = data / 40
         times = np.arange(data.size) * cls.bin_time
-        gti = np.asarray([[0, data.size * cls.bin_time]])
+        gti = np.asanyarray([[0, data.size * cls.bin_time]])
         test_lc = Lightcurve(
             times, flux, err_dist="gauss", gti=gti, dt=cls.bin_time, skip_checks=True
         )
@@ -361,7 +363,7 @@ class TestLagEnergySpectrum(object):
 
         dt = 0.01
         cls.time_lag = 5.0
-        data = np.load(os.path.join(datadir, "sample_variable_lc.npy"))
+        data = Table.read(os.path.join(datadir, "sample_variable_series.fits"))["data"]
         flux = data
         times = np.arange(data.size) * dt
         maxfreq = 0.15 / cls.time_lag
@@ -486,10 +488,11 @@ class TestRoundTrip:
         os.unlink("dummy.hdf5")
         self._check_equal(so, new_so)
 
-    @pytest.mark.parametrize("fmt", ["ascii.ecsv", "fits"])
+    @pytest.mark.parametrize("fmt", ["ascii.ecsv", "ascii", "fits"])
     def test_file_export(self, fmt):
         so = self.vespec
-        so.write("dummy", fmt=fmt)
+        with pytest.warns(UserWarning, match=".* output does not serialize the metadata"):
+            so.write("dummy", fmt=fmt)
         new_so = Table.read("dummy", format=fmt)
         os.unlink("dummy")
         self._check_equal(so, new_so)

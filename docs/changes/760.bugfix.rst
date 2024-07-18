@@ -1,2 +1,0 @@
-+ Fix a bug with segment sizes not exact multiples of dt when dealing with light curves
-+ Fix a bug when light curve segments contain complex values

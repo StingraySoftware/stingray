@@ -82,13 +82,11 @@ def equivalent_gaussian_Nsigma_from_logp(logp):
     >>> log_pvalues = np.log(np.array(pvalues))
     >>> sigmas = np.array([1, 3, 6, 8, 25])
     >>> # Single number
-    >>> np.isclose(equivalent_gaussian_Nsigma_from_logp(log_pvalues[0]),
-    ...            sigmas[0], atol=0.01)
-    True
+    >>> assert np.isclose(equivalent_gaussian_Nsigma_from_logp(log_pvalues[0]),
+    ...                   sigmas[0], atol=0.01)
     >>> # Array
-    >>> np.allclose(equivalent_gaussian_Nsigma_from_logp(log_pvalues),
-    ...             sigmas, atol=0.01)
-    True
+    >>> assert np.allclose(equivalent_gaussian_Nsigma_from_logp(log_pvalues),
+    ...                    sigmas, atol=0.01)
     """
     if logp < -300:
         # print("Extended")
@@ -111,20 +109,15 @@ def equivalent_gaussian_Nsigma(p):
 
     Examples
     --------
-    >>> np.isclose(equivalent_gaussian_Nsigma(0.15865525393145707), 1,
-    ...                                       atol=0.01)
-    True
-    >>> np.isclose(equivalent_gaussian_Nsigma(0.0013498980316301035), 3,
-    ...                                       atol=0.01)
-    True
-    >>> np.isclose(equivalent_gaussian_Nsigma(9.865877e-10), 6,
-    ...                                       atol=0.01)
-    True
-    >>> np.isclose(equivalent_gaussian_Nsigma(6.22096e-16), 8,
-    ...                                       atol=0.01)
-    True
-    >>> np.isclose(equivalent_gaussian_Nsigma(3.0567e-138), 25, atol=0.1)
-    True
+    >>> assert np.isclose(equivalent_gaussian_Nsigma(0.15865525393145707), 1,
+    ...                   atol=0.01)
+    >>> assert np.isclose(equivalent_gaussian_Nsigma(0.0013498980316301035), 3,
+    ...                   atol=0.01)
+    >>> assert np.isclose(equivalent_gaussian_Nsigma(9.865877e-10), 6,
+    ...                   atol=0.01)
+    >>> assert np.isclose(equivalent_gaussian_Nsigma(6.22096e-16), 8,
+    ...                   atol=0.01)
+    >>> assert np.isclose(equivalent_gaussian_Nsigma(3.0567e-138), 25, atol=0.1)
     """
     return equivalent_gaussian_Nsigma_from_logp(np.log(p))
 
@@ -188,11 +181,9 @@ def chi2_logp(chi2, dof):
     ValueError: The number of degrees of freedom cannot be < 2
     >>> # Test that approximate function works as expected. chi2 / dof > 15,
     >>> # but small and safe number in order to compare to scipy.stats
-    >>> np.isclose(chi2_logp(chi2, 2), stats.chi2.logsf(chi2, 2), atol=0.1)
-    True
+    >>> assert np.isclose(chi2_logp(chi2, 2), stats.chi2.logsf(chi2, 2), atol=0.1)
     >>> chi2 = np.array([5, 32])
-    >>> np.allclose(chi2_logp(chi2, 2), stats.chi2.logsf(chi2, 2), atol=0.1)
-    True
+    >>> assert np.allclose(chi2_logp(chi2, 2), stats.chi2.logsf(chi2, 2), atol=0.1)
     """
     if dof < 2:
         raise ValueError("The number of degrees of freedom cannot be < 2")
@@ -737,8 +728,7 @@ def pds_logprobability(level, ntrial=1, n_summed_spectra=1, n_rebin=1):
     >>> ntrial = np.random.randint(1, 10000, 10)
     >>> logp = pds_logprobability(powers, ntrial, nsummed, nrebin)
     >>> p = pds_probability(powers, ntrial, nsummed, nrebin)
-    >>> np.allclose(p, np.exp(logp))
-    True
+    >>> assert np.allclose(p, np.exp(logp))
     """
 
     epsilon_1 = chi2_logp(level * n_summed_spectra * n_rebin, 2 * n_summed_spectra * n_rebin)
@@ -773,10 +763,8 @@ def pds_detection_level(epsilon=0.01, ntrial=1, n_summed_spectra=1, n_rebin=1):
 
     Examples
     --------
-    >>> np.isclose(pds_detection_level(0.1), 4.6, atol=0.1)
-    True
-    >>> np.allclose(pds_detection_level(0.1, n_rebin=[1]), [4.6], atol=0.1)
-    True
+    >>> assert np.isclose(pds_detection_level(0.1), 4.6, atol=0.1)
+    >>> assert np.allclose(pds_detection_level(0.1, n_rebin=[1]), [4.6], atol=0.1)
     """
     epsilon = p_single_trial_from_p_multitrial(epsilon, ntrial)
     epsilon = epsilon.astype(np.double)
@@ -874,7 +862,7 @@ def classical_pvalue(power, nspec):
     # If the power is really big, it's safe to say it's significant,
     # and the p-value will be nearly zero
     if (power * nspec) > 30000:
-        simon("Probability of no signal too miniscule to calculate.")
+        simon("Probability of no signal too minuscule to calculate.")
         return 0.0
 
     else:
@@ -951,8 +939,7 @@ def power_confidence_limits(preal, n=1, c=0.95):
     Examples
     --------
     >>> cl = power_confidence_limits(150, c=0.84)
-    >>> np.allclose(cl, [127, 176], atol=1)
-    True
+    >>> assert np.allclose(cl, [127, 176], atol=1)
     """
     rv = stats.ncx2(2 * n, preal)
     return rv.ppf([1 - c, c])
@@ -999,8 +986,7 @@ def power_upper_limit(pmeas, n=1, c=0.95):
     Examples
     --------
     >>> pup = power_upper_limit(40, 1, 0.99)
-    >>> np.isclose(pup, 75, atol=2)
-    True
+    >>> assert np.isclose(pup, 75, atol=2)
     """
 
     def ppf(x):
@@ -1024,7 +1010,7 @@ def power_upper_limit(pmeas, n=1, c=0.95):
 
 
 def amplitude_upper_limit(pmeas, counts, n=1, c=0.95, fft_corr=False, nyq_ratio=0):
-    """Upper limit on a sinusoidal modulation, given a measured power in the PDS/Z search.
+    r"""Upper limit on a sinusoidal modulation, given a measured power in the PDS/Z search.
 
     Eq. 10 in Vaughan+94 and `a_from_ssig`: they are equivalent but Vaughan+94
     corrects further for the response inside an FFT bin and at frequencies close
@@ -1078,11 +1064,9 @@ def amplitude_upper_limit(pmeas, counts, n=1, c=0.95, fft_corr=False, nyq_ratio=
     --------
     >>> aup = amplitude_upper_limit(40, 30000, 1, 0.99)
     >>> aup_nyq = amplitude_upper_limit(40, 30000, 1, 0.99, nyq_ratio=1)
-    >>> np.isclose(aup_nyq, aup / (2 / np.pi))
-    True
+    >>> assert np.isclose(aup_nyq, aup / (2 / np.pi))
     >>> aup_corr = amplitude_upper_limit(40, 30000, 1, 0.99, fft_corr=True)
-    >>> np.isclose(aup_corr, aup / np.sqrt(0.773))
-    True
+    >>> assert np.isclose(aup_corr, aup / np.sqrt(0.773))
     """
 
     uplim = power_upper_limit(pmeas, n, c)
@@ -1137,8 +1121,7 @@ def pf_upper_limit(*args, **kwargs):
     Examples
     --------
     >>> pfup = pf_upper_limit(40, 30000, 1, 0.99)
-    >>> np.isclose(pfup, 0.13, atol=0.01)
-    True
+    >>> assert np.isclose(pfup, 0.13, atol=0.01)
     """
 
     return pf_from_a(amplitude_upper_limit(*args, **kwargs))
@@ -1218,8 +1201,7 @@ def a_from_ssig(ssig, ncounts):
 
     Examples
     --------
-    >>> a_from_ssig(150, 30000)
-    0.1
+    >>> assert np.isclose(a_from_ssig(150, 30000), 0.1)
     """
     return np.sqrt(2 * ssig / ncounts)
 
@@ -1231,8 +1213,7 @@ def ssig_from_pf(pf, ncounts):
 
     Examples
     --------
-    >>> round(ssig_from_pf(pf_from_a(0.1), 30000), 1)
-    150.0
+    >>> assert round(ssig_from_pf(pf_from_a(0.1), 30000), 1) == 150.0
     """
     a = a_from_pf(pf)
     return ncounts / 2 * a**2
@@ -1245,8 +1226,7 @@ def pf_from_ssig(ssig, ncounts):
 
     Examples
     --------
-    >>> round(a_from_pf(pf_from_ssig(150, 30000)), 1)
-    0.1
+    >>> assert np.isclose(round(a_from_pf(pf_from_ssig(150, 30000)), 1), 0.1)
     """
     a = a_from_ssig(ssig, ncounts)
     return pf_from_a(a)

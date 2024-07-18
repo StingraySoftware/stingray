@@ -14,7 +14,6 @@ datadir = os.path.join(curdir, "data")
 
 
 class TestGTI(object):
-
     """Real unit tests."""
 
     def test_crossgti1(self):
@@ -107,7 +106,7 @@ class TestGTI(object):
         gti = np.array([])
 
         bti = get_btis(gti, start_time=0, stop_time=1)
-        assert np.allclose(bti, np.asarray([[0, 1]]))
+        assert np.allclose(bti, np.asanyarray([[0, 1]]))
 
     def test_bti_fail(self):
         gti = np.array([])

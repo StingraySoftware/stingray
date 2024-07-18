@@ -1,1 +1,0 @@
-Make commits marked as [docs only] skip all CI but the docs build

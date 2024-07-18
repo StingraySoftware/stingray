@@ -1,1 +1,0 @@
-Update tstart and tseg when using Lightcurve.truncate()

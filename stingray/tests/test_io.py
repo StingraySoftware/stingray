@@ -71,11 +71,12 @@ class TestIO(object):
     def test_event_file_read_and_automatic_sort(self):
         """Test event file reading."""
         fname = os.path.join(datadir, "monol_testA_calib.evt")
-        with pytest.warns(AstropyUserWarning, match="No extensions found with a"):
+        with pytest.warns(AstropyUserWarning, match="No valid GTI extensions"):
             evdata = load_events_and_gtis(fname)
         fname_unsrt = os.path.join(datadir, "monol_testA_calib_unsrt.evt")
         with pytest.warns(UserWarning, match="not sorted. Sorting them for you"):
-            evdata_unsrt = load_events_and_gtis(fname_unsrt)
+            with pytest.warns(AstropyUserWarning, match="No valid GTI extensions"):
+                evdata_unsrt = load_events_and_gtis(fname_unsrt)
 
         for attr in "ev_list", "energy_list", "pi_list":
             assert np.allclose(getattr(evdata, attr), getattr(evdata_unsrt, attr))
@@ -88,12 +89,12 @@ class TestIO(object):
         assert np.any(["Column energy not found" in r.message.args[0] for r in record])
         # This is the default calibration for nustar data, as returned
         # from rough_calibration
-        assert np.allclose(vals.energy_list, vals.pi_list * 0.04 + 1.6)
+        assert np.allclose(vals.energy_list, vals.pi_list * 0.04 + 1.62)
 
     def test_event_file_read_additional_energy_cal(self):
         """Test event file reading."""
         fname = os.path.join(datadir, "monol_testA_calib.evt")
-        with pytest.warns(AstropyUserWarning, match="No extensions found with a"):
+        with pytest.warns(AstropyUserWarning, match="No valid GTI extensions"):
             vals = load_events_and_gtis(fname, additional_columns=["energy"])
         # These energies were calibrated with a different calibration than
         # returned from rough_calibration, on purpose! (notice the +1.)
@@ -105,6 +106,22 @@ class TestIO(object):
         with pytest.warns(UserWarning) as record:
             load_events_and_gtis(fname, additional_columns=["PRIOR"])
         assert np.any(["Trying first extension" in r.message.args[0] for r in record])
+
+    def test_event_file_read_rxte(self):
+        """Test event file reading."""
+        fname = os.path.join(datadir, "xte_test.evt.gz")
+        data = load_events_and_gtis(fname)
+        assert data.mission.lower() == "xte"
+
+    def test_event_file_read_rxte_gx(self):
+        """Test event file reading."""
+        fname = os.path.join(datadir, "xte_gx_test.evt.gz")
+        data = load_events_and_gtis(fname)
+        assert data.mission.lower() == "xte"
+        assert np.min(data.pi_list) == 2
+        assert np.max(data.pi_list) == 255
+        assert np.allclose(data.energy_list.min(), 2.06)
+        assert np.allclose(data.energy_list.max(), 117.86)
 
     def test_event_file_read_no_mission(self):
         """Test event file reading."""
@@ -181,3 +198,19 @@ class TestFileFormats(object):
         plt.plot([1, 2, 3])
         savefig("test.png")
         os.unlink("test.png")
+
+
+class TestCalibrate(object):
+    @classmethod
+    def setup_class(cls):
+        curdir = os.path.abspath(os.path.dirname(__file__))
+        cls.datadir = os.path.join(curdir, "data")
+
+        cls.rmf = os.path.join(cls.datadir, "test.rmf")
+
+    def test_calibrate_spectrum(self):
+        from ..io import pi_to_energy
+
+        pis = np.array([1, 2, 3])
+        energies = pi_to_energy(pis, self.rmf)
+        assert np.allclose(energies, [1.66, 1.70, 1.74])

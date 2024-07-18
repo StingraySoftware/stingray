@@ -1,1 +1,0 @@
-Various bugfixes in `gti.py`, and a new function to interpret the mix of multiple GTIs.

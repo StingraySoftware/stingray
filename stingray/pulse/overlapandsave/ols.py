@@ -18,7 +18,7 @@ Features:
 - Supports alternative FFT engines such as PyFFTW
 - Supports reflect-mode (signal assumed to reflect infinitely, instead of 0
   outside its support; useful for avoiding edge effects)
-- Relatively straightforward to paralellize each step of the algorithm
+- Relatively straightforward to parallelize each step of the algorithm
 - Extensively unit-tested
 
 When it can be used as a drop-in replacement for `fftconvolve`:
@@ -66,19 +66,17 @@ def nextpow(a: float, x: float) -> float:
 
     Examples
     --------
-    >>> nextpow(2, 7)
-    8.0
-    >>> nextpow(2, 9)
-    16.0
-    >>> nextpow(5, 20)
-    25.0
-    >>> nextpow(4, 16)
-    16.0
+    >>> assert nextpow(2, 7) == 8.0
+    >>> assert nextpow(2, 9) == 16.0
+    >>> assert nextpow(5, 20) == 25.0
+    >>> assert nextpow(4, 16) == 16.0
     """
     assert x > 0 and a > 1
     if x <= 1:
         return 1.0
-    n = np.ceil(np.math.log(x, a))
+    import math
+
+    n = np.ceil(math.log(x, a))
     p = a ** (n - 1)
     return p if p >= x else a**n
 
@@ -198,7 +196,7 @@ def prepareh(h, nfft: List[int], rfftn=None):
         The FFT-transformed, conjugate filter array
     """
     rfftn = rfftn or np.fft.rfftn
-    return np.conj(rfftn(flip(np.conj(h)), nfft))
+    return np.conj(rfftn(flip(np.conj(h)), nfft, axes=np.arange(len(nfft))))
 
 
 def slice2range(s: slice):
@@ -326,7 +324,7 @@ def olsStep(
     hfftconj : complex array
         filter array, pre-transformed by ``prepareh``
     starts: list of ints
-        Starting indeces for each dimension
+        Starting indices for each dimension
     lengths: list of ints
         Length of interval in each dimension
     nfft: int
@@ -367,7 +365,9 @@ def olsStep(
         for (start, length, nh, border) in zip(starts, lengths, nh, border)
     )
     xpart = padEdges(x, slices, mode=mode, **kwargs)
-    output = irfftn(rfftn(xpart, nfft) * hfftconj, nfft)
+    output = irfftn(
+        rfftn(xpart, nfft, axes=np.arange(len(nfft))) * hfftconj, nfft, axes=np.arange(len(nfft))
+    )
     return output[tuple(slice(0, s) for s in lengths)]
 
 

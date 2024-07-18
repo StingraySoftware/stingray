@@ -12,7 +12,7 @@ If possible, we ask that you cite a DOI corresponding to the specific version of
 
 .. include:: _zenodo.rst
 
-If this isn't possible — for example, because you worked with an unreleased version of the code — you can cite Stingray's `concept DOI <https://help.zenodo.org/faq/#versioning>`__, `10.5281/zenodo.1490116 <https://zenodo.org/record/1490116>`__ (`BibTeX <https://zenodo.org/record/1490116/export/hx>`__), which will always resolve to the latest release.
+If this isn't possible — for example, because you worked with an unreleased version of the code — you can cite Stingray's `concept DOI <https://zenodo.org/help/versioning>`__, `10.5281/zenodo.1490116 <https://zenodo.org/record/1490116>`__ (`BibTeX <https://zenodo.org/record/1490116/export/hx>`__), which will always resolve to the latest release.
 
 Papers
 ======

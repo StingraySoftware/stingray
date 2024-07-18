@@ -1,1 +1,0 @@
-When rms is low, the calculation in compute_rms often gave `NaN`. We now check for this situation and give 0 with an uncertainty as a result.

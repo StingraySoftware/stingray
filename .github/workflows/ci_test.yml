@@ -86,6 +86,12 @@ jobs:
             tox_env: 'py311-test-cov'
             experimental: false
 
+          - name: Mac OS M1, Py3.11
+            os: macos-14
+            python: '3.11'
+            tox_env: 'py311-test'
+            experimental: false
+
           - name: Mac OS, Py3.11
             os: macos-latest
             python: '3.11'
@@ -100,11 +106,19 @@ jobs:
             use_remote_data: true
             experimental: false
 
+          # Test 3.12 with basic optional dependencies installed.
+          - name: Linux, Py3.12 basic dependencies and coverage
+            os: ubuntu-latest
+            python: '3.12'
+            tox_env: 'py312-test-cov'
+            use_remote_data: true
+            experimental: true
+
           # Development version of dependencies
           - name: Linux, Py3.11 with dev versions of dependencies
             os: ubuntu-latest
             python: '3.11'
-            tox_env: 'py311-test-devdeps'
+            tox_env: 'py311-test-devdeps-cov'
             experimental: false
 
           # Test with all optional dependencies installed.
@@ -138,7 +152,7 @@ jobs:
         python-version: ${{ matrix.python }}
     - name: Install base dependencies
       run: |
-        python -m pip install --upgrade pip
+        python -m pip install --upgrade pip setuptools wheel
         python -m pip install tox
     - name: Install system dependencies
       if: "endsWith(matrix.tox_env, 'build_docs')"
@@ -165,5 +179,7 @@ jobs:
     - name: Upload coverage to codecov
       if: "endsWith(matrix.tox_env, '-cov')"
       uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
         file: ./coverage.xml

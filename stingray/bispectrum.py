@@ -179,7 +179,7 @@ class Bispectrum(object):
             self.window_name = window
             self.window = self._get_window()
 
-        # Other Atributes
+        # Other Attributes
         self.lags = None
         self.cum3 = None
         self.freq = None
@@ -257,7 +257,7 @@ class Bispectrum(object):
         toep = toeplitz(col, row)
         rev_signal = np.repeat(rev_signal, [2 * self.maxlag + 1], axis=0)
 
-        # Calulates Cummulant of 1D signal i.e. Lightcurve counts
+        # Calculates Cummulant of 1D signal i.e. Lightcurve counts
         self.cum3 = self.cum3 + np.matmul(np.multiply(toep, rev_signal), toep.transpose())
 
     def _normalize_cumulant3(self):

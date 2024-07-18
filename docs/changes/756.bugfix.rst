@@ -1,1 +1,0 @@
-Changed list comprehension to generator expression to reduce memory usage.

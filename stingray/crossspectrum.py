@@ -6,21 +6,21 @@ import numpy as np
 import scipy
 import scipy.optimize
 import scipy.stats
-from astropy import log
 import matplotlib.pyplot as plt
 
 from stingray.exceptions import StingrayError
-from stingray.gti import bin_intervals_from_gtis, check_gtis, cross_two_gtis
 from stingray.utils import rebin_data, rebin_data_log, simon
 
 from .base import StingrayObject
 from .events import EventList
+from .gti import cross_two_gtis, time_intervals_from_gtis
 from .lightcurve import Lightcurve
-from .utils import show_progress
 from .fourier import avg_cs_from_iterables, error_on_averaged_cross_spectrum
-from .fourier import avg_cs_from_events, poisson_level
-from .fourier import fftfreq, fft, normalize_periodograms, raw_coherence
+from .fourier import avg_cs_from_timeseries, poisson_level
+from .fourier import normalize_periodograms, raw_coherence
 from .fourier import get_flux_iterable_from_segments
+from .fourier import get_rms_from_unnorm_periodogram
+from .power_colors import power_color
 
 from scipy.special import factorial
 
@@ -28,6 +28,7 @@ from scipy.special import factorial
 __all__ = [
     "Crossspectrum",
     "AveragedCrossspectrum",
+    "DynamicalCrossspectrum",
     "cospectra_pvalue",
     "normalize_crossspectrum",
     "time_lag",
@@ -377,7 +378,7 @@ def cospectra_pvalue(power, nspec):
     the data.
 
     Important: the underlying assumption that make this calculation valid
-    is that the powers in the power spectrum follow a Laplace distribution,
+    is that the powers in the cross spectrum follow a Laplace distribution,
     and this requires that:
 
     1. the co-spectrum is normalized according to [Leahy 1983]_
@@ -403,7 +404,7 @@ def cospectra_pvalue(power, nspec):
         the signal-to-noise ratio, i.e. makes the statistical distributions
         of the noise narrower, such that a smaller power might be very
         significant in averaged spectra even though it would not be in a single
-        power spectrum.
+        cross spectrum.
 
     Returns
     -------
@@ -851,7 +852,7 @@ class Crossspectrum(StingrayObject):
 
         for attr in ["power", "power_err"]:
             unnorm_attr = "unnorm_" + attr
-            if not hasattr(self, unnorm_attr):
+            if not hasattr(self, unnorm_attr) or getattr(self, unnorm_attr) is None:
                 continue
             power = normalize_periodograms(
                 getattr(self, unnorm_attr),
@@ -1405,6 +1406,76 @@ class Crossspectrum(StingrayObject):
         )
 
     @staticmethod
+    def from_stingray_timeseries(
+        ts1,
+        ts2,
+        flux_attr,
+        error_flux_attr=None,
+        segment_size=None,
+        norm="none",
+        power_type="all",
+        silent=False,
+        fullspec=False,
+        use_common_mean=True,
+        gti=None,
+    ):
+        """Calculate AveragedCrossspectrum from two light curves
+
+        Parameters
+        ----------
+        ts1 : `stingray.Timeseries`
+            Time series from channel 1
+        ts2 : `stingray.Timeseries`
+            Time series from channel 2
+        flux_attr : `str`
+            What attribute of the time series will be used.
+
+        Other parameters
+        ----------------
+        error_flux_attr : `str`
+            What attribute of the time series will be used as error bar.
+        segment_size : float
+            The length, in seconds, of the light curve segments that will be averaged.
+            Only relevant (and required) for AveragedCrossspectrum
+        norm : str, default "frac"
+            The normalization of the periodogram. "abs" is absolute rms, "frac" is
+            fractional rms, "leahy" is Leahy+83 normalization, and "none" is the
+            unnormalized periodogram
+        use_common_mean : bool, default True
+            The mean of the light curve can be estimated in each interval, or on
+            the full light curve. This gives different results (Alston+2013).
+            Here we assume the mean is calculated on the full light curve, but
+            the user can set ``use_common_mean`` to False to calculate it on a
+            per-segment basis.
+        fullspec : bool, default False
+            Return the full periodogram, including negative frequencies
+        silent : bool, default False
+            Silence the progress bars
+        power_type : str, default 'all'
+            If 'all', give complex powers. If 'abs', the absolute value; if 'real',
+            the real part
+        gti: [[gti0_0, gti0_1], [gti1_0, gti1_1], ...]
+            Good Time intervals. Defaults to the common GTIs from the two input
+            objects. Could throw errors if these GTIs have overlaps with the
+            input object GTIs! If you're getting errors regarding your GTIs,
+            don't  use this and only give GTIs to the input objects before
+            making the cross spectrum.
+        """
+        return crossspectrum_from_timeseries(
+            ts1,
+            ts2,
+            flux_attr=flux_attr,
+            error_flux_attr=error_flux_attr,
+            segment_size=segment_size,
+            norm=norm,
+            power_type=power_type,
+            silent=silent,
+            fullspec=fullspec,
+            use_common_mean=use_common_mean,
+            gti=gti,
+        )
+
+    @staticmethod
     def from_lc_iterable(
         iter_lc1,
         iter_lc2,
@@ -1496,6 +1567,27 @@ class Crossspectrum(StingrayObject):
         ``crossspectrum_from_XXXX`` function, and initialize ``self`` with
         the correct attributes.
         """
+        if segment_size is None and isinstance(data1, StingrayObject):
+            common_gti = cross_two_gtis(data1.gti, data2.gti)
+            data1.gti = common_gti
+            data2.gti = common_gti
+            data1 = data1.apply_gtis(inplace=False)
+            data2 = data2.apply_gtis(inplace=False)
+
+            data1_is_binned = (
+                "counts" in data1.array_attrs() or "_counts" in data1.internal_array_attrs()
+            )
+            data2_is_binned = (
+                "counts" in data2.array_attrs() or "_counts" in data2.internal_array_attrs()
+            )
+
+            if data1_is_binned and data2_is_binned:
+                assert data2.time.size == data1.time.size and np.allclose(
+                    data2.time - data1.time, 0
+                ), "Time arrays are not the same"
+            elif data1_is_binned or data2_is_binned:
+                raise ValueError("Please use input data of the same kind")
+
         if isinstance(data1, EventList):
             spec = crossspectrum_from_events(
                 data1,
@@ -1564,6 +1656,85 @@ class Crossspectrum(StingrayObject):
         self.fullspec = None
         self.k = 1
         return
+
+    def deadtime_correct(
+        self, dead_time, rate, background_rate=0, limit_k=200, n_approx=None, paralyzable=False
+    ):
+        """
+        Correct the power spectrum for dead time effects.
+
+        This correction is based on the formula given in Zhang et al. 2015, assuming
+        a constant dead time for all events.
+        For more advanced dead time corrections, see the FAD method from `stingray.deadtime.fad`
+
+        Parameters
+        ----------
+        dead_time: float
+            The dead time of the detector.
+        rate : float
+            Detected source count rate
+
+        Other Parameters
+        ----------------
+        background_rate : float, default 0
+            Detected background count rate. This is important to estimate when deadtime is given by the
+            combination of the source counts and background counts (e.g. in an imaging X-ray detector).
+        paralyzable: bool, default False
+            If True, the dead time correction is done assuming a paralyzable
+            dead time. If False, the correction is done assuming a non-paralyzable
+            (more common) dead time.
+        limit_k : int, default 200
+            Limit to this value the number of terms in the inner loops of
+            calculations. Check the plots returned by  the `check_B` and
+            `check_A` functions to test that this number is adequate.
+        n_approx : int, default None
+            Number of bins to calculate the model power spectrum. If None, it will use the size of
+            the input frequency array. Relatively simple models (e.g., low count rates compared to
+            dead time) can use a smaller number of bins to speed up the calculation, and the final
+            power values will be interpolated.
+
+        Returns
+        -------
+        spectrum: :class:`Crossspectrum` or derivative.
+            The dead-time corrected spectrum.
+        """
+        # I put it here to avoid circular imports
+        from stingray.deadtime import non_paralyzable_dead_time_model
+
+        if paralyzable:
+            raise NotImplementedError("Paralyzable dead time correction is not implemented yet.")
+
+        model = non_paralyzable_dead_time_model(
+            self.freq,
+            dead_time,
+            rate,
+            bin_time=self.dt,
+            limit_k=limit_k,
+            background_rate=background_rate,
+            n_approx=n_approx,
+        )
+        correction = 2 / model
+        new_spec = copy.deepcopy(self)
+        new_spec.power *= correction
+
+        # Now correct internal attributes for both the spectrum and its possible
+        # sub-spectra (PDSs from single channels, dynamical spectra, etc.)
+        objects = [new_spec]
+        if hasattr(new_spec, "pds1"):
+            objects += [new_spec.pds1, new_spec.pds2]
+
+        for obj in objects:
+            for attr in ["unnorm_power", "power_err", "unnorm_power_err"]:
+                if hasattr(obj, attr):
+                    setattr(obj, attr, getattr(obj, attr) * correction)
+
+        for attr in ["cs_all", "unnorm_cs_all"]:
+            if hasattr(new_spec, attr):
+                dynsp = getattr(new_spec, attr)
+                for i, power in enumerate(dynsp):
+                    dynsp[i] = power * correction
+
+        return new_spec
 
 
 class AveragedCrossspectrum(Crossspectrum):
@@ -1880,6 +2051,442 @@ class AveragedCrossspectrum(Crossspectrum):
         return lag, lag_err
 
 
+class DynamicalCrossspectrum(AveragedCrossspectrum):
+    type = "crossspectrum"
+    """
+    Create a dynamical cross spectrum, also often called a *spectrogram*.
+
+    This class will divide two :class:`Lightcurve` objects into segments of
+    length ``segment_size``, create a cross spectrum for each segment and store
+    all powers in a matrix as a function of both time (using the mid-point of
+    each segment) and frequency.
+
+    This is often used to trace changes in period of a (quasi-)periodic signal
+    over time.
+
+    Parameters
+    ----------
+    data1 : :class:`stingray.Lightcurve` or :class:`stingray.EventList` object
+        The time series or event list from the subject band, or channel, for which
+        the dynamical cross spectrum is to be calculated. If :class:`stingray.EventList`, ``dt``
+        must be specified as well.
+
+    data2 : :class:`stingray.Lightcurve` or :class:`stingray.EventList` object
+        The time series or event list from the reference band, or channel, of the dynamical
+        cross spectrum. If :class:`stingray.EventList`, ``dt`` must be specified as well.
+
+    segment_size : float, default 1
+         Length of the segment of light curve, default value is 1 (in whatever
+         units the ``time`` array in the :class:`Lightcurve`` object uses).
+
+    norm: {"leahy" | "frac" | "abs" | "none" }, optional, default "frac"
+        The normaliation of the periodogram to be used.
+
+    Other Parameters
+    ----------------
+    gti: 2-d float array
+        ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]`` -- Good Time intervals.
+        This choice overrides the GTIs in the single light curves. Use with
+        care, especially if these GTIs have overlaps with the input
+        object GTIs! If you're getting errors regarding your GTIs, don't
+        use this and only give GTIs to the input object before making
+        the cross spectrum.
+
+    sample_time: float
+        Compulsory for input :class:`stingray.EventList` data. The time resolution of the
+        lightcurve that is created internally from the input event lists. Drives the
+        Nyquist frequency.
+
+    Attributes
+    ----------
+    segment_size: float
+        The size of each segment to average. Note that if the total
+        duration of each input object in lc is not an integer multiple
+        of the ``segment_size``, then any fraction left-over at the end of the
+        time series will be lost.
+
+    dyn_ps : np.ndarray
+        The matrix of normalized squared absolute values of Fourier
+        amplitudes. The axis are given by the ``freq``
+        and ``time`` attributes.
+
+    norm: {``leahy`` | ``frac`` | ``abs`` | ``none``}
+        The normalization of the periodogram.
+
+    freq: numpy.ndarray
+        The array of mid-bin frequencies that the Fourier transform samples.
+
+    time: numpy.ndarray
+        The array of mid-point times of each interval used for the dynamical
+        power spectrum.
+
+    df: float
+        The frequency resolution.
+
+    dt: float
+        The time resolution of the dynamical spectrum. It is **not** the time resolution of the
+        input light curve. It is the integration time of each line of the dynamical power
+        spectrum (typically, an integer multiple of ``segment_size``).
+
+    m: int
+        The number of averaged powers in each spectral bin (initially 1, it changes after rebinning).
+    """
+
+    def __init__(self, data1, data2, segment_size, norm="frac", gti=None, sample_time=None):
+        if isinstance(data1, EventList) and sample_time is None:
+            raise ValueError("To pass input event lists, please specify sample_time")
+        elif isinstance(data1, Lightcurve):
+            sample_time = data1.dt
+            if segment_size > data1.tseg:
+                raise ValueError(
+                    "Length of the segment is too long to create "
+                    "any segments of the light curve!"
+                )
+        if segment_size < 2 * sample_time:
+            raise ValueError("Length of the segment is too short to form a light curve!")
+
+        self.segment_size = segment_size
+        self.sample_time = sample_time
+        self.gti = gti
+        self.norm = norm
+
+        self._make_matrix(data1, data2)
+
+    def _make_matrix(self, data1, data2):
+        """
+        Create a matrix of powers for each time step and each frequency step.
+
+        Time increases with row index, frequency with column index.
+
+        Parameters
+        ----------
+        data1 : :class:`Lightcurve` or :class:`EventList`
+            The object providing the subject band/channel for the dynamical
+            cross spectrum.
+        data2 : :class:`Lightcurve` or :class:`EventList`
+            The object providing the reference band for the dynamical
+            cross spectrum.
+        """
+        avg = AveragedCrossspectrum(
+            data1,
+            data2,
+            dt=self.sample_time,
+            segment_size=self.segment_size,
+            norm=self.norm,
+            gti=self.gti,
+            save_all=True,
+        )
+        self.dyn_ps = np.array(avg.cs_all).T
+        conv = avg.cs_all / avg.unnorm_cs_all
+        self.unnorm_conversion = np.nanmean(conv)
+        self.freq = avg.freq
+        current_gti = avg.gti
+        self.nphots1 = avg.nphots1
+        self.nphots2 = avg.nphots2
+
+        tstart, _ = time_intervals_from_gtis(current_gti, self.segment_size)
+
+        self.time = tstart + 0.5 * self.segment_size
+        self.df = avg.df
+        self.dt = self.segment_size
+        self.m = 1
+
+    def rebin_frequency(self, df_new, method="average"):
+        """
+        Rebin the Dynamic Power Spectrum to a new frequency resolution.
+        Rebinning is an in-place operation, i.e. will replace the existing
+        ``dyn_ps`` attribute.
+
+        While the new resolution does not need to be an integer of the previous frequency
+        resolution, be aware that if this is the case, the last frequency bin will be cut
+        off by the fraction left over by the integer division
+
+        Parameters
+        ----------
+        df_new: float
+            The new frequency resolution of the dynamical power spectrum.
+            Must be larger than the frequency resolution of the old dynamical
+            power spectrum!
+
+        method: {"sum" | "mean" | "average"}, optional, default "average"
+            This keyword argument sets whether the powers in the new bins
+            should be summed or averaged.
+        """
+        new_dynspec_object = copy.deepcopy(self)
+        dynspec_new = []
+        for data in self.dyn_ps.T:
+            freq_new, bin_counts, bin_err, step = rebin_data(
+                self.freq, data, dx_new=df_new, method=method
+            )
+            dynspec_new.append(bin_counts)
+
+        new_dynspec_object.freq = freq_new
+        new_dynspec_object.dyn_ps = np.array(dynspec_new).T
+        new_dynspec_object.df = df_new
+        new_dynspec_object.m = int(step) * self.m
+
+        return new_dynspec_object
+
+    def rebin_time(self, dt_new, method="average"):
+        """
+        Rebin the Dynamic Power Spectrum to a new time resolution.
+
+        Note: this is *not* changing the time resolution of the input light
+        curve! ``dt`` is the integration time of each line of the dynamical power
+        spectrum (typically, an integer multiple of ``segment_size``).
+
+        While the new resolution does not need to be an integer of the previous time
+        resolution, be aware that if this is the case, the last time bin will be cut
+        off by the fraction left over by the integer division
+
+        Parameters
+        ----------
+        dt_new: float
+            The new time resolution of the dynamical power spectrum.
+            Must be larger than the time resolution of the old dynamical power
+            spectrum!
+
+        method: {"sum" | "mean" | "average"}, optional, default "average"
+            This keyword argument sets whether the powers in the new bins
+            should be summed or averaged.
+
+        Returns
+        -------
+        time_new: numpy.ndarray
+            Time axis with new rebinned time resolution.
+
+        dynspec_new: numpy.ndarray
+            New rebinned Dynamical Cross Spectrum.
+        """
+        if dt_new < self.dt:
+            raise ValueError("New time resolution must be larger than old time resolution!")
+
+        new_dynspec_object = copy.deepcopy(self)
+
+        dynspec_new = []
+        for data in self.dyn_ps:
+            time_new, bin_counts, _, step = rebin_data(
+                self.time, data, dt_new, method=method, dx=self.dt
+            )
+            dynspec_new.append(bin_counts)
+
+        new_dynspec_object.time = time_new
+        new_dynspec_object.dyn_ps = np.array(dynspec_new)
+        new_dynspec_object.dt = dt_new
+        new_dynspec_object.m = int(step) * self.m
+        return new_dynspec_object
+
+    def rebin_by_n_intervals(self, n, method="average"):
+        """
+        Rebin the Dynamic Power Spectrum to a new time resolution, by summing contiguous intervals.
+
+        This is different from meth:`DynamicalPowerspectrum.rebin_time` in that it averages ``n``
+        consecutive intervals regardless of their distance in time. ``rebin_time`` will instead
+        average intervals that are separated at most by a time ``dt_new``.
+
+        Parameters
+        ----------
+        n: int
+            The number of intervals to be combined into one.
+
+        method: {"sum" | "mean" | "average"}, optional, default "average"
+            This keyword argument sets whether the powers in the new bins
+            should be summed or averaged.
+
+        Returns
+        -------
+        time_new: numpy.ndarray
+            Time axis with new rebinned time resolution.
+
+        dynspec_new: numpy.ndarray
+            New rebinned Dynamical Cross Spectrum.
+        """
+        if not np.issubdtype(type(n), np.integer):
+            warnings.warn("n must be an integer. Casting to int")
+
+            n = int(n)
+
+        if n == 1:
+            return copy.deepcopy(self)
+        if n < 1:
+            raise ValueError("n must be >= 1")
+
+        new_dynspec_object = copy.deepcopy(self)
+
+        dynspec_new = []
+        time_new = []
+        for i, data in enumerate(self.dyn_ps.T):
+            if i % n == 0:
+                count = 1
+                bin_counts = data
+                bin_times = self.time[i]
+            else:
+                count += 1
+                bin_counts += data
+                bin_times += self.time[i]
+            if count == n:
+                if method in ["mean", "average"]:
+                    bin_counts /= n
+                dynspec_new.append(bin_counts)
+                bin_times /= n
+                time_new.append(bin_times)
+
+        new_dynspec_object.time = time_new
+        new_dynspec_object.dyn_ps = np.array(dynspec_new).T
+        new_dynspec_object.dt *= n
+        new_dynspec_object.m = n * self.m
+
+        return new_dynspec_object
+
+    def trace_maximum(self, min_freq=None, max_freq=None):
+        """
+        Return the indices of the maximum powers in each segment
+        :class:`Powerspectrum` between specified frequencies.
+
+        Parameters
+        ----------
+        min_freq: float, default ``None``
+            The lower frequency bound.
+
+        max_freq: float, default ``None``
+            The upper frequency bound.
+
+        Returns
+        -------
+        max_positions : np.array
+            The array of indices of the maximum power in each segment having
+            frequency between ``min_freq`` and ``max_freq``.
+        """
+        if min_freq is None:
+            min_freq = np.min(self.freq)
+        if max_freq is None:
+            max_freq = np.max(self.freq)
+
+        max_positions = []
+        for ps in self.dyn_ps.T:
+            indices = np.logical_and(self.freq <= max_freq, min_freq <= self.freq)
+            max_power = np.max(ps[indices])
+            max_positions.append(np.where(ps == max_power)[0][0])
+
+        return np.array(max_positions)
+
+    def power_colors(
+        self,
+        freq_edges=[1 / 256, 1 / 32, 0.25, 2.0, 16.0],
+        freqs_to_exclude=None,
+        poisson_power=0,
+    ):
+        """
+        Compute the power colors of the dynamical power spectrum.
+
+        See Heil et al. 2015, MNRAS, 448, 3348
+
+        Parameters
+        ----------
+        freq_edges: iterable
+            The edges of the frequency bins to be used for the power colors.
+
+        freqs_to_exclude : 1-d or 2-d iterable, optional, default None
+            The ranges of frequencies to exclude from the calculation of the power color.
+            For example, the frequencies containing strong QPOs.
+            A 1-d iterable should contain two values for the edges of a single range. (E.g.
+            ``[0.1, 0.2]``). ``[[0.1, 0.2], [3, 4]]`` will exclude the ranges 0.1-0.2 Hz and
+            3-4 Hz.
+
+        poisson_power : float or iterable, optional, default 0
+            The Poisson noise level of the power spectrum. If iterable, it should have the same
+            length as ``freq``. (This might apply to the case of a power spectrum with a
+            strong dead time distortion)
+
+        Returns
+        -------
+        pc0: np.ndarray
+        pc0_err: np.ndarray
+        pc1: np.ndarray
+        pc1_err: np.ndarray
+            The power colors for each spectrum and their respective errors
+        """
+        power_colors = []
+        if np.iscomplexobj(self.dyn_ps):
+            warnings.warn("When using power_colors, complex powers will be cast to real.")
+
+        for ps in self.dyn_ps.T:
+            power_colors.append(
+                power_color(
+                    self.freq,
+                    ps.real,
+                    freq_edges=freq_edges,
+                    freqs_to_exclude=freqs_to_exclude,
+                    df=self.df,
+                    poisson_power=poisson_power,
+                    m=self.m,
+                )
+            )
+
+        pc0, pc0_err, pc1, pc1_err = np.array(power_colors).T
+        return pc0, pc0_err, pc1, pc1_err
+
+    def compute_rms(self, min_freq, max_freq, poisson_noise_level=0):
+        """
+        Compute the fractional rms amplitude in the power spectrum
+        between two frequencies.
+
+        Parameters
+        ----------
+        min_freq: float
+            The lower frequency bound for the calculation.
+
+        max_freq: float
+            The upper frequency bound for the calculation.
+
+        Other parameters
+        ----------------
+        poisson_noise_level : float, default is None
+            This is the Poisson noise level of the PDS with same
+            normalization as the PDS.
+
+        Returns
+        -------
+        rms: float
+            The fractional rms amplitude contained between ``min_freq`` and
+            ``max_freq``.
+
+        rms_err: float
+            The error on the fractional rms amplitude.
+
+        """
+        dyn_ps_unnorm = self.dyn_ps / self.unnorm_conversion
+        poisson_noise_unnrom = poisson_noise_level / self.unnorm_conversion
+        if not hasattr(self, "nphots"):
+            nphots = (self.nphots1 * self.nphots2) ** 0.5
+        else:
+            nphots = self.nphots
+
+        good = (self.freq >= min_freq) & (self.freq <= max_freq)
+
+        M_freq = self.m
+        if isinstance(self.m, Iterable):
+            M_freq = self.m[good]
+
+        rmss = []
+        rms_errs = []
+
+        for unnorm_powers in dyn_ps_unnorm.T:
+            r, re = get_rms_from_unnorm_periodogram(
+                unnorm_powers[good],
+                nphots,
+                self.df,
+                M=M_freq,
+                poisson_noise_unnorm=poisson_noise_unnrom,
+                segment_size=self.segment_size,
+                kind="frac",
+            )
+
+            rmss.append(r)
+            rms_errs.append(re)
+        return rmss, rms_errs
+
+
 def crossspectrum_from_time_array(
     times1,
     times2,
@@ -1938,7 +2545,7 @@ def crossspectrum_from_time_array(
     force_averaged = segment_size is not None
     # Suppress progress bar for single periodogram
     silent = silent or (segment_size is None)
-    results = avg_cs_from_events(
+    results = avg_cs_from_timeseries(
         times1,
         times2,
         gti,
@@ -2085,30 +2692,112 @@ def crossspectrum_from_lightcurve(
     spec : `AveragedCrossspectrum` or `Crossspectrum`
         The output cross spectrum.
     """
+    error_flux_attr = None
+
+    if lc1.err_dist == "gauss":
+        error_flux_attr = "_counts_err"
+
+    return crossspectrum_from_timeseries(
+        lc1,
+        lc2,
+        "_counts",
+        error_flux_attr=error_flux_attr,
+        segment_size=segment_size,
+        norm=norm,
+        power_type=power_type,
+        silent=silent,
+        fullspec=fullspec,
+        use_common_mean=use_common_mean,
+        gti=gti,
+        save_all=save_all,
+    )
+
+
+def crossspectrum_from_timeseries(
+    ts1,
+    ts2,
+    flux_attr,
+    error_flux_attr=None,
+    segment_size=None,
+    norm="none",
+    power_type="all",
+    silent=False,
+    fullspec=False,
+    use_common_mean=True,
+    gti=None,
+    save_all=False,
+):
+    """Calculate AveragedCrossspectrum from two time series
+
+    Parameters
+    ----------
+    ts1 : `stingray.StingrayTimeseries`
+        Time series from channel 1
+    ts2 : `stingray.StingrayTimeseries`
+        Time series from channel 2
+    flux_attr : `str`
+        What attribute of the time series will be used.
+
+    Other parameters
+    ----------------
+    error_flux_attr : `str`
+        What attribute of the time series will be used as error bar.
+    segment_size : float, default None
+        The length, in seconds, of the light curve segments that will be averaged
+    norm : str, default "frac"
+        The normalization of the periodogram. "abs" is absolute rms, "frac" is
+        fractional rms, "leahy" is Leahy+83 normalization, and "none" is the
+        unnormalized periodogram
+    use_common_mean : bool, default True
+        The mean of the light curve can be estimated in each interval, or on
+        the full light curve. This gives different results (Alston+2013).
+        Here we assume the mean is calculated on the full light curve, but
+        the user can set ``use_common_mean`` to False to calculate it on a
+        per-segment basis.
+    fullspec : bool, default False
+        Return the full periodogram, including negative frequencies
+    silent : bool, default False
+        Silence the progress bars
+    power_type : str, default 'all'
+        If 'all', give complex powers. If 'abs', the absolute value; if 'real',
+        the real part
+    gti: [[gti0_0, gti0_1], [gti1_0, gti1_1], ...]
+        Good Time intervals. Defaults to the common GTIs from the two input
+        objects
+    save_all : bool, default False
+        Save all intermediate spectra used for the final average. Use with care.
+        This is likely to fill up your RAM on medium-sized datasets, and to
+        slow down the computation when rebinning.
+
+    Returns
+    -------
+    spec : `AveragedCrossspectrum` or `Crossspectrum`
+        The output cross spectrum.
+    """
     force_averaged = segment_size is not None
     # Suppress progress bar for single periodogram
     silent = silent or (segment_size is None)
     if gti is None:
-        gti = cross_two_gtis(lc1.gti, lc2.gti)
+        gti = cross_two_gtis(ts1.gti, ts2.gti)
 
     err1 = err2 = None
-    if lc1.err_dist == "gauss":
-        err1 = lc1._counts_err
-        err2 = lc2._counts_err
+    if error_flux_attr is not None:
+        err1 = getattr(ts1, error_flux_attr)
+        err2 = getattr(ts2, error_flux_attr)
 
-    results = avg_cs_from_events(
-        lc1.time,
-        lc2.time,
+    results = avg_cs_from_timeseries(
+        ts1.time,
+        ts2.time,
         gti,
         segment_size,
-        lc1.dt,
+        ts1.dt,
         norm=norm,
         use_common_mean=use_common_mean,
         fullspec=fullspec,
         silent=silent,
         power_type=power_type,
-        fluxes1=lc1.counts,
-        fluxes2=lc2.counts,
+        fluxes1=getattr(ts1, flux_attr),
+        fluxes2=getattr(ts2, flux_attr),
         errors1=err1,
         errors2=err2,
         return_auxil=True,
@@ -2166,7 +2855,7 @@ def crossspectrum_from_lc_iterable(
         the real part
     gti: [[gti0_0, gti0_1], [gti1_0, gti1_1], ...]
         Good Time intervals. The GTIs of the input light curves are
-        interesected with these.
+        intersected with these.
 
     Returns
     -------

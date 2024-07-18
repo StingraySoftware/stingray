@@ -34,16 +34,14 @@ from importlib import import_module
 try:
     from sphinx_astropy.conf.v1 import *  # noqa
 except ImportError:
-    print(
-        'ERROR: the documentation requires the sphinx-astropy package to be installed'
-    )
+    print("ERROR: the documentation requires the sphinx-astropy package to be installed")
     sys.exit(1)
 
 # Get configuration information from setup.cfg
 conf = ConfigParser()
 
-conf.read([os.path.join(os.path.dirname(__file__), '..', 'setup.cfg')])
-setup_cfg = dict(conf.items('metadata'))
+conf.read([os.path.join(os.path.dirname(__file__), "..", "setup.cfg")])
+setup_cfg = dict(conf.items("metadata"))
 
 # -- General configuration ----------------------------------------------------
 
@@ -59,10 +57,7 @@ setup_cfg = dict(conf.items('metadata'))
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns += ['_templates',
-                     'notebooks/README.rst',
-                     'notebooks/Debug',
-                     'changes']
+exclude_patterns += ["_templates", "notebooks/README.rst", "notebooks/Debug", "changes"]
 
 # This is added to the end of RST files - a good place to put substitutions to
 # be used globally.
@@ -72,20 +67,19 @@ rst_epilog += """
 # -- Project information ------------------------------------------------------
 
 # This does not *have* to match the package name, but typically does
-project = setup_cfg['name']
-author = setup_cfg['author']
-copyright = '{0}, {1}'.format(datetime.datetime.now().year,
-                              setup_cfg['author'])
+project = setup_cfg["name"]
+author = setup_cfg["author"]
+copyright = "{0}, {1}".format(datetime.datetime.now().year, setup_cfg["author"])
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 
-import_module(setup_cfg['name'])
-package = sys.modules[setup_cfg['name']]
+import_module(setup_cfg["name"])
+package = sys.modules[setup_cfg["name"]]
 
 # The short X.Y version.
-version = package.__version__.split('-', 1)[0]
+version = package.__version__.split("-", 1)[0]
 # The full version, including alpha/beta/rc tags.
 release = package.__version__
 
@@ -110,15 +104,17 @@ html_static_path = ["_static"]
 html_css_files = ["css/custom.css"]
 
 html_theme_options = {
-    'logotext1': 'Sting',  # white,  semi-bold
-    'logotext2': 'ray',  # orange, light
-    'logotext3': ':docs'  # white,  light
+    "logotext1": "Sting",  # white,  semi-bold
+    "logotext2": "ray",  # orange, light
+    "logotext3": ":docs",  # white,  light
 }
 
 extensions += [
-    'matplotlib.sphinxext.plot_directive', 'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon', 'nbsphinx', 
-    'IPython.sphinxext.ipython_console_highlighting'
+    "matplotlib.sphinxext.plot_directive",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "nbsphinx",
+    "IPython.sphinxext.ipython_console_highlighting",
 ]
 
 # Custom sidebar templates, maps document names to template names.
@@ -139,47 +135,43 @@ html_favicon = "images/stingray_logo.ico"
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = '{0} v{1}'.format(project, release)
+html_title = "{0} v{1}".format(project, release)
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = project + 'doc'
+htmlhelp_basename = project + "doc"
 
 # -- Options for LaTeX output -------------------------------------------------
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
-latex_documents = [('index', project + '.tex', project + u' Documentation',
-                    author, 'manual')]
+latex_documents = [("index", project + ".tex", project + " Documentation", author, "manual")]
 
 # -- Options for manual page output -------------------------------------------
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [('index', project.lower(), project + u' Documentation', [author],
-              1)]
+man_pages = [("index", project.lower(), project + " Documentation", [author], 1)]
 
 # Trust the links from doi.org, even if they might have Client errors or other minor issues
 linkcheck_ignore = [r"https://doi.org/"]
 
 # -- Options for the edit_on_github extension ---------------------------------
 
-if setup_cfg.get('edit_on_github').lower() == 'true':
+if setup_cfg.get("edit_on_github").lower() == "true":
+    extensions += ["sphinx_astropy.ext.edit_on_github"]
 
-    extensions += ['sphinx_astropy.ext.edit_on_github']
-
-    edit_on_github_project = setup_cfg['github_project']
+    edit_on_github_project = setup_cfg["github_project"]
     edit_on_github_branch = "master"
 
     edit_on_github_source_root = ""
     edit_on_github_doc_root = "docs"
 
 # -- Resolving issue number to links in changelog -----------------------------
-github_issues_url = 'https://github.com/{0}/issues/'.format(
-    setup_cfg['github_project'])
+github_issues_url = "https://github.com/{0}/issues/".format(setup_cfg["github_project"])
 
 # -- Configuration for nbsphinx -----------------------------------------------
 # disable notebook execution
-nbsphinx_execute = 'never'
+nbsphinx_execute = "never"
 
 # -- Generate DOI listing from Zenodo -----------------------------------------
 import json
@@ -207,18 +199,14 @@ class Release(object):
 
     @property
     def github_url(self):
-        return (
-            f"https://github.com/StingraySoftware/stingray/releases/tag/{self.version}"
-        )
+        return f"https://github.com/StingraySoftware/stingray/releases/tag/{self.version}"
 
     @property
     def bibtex_url(self):
         return self.zenodo_url + "/export/hx"
 
 
-params = urllib.parse.urlencode(
-    {"q": f'conceptdoi: "{CONCEPT_DOI}"', "all_versions": 1}
-)
+params = urllib.parse.urlencode({"q": f'conceptdoi: "{CONCEPT_DOI}"', "all_versions": 1})
 try:
     with urllib.request.urlopen(ZENODO_API_ENDPOINT + "?" + params) as url:
         data = json.loads(url.read().decode("utf-8"))

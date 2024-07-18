@@ -160,7 +160,7 @@ The `simulator` class provides the functionality to simulate light curves indepe
   >>> lc = sim.get_channel('3.5 - 4.5')
   >>> sim.delete_channel('3.5 - 4.5')
 
-Alternatively, assume that we have light curves in the simulated energy channels `3.5 - 4.5`, `4.5 - 5.5` and `5.5 - 6.5`. These channels can be retreived or deleted in single commands.
+Alternatively, assume that we have light curves in the simulated energy channels `3.5 - 4.5`, `4.5 - 5.5` and `5.5 - 6.5`. These channels can be retrieved or deleted in single commands.
 
   >>> sim.count_channels()
   0

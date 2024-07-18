@@ -1,7 +1,7 @@
 __all__ = ["OptimizationResults", "ParameterEstimation", "PSDParEst", "SamplingResults"]
 
 
-# check whether matplotlib is installed for easy plotting
+import logging
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
@@ -21,7 +21,6 @@ try:
 except ImportError:
     use_corner = False
 
-import logging
 from multiprocessing import Pool
 
 import numpy as np
@@ -46,6 +45,9 @@ from stingray.modeling.posterior import (
     logmin,
     fitter_to_model_params,
 )
+from stingray.loggingconfig import CustomFormatter, setup_logger
+
+logger = setup_logger()
 
 
 class OptimizationResults(object):
@@ -140,6 +142,8 @@ class OptimizationResults(object):
             self.log.setLevel(logging.DEBUG)
             if not self.log.handlers:
                 ch = logging.StreamHandler()
+                formatter = CustomFormatter()
+                ch.setFormatter(formatter)
                 ch.setLevel(logging.DEBUG)
                 self.log.addHandler(ch)
 
@@ -170,7 +174,7 @@ class OptimizationResults(object):
 
         if hasattr(res, "hess_inv"):
             if not isinstance(res.hess_inv, np.ndarray):
-                self.cov = np.asarray(res.hess_inv.todense())
+                self.cov = np.asanyarray(res.hess_inv.todense())
             else:
                 self.cov = res.hess_inv
 
@@ -425,7 +429,7 @@ class ParameterEstimation(object):
                 "TNC",
                 "SLSQP",
             ]:
-                logging.warning(
+                logger.warning(
                     "Fitting method %s " % self.fitmethod + "cannot incorporate the bounds you set!"
                 )
 
@@ -714,7 +718,7 @@ class ParameterEstimation(object):
             data and the model
 
         pars : iterable
-            A list of parameters to be passed to ``lpost.model`` in oder
+            A list of parameters to be passed to ``lpost.model`` in order
             to generate a model data set.
 
         Returns
@@ -1210,7 +1214,7 @@ class SamplingResults(object):
 
                             ax.contour(xx, yy, zz, 7)
                         except ValueError:
-                            logging.info("Not making contours.")
+                            logger.info("Not making contours.")
 
         if save_plot:
             plt.savefig(filename, format="pdf")
@@ -1389,7 +1393,7 @@ class PSDParEst(ParameterEstimation):
             data and the model
 
         pars : iterable
-            A list of parameters to be passed to ``lpost.model`` in oder
+            A list of parameters to be passed to ``lpost.model`` in order
             to generate a model data set.
 
         Returns
@@ -1500,7 +1504,7 @@ class PSDParEst(ParameterEstimation):
                     sim_lpost1, t1, sim_lpost2, t2, neg=neg, max_post=max_post
                 )
             except RuntimeError:
-                logging.warning("Fitting was unsuccessful. " "Skipping this simulation!")
+                logger.warning("Fitting was unsuccessful. " "Skipping this simulation!")
                 continue
 
         return lrt_sim
@@ -1717,7 +1721,7 @@ class PSDParEst(ParameterEstimation):
                 max_y, maxfreq, maxind = self._compute_highest_outlier(sim_lpost, res, nmax=1)
                 max_y_all[i] = max_y[0]
             except RuntimeError:
-                logging.warning("Fitting unsuccessful! " "Skipping this simulation!")
+                logger.warning("Fitting unsuccessful! " "Skipping this simulation!")
                 continue
 
         return np.hstack(max_y_all)

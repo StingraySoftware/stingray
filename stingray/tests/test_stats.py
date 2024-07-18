@@ -186,7 +186,7 @@ class TestClassicalSignificances(object):
     def test_very_large_powers_produce_zero_prob(self):
         power = 31000.0
         nspec = 1
-        with pytest.warns(DeprecationWarning):
+        with pytest.warns((DeprecationWarning, UserWarning)):
             pval = classical_pvalue(power, nspec)
         assert np.isclose(pval, 0.0)
 

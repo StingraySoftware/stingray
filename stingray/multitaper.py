@@ -16,6 +16,12 @@ from .events import EventList
 from .lightcurve import Lightcurve
 from .utils import rebin_data, simon, fft, rfft, rfftfreq
 
+try:
+    integration_func = np.trapezoid
+except AttributeError:
+    # < Numpy 2.0.0
+    integration_func = np.trapz
+
 __all__ = ["Multitaper"]
 
 # Inspired from nitime (https://nipy.org/nitime/)
@@ -171,6 +177,7 @@ class Multitaper(Powerspectrum):
             self.nphots = None
             self.k = 1
             self.jk_var_deg_freedom = None
+            self.segment_size = None
             return
         elif not isinstance(data, EventList):
             lc = data
@@ -182,6 +189,7 @@ class Multitaper(Powerspectrum):
         self.power_type = "real"
         self.fullspec = False
         self.k = 1
+        self.segment_size = None
 
         self._make_multitaper_periodogram(
             lc,
@@ -380,7 +388,7 @@ class Multitaper(Powerspectrum):
         """Calculate the weighted PSD from the Fourier transformed data.
 
         Calculate the weighted PSD from the Fourier transformed data by
-        combining the frequences responses of these tapered data using the given
+        combining the frequencies responses of these tapered data using the given
         weights.
 
         Parameters
@@ -458,7 +466,7 @@ class Multitaper(Powerspectrum):
 
         psd_est = self.psd_from_freq_response(freq_response, sqrt_eigvals[:, np.newaxis])
 
-        var = np.trapz(psd_est, dx=np.pi / n_freqs) / (2 * np.pi)
+        var = integration_func(psd_est, dx=np.pi / n_freqs) / (2 * np.pi)
         del psd_est
 
         psd = np.empty(n_freqs)
@@ -684,23 +692,6 @@ class Multitaper(Powerspectrum):
 
         return bin_mtp
 
-    def compute_rms(
-        self, min_freq, max_freq, poisson_noise_level=None, white_noise_offset=None, deadtime=0.0
-    ):
-        return Powerspectrum.compute_rms(
-            self,
-            min_freq,
-            max_freq,
-            poisson_noise_level=poisson_noise_level,
-            white_noise_offset=white_noise_offset,
-            deadtime=deadtime,
-        )
-
-    def classical_significances(self, threshold, trial_correction):
-        return Powerspectrum.classical_significances(
-            self, threshold=threshold, trial_correction=trial_correction
-        )
-
     def _fourier_multitaper_lomb_scargle(self, lc, NW=4, low_bias=True):
         """Compute the multitaper lomb-scargle spectral estimate.
 
@@ -734,7 +725,7 @@ class Multitaper(Powerspectrum):
 
         Notes
         -----
-        Does not currently support adapative weighting or jack-knife estimates.
+        Does not currently support adaptive weighting or jack-knife estimates.
         """
 
         lc.apply_gtis()  # Remove bins with missing data

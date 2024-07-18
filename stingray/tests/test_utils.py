@@ -367,6 +367,12 @@ def test_equal_count_energy_ranges():
         assert np.count_nonzero(good) == 10000
 
 
+def test_heaviside():
+    assert utils.heaviside(2) == 1
+    assert utils.heaviside(0) == 1
+    assert utils.heaviside(-1) == 0
+
+
 def test_histogram_equiv_numpy():
     x = np.random.uniform(0.0, 1.0, 100)
     (H, _) = np.histogram(x, bins=5, range=(0.0, 1.0))

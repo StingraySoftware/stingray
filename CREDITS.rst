@@ -43,10 +43,15 @@ Contributors
 * Arfon Smith
 * John Swinbank
 * Akash Tandon
-* tappina
+* Marta Mancosu
 * Mihir Tripathi
 * Ricardo Vallés Blanco
 * Dhruv Vats
+* Guglielmo Mastroserio
+* Sri Guru Datta Pisupati
+* Gaurav Joshi
+* luzpaz
+* Abhinav Kumar
 
 If you have contributed to Stingray and your name is missing,
 please send an email to the coordinators, or

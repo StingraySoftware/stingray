@@ -1,5 +1,6 @@
 import numbers
 import os
+import re
 import copy
 import random
 import string
@@ -13,7 +14,9 @@ import scipy
 from numpy import histogram as histogram_np
 from numpy import histogram2d as histogram2d_np
 from numpy import histogramdd as histogramdd_np
-from .base import interpret_times
+from .loggingconfig import setup_logger
+
+logger = setup_logger()
 
 try:
     import pyfftw
@@ -32,8 +35,8 @@ try:
 
     pyfftw.interfaces.cache.enable()
     HAS_PYFFTW = True
+    logger.info("Using PyFFTW")
 except ImportError:
-    warnings.warn("pyfftw not installed. Using standard scipy fft")
     from numpy.fft import ifft, fft, fftfreq, fftn, ifftn, fftshift, fft2, ifftshift, rfft, rfftfreq
 
     HAS_PYFFTW = False
@@ -109,7 +112,7 @@ except ImportError:
             Axis along which to calculate ``mad``. Default is ``0``, can also
             be ``None``
         """
-        data = np.asarray(data)
+        data = np.asanyarray(data)
         if axis is not None:
             center = np.apply_over_axes(np.median, data, axis)
         else:
@@ -137,7 +140,223 @@ __all__ = [
     "nearest_power_of_two",
     "find_nearest",
     "check_isallfinite",
+    "heaviside",
+    "make_dictionary_lowercase",
 ]
+
+
+def make_dictionary_lowercase(dictionary, recursive=False):
+    """Make all keys of a dictionary lowercase.
+
+    Optionally, if some values are dictionaries, they can be made lowercase too.
+
+    Parameters
+    ----------
+    dictionary : dict
+        The dictionary to be made lowercase
+
+    Other Parameters
+    ----------------
+    recursive : bool
+        If ``True``, make all keys of nested dictionaries lowercase too.
+
+    Examples
+    --------
+    >>> d1 = {"A": 1, "B": 2, "C": {"D": 3, "E": {"F": 4}}}
+    >>> d2 = make_dictionary_lowercase(d1)
+    >>> assert d2 == {"a": 1, "b": 2, "c": {"D": 3, "E": {"F": 4}}}
+    >>> d3 = make_dictionary_lowercase(d1, recursive=True)
+    >>> assert d3 == {"a": 1, "b": 2, "c": {"d": 3, "e": {"f": 4}}}
+    """
+    new_dict = {}
+    for key, value in dictionary.items():
+        if recursive and isinstance(value, dict):
+            value = make_dictionary_lowercase(value, recursive=True)
+
+        new_dict[key.lower()] = value
+
+    return new_dict
+
+
+def force_array(x):
+    """Convert an input to a numpy array.
+
+    If it is not iterable, convert to a 1-element array.
+
+    Parameters
+    ----------
+    x : iterable or number
+        The input to be converted
+
+    Returns
+    -------
+    x : numpy.ndarray
+        The input converted to a numpy array
+
+    Examples
+    --------
+    >>> assert isinstance(force_array(1), np.ndarray)
+    >>> assert isinstance(force_array([1]), np.ndarray)
+    """
+    if not isinstance(x, Iterable):
+        x = [x]
+
+    return np.asanyarray(x)
+
+
+@njit()
+def heaviside(x):
+    """Heaviside function. Returns 1 if x>0, and 0 otherwise.
+
+    Examples
+    --------
+    >>> heaviside(2)
+    1
+    >>> heaviside(-1)
+    0
+    """
+    if x >= 0:
+        return 1
+    else:
+        return 0
+
+
+@njit
+def any_complex_in_array(array):
+    """Check if any element of an array is complex.
+
+    Examples
+    --------
+    >>> any_complex_in_array(np.array([1, 2, 3]))
+    False
+    >>> assert any_complex_in_array(np.array([1, 2 + 1.j, 3]))
+    """
+    for a in array:
+        if np.iscomplex(a):
+            return True
+    return False
+
+
+def make_nd_into_arrays(array: np.ndarray, label: str) -> dict:
+    """If an array is n-dimensional, make it into many 1-dimensional arrays.
+
+    Call additional dimensions, e.g. ``_dimN_M``. See examples below.
+
+    Parameters
+    ----------
+    array : `np.ndarray`
+        Input data
+    label : `str`
+        Label for the array
+
+    Returns
+    -------
+    data : `dict`
+        Dictionary of arrays. Defaults to ``{label: array}`` if ``array`` is 1-dimensional,
+        otherwise, e.g.: ``{label_dim1_2_3: array[1, 2, 3], ... }``
+
+    Examples
+    --------
+    >>> a1, a2, a3 = np.arange(3), np.arange(3, 6), np.arange(6, 9)
+    >>> A = np.array([a1, a2, a3]).T
+    >>> data = make_nd_into_arrays(A, "test")
+    >>> assert np.array_equal(data["test_dim0"], a1)
+    >>> assert np.array_equal(data["test_dim1"], a2)
+    >>> assert np.array_equal(data["test_dim2"], a3)
+    >>> A3 = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]
+    >>> data = make_nd_into_arrays(A3, "test")
+    >>> assert np.array_equal(data["test_dim0_0"], [1, 5])
+    """
+    data = {}
+    array = np.asanyarray(array)
+    shape = np.shape(array)
+    ndim = len(shape)
+    if ndim <= 1:
+        data[label] = array
+    else:
+        for i in range(shape[1]):
+            new_label = f"_dim{i}" if "_dim" not in label else f"_{i}"
+            dumdata = make_nd_into_arrays(array[:, i], label=label + new_label)
+            data.update(dumdata)
+    return data
+
+
+def get_dimensions_from_list_of_column_labels(labels: list, label: str) -> list:
+    """Get the dimensions of a multi-dimensional array from a list of column labels.
+
+    Examples
+    --------
+    >>> labels = ['test_dim0_0', 'test_dim0_1', 'test_dim0_2',
+    ...           'test_dim1_0', 'test_dim1_1', 'test_dim1_2', 'test', 'bu']
+    >>> keys, dimensions = get_dimensions_from_list_of_column_labels(labels, "test")
+    >>> for key0, key1 in zip(labels[:6], keys): assert key0 == key1
+    >>> assert np.array_equal(dimensions, [2, 3])
+    """
+    all_keys = []
+    count_dimensions = None
+    for key in labels:
+        if label not in key:
+            continue
+        match = re.search("^" + label + r"_dim([0-9]+(_[0-9]+)*)", key)
+        if match is None:
+            continue
+        all_keys.append(key)
+        new_count_dimensions = [int(val) for val in match.groups()[0].split("_")]
+        if count_dimensions is None:
+            count_dimensions = np.array(new_count_dimensions)
+        else:
+            count_dimensions = np.max([count_dimensions, new_count_dimensions], axis=0)
+
+    return sorted(all_keys), count_dimensions + 1
+
+
+def make_1d_arrays_into_nd(data: dict, label: str) -> np.ndarray:
+    """Literally the opposite of make_nd_into_arrays.
+
+    Call additional dimensions, e.g. ``_dimN_M``
+
+    Parameters
+    ----------
+    data : dict
+        Input data
+    label : `str`
+        Label for the array
+
+    Returns
+    -------
+    array : `np.array`
+        N-dimensional array that was stored in the data.
+
+    Examples
+    --------
+    >>> a1, a2, a3 = np.arange(3), np.arange(3, 6), np.arange(6, 9)
+    >>> A = np.array([a1, a2, a3]).T
+    >>> data = make_nd_into_arrays(A, "test")
+    >>> A_ret = make_1d_arrays_into_nd(data, "test")
+    >>> assert np.array_equal(A, A_ret)
+    >>> A = np.array([[[1, 2, 12], [3, 4, 34]],
+    ...               [[5, 6, 56], [7, 8, 78]],
+    ...               [[9, 10, 910], [11, 12, 1112]],
+    ...               [[13, 14, 1314], [15, 16, 1516]]])
+    >>> data = make_nd_into_arrays(A, "_test")
+    >>> A_ret = make_1d_arrays_into_nd(data, "_test")
+    >>> assert np.array_equal(A, A_ret)
+    >>> data = make_nd_into_arrays(a1, "_test")
+    >>> A_ret = make_1d_arrays_into_nd(data, "_test")
+    >>> assert np.array_equal(a1, A_ret)
+    """
+
+    if label in list(data.keys()):
+        return data[label]
+
+    # Get the dimensionality of the data
+    dim = 0
+    all_keys = []
+
+    all_keys, dimensions = get_dimensions_from_list_of_column_labels(list(data.keys()), label)
+    arrays = np.array([np.array(data[key]) for key in all_keys])
+
+    return arrays.T.reshape([len(arrays[0])] + list(dimensions))
 
 
 @njit
@@ -149,8 +368,7 @@ def _check_isallfinite_numba(array):
 
     Examples
     --------
-    >>> _check_isallfinite_numba(np.array([1., 2., 3.]))
-    True
+    >>> assert _check_isallfinite_numba(np.array([1., 2., 3.]))
     >>> _check_isallfinite_numba(np.array([1., np.inf, 3.]))
     False
     """
@@ -168,8 +386,7 @@ def check_isallfinite(array):
 
     Examples
     --------
-    >>> check_isallfinite([1, 2, 3])
-    True
+    >>> assert check_isallfinite([1, 2, 3])
     >>> check_isallfinite([1, np.inf, 3])
     False
     >>> check_isallfinite([1, np.nan, 3])
@@ -179,10 +396,10 @@ def check_isallfinite(array):
         # Numba is very picky about the type of the input array. If an exception
         # occurs in the numba-compiled function, use the default Numpy implementation.
         try:
-            return _check_isallfinite_numba(np.asarray(array))
+            return _check_isallfinite_numba(np.asanyarray(array))
         except Exception:
             pass
-    return np.all(np.isfinite(array))
+    return bool(np.all(np.isfinite(array)))
 
 
 def is_sorted(array):
@@ -202,7 +419,7 @@ def is_sorted(array):
         True if the array is sorted, False otherwise
     """
 
-    array = np.asarray(array)
+    array = np.asanyarray(array)
     # If the array is empty or has only one element, it is sorted
     if array.size <= 1:
         return True
@@ -245,7 +462,7 @@ def _is_sorted_numba(array):
 
 
 def _root_squared_mean(array):
-    array = np.asarray(array)
+    array = np.asanyarray(array)
     return np.sqrt(np.sum(array**2)) / array.size
 
 
@@ -317,30 +534,26 @@ def rebin_data(x, y, dx_new, yerr=None, method="sum", dx=None):
     >>> yerr = np.ones(x.size)
     >>> xbin, ybin, ybinerr, step_size = rebin_data(
     ...     x, y, 4, yerr=yerr, method='sum', dx=0.01)
-    >>> np.allclose(ybin, 400)
-    True
-    >>> np.allclose(ybinerr, 20)
-    True
+    >>> assert np.allclose(ybin, 400)
+    >>> assert np.allclose(ybinerr, 20)
     >>> xbin, ybin, ybinerr, step_size = rebin_data(
     ...     x, y, 4, yerr=yerr, method='mean')
-    >>> np.allclose(ybin, 1)
-    True
-    >>> np.allclose(ybinerr, 0.05)
-    True
+    >>> assert np.allclose(ybin, 1)
+    >>> assert np.allclose(ybinerr, 0.05)
     """
 
-    y = np.asarray(y)
+    y = np.asanyarray(y)
     if yerr is None:
         yerr = np.zeros_like(y)
     else:
-        yerr = np.asarray(yerr)
+        yerr = np.asanyarray(yerr)
 
-    if not dx:
-        dx_old = np.diff(x)
-    elif np.size(dx) == 1:
-        dx_old = np.array([dx])
-    else:
+    if isinstance(dx, Iterable):
         dx_old = dx
+    elif dx is None or dx == 0:
+        dx_old = np.diff(x)
+    else:
+        dx_old = np.array([dx])
 
     if np.any(dx_new < dx_old):
         raise ValueError(
@@ -466,9 +679,9 @@ def rebin_data_log(x, y, f, y_err=None, dx=None):
     """
 
     dx_init = apply_function_if_none(dx, np.diff(x), np.median)
-    x = np.asarray(x)
-    y = np.asarray(y)
-    y_err = np.asarray(apply_function_if_none(y_err, y, np.zeros_like))
+    x = np.asanyarray(x)
+    y = np.asanyarray(y)
+    y_err = np.asanyarray(apply_function_if_none(y_err, y, np.zeros_like))
 
     if x.shape[0] != y.shape[0]:
         raise ValueError("x and y must be of the same length!")
@@ -486,7 +699,7 @@ def rebin_data_log(x, y, f, y_err=None, dx=None):
         binx_for_stats.append(binx_for_stats[-1] + dx * (1.0 + f))
         dx = binx_for_stats[-1] - binx_for_stats[-2]
 
-    binx_for_stats = np.asarray(binx_for_stats)
+    binx_for_stats = np.asanyarray(binx_for_stats)
 
     real = y.real
     real_err = y_err.real
@@ -561,7 +774,7 @@ def apply_function_if_none(variable, value, func):
     >>> apply_function_if_none(var, value, np.mean)
     4
     >>> var = None
-    >>> apply_function_if_none(var, value, lambda y: np.mean(y))
+    >>> apply_function_if_none(var, value, lambda y: float(np.mean(y)))
     0.0
     """
     if variable is None:
@@ -838,6 +1051,51 @@ def _als(y, lam, p, niter=10):
     return z
 
 
+def fix_segment_size_to_integer_samples(segment_size, dt, tolerance=0.01):
+    """Fix segment size to an integer number of bins.
+
+    In the most common case, it will be reduced to an integer number of bins,
+    approximating to the lower integer. However, when it is close to the next
+    integer, it will be approximated to the higher integer.
+
+    Parameters
+    ----------
+    segment_size : float
+        The segment size in seconds
+    dt : float
+        The sample time in seconds
+
+    Other Parameters
+    ----------------
+    tolerance : float
+        The tolerance to consider when approximating to the higher integer
+
+    Returns
+    -------
+    segment_size : float
+        The segment size in seconds, fixed to an integer number of bins
+    n_bin : int
+        The number of bins in the segment
+
+    Examples
+    --------
+    >>> seg, n = fix_segment_size_to_integer_samples(1.0, 0.1)
+    >>> assert seg == 1.0, n == 10
+    >>> seg, n = fix_segment_size_to_integer_samples(0.999, 0.1)
+    >>> assert seg == 1.0, n == 10
+    """
+    n_bin_float = segment_size / dt
+    n_bin_down = np.floor(segment_size / dt)
+    n_bin_up = np.ceil(segment_size / dt)
+    n_bin = n_bin_down
+
+    if n_bin_up - n_bin_float < tolerance:
+        n_bin = n_bin_up
+
+    segment_size = n_bin * dt
+    return segment_size, int(n_bin)
+
+
 def baseline_als(x, y, lam=None, p=None, niter=10, return_baseline=False, offset_correction=False):
     """Baseline Correction with Asymmetric Least Squares Smoothing.
 
@@ -877,8 +1135,7 @@ def baseline_als(x, y, lam=None, p=None, niter=10, return_baseline=False, offset
     >>> x = np.arange(0, 10, 0.01)
     >>> y = np.zeros_like(x) + 10
     >>> ysub = baseline_als(x, y)
-    >>> np.all(ysub < 0.001)
-    True
+    >>> assert np.all(ysub < 0.001)
     """
 
     if lam is None:
@@ -1095,10 +1352,10 @@ def poisson_symmetrical_errors(counts):
     >>> from astropy.stats import poisson_conf_interval
     >>> counts = np.random.randint(0, 1000, 100)
     >>> # ---- Do it without the lookup table ----
-    >>> err_low, err_high = poisson_conf_interval(np.asarray(counts),
+    >>> err_low, err_high = poisson_conf_interval(np.asanyarray(counts),
     ...                 interval='frequentist-confidence', sigma=1)
-    >>> err_low -= np.asarray(counts)
-    >>> err_high -= np.asarray(counts)
+    >>> err_low -= np.asanyarray(counts)
+    >>> err_high -= np.asanyarray(counts)
     >>> err = (np.absolute(err_low) + np.absolute(err_high))/2.0
     >>> # Do it with this function
     >>> err_thisfun = poisson_symmetrical_errors(counts)
@@ -1107,14 +1364,14 @@ def poisson_symmetrical_errors(counts):
     """
     from astropy.stats import poisson_conf_interval
 
-    counts_int = np.asarray(counts, dtype=np.int64)
+    counts_int = np.asanyarray(counts, dtype=np.int64)
     count_values = np.nonzero(np.bincount(counts_int))[0]
     err_low, err_high = poisson_conf_interval(
         count_values, interval="frequentist-confidence", sigma=1
     )
     # calculate approximately symmetric uncertainties
-    err_low -= np.asarray(count_values)
-    err_high -= np.asarray(count_values)
+    err_low -= np.asanyarray(count_values)
+    err_high -= np.asanyarray(count_values)
     err = (np.absolute(err_low) + np.absolute(err_high)) / 2.0
 
     idxs = np.searchsorted(count_values, counts_int)
@@ -1168,7 +1425,7 @@ def nearest_power_of_two(x):
     return x_nearest
 
 
-def find_nearest(array, value):
+def find_nearest(array, value, side="left"):
     """
     Return the array value that is closest to the input value (Abigail Stevens:
     Thanks StackOverflow!)
@@ -1182,6 +1439,11 @@ def find_nearest(array, value):
     value : int or float
         The value you want to find the closest to in the array.
 
+    Other Parameters
+    ----------------
+    side : str
+        Look at the ``numpy.searchsorted`` documentation for more information.
+
     Returns
     -------
     array[idx] : int or float
@@ -1191,7 +1453,7 @@ def find_nearest(array, value):
         The index of the array of the closest value.
 
     """
-    idx = np.searchsorted(array, value, side="left")
+    idx = np.searchsorted(array, value, side=side)
     if idx == len(array) or np.fabs(value - array[idx - 1]) < np.fabs(value - array[idx]):
         return array[idx - 1], idx - 1
     else:
@@ -1220,8 +1482,7 @@ def check_iterables_close(iter0, iter1, **kwargs):
     False
     >>> iter0 = [(0, 0), (0, 1)]
     >>> iter1 = [(0, 0.), (0, 1.)]
-    >>> check_iterables_close(iter0, iter1)
-    True
+    >>> assert check_iterables_close(iter0, iter1)
     >>> iter1 = [(0, 0.), (0, 3.)]
     >>> check_iterables_close(iter0, iter1)
     False
@@ -1261,13 +1522,13 @@ def check_allclose_and_print(
     try:
         assert np.allclose(v1, v2, rtol, atol)
     except Exception as e:
-        v1 = np.asarray(v1)
-        v2 = np.asarray(v2)
+        v1 = np.asanyarray(v1)
+        v2 = np.asanyarray(v2)
         bad = np.abs(v1 - v2) >= (atol + rtol * np.abs(v2))
 
         raise AssertionError(
             f"Different values in the arrays check by allclose: \
-                        {v1[bad]} vs {v2[bad]}, indeces are {np.where(v1[bad])[0]}\
+                        {v1[bad]} vs {v2[bad]}, indices are {np.where(v1[bad])[0]}\
                         and {np.where(v2[bad])[0]}"
         )
 
@@ -1297,8 +1558,7 @@ def compute_bin(x, bin_edges):
     1
     >>> compute_bin(10, bin_edges)
     1
-    >>> compute_bin(11, bin_edges) is None
-    True
+    >>> assert compute_bin(11, bin_edges) is None
     """
 
     # assuming uniform bins for now
@@ -1410,7 +1670,7 @@ def hist1d_numba_seq(a, bins, range, use_memmap=False, tmp=None):
     """
     hist_arr = _allocate_array_or_memmap((bins,), a.dtype, use_memmap=use_memmap, tmp=tmp)
 
-    return _hist1d_numba_seq(hist_arr, a, bins, np.asarray(range))
+    return _hist1d_numba_seq(hist_arr, a, bins, np.asanyarray(range))
 
 
 @njit(nogil=True, parallel=False)
@@ -1474,7 +1734,7 @@ def hist2d_numba_seq(x, y, bins, range, use_memmap=False, tmp=None):
     """
 
     H = _allocate_array_or_memmap(bins, np.uint64, use_memmap=use_memmap, tmp=tmp)
-    return _hist2d_numba_seq(H, np.array([x, y]), np.asarray(list(bins)), np.asarray(range))
+    return _hist2d_numba_seq(H, np.array([x, y]), np.asanyarray(list(bins)), np.asanyarray(range))
 
 
 @njit(nogil=True, parallel=False)
@@ -1537,7 +1797,9 @@ def hist3d_numba_seq(tracks, bins, range, use_memmap=False, tmp=None):
     """
     H = _allocate_array_or_memmap(bins, np.uint64, use_memmap=use_memmap, tmp=tmp)
 
-    return _hist3d_numba_seq(H, np.asarray(tracks), np.asarray(list(bins)), np.asarray(range))
+    return _hist3d_numba_seq(
+        H, np.asanyarray(tracks), np.asanyarray(list(bins)), np.asanyarray(range)
+    )
 
 
 @njit(nogil=True, parallel=False)
@@ -1610,7 +1872,7 @@ def hist1d_numba_seq_weight(a, weights, bins, range, use_memmap=False, tmp=None)
     else:
         hist_arr = np.zeros((bins,), dtype=a.dtype)
 
-    return _hist1d_numba_seq_weight(hist_arr, a, weights, bins, np.asarray(range))
+    return _hist1d_numba_seq_weight(hist_arr, a, weights, bins, np.asanyarray(range))
 
 
 @njit(nogil=True, parallel=False)
@@ -1679,8 +1941,8 @@ def hist2d_numba_seq_weight(x, y, weights, bins, range, use_memmap=False, tmp=No
         H,
         np.array([x, y]),
         weights,
-        np.asarray(list(bins)),
-        np.asarray(range),
+        np.asanyarray(list(bins)),
+        np.asanyarray(range),
     )
 
 
@@ -1748,10 +2010,10 @@ def hist3d_numba_seq_weight(tracks, weights, bins, range, use_memmap=False, tmp=
     H = _allocate_array_or_memmap(bins, np.double, use_memmap=use_memmap, tmp=tmp)
     return _hist3d_numba_seq_weight(
         H,
-        np.asarray(tracks),
+        np.asanyarray(tracks),
         weights,
-        np.asarray(list(bins)),
-        np.asarray(range),
+        np.asanyarray(list(bins)),
+        np.asanyarray(range),
     )
 
 
@@ -1838,7 +2100,7 @@ def histnd_numba_seq(tracks, bins, range, use_memmap=False, tmp=None):
     ...                       range=np.array([[0., 1.], [2., 3.], [4., 5.]]))
     >>> assert np.all(H == Hn)
     """
-    tracks = np.asarray(tracks)
+    tracks = np.asanyarray(tracks)
     H = _allocate_array_or_memmap(bins, np.uint64, use_memmap=use_memmap, tmp=tmp)
     slice_int = np.zeros(len(bins), dtype=np.uint64)
 
@@ -1902,7 +2164,7 @@ def _wrap_histograms(numba_func, weight_numba_func, np_func, *args, **kwargs):
 def histogram3d(*args, **kwargs):
     """Histogram implementation.
 
-    Acceptes the same arguments as `numpy.histogramdd`, but tries to use a Numba implementation
+    Accepts the same arguments as `numpy.histogramdd`, but tries to use a Numba implementation
     of the histogram. Bonus: weights can be complex.
 
     Examples
@@ -1926,7 +2188,7 @@ def histogram3d(*args, **kwargs):
 def histogramnd(*args, **kwargs):
     """Histogram implementation.
 
-    Acceptes the same arguments as `numpy.histogramdd`, but tries to use a Numba implementation
+    Accepts the same arguments as `numpy.histogramdd`, but tries to use a Numba implementation
     of the histogram. Bonus: weights can be complex.
 
     Examples
@@ -1955,7 +2217,7 @@ def histogramnd(*args, **kwargs):
 def histogram2d(*args, **kwargs):
     """Histogram implementation.
 
-    Acceptes the same arguments as `numpy.histogramdd`, but tries to use a Numba implementation
+    Accepts the same arguments as `numpy.histogramdd`, but tries to use a Numba implementation
     of the histogram. Bonus: weights can be complex.
 
     Examples
@@ -1990,7 +2252,7 @@ def histogram2d(*args, **kwargs):
 def histogram(*args, **kwargs):
     """Histogram implementation.
 
-    Acceptes the same arguments as `numpy.histogramdd`, but tries to use a Numba implementation
+    Accepts the same arguments as `numpy.histogramdd`, but tries to use a Numba implementation
     of the histogram. Bonus: weights can be complex.
 
     Examples
@@ -2041,14 +2303,11 @@ def equal_count_energy_ranges(energies, n_ranges, emin=None, emax=None):
     --------
     >>> energies = np.random.uniform(0, 10, 1000000)
     >>> edges = equal_count_energy_ranges(energies, 5, emin=0, emax=10)
-    >>> np.allclose(edges, [0, 2, 4, 6, 8, 10], atol=0.05)
-    True
+    >>> assert np.allclose(edges, [0, 2, 4, 6, 8, 10], atol=0.05)
     >>> edges = equal_count_energy_ranges(energies, 5)
-    >>> np.allclose(edges, [0, 2, 4, 6, 8, 10], atol=0.05)
-    True
+    >>> assert np.allclose(edges, [0, 2, 4, 6, 8, 10], atol=0.05)
     >>> edges = equal_count_energy_ranges(energies, 0)
-    >>> np.allclose(edges, [0, 10], atol=0.05)
-    True
+    >>> assert np.allclose(edges, [0, 10], atol=0.05)
     """
     need_filtering = False
     if emin is not None or emax is not None:
@@ -2117,8 +2376,7 @@ def assign_if_not_finite(value, default):
     >>> assign_if_not_finite(np.inf, 3.2)
     3.2
     >>> input_arr = np.array([np.nan, 1, np.inf, 2])
-    >>> np.allclose(assign_if_not_finite(input_arr, 3.2), [3.2, 1, 3.2, 2])
-    True
+    >>> assert np.allclose(assign_if_not_finite(input_arr, 3.2), [3.2, 1, 3.2, 2])
 
     """
     if isinstance(value, Iterable):
@@ -2129,3 +2387,24 @@ def assign_if_not_finite(value, default):
     if not np.isfinite(value):
         return default
     return value
+
+
+def sqsum(array1, array2):
+    """Return the square root of the sum of the squares of two arrays."""
+    return np.sqrt(np.add(np.square(array1), np.square(array2)))
+
+
+@njit
+def _int_sum_non_zero(array):
+    """Sum all positive elements of an array of integers.
+
+    Parameters
+    ----------
+    array : array-like
+        Array of integers
+    """
+    sum = 0
+    for a in array:
+        if a > 0:
+            sum += int(a)
+    return sum

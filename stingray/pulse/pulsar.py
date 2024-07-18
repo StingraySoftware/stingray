@@ -3,6 +3,7 @@ Basic pulsar-related functions and statistics.
 """
 
 import functools
+import math
 from collections.abc import Iterable
 import warnings
 from scipy.optimize import minimize, basinhopping
@@ -57,16 +58,11 @@ def p_to_f(*period_derivatives):
 
     Examples
     --------
-    >>> p_to_f() == []
-    True
-    >>> np.allclose(p_to_f(1), [1])
-    True
-    >>> np.allclose(p_to_f(1, 2), [1, -2])
-    True
-    >>> np.allclose(p_to_f(1, 2, 3), [1, -2, 5])
-    True
-    >>> np.allclose(p_to_f(1, 2, 3, 4), [1, -2, 5, -16])
-    True
+    >>> assert p_to_f() == []
+    >>> assert np.allclose(p_to_f(1), [1])
+    >>> assert np.allclose(p_to_f(1, 2), [1, -2])
+    >>> assert np.allclose(p_to_f(1, 2, 3), [1, -2, 5])
+    >>> assert np.allclose(p_to_f(1, 2, 3, 4), [1, -2, 5, -16])
     """
     nder = len(period_derivatives)
     if nder == 0:
@@ -122,7 +118,7 @@ def pulse_phase(times, *frequency_derivatives, **opts):
     ph = ph0
 
     for i_f, f in enumerate(frequency_derivatives):
-        ph += 1 / np.math.factorial(i_f + 1) * times ** (i_f + 1) * f
+        ph += 1 / math.factorial(i_f + 1) * times ** (i_f + 1) * f
 
     if to_1:
         ph -= np.floor(ph)
@@ -276,7 +272,7 @@ def fold_events(times, *frequency_derivatives, **opts):
     if gti is None:
         gti = [[times[0], times[-1]]]
     # Be safe if gtis are a list
-    gti = np.asarray(gti)
+    gti = np.asanyarray(gti)
     ref_time = _default_value_if_no_key(opts, "ref_time", 0)
     expocorr = _default_value_if_no_key(opts, "expocorr", False)
 
@@ -652,7 +648,7 @@ def z_n(data, n, datatype="events", err=None, norm=None):
     z2_n : float
         The Z^2_n statistics of the events.
     """
-    data = np.asarray(data)
+    data = np.asanyarray(data)
 
     if norm is not None:
         warnings.warn(
