@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 import functools
 from stingray import Lightcurve
 
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
+
 try:
     import jax
     import jax.numpy as jnp
@@ -37,8 +40,224 @@ except ImportError:
     tfp_available = False
 
 
-__all__ = ["get_kernel", "get_mean", "get_prior", "get_log_likelihood", "GPResult", "get_gp_params"]
+__all__ = ["get_kernel", "get_mean", "get_prior", "get_log_likelihood", "GPResult", "get_gp_params","run_prior_checks"]
 
+
+def get_priors_samples(key, kernel_params, priors, loglike, n_samples=3000):
+    """Sample from the prior distribution.
+
+    Parameters
+    ----------
+    key : jax.random.PRNGKey
+        Random key.
+    priors : list
+        List of priors.
+    loglike : callable
+        Log likelihood function.
+    n_samples : int
+        Number of samples. Default is 3000.
+    """
+
+    num_params = len(kernel_params)
+
+    # get the prior model
+    prior_dict = dict(zip(kernel_params, priors))
+    prior_model = get_prior(kernel_params, prior_dict)
+
+    # define the model
+    nsmodel = Model(prior_model=prior_model, log_likelihood=loglike)
+    nsmodel.sanity_check(key=jax.random.PRNGKey(0), S=100)
+
+    # get the samples
+    unit_samples = jax.random.uniform(key, (n_samples, num_params))
+    prior_samples = jax.vmap(nsmodel.transform)(unit_samples)
+
+    return prior_samples
+
+
+def get_psd_and_approx(
+    kernel_type, kernel_params, prior_samples, f0, fM, n_frequencies=1000
+):  # -> tuple[NDArray[Any], NDArray[Any]]:
+    """Get the PSD and the approximate PSD for a given set of parameters and samples.
+
+    Parameters
+    ----------
+    n_samples : int
+        Number of samples.
+    kernel_params : list[str]
+        List of kernel parameters.
+    prior_samples : NDArray
+        Prior samples.
+    f0 : float
+        Minimum frequency.
+    fM : float
+        Maximum frequency.
+    n_frequencies : int
+        Number of frequencies.
+    """
+    n_samples = prior_samples[kernel_params[0]].shape[0]
+    f = np.geomspace(f0, fM, n_frequencies)
+    psd_models = []
+    psd_approx = []
+    for k in range(n_samples):
+        param_dict = {}
+        for i, params in enumerate(kernel_params):
+            if params[0:4] == "log_":
+                param_dict[params[4:]] = jnp.exp(prior_samples[params][k])
+            else:
+                param_dict[params] = prior_samples[params][k]
+
+        psd_model, psd_SHO = get_psd_approx_samples(f, kernel_type, param_dict, f0, fM)
+        psd_models.append(psd_model)
+        psd_approx.append(psd_SHO)
+    psd_models = np.array(psd_models)
+    psd_approx = np.array(psd_approx)
+    return f, psd_models, psd_approx
+
+
+def run_prior_checks(
+    kernel_type,
+    kernel_params,
+    priors,
+    loglike,
+    f_min,
+    f_max,
+    path="./",
+    n_samples=3000,
+    n_frequencies=1000,
+    key=jax.random.PRNGKey(42),
+    S_low=20,
+    S_high=20,
+):
+    """Check the approximation of the power spectrum density. This function will plot various diagnostics on the residuals and the ratio of the PSD and the approximate PSD.
+    
+    Parameters
+    ----------
+    kernel_type : str
+        The type of kernel to be used for the Gaussian Process
+        Only designed for the following Power spectra ["PowL","DoubPowL]
+    kernel_params : dict
+        Dictionary containing the parameters for the kernel
+        Should contain the parameters for the selected kernel
+    priors : list
+        List of priors.
+    loglike : callable
+        Log likelihood function.
+    f_min : float
+        Minimum frequency.
+    f_max : float
+        Maximum frequency.
+    path : str
+        Path to save the plots. Default is "./".
+    n_samples : int
+        Number of samples. Default is 3000.
+    n_frequencies : int
+        Number of frequencies. Default is 1000.
+    key : jax.random.PRNGKey
+        Random key. Default is jax.random.PRNGKey(42).
+    S_low : int
+        Low frequency scaling factor. Default is 20.
+    S_high : int
+        High frequency scaling factor. Default is 20.    
+    """
+    if kernel_type not in ["PowL", "DoubPowL"]:
+        raise ValueError("Only 'PowL' and 'DoubPowL' kernels need to be checked")
+    
+    f0, fM = f_min / S_low, f_max * S_high
+    prior_samples = get_priors_samples(key, kernel_params, priors, loglike, n_samples)
+    f, psd_models, psd_approx = get_psd_and_approx(
+        kernel_type, kernel_params, prior_samples, f0, fM, n_frequencies=n_frequencies
+    )
+
+    residuals = psd_approx - psd_models
+    ratio = np.exp(np.log(psd_approx) - np.log(psd_models))
+
+    fig, _ = plot_psd_approx_quantiles(f, f_min, f_max, residuals, ratio)
+    fig.savefig(f"{path}/psd_check_approx_quantiles.png", dpi=300)
+
+    fig, _ = plot_boxplot_psd_approx(residuals, ratio)
+    fig.savefig(f"{path}/psd_check_approx_boxplot.png", dpi=300)
+
+
+def plot_boxplot_psd_approx(residuals, ratios):
+    """Plot the boxplot of the residuals and the ratios of the PSD and the approximate PSD."""
+    meta_mean_res = np.mean(residuals, axis=1)
+    meta_median_res = np.median(residuals, axis=1)
+    meta_min_res = np.min(np.abs(residuals), axis=1)
+    meta_max_res = np.max(np.abs(residuals), axis=1)
+
+    meta_mean_rat = np.mean(ratios, axis=1)
+    meta_median_rat = np.median(ratios, axis=1)
+    meta_min_rat = np.min(ratios, axis=1)
+    meta_max_rat = np.max(ratios, axis=1)
+
+    fig, ax = plt.subplots(2, 1, figsize=(7, 5.5))
+    ax[0].boxplot(
+        [meta_mean_res, meta_median_res, meta_min_res, meta_max_res],
+        positions=[1, 2, 3, 4],
+        flierprops=dict(marker=".", markersize=3),
+    )
+    ax[0].set_xticks([])
+    ax[0].axhline(0, color="C2", lw=2, ls=":")
+
+    ax[1].boxplot(
+        [meta_mean_rat, meta_median_rat, meta_min_rat, meta_max_rat],
+        positions=[1, 2, 3, 4],
+        flierprops=dict(marker=".", markersize=3),
+    )
+    ax[1].set_xticks([1, 2, 3, 4])
+    ax[1].axhline(1, color="C2", lw=2, ls=":")
+    ax[1].set_xticklabels(["mean", "median", "minimum", "maximum"])
+    ax[0].set_ylabel(r"$P_{\text{true}} - P_{\text{approx}} $")  # "Residual")
+    ax[1].set_ylabel(r"$P_{\text{approx}} / P_{\text{true}} $")  # "Ratio")
+    fig.align_ylabels(ax)
+    return fig, ax
+
+def plot_psd_approx_quantiles(f,f_min,f_max, residuals, ratios):
+    """Plot the quantiles of the residuals and the ratios of the PSD and the approximate PSD as a function of frequency."""
+    res_quantiles = jnp.percentile(residuals, jnp.asarray([2.5, 16, 50, 84, 97.5]), axis=0)
+    rat_quantiles = jnp.percentile(ratios, jnp.asarray([2.5, 16, 50, 84, 97.5]), axis=0)
+
+    colors = "C0"
+    fig, ax = plt.subplots(2, 1, sharex=True, figsize=(6.5, 4.5), gridspec_kw={"hspace": 0.1})
+
+    ax[0].fill_between(f, res_quantiles[0], res_quantiles[4], color=colors, alpha=0.25)
+    ax[0].fill_between(f, res_quantiles[1], res_quantiles[3], color=colors, alpha=0.5)
+    ax[0].plot(f, res_quantiles[2], color="black", lw=1)
+    ax[0].update(
+        {
+            "xscale": "log",
+            "yscale": "linear",
+            "ylabel": r"$P_{\text{true}} - P_{\text{approx}} $",
+        }
+    )
+
+    ax[0].axvline(f_min, color="black", linestyle="--")
+    ax[0].axvline(f_max, color="black", linestyle="--")
+    ax[1].axvline(f_min, color="black", linestyle="--")
+    ax[1].axvline(f_max, color="black", linestyle="--")
+
+    ax[1].fill_between(f, rat_quantiles[0], rat_quantiles[4], color=colors, alpha=0.25)
+    ax[1].fill_between(f, rat_quantiles[1], rat_quantiles[3], color=colors, alpha=0.5)
+    ax[1].plot(f, rat_quantiles[2], color="black", lw=1)
+    ax[1].update(
+        {
+            "xscale": "log",
+            "yscale": "linear",
+            "xlabel": "Frequency",
+            "ylabel": r"${P_{\text{approx}}}/{P_{\text{true}}}$",
+        }
+    )
+
+    legend_elements = [
+        Line2D([0], [0], color=colors, lw=2, label="Median"),
+        Line2D([0], [0], color="k", lw=1, ls="--", label="$f_{\min}, f_{\max}$"),
+        Patch(facecolor=colors, edgecolor=colors, alpha=0.25, label="95%"),
+        Patch(facecolor=colors, edgecolor=colors, alpha=0.5, label="68%"),
+    ]
+    ax[1].legend(handles=legend_elements, ncol=3, bbox_to_anchor=(1.0, -0.4))
+    fig.align_ylabels(ax)
+    return fig, ax
 
 def SHO_power_spectrum(f, A, f0):
     """Power spectrum of a stochastic harmonic oscillator.
@@ -662,7 +881,6 @@ def get_gp_params(kernel_type, mean_type, scale_errors=False, log_transform=Fals
         kernel_params.append("scale_err")
     if log_transform:
         kernel_params.append("log_shift")
-
     return kernel_params
 
 
@@ -908,7 +1126,6 @@ class GPResult:
 
         nsmodel = Model(prior_model=self.prior_model, log_likelihood=self.log_likelihood_model)
         nsmodel.sanity_check(random.PRNGKey(10), S=100)
-
         self.exact_ns = DefaultNestedSampler(
             nsmodel, num_live_points=num_live_points, max_samples=max_samples
         )
