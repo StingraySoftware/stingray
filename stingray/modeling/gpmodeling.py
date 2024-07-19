@@ -40,6 +40,107 @@ except ImportError:
 __all__ = ["get_kernel", "get_mean", "get_prior", "get_log_likelihood", "GPResult", "get_gp_params"]
 
 
+def SHO_power_spectrum(f, A, f0):
+    """Power spectrum of a stochastic harmonic oscillator.
+
+    Parameters
+    ----------
+    f : jax.Array
+        Frequency array.
+    A : float
+        Amplitude.
+    f0 : float
+        Position.
+    """
+    P = A / (1 + jnp.power((f / f0), 4))
+
+    return P
+
+
+def _get_coefficients_approximation(
+    kernel_type, kernel_params, f_min, f_max, n_approx_components=20, approximate_with="SHO"
+):
+    """
+    Get the coefficients of the approximation of the power law kernel with a sum of SHO kernels or a sum of DRW+SHO kernels.
+
+    Parameters
+    ----------
+    kernel_type: string
+        The type of kernel to be used for the Gaussian Process
+        Only designed for the following Power spectra ["PowL","DoubPowL]
+    kernel_params: dict
+        Dictionary containing the parameters for the kernel
+        Should contain the parameters for the selected kernel
+    f_min: float
+        The minimum frequency of the approximation grid.
+        Should be the lowest frequency of the power spectrum
+    f_max: float
+        The maximum frequency of the approximation grid.
+        Should be the highest frequency of the power spectrum
+    n_approx_components: int
+        The number of components to use to approximate the power law
+    approximate_with: string
+        The type of kernel to use to approximate the power law power spectra
+    """
+    # grid of frequencies for the approximation
+    spectral_points = jnp.geomspace(f_min, f_max, n_approx_components)
+    # build the matrix of the approximation
+    if approximate_with == "SHO":
+        spectral_matrix = 1 / (
+            1 + jnp.power(jnp.atleast_2d(spectral_points).T / spectral_points, 4)
+        )
+    else:
+        raise NotImplementedError(f"Approximation {approximate_with} not implemented")
+
+    # get the psd values and normalize them to the first value
+    psd_values = _psd_model(kernel_type, kernel_params)(spectral_points)
+    psd_values /= psd_values[0]
+    # compute the coefficients of the approximation
+    spectral_coefficients = jnp.linalg.solve(spectral_matrix, psd_values)
+    return spectral_points, spectral_coefficients
+
+
+def get_psd_approx_samples(
+    f, kernel_type, kernel_params, f_min, f_max, n_approx_components=20, approximate_with="SHO"
+):
+    """Get the true PSD model and the approximated PSD using SHO decomposition.
+    
+    Parameters
+    ----------
+    f : jax.Array
+        Frequency array.
+    kernel_type: string
+        The type of kernel to be used for the Gaussian Process
+        Only designed for the following Power spectra ["PowL","DoubPowL]
+    kernel_params: dict
+        Dictionary containing the parameters for the kernel
+        Should contain the parameters for the selected kernel
+    f_min: float
+        The minimum frequency of the approximation grid.
+    f_max: float
+        The maximum frequency of the approximation grid.
+    n_approx_components: int
+        The number of components to use to approximate the power law
+        must be greater than 2, default 20
+    approximate_with: string
+        The type of kernel to use to approximate the power law power spectra
+        Default is "SHO"
+    """
+    f_c, a = _get_coefficients_approximation(
+        kernel_type,
+        kernel_params,
+        f_min,
+        f_max,
+        n_approx_components=n_approx_components,
+        approximate_with=approximate_with,
+    )
+    psd_SHO = SHO_power_spectrum(f, a[..., None], f_c[..., None]).sum(axis=0)
+
+    psd_model = _psd_model(kernel_type, kernel_params)(f)
+    psd_model /= psd_model[..., 0, None]
+    return psd_model, psd_SHO
+
+
 def _approximate_powerlaw(
     kernel_type, kernel_params, f_min, f_max, n_approx_components=20, approximate_with="SHO"
 ):
@@ -66,21 +167,14 @@ def _approximate_powerlaw(
         The type of kernel to use to approximate the power law power spectra
         Default is "SHO"
     """
-    # grid of frequencies for the approximation
-    spectral_points = jnp.geomspace(f_min, f_max, n_approx_components)
-    # build the matrix of the approximation
-    if approximate_with == "SHO":
-        spectral_matrix = 1 / (
-            1 + jnp.power(jnp.atleast_2d(spectral_points).T / spectral_points, 4)
-        )
-    else:
-        raise NotImplementedError(f"Approximation {approximate_with} not implemented")
-
-    # get the psd values and normalize them to the first value
-    psd_values = _psd_model(kernel_type, kernel_params)(spectral_points)
-    psd_values /= psd_values[0]
-    # compute the coefficients of the approximation
-    spectral_coefficients = jnp.linalg.solve(spectral_matrix, psd_values)
+    spectral_points, spectral_coefficients = _get_coefficients_approximation(
+        kernel_type,
+        kernel_params,
+        f_min,
+        f_max,
+        n_approx_components=n_approx_components,
+        approximate_with=approximate_with,
+    )
 
     if approximate_with == "SHO":
         amplitudes = (
@@ -771,7 +865,7 @@ class GPResult:
         self.time = lc.time
         self.counts = lc.counts
         self.result = None
-        
+
     def sample(self, prior_model=None, likelihood_model=None, max_samples=1e4, num_live_points=500):
         """
         Makes a Jaxns nested sampler over the Gaussian Process, given the
