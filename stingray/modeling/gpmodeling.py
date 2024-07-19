@@ -883,6 +883,7 @@ def get_gp_params(kernel_type, mean_type, scale_errors=False, log_transform=Fals
     if log_transform:
         kernel_params.append("log_shift")
         if "log_A" in kernel_params:
+            kernel_params[kernel_params.index("log_A")] = "A"
     return kernel_params
 
 
@@ -1128,12 +1129,15 @@ class GPResult:
 
         nsmodel = Model(prior_model=self.prior_model, log_likelihood=self.log_likelihood_model)
         nsmodel.sanity_check(random.PRNGKey(10), S=100)
+
+        # check the approximation of the model
+        
         self.exact_ns = DefaultNestedSampler(
-            nsmodel, num_live_points=num_live_points, max_samples=max_samples
+            nsmodel, num_live_points=num_live_points, max_samples=max_samples, verbose=True
         )
 
         termination_reason, state = self.exact_ns(
-            random.PRNGKey(42), term_cond=TerminationCondition(live_evidence_frac=1e-4)
+            random.PRNGKey(42), term_cond=TerminationCondition()#live_evidence_frac=1e-4)
         )
         self.results = self.exact_ns.to_results(termination_reason, state)
         print("Simulation Complete")
