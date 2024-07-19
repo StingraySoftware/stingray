@@ -864,6 +864,7 @@ def get_gp_params(kernel_type, mean_type, scale_errors=False, log_transform=Fals
     log_transform: bool, default False
         Whether to take the log of the data to make the data normally distributed
         This will add a parameter to the model to model a shifted log normal distribution
+        And will change the mean parameter "log_A" to "A" as the mean could be negative
 
     Returns
     -------
@@ -881,6 +882,7 @@ def get_gp_params(kernel_type, mean_type, scale_errors=False, log_transform=Fals
         kernel_params.append("scale_err")
     if log_transform:
         kernel_params.append("log_shift")
+        if "log_A" in kernel_params:
     return kernel_params
 
 
