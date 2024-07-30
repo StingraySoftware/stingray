@@ -40,7 +40,15 @@ except ImportError:
     tfp_available = False
 
 
-__all__ = ["get_kernel", "get_mean", "get_prior", "get_log_likelihood", "GPResult", "get_gp_params","run_prior_checks"]
+__all__ = [
+    "get_kernel",
+    "get_mean",
+    "get_prior",
+    "get_log_likelihood",
+    "GPResult",
+    "get_gp_params",
+    "run_prior_checks",
+]
 
 
 def get_priors_samples(key, kernel_params, priors, loglike, n_samples=3000):
@@ -76,7 +84,14 @@ def get_priors_samples(key, kernel_params, priors, loglike, n_samples=3000):
 
 
 def get_psd_and_approx(
-    kernel_type, kernel_params, prior_samples, f0, fM, n_frequencies=1000
+    kernel_type,
+    kernel_params,
+    prior_samples,
+    f0,
+    fM,
+    n_frequencies=1000,
+    n_approx_components=20,
+    approximate_with="SHO",
 ):  # -> tuple[NDArray[Any], NDArray[Any]]:
     """Get the PSD and the approximate PSD for a given set of parameters and samples.
 
@@ -94,6 +109,7 @@ def get_psd_and_approx(
         Maximum frequency.
     n_frequencies : int
         Number of frequencies.
+
     """
     n_samples = prior_samples[kernel_params[0]].shape[0]
     f = np.geomspace(f0, fM, n_frequencies)
@@ -107,7 +123,15 @@ def get_psd_and_approx(
             else:
                 param_dict[params] = prior_samples[params][k]
 
-        psd_model, psd_SHO = get_psd_approx_samples(f, kernel_type, param_dict, f0, fM)
+        psd_model, psd_SHO = get_psd_approx_samples(
+            f,
+            kernel_type,
+            param_dict,
+            f0,
+            fM,
+            n_approx_components=n_approx_components,
+            approximate_with=approximate_with,
+        )
         psd_models.append(psd_model)
         psd_approx.append(psd_SHO)
     psd_models = np.array(psd_models)
@@ -128,9 +152,11 @@ def run_prior_checks(
     key=jax.random.PRNGKey(42),
     S_low=20,
     S_high=20,
+    n_approx_components=20,
+    approximate_with="SHO",
 ):
     """Check the approximation of the power spectrum density. This function will plot various diagnostics on the residuals and the ratio of the PSD and the approximate PSD.
-    
+
     Parameters
     ----------
     kernel_type : str
@@ -158,15 +184,22 @@ def run_prior_checks(
     S_low : int
         Low frequency scaling factor. Default is 20.
     S_high : int
-        High frequency scaling factor. Default is 20.    
+        High frequency scaling factor. Default is 20.
     """
     if kernel_type not in ["PowL", "DoubPowL"]:
         raise ValueError("Only 'PowL' and 'DoubPowL' kernels need to be checked")
-    
+
     f0, fM = f_min / S_low, f_max * S_high
     prior_samples = get_priors_samples(key, kernel_params, priors, loglike, n_samples)
     f, psd_models, psd_approx = get_psd_and_approx(
-        kernel_type, kernel_params, prior_samples, f0, fM, n_frequencies=n_frequencies
+        kernel_type,
+        kernel_params,
+        prior_samples,
+        f0,
+        fM,
+        n_frequencies=n_frequencies,
+        n_approx_components=n_approx_components,
+        approximate_with=approximate_with,
     )
 
     residuals = psd_approx - psd_models
@@ -211,9 +244,11 @@ def plot_boxplot_psd_approx(residuals, ratios):
     ax[0].set_ylabel(r"$P_{\text{true}} - P_{\text{approx}} $")  # "Residual")
     ax[1].set_ylabel(r"$P_{\text{approx}} / P_{\text{true}} $")  # "Ratio")
     fig.align_ylabels(ax)
+    fig.tight_layout()
     return fig, ax
 
-def plot_psd_approx_quantiles(f,f_min,f_max, residuals, ratios):
+
+def plot_psd_approx_quantiles(f, f_min, f_max, residuals, ratios):
     """Plot the quantiles of the residuals and the ratios of the PSD and the approximate PSD as a function of frequency."""
     res_quantiles = jnp.percentile(residuals, jnp.asarray([2.5, 16, 50, 84, 97.5]), axis=0)
     rat_quantiles = jnp.percentile(ratios, jnp.asarray([2.5, 16, 50, 84, 97.5]), axis=0)
@@ -257,7 +292,9 @@ def plot_psd_approx_quantiles(f,f_min,f_max, residuals, ratios):
     ]
     ax[1].legend(handles=legend_elements, ncol=3, bbox_to_anchor=(1.0, -0.4))
     fig.align_ylabels(ax)
+    fig.tight_layout()
     return fig, ax
+
 
 def SHO_power_spectrum(f, A, f0):
     """Power spectrum of a stochastic harmonic oscillator.
@@ -323,7 +360,7 @@ def get_psd_approx_samples(
     f, kernel_type, kernel_params, f_min, f_max, n_approx_components=20, approximate_with="SHO"
 ):
     """Get the true PSD model and the approximated PSD using SHO decomposition.
-    
+
     Parameters
     ----------
     f : jax.Array
@@ -1131,13 +1168,13 @@ class GPResult:
         nsmodel.sanity_check(random.PRNGKey(10), S=100)
 
         # check the approximation of the model
-        
+
         self.exact_ns = DefaultNestedSampler(
             nsmodel, num_live_points=num_live_points, max_samples=max_samples, verbose=True
         )
 
         termination_reason, state = self.exact_ns(
-            random.PRNGKey(42), term_cond=TerminationCondition()#live_evidence_frac=1e-4)
+            random.PRNGKey(42), term_cond=TerminationCondition()  # live_evidence_frac=1e-4)
         )
         self.results = self.exact_ns.to_results(termination_reason, state)
         print("Simulation Complete")
