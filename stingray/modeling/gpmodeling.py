@@ -47,7 +47,7 @@ __all__ = [
     "get_log_likelihood",
     "GPResult",
     "get_gp_params",
-    "run_prior_checks",
+    "run_prior_checks","run_posterior_check"
 ]
 
 
@@ -74,7 +74,7 @@ def get_priors_samples(key, kernel_params, priors, loglike, n_samples=3000):
 
     # define the model
     nsmodel = Model(prior_model=prior_model, log_likelihood=loglike)
-    nsmodel.sanity_check(key=jax.random.PRNGKey(0), S=100)
+    # nsmodel.sanity_check(key=jax.random.PRNGKey(0), S=1)
 
     # get the samples
     unit_samples = jax.random.uniform(key, (n_samples, num_params))
@@ -92,6 +92,7 @@ def get_psd_and_approx(
     n_frequencies=1000,
     n_approx_components=20,
     approximate_with="SHO",
+    with_normalisation=False,
 ):  # -> tuple[NDArray[Any], NDArray[Any]]:
     """Get the PSD and the approximate PSD for a given set of parameters and samples.
 
@@ -132,11 +133,136 @@ def get_psd_and_approx(
             n_approx_components=n_approx_components,
             approximate_with=approximate_with,
         )
-        psd_models.append(psd_model)
-        psd_approx.append(psd_SHO)
+        if with_normalisation:
+            f_c, a = _get_coefficients_approximation(
+                kernel_type,
+                param_dict,
+                f0,
+                fM,
+                n_approx_components=n_approx_components,
+                approximate_with=approximate_with,
+            )
+            norm = np.sum(a * f_c)
+            psd_models.append(psd_model * param_dict["variance"] / norm)
+            psd_approx.append(psd_SHO * param_dict["variance"] / norm)
+        else:
+            psd_models.append(psd_model)
+            psd_approx.append(psd_SHO)
     psd_models = np.array(psd_models)
     psd_approx = np.array(psd_approx)
     return f, psd_models, psd_approx
+
+
+def plot_psd_ppc(f, psd_quantiles, psd_approx_quantiles, psd_noise_levels, f_min, f_max, path):
+    """Replot the PSD PPC plot.
+
+    Parameters
+    ----------
+    f : array
+        The frequency array.
+    psd_quantiles : array
+        The quantiles of the PSD model.
+    psd_approx_quantiles : array
+        The quantiles of the PSD approximation.
+    psd_noise_levels : array
+        The noise levels.
+    f_min : float
+        The minimum frequency.
+    f_max : float
+        The maximum frequency.
+    path : str
+        The path to save the figure.
+    """
+    approx_color = "C6"
+    psd_color = "C3"
+    noise_color = "C5"
+    window_color = "k"
+
+    fig, ax = plt.subplots(1, 1, figsize=(6, 4))
+
+    ax.loglog(f, psd_quantiles[:, 2], label="Median", color=psd_color)
+    ax.fill_between(f, psd_quantiles[:, 1], psd_quantiles[:, 3], color=psd_color, alpha=0.3)
+    ax.fill_between(f, psd_quantiles[:, 0], psd_quantiles[:, 4], color=psd_color, alpha=0.15)
+    ax.axhline(psd_noise_levels[0], color=noise_color, ls="-", label="Noise level")
+    ax.loglog(f, psd_approx_quantiles[:, 2], color=approx_color)
+    ax.fill_between(
+        f,
+        psd_approx_quantiles[:, 1],
+        psd_approx_quantiles[:, 3],
+        color=approx_color,
+        alpha=0.3,
+    )
+    ax.fill_between(
+        f,
+        psd_approx_quantiles[:, 0],
+        psd_approx_quantiles[:, 4],
+        color=approx_color,
+        alpha=0.15,
+    )
+    ax.axvline(f_min, color=window_color, ls=":", label=r"f$_{\min}$")
+    ax.axvline(f_max, color=window_color, ls=":", label=r"f$_{\max}$")
+    ax.update({"xlabel": r"Frequency $(d^{-1})$", "ylabel": "Power Spectral Density"})
+    ax.set_xlim(np.min(f), np.max(f) / 10)
+    ax.set_ylim(np.min(psd_noise_levels) / 10)
+
+    legend_elements = [
+        Line2D([0], [0], color=psd_color, lw=2, label="PSD model"),
+        Line2D([0], [0], color=approx_color, lw=2, label="PSD approximation"),
+        Line2D([0], [0], color=noise_color, lw=2, label="Noise level"),
+        Patch(facecolor="k", edgecolor="k", alpha=0.1, label="95%"),
+        Patch(facecolor="k", edgecolor="k", alpha=0.4, label="68%"),
+        Line2D([0], [0], color=window_color, lw=2, ls=":", label="$f_{\min}, f_{\max}$"),
+    ]
+
+    ax.legend(
+        handles=legend_elements,
+        ncol=2,
+        bbox_to_anchor=(0.5, -0.175),
+        loc="lower center",
+        bbox_transform=fig.transFigure,
+    )
+    fig.tight_layout()
+    fig.savefig(f"{path}replot_psd_ppc.pdf", bbox_inches="tight")
+    
+    return fig
+
+def run_posterior_check(
+    kernel_type,
+    kernel_params,
+    posterior_dict,
+    t,
+    y,
+    yerr,
+    S_low=20,
+    S_high=20,
+    n_frequencies=1000,
+    n_approx_components=20,
+    approximate_with="SHO",
+    path="./"
+):
+
+    f_min, f_max = 1 / (t[-1] - t[0]), 1 / (2 * np.min(np.diff(t)))
+    f0, fM = f_min / S_low, f_max * S_high
+    f, psd_models, psd_approx = get_psd_and_approx(
+        kernel_type,
+        kernel_params,
+        posterior_dict,
+        f0,
+        fM,
+        n_frequencies=n_frequencies,
+        n_approx_components=n_approx_components,
+        approximate_with=approximate_with,
+        with_normalisation=True,
+    )
+
+    if "log_shift" in kernel_params:
+        psd_noise_levels = [2 * np.median((yerr / y) ** 2) * np.median(np.diff(t))]
+    else:
+        psd_noise_levels = [2 * np.median((yerr) ** 2) * np.median(np.diff(t))]
+    psd_quantiles = jnp.percentile(psd_models, jnp.array([2.5, 16, 50, 84, 97.5]), axis=0).T
+    psd_approx_quantiles = jnp.percentile(psd_approx, jnp.array([2.5, 16, 50, 84, 97.5]), axis=0).T
+
+    fig = plot_psd_ppc(f, psd_quantiles, psd_approx_quantiles, psd_noise_levels, f_min, f_max, path=path)
 
 
 def run_prior_checks(
@@ -146,10 +272,10 @@ def run_prior_checks(
     loglike,
     f_min,
     f_max,
+    seed=42,
     path="./",
     n_samples=3000,
     n_frequencies=1000,
-    key=jax.random.PRNGKey(42),
     S_low=20,
     S_high=20,
     n_approx_components=20,
@@ -186,6 +312,7 @@ def run_prior_checks(
     S_high : int
         High frequency scaling factor. Default is 20.
     """
+    key = jax.random.PRNGKey(seed)
     if kernel_type not in ["PowL", "DoubPowL"]:
         raise ValueError("Only 'PowL' and 'DoubPowL' kernels need to be checked")
 
@@ -205,11 +332,12 @@ def run_prior_checks(
     residuals = psd_approx - psd_models
     ratio = np.exp(np.log(psd_approx) - np.log(psd_models))
 
-    fig, _ = plot_psd_approx_quantiles(f, f_min, f_max, residuals, ratio)
-    fig.savefig(f"{path}/psd_check_approx_quantiles.png", dpi=300)
+    fig1, _ = plot_psd_approx_quantiles(f, f_min, f_max, residuals, ratio)
+    fig1.savefig(f"{path}/psd_check_approx_quantiles.png", dpi=300)
 
-    fig, _ = plot_boxplot_psd_approx(residuals, ratio)
-    fig.savefig(f"{path}/psd_check_approx_boxplot.png", dpi=300)
+    fig2, _ = plot_boxplot_psd_approx(residuals, ratio)
+    fig2.savefig(f"{path}/psd_check_approx_boxplot.png", dpi=300)
+    return fig1, fig2
 
 
 def plot_boxplot_psd_approx(residuals, ratios):
@@ -244,7 +372,7 @@ def plot_boxplot_psd_approx(residuals, ratios):
     ax[0].set_ylabel(r"$P_{\text{true}} - P_{\text{approx}} $")  # "Residual")
     ax[1].set_ylabel(r"$P_{\text{approx}} / P_{\text{true}} $")  # "Ratio")
     fig.align_ylabels(ax)
-    fig.tight_layout()
+    # fig.tight_layout()
     return fig, ax
 
 
@@ -292,7 +420,7 @@ def plot_psd_approx_quantiles(f, f_min, f_max, residuals, ratios):
     ]
     ax[1].legend(handles=legend_elements, ncol=3, bbox_to_anchor=(1.0, -0.4))
     fig.align_ylabels(ax)
-    fig.tight_layout()
+    # fig.tight_layout()
     return fig, ax
 
 
@@ -496,7 +624,8 @@ def _psd_model(kernel_type, kernel_params):
 def get_kernel(
     kernel_type,
     kernel_params,
-    times,
+    f_min=0,
+    f_max=0,
     n_approx_components=20,
     approximate_with="SHO",
     S_low=20,
@@ -516,8 +645,11 @@ def get_kernel(
     kernel_params: dict
         Dictionary containing the parameters for the kernel
         Should contain the parameters for the selected kernel
-    times: np.array or jnp.array
-        The time array of the lightcurve
+    f_min: float
+        The minimum frequency of the time series.
+    f_max: float
+        The maximum frequency of the time series.
+
     n_approx_components: int
         The number of components to use to approximate the power law
         must be greater than 2, default 20
@@ -562,8 +694,8 @@ def get_kernel(
         kernel = _approximate_powerlaw(
             kernel_type,
             kernel_params,
-            f_min=1 / (times[-1] - times[0]) / S_low,
-            f_max=0.5 / jnp.min(jnp.diff(times)) * S_high,
+            f_min=f_min / S_low,
+            f_max=f_max * S_high,
             n_approx_components=n_approx_components,
             approximate_with=approximate_with,
         )
@@ -1062,6 +1194,7 @@ def get_log_likelihood(
 
     if not can_make_gp:
         raise ImportError("Tinygp is required to make the GP model.")
+    f_min, f_max = 1 / (times[-1] - times[0]), 0.5 / jnp.min(jnp.diff(times))
 
     @jit
     def likelihood_model(*args):
@@ -1075,7 +1208,8 @@ def get_log_likelihood(
         kernel = get_kernel(
             kernel_type=kernel_type,
             kernel_params=param_dict,
-            times=times,
+            f_min=f_min,
+            f_max=f_max,
             n_approx_components=n_approx_components,
             approximate_with=approximate_with,
             S_low=S_low,
