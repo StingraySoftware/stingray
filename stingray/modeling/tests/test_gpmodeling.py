@@ -22,8 +22,16 @@ try:
 except ImportError:
     _HAS_TINYGP = False
 
-from stingray.modeling.gpmodeling import get_kernel, get_mean, get_gp_params, _psd_model
-from stingray.modeling.gpmodeling import get_prior, get_log_likelihood, GPResult
+from stingray.modeling.gpmodeling import (
+    get_kernel,
+    get_mean,
+    get_gp_params,
+    _psd_model,
+    get_psd_and_approx,
+    run_prior_checks,
+    _get_coefficients_approximation,
+)
+from stingray.modeling.gpmodeling import get_prior, get_log_likelihood, GPResult, get_priors_samples
 from stingray import Lightcurve
 
 try:
@@ -46,7 +54,7 @@ def clear_all_figs():
         plt.close(fig)
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 @pytest.mark.skipif(not _HAS_TINYGP, reason="tinygp not installed")
 class Testget_kernel(object):
     def setup_class(self):
@@ -88,14 +96,19 @@ class Testget_kernel(object):
         ).all()
 
     def test_get_kernel_powL(self):
-        
-        t = jnp.arange(0,100.05,0.05)
-        f_min, f_max = 1/(t[-1]-t[0])/20, 1/(2*(t[1]-t[0]))*20
+
+        t = jnp.arange(0, 100.05, 0.05)
+        f_min, f_max = 1 / (t[-1] - t[0]) / 20, 1 / (2 * (t[1] - t[0])) * 20
         n_approx_components = 20
-        alpha_1, f_1, alpha_2,variance = 0.3, 0.05, 2.9,0.2
-        
-        kernel_params = {"alpha_1": alpha_1, "log_f_bend": jnp.log(f_1), "alpha_2": alpha_2, "variance": variance}
-        
+        alpha_1, f_1, alpha_2, variance = 0.3, 0.05, 2.9, 0.2
+
+        kernel_params = {
+            "alpha_1": alpha_1,
+            "f_bend": f_1,
+            "alpha_2": alpha_2,
+            "variance": variance,
+        }
+
         spectral_points = jnp.geomspace(f_min, f_max, 20)
         spectral_matrix = 1 / (
             1 + jnp.power(jnp.atleast_2d(spectral_points).T / spectral_points, 4)
@@ -116,10 +129,18 @@ class Testget_kernel(object):
             kernel += amplitudes[j] * kernels.quasisep.SHO(
                 quality=1 / jnp.sqrt(2), omega=2 * jnp.pi * spectral_points[j]
             )
-            
-        kernel_PowL_test = get_kernel("PowL", kernel_params,t,n_approx_components=n_approx_components)
-        assert (kernel(self.x, jnp.array([0.0])) == kernel_PowL_test(self.x, jnp.array([0.0]))).all()
-    
+
+        kernel_PowL_test = get_kernel(
+            "PowL",
+            kernel_params,
+            f_min=1 / (t[-1] - t[0]),
+            f_max=0.5 / (t[1] - t[0]),
+            n_approx_components=n_approx_components,
+        )
+        assert (
+            kernel(self.x, jnp.array([0.0])) == kernel_PowL_test(self.x, jnp.array([0.0]))
+        ).all()
+
     def test_value_error(self):
         with pytest.raises(ValueError, match="Kernel type not implemented"):
             get_kernel("periodic", self.kernel_params)
@@ -269,14 +290,14 @@ class Testget_gp_params(object):
         ]
 
     def test_get_params_PowL(self):
-        assert get_gp_params("PowL", "const") == [
+        assert get_gp_params("PowL", "constant") == [
             "alpha_1",
             "log_f_bend",
             "alpha_2",
             "variance",
             "log_A",
         ]
-        assert get_gp_params("PowL", "const", scale_errors=True) == [
+        assert get_gp_params("PowL", "constant", scale_errors=True) == [
             "alpha_1",
             "log_f_bend",
             "alpha_2",
@@ -286,7 +307,7 @@ class Testget_gp_params(object):
         ]
 
     def test_get_params_DoubPowL(self):
-        assert get_gp_params("DoubPowL", "const") == [
+        assert get_gp_params("DoubPowL", "constant") == [
             "alpha_1",
             "log_f_bend_1",
             "alpha_2",
@@ -295,7 +316,7 @@ class Testget_gp_params(object):
             "variance",
             "log_A",
         ]
-        assert get_gp_params("DoubPowL", "const", scale_errors=True) == [
+        assert get_gp_params("DoubPowL", "constant", scale_errors=True) == [
             "alpha_1",
             "log_f_bend_1",
             "alpha_2",
@@ -305,6 +326,92 @@ class Testget_gp_params(object):
             "log_A",
             "scale_err",
         ]
+
+
+@pytest.mark.skipif(
+    not (_HAS_TINYGP and _HAS_TFP and _HAS_JAXNS), reason="tinygp, tfp or jaxns not installed"
+)
+class TestPSDapprox(object):
+    def setup_class(self):
+        self.t = np.linspace(0, 1, 10)
+        self.y = np.array([2.4, 3.5, 4.5, 5.6, 6.7, 7.8, 8.9, 9.0, 10.1, 11.2])
+        self.yerr = np.array([0.1, 0.3, 0.2, 0.1, 0.2, 0.1, 0.3, 0.2, 0.1, 0.2])
+
+        self.kernel_type = "PowL"
+        self.mean_type = "constant"
+        self.kernel_params = get_gp_params(
+            self.kernel_type, self.mean_type, scale_errors=True, log_transform=True
+        )
+        self.loglike = get_log_likelihood(
+            self.kernel_params, self.kernel_type, self.mean_type, self.t, self.y, self.yerr
+        )
+
+        min_f_1, max_f_1 = 5.5e-3, 0.5
+        muL = -0.2
+
+        self.priors = [
+            tfpd.Uniform(low=0.0, high=1.25),
+            tfpd.Uniform(low=jnp.log(min_f_1), high=jnp.log(max_f_1)),
+            tfpd.Uniform(low=1.5, high=4),
+            tfpd.LogNormal(muL, 1.0),
+            tfpd.Normal(0.0, 2),
+            tfpd.Gamma(jnp.array(2.0), jnp.array(2.0)),  # was not working without jnp.array, why?
+            tfpd.Uniform(low=jnp.log(1e-6), high=jnp.log(0.99 * 3)),
+        ]
+
+    def test_get_prior_samples(self):
+
+        loglike = get_log_likelihood(
+            self.kernel_params, self.kernel_type, self.mean_type, self.t, self.y, self.yerr
+        )
+
+        # prior_dict = dict(zip(self.kernel_params, priors))
+        # prior_model = get_prior(self.kernel_params, prior_dict)
+        prior_samples = get_priors_samples(
+            jax.random.PRNGKey(0), self.kernel_params, self.priors, loglike, 10
+        )
+        assert len(prior_samples) == len(self.kernel_params)
+        for key in self.kernel_params:
+            assert prior_samples[key].shape == (10,)
+
+    def test_get_psd_and_approx(self):
+        f0, fM = 5.5e-3 / 20, 0.5 * 20
+        loglike = get_log_likelihood(
+            self.kernel_params, self.kernel_type, self.mean_type, self.t, self.y, self.yerr
+        )
+
+        prior_samples = get_priors_samples(
+            jax.random.PRNGKey(0), self.kernel_params, self.priors, loglike, 10
+        )
+
+        f, psd_models, psd_approx = get_psd_and_approx(
+            self.kernel_type, self.kernel_params, prior_samples, f0, fM, n_frequencies=200
+        )
+        assert len(f) == 200
+        assert psd_models.shape == (10, 200)
+        assert psd_approx.shape == (10, 200)
+
+    def test_run_prior_checks(self):
+        loglike = get_log_likelihood(
+            self.kernel_params, self.kernel_type, self.mean_type, self.t, self.y, self.yerr
+        )
+
+        # prior_samples = get_priors_samples(jax.random.PRNGKey(0),self.kernel_params,self.priors,self.loglike,10)
+        fig1, fig2 = run_prior_checks(
+            self.kernel_type, self.kernel_params, self.priors, loglike, 5.5e-2, 0.5
+        )
+        plt.fignum_exists(1)
+        plt.fignum_exists(2)
+
+    def test__get_coefficients_approximation(self):
+
+        kernel_params = {"alpha_1": 0.3, "f_bend": 0.05, "alpha_2": 3.5, "variance": 0.2}
+        f_min, f_max = 1 / (self.t[-1] - self.t[0]) / 20, 1 / (2 * np.min(np.diff(self.t))) * 20
+        spectral_points, spectral_coefs = _get_coefficients_approximation(
+            self.kernel_type, kernel_params, f_min, f_max, 25
+        )
+        assert spectral_points.shape == (25,)
+        assert spectral_coefs.shape == (25,)
 
 
 @pytest.mark.xfail

@@ -47,7 +47,8 @@ __all__ = [
     "get_log_likelihood",
     "GPResult",
     "get_gp_params",
-    "run_prior_checks","run_posterior_check"
+    "run_prior_checks",
+    "run_posterior_check",
 ]
 
 
@@ -223,8 +224,9 @@ def plot_psd_ppc(f, psd_quantiles, psd_approx_quantiles, psd_noise_levels, f_min
     )
     fig.tight_layout()
     fig.savefig(f"{path}replot_psd_ppc.pdf", bbox_inches="tight")
-    
+
     return fig
+
 
 def run_posterior_check(
     kernel_type,
@@ -238,7 +240,7 @@ def run_posterior_check(
     n_frequencies=1000,
     n_approx_components=20,
     approximate_with="SHO",
-    path="./"
+    path="./",
 ):
 
     f_min, f_max = 1 / (t[-1] - t[0]), 1 / (2 * np.min(np.diff(t)))
@@ -262,7 +264,9 @@ def run_posterior_check(
     psd_quantiles = jnp.percentile(psd_models, jnp.array([2.5, 16, 50, 84, 97.5]), axis=0).T
     psd_approx_quantiles = jnp.percentile(psd_approx, jnp.array([2.5, 16, 50, 84, 97.5]), axis=0).T
 
-    fig = plot_psd_ppc(f, psd_quantiles, psd_approx_quantiles, psd_noise_levels, f_min, f_max, path=path)
+    fig = plot_psd_ppc(
+        f, psd_quantiles, psd_approx_quantiles, psd_noise_levels, f_min, f_max, path=path
+    )
 
 
 def run_prior_checks(
