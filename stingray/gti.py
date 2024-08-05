@@ -273,6 +273,8 @@ def get_gti_from_all_extensions(lchdulist, accepted_gtistrings=["GTI"], det_numb
     ...     det_numbers=[5])
     >>> assert np.allclose(gti, [[200, 250]])
     """
+    if isinstance(lchdulist, str):
+        lchdulist = fits.open(lchdulist)
     acc_gti_strs = copy.deepcopy(accepted_gtistrings)
     if det_numbers is not None:
         for i in det_numbers:
