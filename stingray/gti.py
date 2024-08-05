@@ -1776,6 +1776,9 @@ def split_gtis_by_exposure(gtis, exposure_per_chunk, new_interval_if_gti_sep=Non
         List of GTIs of the form ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``
     exposure_per_chunk : float
         Total exposure of each chunk
+
+    Other Parameters
+    ----------------
     new_interval_if_gti_sep : float
         If the GTIs are separated by more than this time, split the observation in two.
 
@@ -1816,16 +1819,24 @@ def split_gtis_by_exposure(gtis, exposure_per_chunk, new_interval_if_gti_sep=Non
         return np.asarray([gtis])
 
     if len(gtis) <= n_intervals:
-        warnings.warn(
-            "The number of intervals is lower or equal to the number of GTIs."
-            "The observation will be split by single GTIs."
-        )
-        return np.asarray([[g] for g in gtis])
+        new_gtis = []
+        for g in gtis:
+            if g[1] - g[0] > exposure_per_chunk:
+                new_edges = np.arange(g[0], g[1], exposure_per_chunk)
+                if new_edges[-1] < g[1]:
+                    new_edges = np.append(new_edges, g[1])
 
-    if np.size(gtis.flatten()) == 2:
-        new_edges = np.linspace(gtis[0, 0], gtis[1, 1], n_intervals + 1)
+                new_gtis.extend([[ed0, ed1] for ed0, ed1 in zip(new_edges[:-1], new_edges[1:])])
+            else:
+                new_gtis.append(g)
+        gtis = np.asarray(new_gtis)
 
-        return np.asarray([[[ed0, ed1] for ed0, ed1 in zip(new_edges[:-1], new_edges[1:])]])
+    #     return np.asarray([[g] for g in gtis])
+
+    # if np.size(gtis.flatten()) == 2:
+    #     new_edges = np.linspace(gtis[0, 0], gtis[1, 1], n_intervals + 1)
+
+    #     return np.asarray([[[ed0, ed1] for ed0, ed1 in zip(new_edges[:-1], new_edges[1:])]])
 
     exposure_edges = []
     last_exposure = 0

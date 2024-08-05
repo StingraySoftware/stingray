@@ -369,10 +369,26 @@ class TestGTI(object):
         new_gtis = split_gtis_by_exposure(gtis, 400, new_interval_if_gti_sep=86400)
         assert np.allclose(new_gtis[0], [[0, 30]])
         assert np.allclose(new_gtis[1], [[86450, 86460]])
+
+    def test_split_gtis_by_exposure_no_min_gti_sep(self):
         gtis = [[0, 30], [86440, 86470], [86490, 86520], [86530, 86560]]
         new_gtis = split_gtis_by_exposure(gtis, 60, new_interval_if_gti_sep=None)
         assert np.allclose(new_gtis[0], [[0, 30], [86440, 86470]])
         assert np.allclose(new_gtis[1], [[86490, 86520], [86530, 86560]])
+
+    def test_split_gtis_by_exposure_small_exp(self):
+        gtis = [[0, 30], [86440, 86470], [86490, 86495], [86500, 86505]]
+        new_gtis = split_gtis_by_exposure(gtis, 15, new_interval_if_gti_sep=None)
+        assert np.allclose(
+            new_gtis[:4],
+            [
+                [[0, 15]],
+                [[15, 30]],
+                [[86440, 86455]],
+                [[86455, 86470]],
+            ],
+        )
+        assert np.allclose(new_gtis[4], [[86490, 86495], [86500, 86505]])
 
     def test_split_gtis_at_indices(self):
         gtis = [[0, 30], [50, 60], [80, 90]]
