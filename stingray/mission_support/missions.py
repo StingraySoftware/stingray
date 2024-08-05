@@ -178,6 +178,10 @@ def get_rough_conversion_function(mission, instrument=None, epoch=None):
     raise ValueError(f"Mission {mission.lower()} not recognized")
 
 
+def _empty(x, *args, **kwargs):
+    return x
+
+
 def mission_specific_event_interpretation(mission):
     """Get the mission-specific FITS interpretation function.
 
@@ -187,8 +191,5 @@ def mission_specific_event_interpretation(mission):
 
     if mission.lower() == "xte":
         return rxte_pca_event_file_interpretation
-
-    def _empty(x, *args, **kwargs):
-        return x
 
     return _empty
