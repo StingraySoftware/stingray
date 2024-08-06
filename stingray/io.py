@@ -49,11 +49,13 @@ from .mission_support import (
 import pickle
 
 _H5PY_INSTALLED = True
+DEFAULT_FORMAT = "hdf5"
 
 try:
     import h5py
 except ImportError:
     _H5PY_INSTALLED = False
+    DEFAULT_FORMAT = "pickle"
 
 
 HAS_128 = True
@@ -746,6 +748,7 @@ class FITSTimeseriesReader(object):
             additional_columns.append(self.detector_key)
         self.data_hdu = fits.open(self.fname)[self.hduname]
         self.gti_file = gti_file
+        self._read_gtis(self.gti_file)
 
     @property
     def time(self):
@@ -817,6 +820,7 @@ class FITSTimeseriesReader(object):
         if self.detector_key is not None and self.detector_key in data.dtype.names:
             new_ts.detector_id = data[self.detector_key]
             det_numbers = list(set(new_ts.detector_id))
+            self._read_gtis(self.gti_file, det_numbers=det_numbers)
 
         if self.additional_columns is not None:
             for col in self.additional_columns:
@@ -824,10 +828,6 @@ class FITSTimeseriesReader(object):
                     continue
                 if col in data.dtype.names:
                     setattr(new_ts, col.lower(), data[col])
-
-        # READ THE DETECTOR NUMBERS HERE
-
-        self._read_gtis(self.gti_file, det_numbers=det_numbers)
 
         return new_ts
 
@@ -950,7 +950,7 @@ class FITSTimeseriesReader(object):
         else:
             gti_list = load_gtis(gti_file, self.gtistring)
 
-        self.add_meta_attr("gti", gti_list)
+        self.add_meta_attr("gti", np.asanyarray(gti_list))
 
     def fitsio_filter(self, filter_expression, fitsio_hdu=None):
         """Filter the event list using a fitsio-compatible filter expression.
@@ -990,7 +990,7 @@ class FITSTimeseriesReader(object):
         filter_spec = fitsio_hdu.where(filter_expression)
         return filter_spec
 
-    def apply_gti_lists(self, new_gti_lists, root_file_name="output", fmt="hdf5"):
+    def apply_gti_lists(self, new_gti_lists, root_file_name="output", fmt=DEFAULT_FORMAT):
         """Split the event list into different files, each with a different GTI.
 
         Parameters
@@ -1013,13 +1013,16 @@ class FITSTimeseriesReader(object):
             A list of the output file names.
 
         """
-        if len(new_gti_lists[0]) == len(self.gti) and np.allclose(new_gti_lists[0], self.gti):
+
+        if len(new_gti_lists[0]) == len(self.gti) and np.all(
+            np.abs(np.asanyarray(new_gti_lists[0]) - self.gti.flatten()) < 1e-3
+        ):
             output_file = root_file_name + f"_00." + fmt.lstrip(".")
-            self[:].write(output_file)
+            self[:].write(output_file, fmt=fmt)
             return [output_file]
 
         if _FITSIO_INSTALLED:
-            fits = fitsio.FITS(self.fname)
+            hdulist = fitsio.FITS(self.fname)
         else:
             hdulist = fits.open(self.fname)
 
@@ -1029,7 +1032,7 @@ class FITSTimeseriesReader(object):
                 filter_expression = (
                     f"{self.time_column} >={gti[0, 0]} && {self.time_column} < {gti[-1, 1]} "
                 )
-                mask = self.fitsio_filter(filter_expression, fitsio_hdu=fits[self.hduname])
+                mask = self.fitsio_filter(filter_expression, fitsio_hdu=hdulist[self.hduname])
             else:
                 mask = (hdulist[self.hduname].data[self.time_column] >= gti[0, 0]) & (
                     hdulist[self.hduname].data[self.time_column] < gti[-1, 1]
@@ -1038,16 +1041,16 @@ class FITSTimeseriesReader(object):
             ev.gti = gti
 
             new_file = root_file_name + f"_{i:002d}." + fmt.lstrip(".")
-            ev.write(new_file)
+            ev.write(new_file, fmt=fmt)
             output_files.append(new_file)
         return output_files
 
-    def split_by_number_of_samples(self, nphotons, root_file_name="output", fmt="hdf5"):
+    def split_by_number_of_samples(self, nsamples, root_file_name="output", fmt=DEFAULT_FORMAT):
         """Split the event list into different files, each with approx. the given no. of photons.
 
         Parameters
         ----------
-        nphotons : int
+        nsamples : int
             The number of photons in each output file.
 
         Other Parameters
@@ -1063,12 +1066,13 @@ class FITSTimeseriesReader(object):
         output_files : list of str
             A list of the output file names.
         """
-        n_intervals = int(np.rint(self.nphot / nphotons))
+        n_intervals = int(np.rint(self.nphot / nsamples))
         exposure_per_interval = self.exposure / n_intervals
         new_gti_lists = split_gtis_by_exposure(self.gti, exposure_per_interval)
+
         return self.apply_gti_lists(new_gti_lists, root_file_name=root_file_name, fmt=fmt)
 
-    def filter_at_time_intervals(self, time_intervals, root_file_name="output", fmt="hdf5"):
+    def filter_at_time_intervals(self, time_intervals, root_file_name="output", fmt=DEFAULT_FORMAT):
         """Filter the event list at the given time intervals.
 
         Parameters
@@ -1089,6 +1093,8 @@ class FITSTimeseriesReader(object):
         output_files : list of str
             A list of the output file names.
         """
+        if len(np.shape(time_intervals)) == 1:
+            time_intervals = [time_intervals]
         new_gti = [cross_two_gtis(self.gti, time_intervals)]
         return self.apply_gti_lists(new_gti, root_file_name=root_file_name, fmt=fmt)
 
