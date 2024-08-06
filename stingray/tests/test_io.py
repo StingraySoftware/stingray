@@ -257,5 +257,4 @@ class TestFITSTimeseriesReader(object):
     def test_fitsio_not_inst(self):
         reader = FITSTimeseriesReader(self.fname, output_object_kind=EventList)
         with pytest.raises(RuntimeError, match="fitsio_filter requires fitsio"):
-
             _ = reader.fitsio_filter("TIME >= 10 && TIME < 20")

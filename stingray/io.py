@@ -929,7 +929,6 @@ class FITSTimeseriesReader(object):
         self.add_meta_attr("energy_column", energy_column)
 
     def _read_gtis(self, gti_file=None, det_numbers=None):
-
         # This is ugly, but if, e.g., we are reading XMM data, we *need* the
         # detector number to access GTIs.
         # So, here I'm reading a bunch of rows hoping that they represent the
