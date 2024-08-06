@@ -9,7 +9,8 @@ from ..io import split_numbers
 from ..io import ref_mjd
 from ..io import high_precision_keyword_read
 from ..io import load_events_and_gtis, read_mission_info
-from ..io import read_header_key
+from ..io import read_header_key, FITSTimeseriesReader, DEFAULT_FORMAT, _FITSIO_INSTALLED
+from ..events import EventList
 
 import warnings
 
@@ -214,3 +215,46 @@ class TestCalibrate(object):
         pis = np.array([1, 2, 3])
         energies = pi_to_energy(pis, self.rmf)
         assert np.allclose(energies, [1.66, 1.70, 1.74])
+
+
+class TestFITSTimeseriesReader(object):
+    @classmethod
+    def setup_class(cls):
+        curdir = os.path.abspath(os.path.dirname(__file__))
+        cls.datadir = os.path.join(curdir, "data")
+        cls.fname = os.path.join(datadir, "monol_testA.evt")
+
+    def test_read_fits_timeseries(self):
+        reader = FITSTimeseriesReader(self.fname, output_object_kind=EventList)
+        # Full slice
+        all_ev = reader[:]
+        assert np.all((all_ev.time > 80000000) & (all_ev.time < 80001024))
+
+    def test_read_fits_timeseries_by_nsamples(self):
+        reader = FITSTimeseriesReader(self.fname, output_object_kind=EventList)
+        # Full slice
+        outfnames = reader.split_by_number_of_samples(500)
+        assert len(outfnames) == 2
+        ev0 = EventList.read(outfnames[0], fmt=DEFAULT_FORMAT)
+        ev1 = EventList.read(outfnames[1], fmt=DEFAULT_FORMAT)
+        assert np.all(ev0.time < 80000512.5)
+        assert np.all(ev1.time > 80000512.5)
+        for fname in outfnames:
+            os.unlink(fname)
+
+    def test_read_fits_timeseries_by_time_intv(self):
+        reader = FITSTimeseriesReader(self.fname, output_object_kind=EventList)
+        # Full slice
+        outfnames = reader.filter_at_time_intervals([80000100, 80001100])
+        assert len(outfnames) == 1
+        ev0 = EventList.read(outfnames[0], fmt=DEFAULT_FORMAT)
+        assert np.all((ev0.time > 80000100) & (ev0.time < 80001100))
+        assert np.all((ev0.gti >= 80000100) & (ev0.gti < 80001100))
+        for fname in outfnames:
+            os.unlink(fname)
+
+    @pytest.mark.skipif("_FITSIO_INSTALLED")
+    def test_fitsio_not_inst(self):
+        reader = FITSTimeseriesReader(self.fname, output_object_kind=EventList)
+        with pytest.raises(RuntimeError, match="fitsio_filter requires fitsio"):
+            _ = reader.fitsio_filter("TIME >= 10 && TIME < 20")

@@ -178,17 +178,18 @@ def get_rough_conversion_function(mission, instrument=None, epoch=None):
     raise ValueError(f"Mission {mission.lower()} not recognized")
 
 
+def _empty(x, *args, **kwargs):
+    return x
+
+
 def mission_specific_event_interpretation(mission):
     """Get the mission-specific FITS interpretation function.
 
-    This function will read a FITS :class:`astropy.io.fits.HDUList` object and modify it
+    This function will read a FITS file name` or a :class:`fitsio.FITS` object and modify it
     in place to make the read into Stingray easier.
     """
 
     if mission.lower() == "xte":
         return rxte_pca_event_file_interpretation
-
-    def _empty(x):
-        return x
 
     return _empty

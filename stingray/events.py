@@ -622,26 +622,14 @@ class EventList(StingrayTimeseries):
         """
 
         if fmt is not None and fmt.lower() in ("hea", "ogip"):
-            evtdata = load_events_and_gtis(filename, **kwargs)
+            from .io import FITSTimeseriesReader
 
-            evt = EventList(
-                time=evtdata.ev_list,
-                gti=evtdata.gti_list,
-                pi=evtdata.pi_list,
-                energy=evtdata.energy_list,
-                mjdref=evtdata.mjdref,
-                instr=evtdata.instr,
-                mission=evtdata.mission,
-                header=evtdata.header,
-                detector_id=evtdata.detector_id,
-                ephem=evtdata.ephem,
-                timeref=evtdata.timeref,
-                timesys=evtdata.timesys,
-            )
-            if "additional_columns" in kwargs:
-                for key in evtdata.additional_data:
-                    if not hasattr(evt, key.lower()):
-                        setattr(evt, key.lower(), evtdata.additional_data[key])
+            additional_columns = kwargs.pop("additional_columns", None)
+
+            evt = FITSTimeseriesReader(
+                filename, output_object_kind=EventList, additional_columns=additional_columns
+            )[:]
+
             if rmf_file is not None:
                 evt.convert_pi_to_energy(rmf_file)
             return evt

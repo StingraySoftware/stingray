@@ -1824,7 +1824,7 @@ def avg_cs_from_iterables(
         ft1 = fft(flux1)
         ft2 = fft(flux2)
 
-        # Calculate the sum of each light curve, to calculate the mean
+        # Calculate the sum of each light curve chunk, to calculate the mean
         n_ph1 = flux1.sum()
         n_ph2 = flux2.sum()
         n_ph = np.sqrt(n_ph1 * n_ph2)
