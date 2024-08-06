@@ -787,13 +787,6 @@ class FITSTimeseriesReader(object):
 
         data = self._mission_specific_processing(data, header=self.header, hduname=self.hduname)
 
-        for attr in self.meta_attrs():
-            local_value = copy.deepcopy(getattr(self, attr))
-            if attr in ["t_start", "t_stop", "gti"] and local_value is not None:
-                setattr(new_ts, attr, local_value + self.timezero)
-            else:
-                setattr(new_ts, attr, local_value)
-
         # Set the times
         setattr(
             new_ts,
@@ -828,6 +821,13 @@ class FITSTimeseriesReader(object):
                     continue
                 if col in data.dtype.names:
                     setattr(new_ts, col.lower(), data[col])
+
+        for attr in self.meta_attrs():
+            local_value = getattr(self, attr)
+            if attr in ["t_start", "t_stop", "gti"] and local_value is not None:
+                setattr(new_ts, attr, local_value + self.timezero)
+            else:
+                setattr(new_ts, attr, local_value)
 
         return new_ts
 
@@ -929,28 +929,42 @@ class FITSTimeseriesReader(object):
         self.add_meta_attr("energy_column", energy_column)
 
     def _read_gtis(self, gti_file=None, det_numbers=None):
+
+        # This is ugly, but if, e.g., we are reading XMM data, we *need* the
+        # detector number to access GTIs.
+        # So, here I'm reading a bunch of rows hoping that they represent the
+        # detector number population
+        if self.detector_key is not None:
+            with fits.open(self.fname) as hdul:
+                data = hdul[self.hduname].data
+                if self.detector_key in data.dtype.names:
+                    probe_vals = data[:100][self.detector_key]
+                    det_numbers = list(set(probe_vals))
+            del hdul
+
         accepted_gtistrings = self.gtistring.split(",")
         gti_list = None
 
-        if gti_file is None:
-            # Select first GTI with accepted name
-            try:
-                gti_list = get_gti_from_all_extensions(
-                    self.fname,
-                    accepted_gtistrings=accepted_gtistrings,
-                    det_numbers=det_numbers,
-                )
-            except Exception as e:  # pragma: no cover
-                warnings.warn(
-                    (
-                        f"No valid GTI extensions found. \nError: {str(e)}\n"
-                        "GTIs will be set to the entire time series."
-                    ),
-                )
-        else:
-            gti_list = load_gtis(gti_file, self.gtistring)
+        if gti_file is not None:
+            self.add_meta_attr("gti", load_gtis(gti_file, self.gtistring))
+            return
 
-        self.add_meta_attr("gti", np.asanyarray(gti_list))
+        # Select first GTI with accepted name
+        try:
+            gti_list = get_gti_from_all_extensions(
+                self.fname,
+                accepted_gtistrings=accepted_gtistrings,
+                det_numbers=det_numbers,
+            )
+        except Exception as e:  # pragma: no cover
+            warnings.warn(
+                (
+                    f"No valid GTI extensions found. \nError: {str(e)}\n"
+                    "GTIs will be set to the entire time series."
+                ),
+            )
+
+        self.add_meta_attr("gti", gti_list)
 
     def fitsio_filter(self, filter_expression, fitsio_hdu=None):
         """Filter the event list using a fitsio-compatible filter expression.
