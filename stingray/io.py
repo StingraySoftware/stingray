@@ -795,19 +795,20 @@ class FITSTimeseriesReader(object):
         )
         # Get conversion function PI->Energy
         try:
-            func = get_rough_conversion_function(
+            pi_energy_func = get_rough_conversion_function(
                 self.mission,
                 instrument=self.instr,
                 epoch=self.t_start / 86400 + self.mjdref,
             )
-        except:
-            func = lambda x: x
+        except ValueError:
+            pi_energy_func = None
 
         if self.energy_column in data.dtype.names:
             new_ts.energy = data[self.energy_column]
         elif self.pi_column in data.dtype.names:
             new_ts.pi = data[self.pi_column]
-            new_ts.energy = func(new_ts.pi)
+            if pi_energy_func is not None:
+                new_ts.energy = pi_energy_func(new_ts.pi)
 
         det_numbers = None
         if self.detector_key is not None and self.detector_key in data.dtype.names:
