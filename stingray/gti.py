@@ -36,6 +36,9 @@ __all__ = [
     "gti_border_bins",
     "generate_indices_of_segment_boundaries_unbinned",
     "generate_indices_of_segment_boundaries_binned",
+    "split_gtis_by_exposure",
+    "split_gtis_at_index",
+    "find_large_bad_time_intervals",
 ]
 
 logger = setup_logger()
@@ -270,6 +273,8 @@ def get_gti_from_all_extensions(lchdulist, accepted_gtistrings=["GTI"], det_numb
     ...     det_numbers=[5])
     >>> assert np.allclose(gti, [[200, 250]])
     """
+    if isinstance(lchdulist, str):
+        lchdulist = fits.open(lchdulist)
     acc_gti_strs = copy.deepcopy(accepted_gtistrings)
     if det_numbers is not None:
         for i in det_numbers:
@@ -1687,3 +1692,158 @@ def generate_indices_of_segment_boundaries_binned(times, gti, segment_size, dt=N
         dt = 0
     for idx0, idx1 in zip(startidx, stopidx):
         yield times[idx0] - dt / 2, times[min(idx1, times.size - 1)] - dt / 2, idx0, idx1
+
+
+def split_gtis_at_indices(gtis, index_list):
+    """Split a GTI list at the given indices, creating multiple GTI lists.
+
+    Parameters
+    ----------
+    gtis : 2-d float array
+        List of GTIs of the form ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``
+    index_list : int or array-like
+        Index or list of indices at which to split the GTIs
+
+    Returns
+    -------
+    gti_lists : list of 2-d float arrays
+        List of GTI lists, split at the given indices
+
+    Examples
+    --------
+    >>> gtis = [[0, 30], [50, 60], [80, 90]]
+    >>> new_gtis = split_gtis_at_indices(gtis, 1)
+    >>> assert np.allclose(new_gtis[0], [[0, 30]])
+    >>> assert np.allclose(new_gtis[1], [[50, 60], [80, 90]])
+    """
+    gtis = np.asanyarray(gtis)
+    if not isinstance(index_list, Iterable):
+        index_list = [index_list]
+    previous_idx = 0
+    gti_lists = []
+    if index_list[0] == 0:
+        index_list = index_list[1:]
+    for idx in index_list:
+        gti_lists.append(gtis[previous_idx:idx, :])
+        previous_idx = idx
+    if index_list[-1] != -1 and index_list[-1] <= gtis[:, 0].size - 1:
+        gti_lists.append(gtis[previous_idx:, :])
+
+    return gti_lists
+
+
+def find_large_bad_time_intervals(gtis, bti_length_limit=86400):
+    """Find large bad time intervals (BTIs) in a list of GTIs, and split the GTI list accordingly.
+
+    Parameters
+    ----------
+    gtis : 2-d float array
+        List of GTIs of the form ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``
+    bti_length_limit : float
+        Maximum length of a BTI. If a BTI is longer than this, an edge will be
+        returned at the midpoint of the BTI.
+
+    Returns
+    -------
+    bad_interval_midpoints : list of float
+        List of midpoints of large bad time intervals
+
+    Examples
+    --------
+    >>> gtis = [[0, 30], [86450, 86460], [86480, 86490]]
+    >>> bad_interval_midpoints = find_large_bad_time_intervals(gtis)
+    >>> assert np.allclose(bad_interval_midpoints, [43240])
+    """
+    gtis = np.asanyarray(gtis)
+    bad_interval_midpoints = []
+    # Check for compulsory edges
+    last_edge = gtis[0, 0]
+    for g in gtis:
+        if g[0] - last_edge > bti_length_limit:
+            logger.info(f"Detected large bad time interval between {g[0]} and {last_edge}")
+            bad_interval_midpoints.append((g[0] + last_edge) / 2)
+        last_edge = g[1]
+
+    return bad_interval_midpoints
+
+
+def split_gtis_by_exposure(gtis, exposure_per_chunk, new_interval_if_gti_sep=None):
+    """Split a list of GTIs into smaller GTI lists of a given total (approximate) exposure.
+
+    Parameters
+    ----------
+    gtis : 2-d float array
+        List of GTIs of the form ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``
+    exposure_per_chunk : float
+        Total exposure of each chunk, in seconds
+
+    Other Parameters
+    ----------------
+    new_interval_if_gti_sep : float
+        If the GTIs are separated by more than this time, split the observation in two.
+
+    Returns
+    -------
+    gti_list : list of 2-d float arrays
+        List of GTI lists, split into chunks of the given exposure / separated by more
+        than the given limit separation
+
+    Examples
+    --------
+    >>> gtis = [[0, 30], [86450, 86460]]
+    >>> new_gtis = split_gtis_by_exposure(gtis, 400, new_interval_if_gti_sep=86400)
+    >>> assert np.allclose(new_gtis[0], [[0, 30]])
+    >>> assert np.allclose(new_gtis[1], [[86450, 86460]])
+    >>> gtis = [[0, 30], [40, 70], [90, 120], [130, 160]]
+    >>> new_gtis = split_gtis_by_exposure(gtis, 60)
+    >>> assert np.allclose(new_gtis[0], [[0, 30], [40, 70]])
+    >>> assert np.allclose(new_gtis[1], [[90, 120], [130, 160]])
+
+    """
+    gtis = np.asanyarray(gtis)
+    rough_total_exposure = np.sum(np.diff(gtis, axis=1))
+    compulsory_edges = []
+    if new_interval_if_gti_sep is not None:
+        compulsory_edges = find_large_bad_time_intervals(gtis, new_interval_if_gti_sep)
+
+        base_gti_list = split_gtis_at_indices(gtis, np.searchsorted(gtis[:, 1], compulsory_edges))
+        final_gti_list = []
+        for local_gtis in base_gti_list:
+            local_split_gtis = split_gtis_by_exposure(local_gtis, exposure_per_chunk)
+            final_gti_list.extend(local_split_gtis)
+        return final_gti_list
+
+    n_intervals = int(np.rint(rough_total_exposure / exposure_per_chunk))
+
+    if n_intervals <= 1:
+        return np.asarray([gtis])
+
+    if len(gtis) <= n_intervals:
+        new_gtis = []
+        for g in gtis:
+            if g[1] - g[0] > exposure_per_chunk:
+                new_edges = np.arange(g[0], g[1], exposure_per_chunk)
+                if new_edges[-1] < g[1]:
+                    new_edges = np.append(new_edges, g[1])
+
+                new_gtis.extend([[ed0, ed1] for ed0, ed1 in zip(new_edges[:-1], new_edges[1:])])
+            else:
+                new_gtis.append(g)
+        gtis = np.asarray(new_gtis)
+
+    exposure_edges = []
+    last_exposure = 0
+    for g in gtis:
+        exposure_edges.append(last_exposure)
+        last_exposure += g[1] - g[0]
+    total_exposure = last_exposure
+
+    exposure_edges = np.asarray(exposure_edges)
+
+    exposure_per_interval = total_exposure / n_intervals
+    exposure_intervals = np.arange(0, total_exposure + exposure_per_interval, exposure_per_interval)
+
+    index_list = np.searchsorted(exposure_edges, exposure_intervals)
+
+    vals = split_gtis_at_indices(gtis, index_list)
+    return vals

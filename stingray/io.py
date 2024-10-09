@@ -16,6 +16,7 @@ from astropy.io import fits as pf
 import stingray.utils as utils
 from stingray.loggingconfig import setup_logger
 
+
 from .utils import (
     assign_value_if_none,
     is_string,
@@ -23,7 +24,13 @@ from .utils import (
     is_sorted,
     make_dictionary_lowercase,
 )
-from .gti import get_gti_from_all_extensions, load_gtis
+from .gti import (
+    get_gti_from_all_extensions,
+    load_gtis,
+    get_total_gti_length,
+    split_gtis_by_exposure,
+    cross_two_gtis,
+)
 
 from .mission_support import (
     read_mission_info,
@@ -36,11 +43,13 @@ from .mission_support import (
 import pickle
 
 _H5PY_INSTALLED = True
+DEFAULT_FORMAT = "hdf5"
 
 try:
     import h5py
 except ImportError:
     _H5PY_INSTALLED = False
+    DEFAULT_FORMAT = "pickle"
 
 
 HAS_128 = True
@@ -557,8 +566,8 @@ def load_events_and_gtis(
     mission = probe_header[mission_key].lower()
 
     mission_specific_processing = mission_specific_event_interpretation(mission)
-
-    mission_specific_processing(hdulist)
+    if mission_specific_processing is not None:
+        mission_specific_processing(hdulist)
 
     db = read_mission_info(mission)
     instkey = get_key_from_mission_info(db, "instkey", "INSTRUME")
@@ -712,6 +721,420 @@ def load_events_and_gtis(
 class EventReadOutput:
     def __init__(self):
         pass
+
+
+class FITSTimeseriesReader(object):
+    main_array_attr = "time"
+
+    def __init__(
+        self,
+        fname,
+        output_class,
+        force_hduname=None,
+        gti_file=None,
+        gtistring=None,
+        additional_columns=None,
+    ):
+        self.fname = fname
+        self._meta_attrs = []
+        self.gtistring = gtistring
+        self.output_class = output_class
+        self.additional_columns = additional_columns
+        self._initialize_header(fname, force_hduname=force_hduname)
+
+        if additional_columns is None and self.detector_key != "NONE":
+            additional_columns = [self.detector_key]
+        elif self.detector_key != "NONE":
+            additional_columns.append(self.detector_key)
+        self.data_hdu = fits.open(self.fname)[self.hduname]
+        self.gti_file = gti_file
+        self._read_gtis(self.gti_file)
+
+    @property
+    def time(self):
+        return self[:].time
+
+    def meta_attrs(self):
+        return self._meta_attrs
+
+    def add_meta_attr(self, name, value):
+        if name not in self._meta_attrs:
+            self._meta_attrs.append(name)
+        setattr(self, name, value)
+
+    @property
+    def exposure(self):
+        """
+        Return the total exposure of the time series, i.e. the sum of the GTIs.
+
+        Returns
+        -------
+        total_exposure : float
+            The total exposure of the time series, in seconds.
+        """
+
+        return get_total_gti_length(self.gti)
+
+    def __getitem__(self, index):
+        new_ts = self.output_class()
+
+        columns = [self.time_column]
+        for col in self.pi_column, self.energy_column:
+            if col is not None:
+                columns.append(col)
+
+        data = self.data_hdu.data[index]
+
+        if self._mission_specific_processing is not None:
+            data = self._mission_specific_processing(data, header=self.header, hduname=self.hduname)
+
+        # Set the times
+        setattr(
+            new_ts,
+            self.main_array_attr,
+            data[self.time_column][:] + self.timezero,
+        )
+        # Get conversion function PI->Energy
+        try:
+            pi_energy_func = get_rough_conversion_function(
+                self.mission,
+                instrument=self.instr,
+                epoch=self.t_start / 86400 + self.mjdref,
+            )
+        except ValueError:
+            pi_energy_func = None
+
+        if self.energy_column in data.dtype.names:
+            new_ts.energy = data[self.energy_column]
+        elif self.pi_column in data.dtype.names:
+            new_ts.pi = data[self.pi_column]
+            if pi_energy_func is not None:
+                new_ts.energy = pi_energy_func(new_ts.pi)
+
+        det_numbers = None
+        if self.detector_key is not None and self.detector_key in data.dtype.names:
+            new_ts.detector_id = data[self.detector_key]
+            det_numbers = list(set(new_ts.detector_id))
+            self._read_gtis(self.gti_file, det_numbers=det_numbers)
+
+        if self.additional_columns is not None:
+            for col in self.additional_columns:
+                if col == self.detector_key:
+                    continue
+                if col in data.dtype.names:
+                    setattr(new_ts, col.lower(), data[col])
+
+        for attr in self.meta_attrs():
+            local_value = getattr(self, attr)
+            if attr in ["t_start", "t_stop", "gti"] and local_value is not None:
+                setattr(new_ts, attr, local_value + self.timezero)
+            else:
+                setattr(new_ts, attr, local_value)
+
+        return new_ts
+
+    def _initialize_header(self, fname, force_hduname=None):
+        hdulist = fits.open(fname)
+        if not force_hduname:
+            probe_header = hdulist[0].header
+        else:
+            probe_header = hdulist[force_hduname].header
+
+        mission_key = "MISSION"
+        if mission_key not in probe_header:
+            mission_key = "TELESCOP"
+        self.add_meta_attr("mission", probe_header[mission_key].lower())
+        self.add_meta_attr(
+            "_mission_specific_processing",
+            mission_specific_event_interpretation(self.mission),
+        )
+
+        db = read_mission_info(self.mission)
+        instkey = get_key_from_mission_info(db, "instkey", "INSTRUME")
+        instr = mode = None
+        if instkey in probe_header:
+            instr = probe_header[instkey].strip()
+
+        modekey = get_key_from_mission_info(db, "dmodekey", None, instr)
+        if modekey is not None and modekey in probe_header:
+            mode = probe_header[modekey].strip()
+        self.add_meta_attr("instr", instr)
+        self.add_meta_attr("mode", mode)
+
+        gtistring = self.gtistring
+
+        if self.gtistring is None:
+            gtistring = get_key_from_mission_info(db, "gti", "GTI,STDGTI", instr, self.mode)
+        self.add_meta_attr("gtistring", gtistring)
+
+        if force_hduname is None:
+            hduname = get_key_from_mission_info(db, "events", "EVENTS", instr, self.mode)
+        else:
+            hduname = force_hduname
+
+        if hduname not in hdulist:
+            warnings.warn(f"HDU {hduname} not found. Trying first extension")
+            hduname = 1
+        self.add_meta_attr("hduname", hduname)
+
+        self.add_meta_attr("header", dict(hdulist[self.hduname].header))
+        self.add_meta_attr("nphot", self.header["NAXIS2"])
+
+        ephem = timeref = timesys = None
+        if "PLEPHEM" in self.header:
+            # For the rare cases where this is a number, e.g. 200, I add `str`
+            # It's supposed to be a string.
+            ephem = str(self.header["PLEPHEM"]).strip().lstrip("JPL-").lower()
+        if "TIMEREF" in self.header:
+            timeref = self.header["TIMEREF"].strip().lower()
+        if "TIMESYS" in self.header:
+            timesys = self.header["TIMESYS"].strip().lower()
+        self.add_meta_attr("ephem", ephem)
+        self.add_meta_attr("timeref", timeref)
+        self.add_meta_attr("timesys", timesys)
+
+        timezero = np.longdouble(0.0)
+        if "TIMEZERO" in self.header:
+            timezero = np.longdouble(self.header["TIMEZERO"])
+        t_start = t_stop = None
+        if "TSTART" in self.header:
+            t_start = np.longdouble(self.header["TSTART"])
+        if "TSTOP" in self.header:
+            t_stop = np.longdouble(self.header["TSTOP"])
+        self.add_meta_attr("timezero", timezero)
+        self.add_meta_attr("t_start", t_start)
+        self.add_meta_attr("t_stop", t_stop)
+
+        self.add_meta_attr(
+            "time_column",
+            get_key_from_mission_info(db, "time", "TIME", instr, mode),
+        )
+
+        self.add_meta_attr(
+            "detector_key",
+            get_key_from_mission_info(db, "ccol", "NONE", instr, mode),
+        )
+
+        self.add_meta_attr(
+            "mjdref", np.longdouble(high_precision_keyword_read(self.header, "MJDREF"))
+        )
+
+        default_pi_column = get_key_from_mission_info(db, "ecol", "PI", instr, self.mode)
+        if default_pi_column not in hdulist[self.hduname].data.columns.names:
+            default_pi_column = None
+        self.add_meta_attr("pi_column", default_pi_column)
+
+        if "energy" in [val.lower() for val in hdulist[self.hduname].data.columns.names]:
+            energy_column = "energy"
+        else:
+            energy_column = None
+        self.add_meta_attr("energy_column", energy_column)
+
+    def _read_gtis(self, gti_file=None, det_numbers=None):
+        # This is ugly, but if, e.g., we are reading XMM data, we *need* the
+        # detector number to access GTIs.
+        # So, here I'm reading a bunch of rows hoping that they represent the
+        # detector number population
+        if self.detector_key is not None:
+            with fits.open(self.fname) as hdul:
+                data = hdul[self.hduname].data
+                if self.detector_key in data.dtype.names:
+                    probe_vals = data[:100][self.detector_key]
+                    det_numbers = list(set(probe_vals))
+            del hdul
+
+        accepted_gtistrings = self.gtistring.split(",")
+        gti_list = None
+
+        if gti_file is not None:
+            self.add_meta_attr("gti", load_gtis(gti_file, self.gtistring))
+            return
+
+        # Select first GTI with accepted name
+        try:
+            gti_list = get_gti_from_all_extensions(
+                self.fname,
+                accepted_gtistrings=accepted_gtistrings,
+                det_numbers=det_numbers,
+            )
+        except Exception as e:  # pragma: no cover
+            warnings.warn(
+                (
+                    f"No valid GTI extensions found. \nError: {str(e)}\n"
+                    "GTIs will be set to the entire time series."
+                ),
+            )
+
+        self.add_meta_attr("gti", gti_list)
+
+    def get_idx_from_time_range(self, start, stop):
+        """Get the index of the times in the event list that fall within the given time range."""
+        time_edges, idx_edges = self.trace_nphots_in_file(
+            nedges=int(self.exposure // (stop - start)) + 2
+        )
+
+        raw_min_idx = np.searchsorted(time_edges, start, side="left")
+        raw_max_idx = np.searchsorted(time_edges, stop, side="right")
+
+        raw_min_idx = max(0, raw_min_idx - 2)
+        raw_max_idx = min(time_edges.size - 1, raw_max_idx + 2)
+
+        raw_lower_edge = idx_edges[raw_min_idx]
+        raw_upper_edge = idx_edges[raw_max_idx]
+
+        assert (
+            start - time_edges[raw_min_idx] >= 0
+        ), f"Start: {start}; {start - time_edges[raw_min_idx]} > 0"
+        assert (
+            time_edges[raw_max_idx] - stop >= 0
+        ), f"Stop: {stop}; {time_edges[raw_max_idx] - stop} < 0"
+
+        with fits.open(self.fname) as hdulist:
+            filtered_times = hdulist[self.hduname].data[self.time_column][
+                raw_lower_edge : raw_upper_edge + 1
+            ]
+            # lower_edge = np.searchsorted(filtered_times, [start, stop])
+            lower_edge, upper_edge = np.searchsorted(filtered_times, [start, stop])
+            # Searchsorted will find the first number above stop. We want the last number below stop!
+            upper_edge -= 1
+
+        return lower_edge + raw_lower_edge, upper_edge + raw_lower_edge
+
+    def apply_gti_lists(self, new_gti_lists, root_file_name=None, fmt=DEFAULT_FORMAT):
+        """Split the event list into different files, each with a different GTI.
+
+        Parameters
+        ----------
+        new_gti_lists : list of lists
+            A list of lists of GTIs. Each sublist should contain a list of GTIs
+            for a new file.
+
+        Other Parameters
+        ----------------
+        root_file_name : str, default None
+            The root name of the output files. The file name will be appended with
+            "_00", "_01", etc.
+            If None, a generator is returned instead of writing the files.
+        fmt : str
+            The format of the output files. Default is 'hdf5'.
+
+        Returns
+        -------
+        output_files : list of str
+            A list of the output file names.
+
+        """
+
+        if len(new_gti_lists[0]) == len(self.gti) and np.all(
+            np.abs(np.asanyarray(new_gti_lists[0]).flatten() - self.gti.flatten()) < 1e-3
+        ):
+            ev = self[:]
+            if root_file_name is None:
+                yield ev
+            else:
+                output_file = root_file_name + f"_00." + fmt.lstrip(".")
+                ev.write(output_file, fmt=fmt)
+                yield output_file
+
+        for i, gti in enumerate(new_gti_lists):
+            if len(gti) == 0:
+                continue
+
+            lower_edge, upper_edge = self.get_idx_from_time_range(gti[0, 0], gti[-1, 1])
+
+            ev = self[lower_edge : upper_edge + 1]
+            ev.gti = gti
+
+            if root_file_name is not None:
+                new_file = root_file_name + f"_{i:002d}." + fmt.lstrip(".")
+                logger.info(f"Writing {new_file}")
+                ev.write(new_file, fmt=fmt)
+                yield new_file
+            else:
+                yield ev
+
+    def trace_nphots_in_file(self, nedges=1001):
+        """Trace the number of photons as time advances in the file."""
+
+        if hasattr(self, "_time_edges") and len(self._time_edges) >= nedges:
+            return self._time_edges, self._idx_edges
+
+        fname = self.fname
+
+        with fits.open(fname) as hdul:
+            size = hdul[1].header["NAXIS2"]
+            nedges = min(nedges, size // 10 + 2)
+
+            time_edges = np.zeros(nedges)
+            idx_edges = np.zeros(nedges, dtype=int)
+            for i, edge_idx in enumerate(np.linspace(0, size - 1, nedges).astype(int)):
+                idx_edges[i] = edge_idx
+                time_edges[i] = hdul[1].data["TIME"][edge_idx]
+
+            mingti, maxgti = np.min(self.gti), np.max(self.gti)
+            if time_edges[0] > mingti:
+                time_edges[0] = mingti
+            if time_edges[-1] < maxgti:
+                time_edges[-1] = maxgti
+
+        self._time_edges, self._idx_edges = time_edges, idx_edges
+
+        return time_edges, idx_edges
+
+    def split_by_number_of_samples(self, nsamples, root_file_name=None, fmt=DEFAULT_FORMAT):
+        """Split the event list into different files, each with approx. the given no. of photons.
+
+        Parameters
+        ----------
+        nsamples : int
+            The number of photons in each output file.
+
+        Other Parameters
+        ----------------
+        root_file_name : str, default None
+            The root name of the output files. The file name will be appended with
+            "_00", "_01", etc.
+            If None, a generator is returned instead of writing the files.
+        fmt : str
+            The format of the output files. Default is 'hdf5'.
+
+        Returns
+        -------
+        output_files : list of str
+            A list of the output file names.
+        """
+        n_intervals = int(np.rint(self.nphot / nsamples))
+        exposure_per_interval = self.exposure / n_intervals
+        new_gti_lists = split_gtis_by_exposure(self.gti, exposure_per_interval)
+
+        return self.apply_gti_lists(new_gti_lists, root_file_name=root_file_name, fmt=fmt)
+
+    def filter_at_time_intervals(self, time_intervals, root_file_name=None, fmt=DEFAULT_FORMAT):
+        """Filter the event list at the given time intervals.
+
+        Parameters
+        ----------
+        time_intervals : 2-d float array
+            List of time intervals of the form ``[[time0_0, time0_1], [time1_0, time1_1], ...]``
+
+        Other Parameters
+        ----------------
+        root_file_name : str, default None
+            The root name of the output files. The file name will be appended with
+            "_00", "_01", etc.
+            If None, a generator is returned instead of writing the files.
+        fmt : str
+            The format of the output files. Default is 'hdf5'.
+
+        Returns
+        -------
+        output_files : list of str
+            A list of the output file names.
+        """
+        if len(np.shape(time_intervals)) == 1:
+            time_intervals = [time_intervals]
+        new_gti = [cross_two_gtis(self.gti, [t_int]) for t_int in time_intervals]
+        return self.apply_gti_lists(new_gti, root_file_name=root_file_name, fmt=fmt)
 
 
 def mkdir_p(path):  # pragma: no cover

@@ -4,6 +4,8 @@ from scipy.interpolate import interp1d
 from astropy.time import Time
 from astropy.table import Table
 
+from astropy.io import fits
+
 c_match = re.compile(r"C\[(.*)\]")
 
 _EDGE_TIMES = [
@@ -308,7 +310,7 @@ def rxte_calibration_func(instrument, epoch):
     raise ValueError(f"Unknown XTE instrument: {instrument}")
 
 
-def rxte_pca_event_file_interpretation(hdulist):
+def rxte_pca_event_file_interpretation(input_data, header=None, hduname=None):
     """Interpret the FITS header of an RXTE event file.
 
     At the moment, only science event files are supported. In these files,
@@ -322,16 +324,52 @@ def rxte_pca_event_file_interpretation(hdulist):
 
     Parameters
     ----------
-    hdulist : `astropy.io.fits.HDUList`
-        The FITS file to interpret.
+    input_data : str, fits.HDUList, fits.HDU, np.array
+        The name of the FITS file to, or the HDUList inside, or the HDU with
+        the data, or the data.
+
+    Other parameters
+    ----------------
+    header : `fits.Header`, optional
+        Compulsory if ``hdulist`` is not a class:`fits._BaseHDU`, a
+        :class:`fits.HDUList`, or a file name. The header of the relevant extension.
+    hduname : str, optional
+        Name of the HDU (only relevant if hdulist is a :class:`fits.HDUList`),
+        ignored otherwise.
+
     """
-    if "XTE_SE" not in hdulist:
-        raise ValueError(
-            "No XTE_SE extension found. At the moment, only science events "
-            "are supported by Stingray for XTE."
+    if isinstance(input_data, str):
+        return rxte_pca_event_file_interpretation(
+            fits.open(input_data), header=header, hduname=hduname
         )
-    tevtb2 = hdulist["XTE_SE"].header["TEVTB2"]
+
+    if isinstance(input_data, fits.HDUList):
+        if hduname is None and "XTE_SE" not in input_data:
+            raise ValueError(
+                "No XTE_SE extension found. At the moment, only science events "
+                "are supported by Stingray for XTE."
+            )
+        if hduname is None:
+            hduname = "XTE_SE"
+        new_hdu = rxte_pca_event_file_interpretation(input_data[hduname], header=header)
+        input_data[hduname] = new_hdu
+        return input_data
+
+    if isinstance(input_data, fits.hdu.base._BaseHDU):
+        if header is None:
+            header = input_data.header
+        input_data.data = rxte_pca_event_file_interpretation(input_data.data, header=header)
+        return input_data
+
+    data = input_data
+    if header is None:
+        raise ValueError(
+            "If the input data is not a HDUList or a HDU, the header must be specified"
+        )
+
+    tevtb2 = header["TEVTB2"]
     local_chans = np.asarray([int(np.mean(ch)) for ch in _decode_energy_channels(tevtb2)])
 
-    # channels = _decode_energy_channels(tevtb2)
-    hdulist["XTE_SE"].data["PHA"] = local_chans[hdulist["XTE_SE"].data["PHA"]]
+    data["PHA"] = local_chans[data["PHA"]]
+
+    return data
