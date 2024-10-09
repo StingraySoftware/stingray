@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.table import Table
 from stingray.base import StingrayObject, StingrayTimeseries
+from stingray.io import DEFAULT_FORMAT
 
 _HAS_XARRAY = importlib.util.find_spec("xarray") is not None
 _HAS_PANDAS = importlib.util.find_spec("pandas") is not None
@@ -1521,3 +1522,145 @@ class TestAnalyzeChunks(object):
 
         assert np.allclose(results_as, results_ag)
         assert np.allclose(results_as, [6, 4])
+
+
+class TestStreaming(object):
+    @classmethod
+    def setup_class(cls):
+        curdir = os.path.abspath(os.path.dirname(__file__))
+        cls.datadir = os.path.join(curdir, "data")
+        cls.fname = os.path.join(cls.datadir, "monol_testA.evt")
+        times = 80000000 + np.sort(np.random.uniform(0, 1024, 1000))
+        energies = np.ones(1000)
+        energies[times < 80000512.5] = 0
+
+        cls.events = StingrayTimeseries(
+            time=times,
+            energy=energies,
+            gti=80000000 + np.asarray([[0, 1025]]),
+        )
+
+    def test_stream_timeseries(self):
+        assert np.all((self.events.time > 80000000) & (self.events.time < 80001024))
+
+    def test_stream_timeseries_by_gti_raises(self):
+        with pytest.raises(ValueError, match="You can only use only_attrs with a generator."):
+            list(
+                self.events.stream_from_gti_lists(
+                    [[[80000100, 80001010]]], root_file_name="test", only_attrs=["time"]
+                )
+            )
+
+    def test_stream_timeseries_by_gti(self):
+        # Full slice
+        outfnames = list(
+            self.events.stream_from_gti_lists([[[80000100, 80001010]]], root_file_name="test")
+        )
+        assert len(outfnames) == 1
+        ev0 = StingrayTimeseries.read(outfnames[0], fmt=DEFAULT_FORMAT)
+        assert np.all((ev0.time > 80000100) & (ev0.time < 80001010))
+        assert np.all((ev0.gti == np.asarray([[80000100, 80001010]])))
+        for fname in outfnames:
+            os.unlink(fname)
+
+    def test_stream_timeseries_by_gti_no_change(self):
+        # Full slice
+        outfnames = list(
+            self.events.stream_from_gti_lists([self.events.gti], root_file_name="test")
+        )
+        assert len(outfnames) == 1
+        ev0 = StingrayTimeseries.read(outfnames[0], fmt=DEFAULT_FORMAT)
+
+        assert np.allclose(ev0.time, self.events.time)
+        assert np.all(ev0.gti == self.events.gti)
+
+    def test_stream_timeseries_by_gti_no_change_generator(self):
+        # Full slice
+        evs = list(self.events.stream_from_gti_lists([self.events.gti]))
+
+        assert len(evs) == 1
+        ev0 = evs[0]
+        assert np.allclose(ev0.time, self.events.time)
+        assert np.all(ev0.gti == self.events.gti)
+
+    def test_stream_timeseries_by_gti_generator(self):
+        # Full slice
+        evs = list(self.events.stream_from_gti_lists([[[80000100, 80001010]]]))
+        assert len(evs) == 1
+        ev0 = evs[0]
+        assert np.all((ev0.time > 80000100) & (ev0.time < 80001010))
+        assert np.all((ev0.gti == np.asarray([[80000100, 80001010]])))
+
+    def test_stream_timeseries_by_gti_attrs(self):
+        # Full slice
+        evs = list(
+            self.events.stream_from_gti_lists(
+                [[[80000100, 80000200]]], only_attrs=["time", "energy"]
+            )
+        )
+        assert len(evs) == 1
+        ev0_attr = evs[0]
+        assert np.all((ev0_attr[0] > 80000100) & (ev0_attr[0] < 80000200))
+        assert np.all(ev0_attr[1] == 0)
+
+    def test_stream_timeseries_by_time_intv(self):
+        # Full slice
+        outfnames = list(
+            self.events.stream_from_time_intervals([80000100, 80001010], root_file_name="test")
+        )
+        assert len(outfnames) == 1
+        ev0 = StingrayTimeseries.read(outfnames[0], fmt=DEFAULT_FORMAT)
+        assert np.all((ev0.time > 80000100) & (ev0.time < 80001010))
+        assert np.all((ev0.gti == np.asarray([[80000100, 80001010]])))
+
+        for fname in outfnames:
+            os.unlink(fname)
+
+    def test_stream_timeseries_by_time_intv_generator(self):
+        # Full slice
+        evs = list(self.events.stream_from_time_intervals([80000100, 80001010]))
+        assert len(evs) == 1
+        ev0 = evs[0]
+        assert np.all((ev0.time > 80000100) & (ev0.time < 80001010))
+        assert np.all((ev0.gti == np.asarray([[80000100, 80001010]])))
+
+    def test_stream_timeseries_by_time_intv_attrs(self):
+        # Full slice
+        evs = list(
+            self.events.stream_from_time_intervals(
+                [80000100, 80000200], only_attrs=["time", "energy"]
+            )
+        )
+        assert len(evs) == 1
+        ev0_attr = evs[0]
+        assert np.all((ev0_attr[0] > 80000100) & (ev0_attr[0] < 80000200))
+        assert np.all(ev0_attr[1] == 0)
+
+    def test_stream_timeseries_by_nsamples(self):
+        # Full slice
+        outfnames = list(self.events.stream_by_number_of_samples(500, root_file_name="test"))
+        assert len(outfnames) == 2
+        ev0 = StingrayTimeseries.read(outfnames[0], fmt=DEFAULT_FORMAT)
+        ev1 = StingrayTimeseries.read(outfnames[1], fmt=DEFAULT_FORMAT)
+        assert np.all(ev0.time < 80000512.5)
+        assert np.all(ev1.time > 80000512.5)
+        for fname in outfnames:
+            os.unlink(fname)
+
+    def test_stream_timeseries_by_nsamples_generator(self):
+        # Full slice
+        ev0, ev1 = list(self.events.stream_by_number_of_samples(500))
+
+        assert np.all(ev0.time < 80000512.5)
+        assert np.all(ev1.time > 80000512.5)
+
+    def test_stream_timeseries_by_nsamples_attrs(self):
+        # Full slice
+        ev0_attr, ev1_attr = list(
+            self.events.stream_by_number_of_samples(500, only_attrs=["time", "energy"])
+        )
+
+        assert np.all(ev0_attr[0] < 80000512.5)
+        assert np.all(ev1_attr[0] > 80000512.5)
+        assert np.all(ev0_attr[1] == 0)
+        assert np.all(ev1_attr[1] == 1)
