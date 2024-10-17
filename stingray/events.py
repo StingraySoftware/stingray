@@ -14,7 +14,8 @@ from stingray.loggingconfig import setup_logger
 from .base import StingrayTimeseries
 from .filters import get_deadtime_mask
 from .gti import generate_indices_of_boundaries
-from .io import load_events_and_gtis, pi_to_energy
+from .io import pi_to_energy, get_file_extension
+from .io import FITSTimeseriesReader
 from .lightcurve import Lightcurve
 from .utils import simon, njit
 from .utils import histogram
@@ -620,28 +621,18 @@ class EventList(StingrayTimeseries):
         ev: :class:`EventList` object
             The :class:`EventList` object reconstructed from file
         """
-
+        if fmt is None:
+            for fits_ext in ["fits", "evt"]:
+                if fits_ext in get_file_extension(filename).lower():
+                    fmt = "hea"
+                    break
         if fmt is not None and fmt.lower() in ("hea", "ogip"):
-            evtdata = load_events_and_gtis(filename, **kwargs)
+            additional_columns = kwargs.pop("additional_columns", None)
 
-            evt = EventList(
-                time=evtdata.ev_list,
-                gti=evtdata.gti_list,
-                pi=evtdata.pi_list,
-                energy=evtdata.energy_list,
-                mjdref=evtdata.mjdref,
-                instr=evtdata.instr,
-                mission=evtdata.mission,
-                header=evtdata.header,
-                detector_id=evtdata.detector_id,
-                ephem=evtdata.ephem,
-                timeref=evtdata.timeref,
-                timesys=evtdata.timesys,
-            )
-            if "additional_columns" in kwargs:
-                for key in evtdata.additional_data:
-                    if not hasattr(evt, key.lower()):
-                        setattr(evt, key.lower(), evtdata.additional_data[key])
+            evt = FITSTimeseriesReader(
+                filename, output_class=EventList, additional_columns=additional_columns
+            )[:]
+
             if rmf_file is not None:
                 evt.convert_pi_to_energy(rmf_file)
             return evt

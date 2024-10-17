@@ -7,6 +7,7 @@ from stingray.gti import check_separate, create_gti_mask, check_gtis, merge_gtis
 from stingray.gti import create_gti_from_condition, gti_len, gti_border_bins
 from stingray.gti import time_intervals_from_gtis, bin_intervals_from_gtis
 from stingray.gti import create_gti_mask_complete, join_equal_gti_boundaries
+from stingray.gti import split_gtis_at_indices, split_gtis_by_exposure
 from stingray import StingrayError
 
 curdir = os.path.abspath(os.path.dirname(__file__))
@@ -362,6 +363,38 @@ class TestGTI(object):
         )
         newg = join_equal_gti_boundaries(gti)
         assert np.allclose(newg, np.array([[1.16703354e08, 1.16703514e08]]))
+
+    def test_split_gtis_by_exposure_min_gti_sep(self):
+        gtis = [[0, 30], [86450, 86460]]
+        new_gtis = split_gtis_by_exposure(gtis, 400, new_interval_if_gti_sep=86400)
+        assert np.allclose(new_gtis[0], [[0, 30]])
+        assert np.allclose(new_gtis[1], [[86450, 86460]])
+
+    def test_split_gtis_by_exposure_no_min_gti_sep(self):
+        gtis = [[0, 30], [86440, 86470], [86490, 86520], [86530, 86560]]
+        new_gtis = split_gtis_by_exposure(gtis, 60, new_interval_if_gti_sep=None)
+        assert np.allclose(new_gtis[0], [[0, 30], [86440, 86470]])
+        assert np.allclose(new_gtis[1], [[86490, 86520], [86530, 86560]])
+
+    def test_split_gtis_by_exposure_small_exp(self):
+        gtis = [[0, 30], [86440, 86470], [86490, 86495], [86500, 86505]]
+        new_gtis = split_gtis_by_exposure(gtis, 15, new_interval_if_gti_sep=None)
+        assert np.allclose(
+            new_gtis[:4],
+            [
+                [[0, 15]],
+                [[15, 30]],
+                [[86440, 86455]],
+                [[86455, 86470]],
+            ],
+        )
+        assert np.allclose(new_gtis[4], [[86490, 86495], [86500, 86505]])
+
+    def test_split_gtis_at_indices(self):
+        gtis = [[0, 30], [50, 60], [80, 90]]
+        new_gtis = split_gtis_at_indices(gtis, 1)
+        assert np.allclose(new_gtis[0], [[0, 30]])
+        assert np.allclose(new_gtis[1], [[50, 60], [80, 90]])
 
 
 _ALL_METHODS = ["intersection", "union", "infer", "append"]
