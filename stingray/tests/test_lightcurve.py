@@ -1849,7 +1849,7 @@ class TestArraydt(object):
                 frac_exp=frac_exp,
             )
 
-        list_of_lcs = lc.split_by_gti()
+            list_of_lcs = lc.split_by_gti()
         lc0 = list_of_lcs[0]
         lc1 = list_of_lcs[1]
         assert np.allclose(lc0.time, [1, 2, 3, 5])

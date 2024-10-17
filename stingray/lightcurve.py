@@ -741,35 +741,11 @@ class Lightcurve(StingrayTimeseries):
         >>> assert np.isclose(lc[2], 33)
         >>> assert np.allclose(lc[:2].counts, [11, 22])
         """
+
         if isinstance(index, (int, np.integer)):
             return self.counts[index]
         elif isinstance(index, slice):
-            start = assign_value_if_none(index.start, 0)
-            stop = assign_value_if_none(index.stop, len(self.counts))
-            step = assign_value_if_none(index.step, 1)
-
-            new_counts = self.counts[start:stop:step]
-            new_time = self.time[start:stop:step]
-
-            new_gti = [[self.time[start] - 0.5 * self.dt, self.time[stop - 1] + 0.5 * self.dt]]
-            new_gti = np.asanyarray(new_gti)
-            if step > 1:
-                new_gt1 = np.array(list(zip(new_time - self.dt / 2, new_time + self.dt / 2)))
-                new_gti = cross_two_gtis(new_gti, new_gt1)
-            new_gti = cross_two_gtis(self.gti, new_gti)
-
-            lc = Lightcurve(
-                new_time,
-                new_counts,
-                mjdref=self.mjdref,
-                gti=new_gti,
-                dt=self.dt,
-                skip_checks=True,
-                err_dist=self.err_dist,
-            )
-            if self._counts_err is not None:
-                lc._counts_err = self._counts_err[start:stop:step]
-            return lc
+            return super().__getitem__(index)
         else:
             raise IndexError("The index must be either an integer or a slice " "object !")
 

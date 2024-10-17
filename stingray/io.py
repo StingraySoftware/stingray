@@ -36,12 +36,13 @@ from .mission_support import (
 import pickle
 
 _H5PY_INSTALLED = True
+DEFAULT_FORMAT = "hdf5"
 
 try:
     import h5py
 except ImportError:
     _H5PY_INSTALLED = False
-
+    DEFAULT_FORMAT = "pickle"
 
 HAS_128 = True
 try:
