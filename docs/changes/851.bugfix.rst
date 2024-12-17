@@ -1,0 +1,1 @@
+The `simple_ir` method in class `simulator` now takes into account phase and edge cases.

@@ -275,12 +275,38 @@ class Simulator(object):
         """
 
         # Fill in 0 entries until the start time
-        h_zeros = np.zeros(int(start / self.dt))
+        h_zeros = np.zeros(int(np.ceil((start / self.dt))))
+        impulse_train = h_zeros
+
+        # First Bin
+        if start % self.dt:
+            impulse_train = np.append(h_zeros, (self.dt - (start % self.dt)) * intensity / self.dt)
 
         # Define constant impulse response
-        h_ones = np.ones(int(width / self.dt)) * intensity
 
-        return np.append(h_zeros, h_ones)
+        if start % self.dt:
+            h_ones = (
+                np.ones(
+                    int(
+                        (width - (self.dt - (start % self.dt) + (start + width) % self.dt))
+                        / self.dt
+                    )
+                )
+                * intensity
+            )
+
+        else:
+            h_ones = np.ones(int((width - ((start + width) % self.dt)) / self.dt)) * intensity
+
+        impulse_train = np.append(impulse_train, h_ones)
+
+        # Last Bin
+        if (start + width) % self.dt:
+            impulse_train = np.append(
+                impulse_train, ((start + width) % self.dt) * intensity / self.dt
+            )
+
+        return impulse_train
 
     def relativistic_ir(self, t1=3, t2=4, t3=10, p1=1, p2=1.4, rise=0.6, decay=0.1):
         """
