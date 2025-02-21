@@ -245,6 +245,10 @@ To run a specific test file (e.g., test_io.py), try::
     $ cd stingray
     $ py.test tests/test_io.py
 
+If you have installed Stingray via pip or conda, the source directory might
+not be easily accessible. Once installed, you can also run the tests using::
+
+   $ pytest --pyargs stingray
 
 Building the Documentation
 --------------------------
