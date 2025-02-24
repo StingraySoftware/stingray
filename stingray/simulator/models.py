@@ -1,7 +1,7 @@
 import numpy as np
-from astropy.modeling.models import custom_model
 from astropy.modeling import Fittable1DModel
-from astropy.modeling.parameters import Parameter
+from astropy.modeling.parameters import InputParameterError, Parameter
+from astropy.units import Quantity
 
 
 class GeneralizedLorentz1D(Fittable1DModel):
@@ -32,10 +32,10 @@ class GeneralizedLorentz1D(Fittable1DModel):
         generalized Lorentzian psd model
     """
 
-    x_0 = Parameter(default=1.0, description="peak central frequency")
+    x_0 = Parameter(default=1.0, description="Peak central frequency")
     fwhm = Parameter(default=1.0, description="FWHM of the peak (gamma)")
-    value = Parameter(default=1.0, description="peak value at x=x0")
-    power_coeff = Parameter(default=1.0, description="power coefficient [n]")
+    value = Parameter(default=1.0, description="Peak value at x=x0")
+    power_coeff = Parameter(default=1.0, description="Power coefficient [n]")
 
     @staticmethod
     def evaluate(x, x_0=1.0, fwhm=1.0, value=1.0, power_coeff=1.0):
@@ -124,11 +124,10 @@ class GeneralizedLorentz1D(Fittable1DModel):
         }
 
 
-@custom_model
-def SmoothBrokenPowerLaw(x, norm=1.0, gamma_low=1.0, gamma_high=1.0, break_freq=1.0):
+class SmoothBrokenPowerLaw(Fittable1DModel):
     """
     Smooth broken power law function,
-    implemented using astropy.modeling.models custom model
+    implemented using astropy.modeling.models SmoothlyBrokenPowerLaw1D
 
     Parameters
     ----------
@@ -152,42 +151,75 @@ def SmoothBrokenPowerLaw(x, norm=1.0, gamma_low=1.0, gamma_high=1.0, break_freq=
     model: astropy.modeling.Model
         generalized smooth broken power law psd model
     """
-    A = norm * x ** (-gamma_low)
-    B = (1.0 + (x / break_freq) ** 2) ** ((gamma_low - gamma_high) / 2)
-    func = A * B
 
-    del_func_x = B * norm * (-gamma_low) * x ** (-gamma_low - 1) + A * (
-        1.0 + (x / break_freq) ** 2
-    ) ** ((gamma_low - gamma_high) / 2 - 1) * (2 * x / break_freq**2)
+    norm = Parameter(default=1.0, description="normalization frequency")
+    break_freq = Parameter(default=1.0, description="Break frequency")
+    gamma_low = Parameter(default=-1.0, description="Power law index for f --> zero")
+    gamma_high = Parameter(default=1.0, description="Power law index for f --> infinity")
 
-    del_func_norm = x ** (-gamma_low) * B
+    def _norm_validator(self, value):
+        if np.any(value <= 0):
+            raise InputParameterError("norm parameter must be > 0")
 
-    del_func_g_low = B * norm * -1.0 * np.log(x) * x ** (-gamma_low) + A * (1.0 / 2.0) * np.log(
-        1.0 + (x / break_freq) ** 2
-    ) * (1.0 + (x / break_freq) ** 2) ** ((gamma_low - gamma_high) / 2)
+    norm._validator = _norm_validator
 
-    del_func_g_high = (
-        A
-        * -1.0
-        / 2.0
-        * np.log(1.0 + (x / break_freq) ** 2)
-        * (1.0 + (x / break_freq) ** 2) ** ((gamma_low - gamma_high) / 2)
-    )
-    del_func_b_freq = (
-        A
-        * ((gamma_low - gamma_high) / 2)
-        * (1.0 + (x / break_freq) ** 2) ** ((gamma_low - gamma_high) / 2 - 1)
-        * (x**2 * -2 / break_freq**3)
-    )
+    @staticmethod
+    def evaluate(x, norm=1.0, gamma_low=1.0, gamma_high=1.0, break_freq=1.0):
+        norm_ = norm * x ** (-1 * gamma_low)
+        if isinstance(norm_, Quantity):
+            return_unit = norm_.unit
+            norm = norm_.value
+        else:
+            return_unit = None
 
-    jacob = [
-        del_func_x,
-        del_func_norm,
-        del_func_g_low,
-        del_func_g_high,
-        del_func_b_freq,
-    ]
-    return func, jacob
+        f = (
+            norm
+            * x ** (-gamma_low)
+            / (1.0 + (x / break_freq) ** 2) ** (-(gamma_low - gamma_high) / 2)
+        )
+        return Quantity(f, unit=return_unit, copy=False, subok=True)
+
+    @staticmethod
+    def fit_deriv(x, norm=1.0, gamma_low=1.0, gamma_high=1.0, break_freq=1.0):
+        A = norm * x ** (-gamma_low)
+        B = (1.0 + (x / break_freq) ** 2) ** ((gamma_low - gamma_high) / 2)
+
+        del_func_x = B * norm * (-gamma_low) * x ** (-gamma_low - 1) + A * (
+            1.0 + (x / break_freq) ** 2
+        ) ** ((gamma_low - gamma_high) / 2 - 1) * (2 * x / break_freq**2)
+
+        del_func_norm = x ** (-gamma_low) * B
+
+        del_func_g_low = B * norm * -1.0 * np.log(x) * x ** (-gamma_low) + A * (1.0 / 2.0) * np.log(
+            1.0 + (x / break_freq) ** 2
+        ) * (1.0 + (x / break_freq) ** 2) ** ((gamma_low - gamma_high) / 2)
+
+        del_func_g_high = (
+            A
+            * -1.0
+            / 2.0
+            * np.log(1.0 + (x / break_freq) ** 2)
+            * (1.0 + (x / break_freq) ** 2) ** ((gamma_low - gamma_high) / 2)
+        )
+        del_func_b_freq = (
+            A
+            * ((gamma_low - gamma_high) / 2)
+            * (1.0 + (x / break_freq) ** 2) ** ((gamma_low - gamma_high) / 2 - 1)
+            * (x**2 * -2 / break_freq**3)
+        )
+        return [del_func_x, del_func_norm, del_func_g_low, del_func_g_high, del_func_b_freq]
+
+    @property
+    def input_units(self):
+        if self.break_freq.input_unit is None:
+            return None
+        return {self.inputs[0]: self.break_freq.input_unit}
+
+    def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
+        return {
+            "break_freq": inputs_unit[self.inputs[0]],
+            "norm_": outputs_unit[self.outputs[0]],
+        }
 
 
 def generalized_lorentzian(x, p):
