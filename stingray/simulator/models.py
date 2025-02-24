@@ -1,12 +1,13 @@
 import numpy as np
 from astropy.modeling.models import custom_model
+from astropy.modeling import Fittable1DModel
+from astropy.modeling.parameters import Parameter
 
 
-@custom_model
-def GeneralizedLorentz1D(x, x_0=1.0, fwhm=1.0, value=1.0, power_coeff=1.0):
+class GeneralizedLorentz1D(Fittable1DModel):
     """
     Generalized Lorentzian function,
-    implemented using astropy.modeling.models custom model
+    implemented using astropy.modeling.models Lorentz1D
 
     Parameters
     ----------
@@ -30,47 +31,97 @@ def GeneralizedLorentz1D(x, x_0=1.0, fwhm=1.0, value=1.0, power_coeff=1.0):
     model: astropy.modeling.Model
         generalized Lorentzian psd model
     """
-    assert power_coeff > 0.0, "The power coefficient should be greater than zero."
-    num = value * (fwhm / 2) ** power_coeff
-    denom = abs(x - x_0) ** power_coeff + (fwhm / 2) ** power_coeff
-    func = num / denom
 
-    del_func_x = (
-        -1.0 * num / denom**2 * (power_coeff * abs(x - x_0) ** (power_coeff - 1)) * np.sign(x - x_0)
-    )
-    del_func_x_0 = (
-        num / denom**2 * (power_coeff * abs(x - x_0) ** (power_coeff - 1)) * np.sign(x - x_0)
-    )
-    del_func_value = (fwhm / 2) ** power_coeff / denom
-    del_func_fwhm = (
-        1.0
-        / denom**2
-        * (
-            denom * (value * 1.0 / 2 * power_coeff * (fwhm / 2) ** (power_coeff - 1))
-            - num * (1.0 / 2.0 * power_coeff * (fwhm / 2) ** (power_coeff - 1))
+    x_0 = Parameter(default=1.0, description="peak central frequency")
+    fwhm = Parameter(default=1.0, description="FWHM of the peak (gamma)")
+    value = Parameter(default=1.0, description="peak value at x=x0")
+    power_coeff = Parameter(default=1.0, description="power coefficient [n]")
+
+    @staticmethod
+    def evaluate(x, x_0=1.0, fwhm=1.0, value=1.0, power_coeff=1.0):
+        """
+        Generalized Lorentzian function
+        """
+        assert power_coeff > 0.0, "The power coefficient should be greater than zero."
+        return (
+            value
+            * (fwhm / 2) ** power_coeff
+            * 1.0
+            / (abs(x - x_0) ** power_coeff + (fwhm / 2) ** power_coeff)
         )
-    )
-    del_func_p_coeff = (
-        1.0
-        / denom**2
-        * (
-            denom * (value * np.log(fwhm / 2) * (fwhm / 2) ** power_coeff)
-            - num
+
+    @staticmethod
+    def fit_deriv(x, x_0=1.0, fwhm=1.0, value=1.0, power_coeff=1.0):
+        """
+        Gaussian1D model function derivatives.
+        """
+        assert power_coeff > 0.0, "The power coefficient should be greater than zero."
+        num = value * (fwhm / 2) ** power_coeff
+        denom = abs(x - x_0) ** power_coeff + (fwhm / 2) ** power_coeff
+
+        del_func_x = (
+            -1.0
+            * num
+            / denom**2
+            * (power_coeff * abs(x - x_0) ** (power_coeff - 1))
+            * np.sign(x - x_0)
+        )
+        del_func_x_0 = (
+            num / denom**2 * (power_coeff * abs(x - x_0) ** (power_coeff - 1)) * np.sign(x - x_0)
+        )
+        del_func_value = (fwhm / 2) ** power_coeff / denom
+        del_func_fwhm = (
+            1.0
+            / denom**2
             * (
-                np.log(abs(x - x_0)) * abs(x - x_0) ** power_coeff
-                + np.log(fwhm / 2) * (fwhm / 2) ** power_coeff
+                denom * (value * 1.0 / 2 * power_coeff * (fwhm / 2) ** (power_coeff - 1))
+                - num * (1.0 / 2.0 * power_coeff * (fwhm / 2) ** (power_coeff - 1))
             )
         )
-    )
+        del_func_p_coeff = (
+            1.0
+            / denom**2
+            * (
+                denom * (value * np.log(fwhm / 2) * (fwhm / 2) ** power_coeff)
+                - num
+                * (
+                    np.log(abs(x - x_0)) * abs(x - x_0) ** power_coeff
+                    + np.log(fwhm / 2) * (fwhm / 2) ** power_coeff
+                )
+            )
+        )
+        return [del_func_x, del_func_x_0, del_func_value, del_func_fwhm, del_func_p_coeff]
 
-    jacob = [
-        del_func_x,
-        del_func_x_0,
-        del_func_value,
-        del_func_fwhm,
-        del_func_p_coeff,
-    ]
-    return func, jacob
+    def bounding_box(self, factor=25):
+        """Tuple defining the default ``bounding_box`` limits,
+        ``(x_low, x_high)``.
+
+        Parameters
+        ----------
+        factor : float
+            The multiple of FWHM used to define the limits.
+            Default is chosen to include most (99%) of the
+            area under the curve, while still showing the
+            central feature of interest.
+
+        """
+        x0 = self.x_0
+        dx = factor * self.fwhm
+
+        return (x0 - dx, x0 + dx)
+
+    @property
+    def input_units(self):
+        if self.x_0.input_unit is None:
+            return None
+        return {self.inputs[0]: self.x_0.input_unit}
+
+    def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
+        return {
+            "x_0": inputs_unit[self.inputs[0]],
+            "fwhm": inputs_unit[self.inputs[0]],
+            "value": outputs_unit[self.outputs[0]],
+        }
 
 
 @custom_model
