@@ -1,7 +1,7 @@
+import numpy as np
 from astropy.modeling.models import custom_model
 
 
-# TODO: Add Jacobian
 @custom_model
 def GeneralizedLorentz1D(x, x_0=1.0, fwhm=1.0, value=1.0, power_coeff=1.0):
     """
@@ -31,15 +31,48 @@ def GeneralizedLorentz1D(x, x_0=1.0, fwhm=1.0, value=1.0, power_coeff=1.0):
         generalized Lorentzian psd model
     """
     assert power_coeff > 0.0, "The power coefficient should be greater than zero."
-    return (
-        value
-        * (fwhm / 2) ** power_coeff
-        * 1.0
-        / (abs(x - x_0) ** power_coeff + (fwhm / 2) ** power_coeff)
+    num = value * (fwhm / 2) ** power_coeff
+    denom = abs(x - x_0) ** power_coeff + (fwhm / 2) ** power_coeff
+    func = num / denom
+
+    del_func_x = (
+        -1.0 * num / denom**2 * (power_coeff * abs(x - x_0) ** (power_coeff - 1)) * np.sign(x - x_0)
+    )
+    del_func_x_0 = (
+        num / denom**2 * (power_coeff * abs(x - x_0) ** (power_coeff - 1)) * np.sign(x - x_0)
+    )
+    del_func_value = (fwhm / 2) ** power_coeff / denom
+    del_func_fwhm = (
+        1.0
+        / denom**2
+        * (
+            denom * (value * 1.0 / 2 * power_coeff * (fwhm / 2) ** (power_coeff - 1))
+            - num * (1.0 / 2.0 * power_coeff * (fwhm / 2) ** (power_coeff - 1))
+        )
+    )
+    del_func_p_coeff = (
+        1.0
+        / denom**2
+        * (
+            denom * (value * np.log(fwhm / 2) * (fwhm / 2) ** power_coeff)
+            - num
+            * (
+                np.log(abs(x - x_0)) * abs(x - x_0) ** power_coeff
+                + np.log(fwhm / 2) * (fwhm / 2) ** power_coeff
+            )
+        )
     )
 
+    jacob = [
+        del_func_x,
+        del_func_x_0,
+        del_func_value,
+        del_func_fwhm,
+        del_func_p_coeff,
+    ]
+    return func, jacob
 
-# TODO: Add Jacobian
+
 @custom_model
 def SmoothBrokenPowerLaw(x, norm=1.0, gamma_low=1.0, gamma_high=1.0, break_freq=1.0):
     """
@@ -68,9 +101,42 @@ def SmoothBrokenPowerLaw(x, norm=1.0, gamma_low=1.0, gamma_high=1.0, break_freq=
     model: astropy.modeling.Model
         generalized smooth broken power law psd model
     """
-    return (
-        norm * x ** (-gamma_low) / (1.0 + (x / break_freq) ** 2) ** (-(gamma_low - gamma_high) / 2)
+    A = norm * x ** (-gamma_low)
+    B = (1.0 + (x / break_freq) ** 2) ** ((gamma_low - gamma_high) / 2)
+    func = A * B
+
+    del_func_x = B * norm * (-gamma_low) * x ** (-gamma_low - 1) + A * (
+        1.0 + (x / break_freq) ** 2
+    ) ** ((gamma_low - gamma_high) / 2 - 1) * (2 * x / break_freq**2)
+
+    del_func_norm = x ** (-gamma_low) * B
+
+    del_func_g_low = B * norm * -1.0 * np.log(x) * x ** (-gamma_low) + A * (1.0 / 2.0) * np.log(
+        1.0 + (x / break_freq) ** 2
+    ) * (1.0 + (x / break_freq) ** 2) ** ((gamma_low - gamma_high) / 2)
+
+    del_func_g_high = (
+        A
+        * -1.0
+        / 2.0
+        * np.log(1.0 + (x / break_freq) ** 2)
+        * (1.0 + (x / break_freq) ** 2) ** ((gamma_low - gamma_high) / 2)
     )
+    del_func_b_freq = (
+        A
+        * ((gamma_low - gamma_high) / 2)
+        * (1.0 + (x / break_freq) ** 2) ** ((gamma_low - gamma_high) / 2 - 1)
+        * (x**2 * -2 / break_freq**3)
+    )
+
+    jacob = [
+        del_func_x,
+        del_func_norm,
+        del_func_g_low,
+        del_func_g_high,
+        del_func_b_freq,
+    ]
+    return func, jacob
 
 
 def generalized_lorentzian(x, p):
