@@ -95,18 +95,13 @@ class GeneralizedLorentz1D(Fittable1DModel):
 
         return (x0 - dx, x0 + dx)
 
-    @property
-    def input_units(self):
-        if self.x_0.input_unit is None:
-            return None
-        return {self.inputs[0]: self.x_0.input_unit}
+    # NOTE:
+    # In astropy 4.3 'Parameter' object has no attribute 'input_unit',
+    # whereas newer versions of Astropy include this attribute.
 
-    def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
-        return {
-            "x_0": inputs_unit[self.inputs[0]],
-            "fwhm": inputs_unit[self.inputs[0]],
-            "value": outputs_unit[self.outputs[0]],
-        }
+    # TODO:
+    # Add 'input_units' and '_parameter_units_for_data_units' methods
+    # when we drop support for Astropy < 5.3.
 
 
 class SmoothBrokenPowerLaw(Fittable1DModel):
@@ -190,17 +185,13 @@ class SmoothBrokenPowerLaw(Fittable1DModel):
         )
         return [del_func_x, del_func_norm, del_func_g_low, del_func_g_high, del_func_b_freq]
 
-    @property
-    def input_units(self):
-        if self.break_freq.input_unit is None:
-            return None
-        return {self.inputs[0]: self.break_freq.input_unit}
+    # NOTE:
+    # In astropy 4.3 'Parameter' object has no attribute 'input_unit',
+    # whereas newer versions of Astropy include this attribute.
 
-    def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
-        return {
-            "break_freq": inputs_unit[self.inputs[0]],
-            "norm_": outputs_unit[self.outputs[0]],
-        }
+    # TODO:
+    # Add 'input_units' and '_parameter_units_for_data_units' methods
+    # when we drop support for Astropy < 5.3.
 
 
 def generalized_lorentzian(x, p):
