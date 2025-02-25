@@ -38,20 +38,16 @@ class GeneralizedLorentz1D(Fittable1DModel):
     power_coeff = Parameter(default=1.0, description="Power coefficient [n]")
 
     @staticmethod
-    def evaluate(x, x_0=1.0, fwhm=1.0, value=1.0, power_coeff=1.0):
+    def evaluate(x, x_0, fwhm, value, power_coeff):
         """
         Generalized Lorentzian function
         """
         assert power_coeff > 0.0, "The power coefficient should be greater than zero."
-        return (
-            value
-            * (fwhm / 2) ** power_coeff
-            * 1.0
-            / (abs(x - x_0) ** power_coeff + (fwhm / 2) ** power_coeff)
-        )
+        fwhm_pc = np.power(fwhm / 2, power_coeff)
+        return value * fwhm_pc * 1.0 / (np.power(np.abs(x - x_0), power_coeff) + fwhm_pc)
 
     @staticmethod
-    def fit_deriv(x, x_0=1.0, fwhm=1.0, value=1.0, power_coeff=1.0):
+    def fit_deriv(x, x_0, fwhm, value, power_coeff):
         """
         Gaussian1D model function derivatives.
         """
@@ -164,7 +160,7 @@ class SmoothBrokenPowerLaw(Fittable1DModel):
     norm._validator = _norm_validator
 
     @staticmethod
-    def evaluate(x, norm=1.0, gamma_low=1.0, gamma_high=1.0, break_freq=1.0):
+    def evaluate(x, norm, gamma_low, gamma_high, break_freq):
         norm_ = norm * x ** (-1 * gamma_low)
         if isinstance(norm_, Quantity):
             return_unit = norm_.unit
@@ -172,15 +168,17 @@ class SmoothBrokenPowerLaw(Fittable1DModel):
         else:
             return_unit = None
 
+        exp_factor = (gamma_low - gamma_high) / 2
+        break_freq_invsq = 1.0 / np.power(break_freq, 2)
         f = (
             norm
-            * x ** (-gamma_low)
-            / (1.0 + (x / break_freq) ** 2) ** (-(gamma_low - gamma_high) / 2)
+            * np.power(x, -gamma_low)
+            * np.power(1.0 + np.power(x, 2) * break_freq_invsq, exp_factor)
         )
         return Quantity(f, unit=return_unit, copy=False, subok=True)
 
     @staticmethod
-    def fit_deriv(x, norm=1.0, gamma_low=1.0, gamma_high=1.0, break_freq=1.0):
+    def fit_deriv(x, norm, gamma_low, gamma_high, break_freq):
         A = norm * x ** (-gamma_low)
         B = (1.0 + (x / break_freq) ** 2) ** ((gamma_low - gamma_high) / 2)
 
