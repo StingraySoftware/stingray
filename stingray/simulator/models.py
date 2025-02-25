@@ -52,38 +52,27 @@ class GeneralizedLorentz1D(Fittable1DModel):
         Gaussian1D model function derivatives.
         """
         assert power_coeff > 0.0, "The power coefficient should be greater than zero."
-        num = value * (fwhm / 2) ** power_coeff
-        denom = abs(x - x_0) ** power_coeff + (fwhm / 2) ** power_coeff
+        fwhm_pc = np.power(fwhm / 2, power_coeff)
+        num = value * fwhm_pc
+        mod_x_pc = np.power(np.abs(x - x_0), power_coeff)
+        denom = mod_x_pc + fwhm_pc
+        denom_sq = np.power(denom, 2)
 
         del_func_x = (
-            -1.0
-            * num
-            / denom**2
-            * (power_coeff * abs(x - x_0) ** (power_coeff - 1))
-            * np.sign(x - x_0)
+            -1.0 * num / denom_sq * (power_coeff * mod_x_pc / np.abs(x - x_0)) * np.sign(x - x_0)
         )
-        del_func_x_0 = (
-            num / denom**2 * (power_coeff * abs(x - x_0) ** (power_coeff - 1)) * np.sign(x - x_0)
-        )
-        del_func_value = (fwhm / 2) ** power_coeff / denom
-        del_func_fwhm = (
-            1.0
-            / denom**2
-            * (
-                denom * (value * 1.0 / 2 * power_coeff * (fwhm / 2) ** (power_coeff - 1))
-                - num * (1.0 / 2.0 * power_coeff * (fwhm / 2) ** (power_coeff - 1))
-            )
-        )
+        del_func_x_0 = -del_func_x
+        del_func_value = fwhm_pc / denom
+
+        pre_compute = 1.0 / 2.0 * power_coeff * fwhm_pc / (fwhm / 2)
+        del_func_fwhm = 1.0 / denom_sq * (denom * (value * pre_compute) - num * pre_compute)
+
         del_func_p_coeff = (
             1.0
-            / denom**2
+            / denom_sq
             * (
-                denom * (value * np.log(fwhm / 2) * (fwhm / 2) ** power_coeff)
-                - num
-                * (
-                    np.log(abs(x - x_0)) * abs(x - x_0) ** power_coeff
-                    + np.log(fwhm / 2) * (fwhm / 2) ** power_coeff
-                )
+                denom * (value * np.log(fwhm / 2) * fwhm_pc)
+                - num * (np.log(abs(x - x_0)) * mod_x_pc + np.log(fwhm / 2) * fwhm_pc)
             )
         )
         return [del_func_x, del_func_x_0, del_func_value, del_func_fwhm, del_func_p_coeff]
@@ -179,31 +168,25 @@ class SmoothBrokenPowerLaw(Fittable1DModel):
 
     @staticmethod
     def fit_deriv(x, norm, gamma_low, gamma_high, break_freq):
-        A = norm * x ** (-gamma_low)
-        B = (1.0 + (x / break_freq) ** 2) ** ((gamma_low - gamma_high) / 2)
+        exp_factor = (gamma_low - gamma_high) / 2
+        x_g_low = np.power(x, -gamma_low)
+        A = norm * x_g_low
+        x_b_freq_sq = 1.0 + np.power(x / break_freq, 2)
+        B = np.power(x_b_freq_sq, exp_factor)
 
-        del_func_x = B * norm * (-gamma_low) * x ** (-gamma_low - 1) + A * (
-            1.0 + (x / break_freq) ** 2
-        ) ** ((gamma_low - gamma_high) / 2 - 1) * (2 * x / break_freq**2)
-
-        del_func_norm = x ** (-gamma_low) * B
-
-        del_func_g_low = B * norm * -1.0 * np.log(x) * x ** (-gamma_low) + A * (1.0 / 2.0) * np.log(
-            1.0 + (x / break_freq) ** 2
-        ) * (1.0 + (x / break_freq) ** 2) ** ((gamma_low - gamma_high) / 2)
-
-        del_func_g_high = (
-            A
-            * -1.0
-            / 2.0
-            * np.log(1.0 + (x / break_freq) ** 2)
-            * (1.0 + (x / break_freq) ** 2) ** ((gamma_low - gamma_high) / 2)
+        del_func_x = B * norm * (-gamma_low * x_g_low / x) + A * B / x_b_freq_sq * (
+            2 * np.power(x / break_freq, 2)
         )
+
+        del_func_norm = x_g_low * B
+
+        del_func_g_low = (
+            B * norm * -1.0 * np.log(x) * x_g_low + A * (1.0 / 2.0) * np.log(x_b_freq_sq) * B
+        )
+
+        del_func_g_high = A * -1.0 / 2.0 * np.log(x_b_freq_sq) * B
         del_func_b_freq = (
-            A
-            * ((gamma_low - gamma_high) / 2)
-            * (1.0 + (x / break_freq) ** 2) ** ((gamma_low - gamma_high) / 2 - 1)
-            * (x**2 * -2 / break_freq**3)
+            A * (exp_factor) * B / x_b_freq_sq * (np.pow(x, 2) * -2 / np.power(break_freq, 3))
         )
         return [del_func_x, del_func_norm, del_func_g_low, del_func_g_high, del_func_b_freq]
 
