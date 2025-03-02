@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from astropy.io import fits as pf
 from astropy import units as u
 
+from stingray.events import EventList
 import stingray.utils as utils
 from stingray.loggingconfig import setup_logger
 
@@ -1550,3 +1551,51 @@ def _can_serialize_meta(probe_file: str, fmt: str) -> bool:
         )
         yes_it_can = False
     return yes_it_can
+
+
+def read_gbm_data(filename, emin=None, emax=None):
+    """
+    Read Fermi/GBM detector data.
+
+    Parameters
+    ----------
+    filename: str
+        Path to the fits file, Only TTE files are supported.
+
+    emin, emax : float
+        The minimum and maximum energies to use
+
+    Returns
+    -------
+    ev: :class:`EventList` object
+        The :class:`EventList` object reconstructed from file
+    """
+    hdulist = fits.open(filename)
+    header = hdulist[0].header
+
+    elower = hdulist[1].data.field("E_MIN")
+    ehigher = hdulist[1].data.field("E_MAX")
+    emid = elower + (ehigher - elower) / 2.0
+
+    time = hdulist[2].data.field("TIME")
+    channels = hdulist[2].data.field("PHA")
+
+    if emin is None:
+        emin = np.min(elower)
+    if emax is None:
+        emax = np.max(ehigher)
+    for c in channels:
+        emid[c]
+
+    energy = np.array([emid[c] for c in channels])
+    mask = (energy > emin) & (energy < emax)
+
+    time = time[mask]
+    energy = energy[mask]
+    trigtime = hdulist[0].header["TRIGTIME"]
+
+    hdulist.close()
+
+    evt = EventList(time, energy, header)
+    evt.trigtime = trigtime
+    return evt

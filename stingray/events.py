@@ -14,7 +14,7 @@ from stingray.loggingconfig import setup_logger
 from .base import StingrayTimeseries
 from .filters import get_deadtime_mask
 from .gti import generate_indices_of_boundaries
-from .io import pi_to_energy, get_file_extension
+from .io import pi_to_energy, get_file_extension, read_header_key, read_gbm_data
 from .io import FITSTimeseriesReader
 from .lightcurve import Lightcurve
 from .utils import simon, njit
@@ -627,6 +627,14 @@ class EventList(StingrayTimeseries):
                 if fits_ext in get_file_extension(filename).lower():
                     fmt = "hea"
                     break
+
+        source = read_header_key(filename, "INSTRUME")
+        if source == "GBM":
+            emin = kwargs.pop("emin")
+            emax = kwargs.pop("emax")
+            evt = read_gbm_data(filename, emin=emin, emax=emax)
+            return evt
+
         if fmt is not None and fmt.lower() in ("hea", "ogip"):
             additional_columns = kwargs.pop("additional_columns", None)
 
