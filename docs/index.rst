@@ -283,6 +283,21 @@ If that doesn't work on your system, you can invoke ``sphinx-build`` itself from
 The documentation should be located in ``stingray/docs/_build``. Try opening ``./docs/_build/index.rst`` from
 the stingray source directory.
 
+**Note:**
+
+If you see the error::
+
+    nbsphinx.NotebookError: PandocMissing
+
+It means ``Pandoc`` is missing or not found.
+
+Solution:
+
++ Install Pandoc from `pandoc.org <https://pandoc.org>`_ or `GitHub Releases <https://github.com/jgm/pandoc/releases/>`_.
++ Ensure Pandoc is in your system's PATH.
+
+After installation, restart your code editor and try again.
+
 Using Stingray
 ===============
 

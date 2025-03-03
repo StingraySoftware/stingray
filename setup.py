@@ -53,12 +53,6 @@ You can also build the documentation with Sphinx directly using::
     cd docs
     make html
 
-If you getting an error:
-    Error: nbsphinx.NotebookError: PandocMissing
-    This occurs when Pandoc is not installed or not found.
-    Solution: Install Pandoc from pandoc.org or download it directly from https://github.com/jgm/pandoc/releases/, 
-    then restart your code editor.
-
 For more information, see:
 
   http://docs.astropy.org/en/latest/install.html#builddocs
