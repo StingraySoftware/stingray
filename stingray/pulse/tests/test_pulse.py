@@ -207,13 +207,24 @@ class TestAll(object):
         np.testing.assert_array_almost_equal(pe, expected_err)
 
     def test_pulse_profile_pdm(self):
-        nbin = 16
-        dt = 1 / (2 * nbin)
-        times = np.arange(0, 2 - dt, dt)
-        counts = np.random.normal(3, 0.5, size=len(times))
-        gti = np.array([[-0.5 * dt, 2 - dt]])
-        bins, profile, prof_err = fold_events(times, 1, nbin=nbin, weights=counts, mode="pdm")
+        period = 0.237
+        nbin = 10
+        phases = np.array([0.05, 1.05])
+        times = phases * period
+        counts = [3, 5]
+        _, profile, prof_err = fold_events(
+            times, 1 / period, nbin=nbin, weights=counts, mode="pdm", ref_time=0
+        )
         assert np.all(prof_err == 0)
+        _, profile_ef, _ = fold_events(
+            times, 1 / period, nbin=nbin, weights=counts, mode="ef", ref_time=0
+        )
+        for pdm, ef in zip(profile, profile_ef):
+            if ef == 0:
+                assert np.isnan(pdm)
+            else:
+                assert pdm == 2
+                assert ef == 8
 
     def test_mode_incorrect(self):
         nbin = 16

@@ -1308,6 +1308,9 @@ def powerspectrum_from_events(
     """
     if gti is None:
         gti = events.gti
+
+    dt = events.suggest_compatible_dt(dt)
+
     return powerspectrum_from_time_array(
         events.time,
         dt,

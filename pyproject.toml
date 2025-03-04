@@ -141,6 +141,7 @@ remote_data_strict = true
 addopts = "--color=yes --doctest-rst"
 filterwarnings = [
     "error",
+    "ignore:.*numpy.core.einsumfunc is deprecated.*:DeprecationWarning",
     "ignore:Unrecognized parfile line:UserWarning",
     "ignore:.*:ResourceWarning",
     "ignore:distutils Version classes are deprecated.:DeprecationWarning",

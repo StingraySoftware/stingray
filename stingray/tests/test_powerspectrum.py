@@ -110,6 +110,24 @@ class TestAveragedPowerspectrumEvents(object):
         )
         assert np.allclose(self.leahy_pds.power, pds_ev.power)
 
+    def test_from_events_works_ps_dt(self):
+        events = copy.deepcopy(self.events)
+        # Use an incompatible dt
+        events.dt = self.dt * np.pi / 3
+        with pytest.warns(UserWarning, match="The input event list has a time resolution of"):
+            pds_ev = Powerspectrum.from_events(events, dt=self.dt, norm="leahy", silent=True)
+            assert np.isclose(pds_ev.dt, events.suggest_compatible_dt(self.dt))
+
+    def test_from_events_works_aps_dt(self):
+        events = copy.deepcopy(self.events)
+        # Use an incompatible dt
+        events.dt = self.dt * np.pi / 3
+        with pytest.warns(UserWarning, match="The input event list has a time resolution of"):
+            pds_ev = AveragedPowerspectrum.from_events(
+                events, segment_size=self.segment_size, dt=self.dt, norm="leahy", silent=True
+            )
+            assert np.isclose(pds_ev.dt, events.suggest_compatible_dt(self.dt))
+
     def test_from_lc_iter_works(self):
         pds_ev = AveragedPowerspectrum.from_lc_iterable(
             self.events.to_lc_iter(self.dt, self.segment_size),
