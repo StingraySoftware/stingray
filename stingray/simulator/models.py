@@ -1,7 +1,6 @@
 import numpy as np
 from astropy.modeling import Fittable1DModel
 from astropy.modeling.parameters import InputParameterError, Parameter
-from astropy.units import Quantity
 
 
 class GeneralizedLorentz1D(Fittable1DModel):
@@ -26,6 +25,16 @@ class GeneralizedLorentz1D(Fittable1DModel):
     power_coeff : float
         power coefficient [n]
 
+    Notes
+    -----
+    Model formula (with :math:`V` for ``value``, :math:`x_0` for ``x_0``,
+    :math:`w` for ``fwhm``, and :math:`p` for ``power_coeff``):
+
+        .. math::
+
+            f(x) = V \\cdot \\left( \\frac{w}{2} \\right)^p
+                \\cdot \\frac{1}{\\left( |x - x_0|^p + \\left( \\frac{w}{2} \\right)^p \\right)}
+
     Returns
     -------
     model: astropy.modeling.Model
@@ -49,7 +58,8 @@ class GeneralizedLorentz1D(Fittable1DModel):
     @staticmethod
     def fit_deriv(x, x_0, fwhm, value, power_coeff):
         """
-        Gaussian1D model function derivatives.
+        Gaussian1D model function derivatives with respect
+        to parameters.
         """
         assert power_coeff > 0.0, "The power coefficient should be greater than zero."
         fwhm_pc = np.power(fwhm / 2, power_coeff)
@@ -58,16 +68,14 @@ class GeneralizedLorentz1D(Fittable1DModel):
         denom = mod_x_pc + fwhm_pc
         denom_sq = np.power(denom, 2)
 
-        del_func_x = (
-            -1.0 * num / denom_sq * (power_coeff * mod_x_pc / np.abs(x - x_0)) * np.sign(x - x_0)
-        )
-        del_func_x_0 = -del_func_x
-        del_func_value = fwhm_pc / denom
+        d_x = -1.0 * num / denom_sq * (power_coeff * mod_x_pc / np.abs(x - x_0)) * np.sign(x - x_0)
+        d_x_0 = -d_x
+        d_value = fwhm_pc / denom
 
         pre_compute = 1.0 / 2.0 * power_coeff * fwhm_pc / (fwhm / 2)
-        del_func_fwhm = 1.0 / denom_sq * (denom * (value * pre_compute) - num * pre_compute)
+        d_fwhm = 1.0 / denom_sq * (denom * (value * pre_compute) - num * pre_compute)
 
-        del_func_p_coeff = (
+        d_power_coeff = (
             1.0
             / denom_sq
             * (
@@ -75,7 +83,7 @@ class GeneralizedLorentz1D(Fittable1DModel):
                 - num * (np.log(abs(x - x_0)) * mod_x_pc + np.log(fwhm / 2) * fwhm_pc)
             )
         )
-        return [del_func_x, del_func_x_0, del_func_value, del_func_fwhm, del_func_p_coeff]
+        return [d_x, d_x_0, d_value, d_fwhm, d_power_coeff]
 
     def bounding_box(self, factor=25):
         """Tuple defining the default ``bounding_box`` limits,
@@ -126,6 +134,17 @@ class SmoothBrokenPowerLaw(Fittable1DModel):
     break_freq: float
         break frequency
 
+    Notes
+    -----
+    Model formula (with :math:`N` for ``norm``, :math:`x_b` for
+    ``break_freq``, :math:`\\gamma_1` for ``gamma_low``,
+    and :math:`\\gamma_2` for ``gamma_high``):
+
+        .. math::
+
+            f(x) = N \\cdot x^{-\\gamma_1}
+                   \\left( 1 + \\left( \\frac{x}{x_b} \\right)^2 \\right)^{\\frac{\\gamma_1 - \\gamma_2}{2}}
+
     Returns
     -------
     model: astropy.modeling.Model
@@ -145,45 +164,103 @@ class SmoothBrokenPowerLaw(Fittable1DModel):
 
     @staticmethod
     def evaluate(x, norm, gamma_low, gamma_high, break_freq):
-        norm_ = norm * x ** (-1 * gamma_low)
-        if isinstance(norm_, Quantity):
-            return_unit = norm_.unit
-            norm = norm_.value
-        else:
-            return_unit = None
+        """One dimensional smoothly broken power law model function."""
+        # Pre-calculate `x/x_b`
+        xx = x / break_freq
 
-        exp_factor = (gamma_low - gamma_high) / 2
-        break_freq_invsq = 1.0 / np.power(break_freq, 2)
-        f = (
-            norm
-            * np.power(x, -gamma_low)
-            * np.power(1.0 + np.power(x, 2) * break_freq_invsq, exp_factor)
-        )
-        return Quantity(f, unit=return_unit, copy=False, subok=True)
+        # Initialize the return value
+        f = np.zeros_like(xx, subok=False)
+
+        # The quantity `t = (x / x_b)^(1 / 2)` can become quite
+        # large.  To avoid overflow errors we will start by calculating
+        # its natural logarithm:
+        logt = np.log(xx) / 2
+
+        # When `t >> 1` or `t << 1` we don't actually need to compute
+        # the `t` value since the main formula (see docstring) can be
+        # significantly simplified by neglecting `1` or `t`
+        # respectively.  In the following we will check whether `t` is
+        # much greater, much smaller, or comparable to 1 by comparing
+        # the `logt` value with an appropriate threshold.
+        threshold = 30  # corresponding to exp(30) ~ 1e13
+        i = logt > threshold
+        if i.max():
+            f[i] = norm * np.power(x, -gamma_low) * np.power(xx[i], (gamma_low - gamma_high))
+
+        i = logt < -threshold
+        if i.max():
+            f[i] = norm * np.power(x, -gamma_low)
+
+        i = np.abs(logt) <= threshold
+        if i.max():
+            # In this case the `t` value is "comparable" to 1, hence we
+            # we will evaluate the whole formula.
+            f[i] = (
+                norm
+                * np.power(x, -gamma_low)
+                * np.power(1.0 + np.power(xx[i], 2), (gamma_low - gamma_high) / 2)
+            )
+        return f
 
     @staticmethod
     def fit_deriv(x, norm, gamma_low, gamma_high, break_freq):
-        exp_factor = (gamma_low - gamma_high) / 2
-        x_g_low = np.power(x, -gamma_low)
-        A = norm * x_g_low
-        x_b_freq_sq = 1.0 + np.power(x / break_freq, 2)
-        B = np.power(x_b_freq_sq, exp_factor)
+        """One dimensional smoothly broken power law derivative with respect
+        to parameters.
+        """
+        # Pre-calculate `x_b` and `x/x_b` and `logt` (see comments in
+        # SmoothBrokenPowerLaw.evaluate)
+        xx = x / break_freq
+        logt = np.log(xx) / 2
 
-        del_func_x = B * norm * (-gamma_low * x_g_low / x) + A * B / x_b_freq_sq * (
-            2 * np.power(x / break_freq, 2)
-        )
+        # Initialize the return values
+        f = np.zeros_like(xx)
+        d_x = np.zeros_like(xx)
+        d_norm = np.zeros_like(xx)
+        d_gamma_low = np.zeros_like(xx)
+        d_gamma_high = np.zeros_like(xx)
+        d_break_freq = np.zeros_like(xx)
 
-        del_func_norm = x_g_low * B
+        threshold = 30  # (see comments in SmoothBrokenPowerLaw.evaluate)
+        i = logt > threshold
+        if i.max():
+            f[i] = norm * np.power(x, -gamma_low) * np.power(xx[i], (gamma_low - gamma_high))
 
-        del_func_g_low = (
-            B * norm * -1.0 * np.log(x) * x_g_low + A * (1.0 / 2.0) * np.log(x_b_freq_sq) * B
-        )
+            d_x[i] = f[i] * -gamma_high / x
+            d_norm[i] = f[i] / norm
+            d_gamma_low[i] = f[i] * (-np.log(x) + np.log(xx[i]))
+            d_gamma_high[i] = -f[i] * np.log(xx[i])
+            d_break_freq[i] = f[i] * (gamma_high - gamma_low) / break_freq
 
-        del_func_g_high = A * -1.0 / 2.0 * np.log(x_b_freq_sq) * B
-        del_func_b_freq = (
-            A * (exp_factor) * B / x_b_freq_sq * (np.pow(x, 2) * -2 / np.power(break_freq, 3))
-        )
-        return [del_func_x, del_func_norm, del_func_g_low, del_func_g_high, del_func_b_freq]
+        i = logt < -threshold
+        if i.max():
+            f[i] = norm * np.power(x, -gamma_low)
+
+            d_x[i] = f[i] * -gamma_low / x
+            d_norm[i] = f[i] / norm
+            d_gamma_low[i] = -f[i] * np.log(x)
+            d_gamma_high[i] = 0
+            d_break_freq[i] = 0
+
+        i = np.abs(logt) <= threshold
+        if i.max():
+            # In this case the `t` value is "comparable" to 1, hence we
+            # we will evaluate the whole formula.
+            f[i] = (
+                norm
+                * np.power(x, -gamma_low)
+                * np.power(1.0 + np.power(xx[i], 2), (gamma_low - gamma_high) / 2)
+            )
+            d_x[i] = f[i] * -gamma_low / x
+            d_norm[i] = f[i] / norm
+            d_gamma_low[i] = f[i] * (-np.log(x) + np.log(1.0 + np.power(xx[i], 2)) / 2)
+            d_gamma_high[i] = -f[i] * np.log(1.0 + np.power(xx[i], 2)) / 2
+            d_break_freq[i] = (
+                f[i]
+                * (np.power(x, 2) * (gamma_high - gamma_low))
+                / (break_freq * (np.power(break_freq, 2) + np.power(x, 2)))
+            )
+
+        return [d_x, d_norm, d_gamma_low, d_gamma_high, d_break_freq]
 
     # NOTE:
     # In astropy 4.3 'Parameter' object has no attribute 'input_unit',
