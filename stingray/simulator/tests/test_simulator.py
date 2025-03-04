@@ -537,6 +537,11 @@ class TestSimulator(object):
         t0, w = 100, 500
         assert len(self.simulator_odd.simple_ir(t0, w)) == (t0 + w) / self.simulator.dt
 
+    def test_construct_simple_ir_width_shorter_than_dt(self):
+        dt = self.simulator.dt
+        response = self.simulator.simple_ir(start=3 * dt, width=0.1 * dt)
+        np.testing.assert_array_equal(response, [0, 0, 0, 1])
+
     def test_construct_relativistic_ir(self):
         """
         Construct relativistic impulse response.

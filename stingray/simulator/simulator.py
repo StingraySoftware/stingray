@@ -259,14 +259,15 @@ class Simulator(object):
         """
         Construct a simple impulse response using start time,
         width and scaling intensity.
-        To create a delta impulse response, set width to 1.
+        To create a delta impulse response, set width to the time resolution ``dt``.
 
         Parameters
         ----------
         start : int
             start time of impulse response
-        width : int
-            width of impulse response
+        width : float
+            Width of the impulse response. Widths shorter than ``dt`` produce
+            a one-bin response.
         intensity : float
             scaling parameter to set the intensity of delayed emission
             corresponding to direct emission.
@@ -281,7 +282,8 @@ class Simulator(object):
         h_zeros = np.zeros(int(start / self.dt))
 
         # Define constant impulse response
-        h_ones = np.ones(int(width / self.dt)) * intensity
+        num_bins = max(int(width / self.dt), 1)
+        h_ones = np.ones(num_bins) * intensity
 
         return np.append(h_zeros, h_ones)
 
