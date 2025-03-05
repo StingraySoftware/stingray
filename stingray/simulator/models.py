@@ -76,6 +76,39 @@ def GeneralizedLorentz1D(x, x_0=1.0, fwhm=1.0, value=1.0, power_coeff=1.0):
         / (abs(x - x_0) ** power_coeff + (fwhm / 2) ** power_coeff)
     )
 
+# TODO: Added Jacobian functions
+def SmoothBrokenPowerLawJacobian(x, norm, gamma_low, gamma_high, break_freq):
+    """
+    Jacobian for the Smooth Broken Power Law function,
+
+    Parameters
+    ----------
+    x: numpy.ndarray
+        non-zero frequencies
+
+    norm: float
+        normalization frequency
+
+    gamma_low: float
+        power law index for f --> zero
+
+    gamma_high: float
+        power law index for f --> infinity
+
+    break_freq: float
+        break frequency
+
+    Returns
+    -------
+    """
+    x_bf2 = (x / break_freq) ** 2
+    denom = (1.0 + x_bf2) ** (-(gamma_low - gamma_high) / 2)
+    d_norm = x ** (-gamma_low) * denom
+    d_gamma_low = -norm * np.log(x) * x ** (-gamma_low) * denom
+    d_gamma_high = norm * x ** (-gamma_low) * denom * np.log(1 + x_bf2) / 2
+    d_break_freq = norm * x ** (-gamma_low) * denom * (gamma_low - gamma_high) * x_bf2 / (break_freq * (1 + x_bf2))
+    
+    return np.vstack([d_norm, d_gamma_low, d_gamma_high, d_break_freq]).T
 
 # TODO: Add Jacobian
 @custom_model
