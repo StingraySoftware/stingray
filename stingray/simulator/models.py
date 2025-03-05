@@ -1,5 +1,43 @@
 from astropy.modeling.models import custom_model
+import numpy as np
+import matplotlib.pyplot as plt
 
+# TODO: Added Jacobian functions
+def GeneralizedLorentz1DJacobian(x, x_0, fwhm, value, power_coeff):
+    """
+    generalized lorentzian jacobian function,
+
+    Parameters
+    ----------
+    x: numpy.ndarray
+        non-zero frequencies
+
+    x_0 : float
+        peak central frequency
+
+    fwhm : float
+        FWHM of the peak (gamma)
+
+    value : float
+        peak value at x=x0
+
+    power_coeff : float
+        power coefficient [n]
+
+    Returns
+    -------
+    """
+    dx = x - x_0
+    gamma_pow = (fwhm / 2) ** power_coeff
+    denom = dx**power_coeff + gamma_pow
+    denom_sq = denom ** 2
+    
+    d_x0 = power_coeff * value * gamma_pow * dx**(power_coeff - 1) / denom_sq
+    d_fwhm = power_coeff * value * (fwhm / 2) ** (power_coeff - 1) / 2 * (1 + power_coeff * gamma_pow / denom) / denom
+    d_value = gamma_pow / denom
+    d_power_coeff = value * gamma_pow * np.log(fwhm / 2) / denom - value * gamma_pow * np.log(abs(dx) + (fwhm / 2)) / denom
+    
+    return np.vstack([-d_x0, d_fwhm, d_value, d_power_coeff]).T
 
 # TODO: Add Jacobian
 @custom_model
