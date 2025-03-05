@@ -46,12 +46,17 @@ class GeneralizedLorentz1D(Fittable1DModel):
     value = Parameter(default=1.0, description="Peak value at x=x0")
     power_coeff = Parameter(default=1.0, description="Power coefficient [n]")
 
+    def _power_coeff_validator(self, power_coeff):
+        if not np.any(power_coeff > 0):
+            raise InputParameterError("The power coefficient should be greater than zero.")
+
+    power_coeff._validator = _power_coeff_validator
+
     @staticmethod
     def evaluate(x, x_0, fwhm, value, power_coeff):
         """
         Generalized Lorentzian function
         """
-        assert power_coeff > 0.0, "The power coefficient should be greater than zero."
         fwhm_pc = np.power(fwhm / 2, power_coeff)
         return value * fwhm_pc * 1.0 / (np.power(np.abs(x - x_0), power_coeff) + fwhm_pc)
 
@@ -61,7 +66,6 @@ class GeneralizedLorentz1D(Fittable1DModel):
         Gaussian1D model function derivatives with respect
         to parameters.
         """
-        assert power_coeff > 0.0, "The power coefficient should be greater than zero."
         fwhm_pc = np.power(fwhm / 2, power_coeff)
         num = value * fwhm_pc
         mod_x_pc = np.power(np.abs(x - x_0), power_coeff)
@@ -169,7 +173,7 @@ class SmoothBrokenPowerLaw(Fittable1DModel):
         xx = x / break_freq
 
         # Initialize the return value
-        f = np.zeros_like(xx, subok=False)
+        f = np.zeros_like(x, subok=False)
 
         # The quantity `t = (x / x_b)^(1 / 2)` can become quite
         # large.  To avoid overflow errors we will start by calculating
@@ -185,11 +189,15 @@ class SmoothBrokenPowerLaw(Fittable1DModel):
         threshold = 30  # corresponding to exp(30) ~ 1e13
         i = logt > threshold
         if i.max():
-            f[i] = norm * np.power(x, -gamma_low) * np.power(xx[i], (gamma_low - gamma_high))
+            log_f = (
+                np.log(norm) - gamma_low * np.log(x[i]) + (gamma_low - gamma_high) * np.log(xx[i])
+            )
+            f[i] = np.exp(log_f)
 
         i = logt < -threshold
         if i.max():
-            f[i] = norm * np.power(x, -gamma_low)
+            log_f = np.log(norm) - gamma_low * np.log(x[i])
+            f[i] = np.exp(log_f)
 
         i = np.abs(logt) <= threshold
         if i.max():
@@ -197,7 +205,7 @@ class SmoothBrokenPowerLaw(Fittable1DModel):
             # we will evaluate the whole formula.
             f[i] = (
                 norm
-                * np.power(x, -gamma_low)
+                * np.power(x[i], -gamma_low)
                 * np.power(1.0 + np.power(xx[i], 2), (gamma_low - gamma_high) / 2)
             )
         return f
@@ -213,31 +221,32 @@ class SmoothBrokenPowerLaw(Fittable1DModel):
         logt = np.log(xx) / 2
 
         # Initialize the return values
-        f = np.zeros_like(xx)
-        d_x = np.zeros_like(xx)
-        d_norm = np.zeros_like(xx)
-        d_gamma_low = np.zeros_like(xx)
-        d_gamma_high = np.zeros_like(xx)
-        d_break_freq = np.zeros_like(xx)
+        f = np.zeros_like(x)
+        d_norm = np.zeros_like(x)
+        d_gamma_low = np.zeros_like(x)
+        d_gamma_high = np.zeros_like(x)
+        d_break_freq = np.zeros_like(x)
 
         threshold = 30  # (see comments in SmoothBrokenPowerLaw.evaluate)
         i = logt > threshold
         if i.max():
-            f[i] = norm * np.power(x, -gamma_low) * np.power(xx[i], (gamma_low - gamma_high))
+            log_f = (
+                np.log(norm) - gamma_low * np.log(x[i]) + (gamma_low - gamma_high) * np.log(xx[i])
+            )
+            f[i] = np.exp(log_f)
 
-            d_x[i] = f[i] * -gamma_high / x
             d_norm[i] = f[i] / norm
-            d_gamma_low[i] = f[i] * (-np.log(x) + np.log(xx[i]))
+            d_gamma_low[i] = f[i] * (-np.log(x[i]) + np.log(xx[i]))
             d_gamma_high[i] = -f[i] * np.log(xx[i])
             d_break_freq[i] = f[i] * (gamma_high - gamma_low) / break_freq
 
         i = logt < -threshold
         if i.max():
-            f[i] = norm * np.power(x, -gamma_low)
+            log_f = np.log(norm) - gamma_low * np.log(x[i])
+            f[i] = np.exp(log_f)
 
-            d_x[i] = f[i] * -gamma_low / x
             d_norm[i] = f[i] / norm
-            d_gamma_low[i] = -f[i] * np.log(x)
+            d_gamma_low[i] = -f[i] * np.log(x[i])
             d_gamma_high[i] = 0
             d_break_freq[i] = 0
 
@@ -247,20 +256,19 @@ class SmoothBrokenPowerLaw(Fittable1DModel):
             # we will evaluate the whole formula.
             f[i] = (
                 norm
-                * np.power(x, -gamma_low)
+                * np.power(x[i], -gamma_low)
                 * np.power(1.0 + np.power(xx[i], 2), (gamma_low - gamma_high) / 2)
             )
-            d_x[i] = f[i] * -gamma_low / x
             d_norm[i] = f[i] / norm
-            d_gamma_low[i] = f[i] * (-np.log(x) + np.log(1.0 + np.power(xx[i], 2)) / 2)
+            d_gamma_low[i] = f[i] * (-np.log(x[i]) + np.log(1.0 + np.power(xx[i], 2)) / 2)
             d_gamma_high[i] = -f[i] * np.log(1.0 + np.power(xx[i], 2)) / 2
             d_break_freq[i] = (
                 f[i]
-                * (np.power(x, 2) * (gamma_high - gamma_low))
-                / (break_freq * (np.power(break_freq, 2) + np.power(x, 2)))
+                * (np.power(x[i], 2) * (gamma_high - gamma_low))
+                / (break_freq * (np.power(break_freq, 2) + np.power(x[i], 2)))
             )
 
-        return [d_x, d_norm, d_gamma_low, d_gamma_high, d_break_freq]
+        return [d_norm, d_gamma_low, d_gamma_high, d_break_freq]
 
     # NOTE:
     # In astropy 4.3 'Parameter' object has no attribute 'input_unit',
