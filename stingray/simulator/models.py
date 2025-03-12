@@ -3,29 +3,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # TODO: Added Jacobian functions
-def GeneralizedLorentz1DJacobian(x, x_0, fwhm, value, power_coeff):
+def GeneralizedLorentz1DJacobian(x: np.ndarray, x_0: float, fwhm: float, value: float, power_coeff: float) -> np.ndarray:
     """
-    generalized lorentzian jacobian function,
+    Compute the Jacobian matrix for the Generalized Lorentzian function.
 
     Parameters
     ----------
-    x: numpy.ndarray
-        non-zero frequencies
-
+    x : numpy.ndarray
+        Non-zero frequencies.
     x_0 : float
-        peak central frequency
-
+        Peak central frequency.
     fwhm : float
-        FWHM of the peak (gamma)
-
+        Full width at half maximum (FWHM) of the peak.
     value : float
-        peak value at x=x0
-
+        Peak value at x = x_0.
     power_coeff : float
-        power coefficient [n]
+        Power coefficient.
 
     Returns
     -------
+    numpy.ndarray
+        The computed Jacobian matrix of shape (len(x), 4).
     """
     dx = x - x_0
     gamma_pow = (fwhm / 2) ** power_coeff
@@ -77,29 +75,27 @@ def GeneralizedLorentz1D(x, x_0=1.0, fwhm=1.0, value=1.0, power_coeff=1.0):
     )
 
 # TODO: Added Jacobian functions
-def SmoothBrokenPowerLawJacobian(x, norm, gamma_low, gamma_high, break_freq):
+def SmoothBrokenPowerLawJacobian(x: np.ndarray, norm: float, gamma_low: float, gamma_high: float, break_freq: float) -> np.ndarray:
     """
-    Jacobian for the Smooth Broken Power Law function,
+    Compute the Jacobian matrix for the Smooth Broken Power Law function.
 
     Parameters
     ----------
-    x: numpy.ndarray
-        non-zero frequencies
-
-    norm: float
-        normalization frequency
-
-    gamma_low: float
-        power law index for f --> zero
-
-    gamma_high: float
-        power law index for f --> infinity
-
-    break_freq: float
-        break frequency
+    x : numpy.ndarray
+        Non-zero frequencies.
+    norm : float
+        Normalization frequency.
+    gamma_low : float
+        Power law index for f → zero.
+    gamma_high : float
+        Power law index for f → infinity.
+    break_freq : float
+        Break frequency.
 
     Returns
     -------
+    numpy.ndarray
+        The computed Jacobian matrix of shape (len(x), 4).
     """
     x_bf2 = (x / break_freq) ** 2
     denom = (1.0 + x_bf2) ** (-(gamma_low - gamma_high) / 2)
