@@ -1,3 +1,38 @@
+v2.2.7.dev43+gd513fe6e.d20250312 (2025-03-12)
+---------------------------------------------
+
+New Features
+^^^^^^^^^^^^
+
+- Better support for Chandra event files (`#877 <https://github.com/StingraySoftware/stingray/pull/877>`__)
+- Added Jacobian functions for Generalized Lorentzian and Smooth Broken Power Law models.
+
+  - Introduced `GeneralizedLorentz1DJacobian` to compute analytical derivatives for the Generalized Lorentzian function.
+  - Implemented `SmoothBrokenPowerLawJacobian` to enhance model fitting for Smooth Broken Power Law.
+  - Improved numerical stability in `stingray.simulator.models` by providing Jacobian support.
+  - Added new test cases ensuring the correctness of Jacobian computations. (`#898 <https://github.com/StingraySoftware/stingray/pull/898>`__)
+
+
+Bug Fixes
+^^^^^^^^^
+
+- Fixed issue with counting ``0`` bin occupancy in ``fold_events`` with ``mode='pdm'`` (`#872 <https://github.com/StingraySoftware/stingray/pull/872>`__)
+
+
+Documentation
+^^^^^^^^^^^^^
+
+- Added `stingray.varenergyspectrum.CountSpectrum` to docs. (`#884 <https://github.com/StingraySoftware/stingray/pull/884>`__)
+
+
+Internal Changes
+^^^^^^^^^^^^^^^^
+
+- Bump jinja2 version to 3.1.5 (`#878 <https://github.com/StingraySoftware/stingray/pull/878>`__)
+- Added a test to check ``profile``, when ``fold_events`` method called with ``mode= "pdm"`` after the bug fix #872. (`#880 <https://github.com/StingraySoftware/stingray/pull/880>`__)
+- Suppressed deprecation warnings related to `numpy.core.einsumfunc` as it is causing test failure described in (https://github.com/StingraySoftware/stingray/issues/882#issuecomment-2663641175) (`#886 <https://github.com/StingraySoftware/stingray/pull/886>`__)
+
+
 v2.3 (under development)
 ------------------------
 
