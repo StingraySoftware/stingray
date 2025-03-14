@@ -8,6 +8,8 @@ import astropy.modeling.models
 from stingray import Lightcurve, Crossspectrum, sampledata, Powerspectrum
 from stingray.simulator import Simulator
 from stingray.simulator import models
+from stingray.simulator.models import GeneralizedLorentz1D, SmoothBrokenPowerLaw
+from stingray.simulator.models import GeneralizedLorentz1DJacobian, SmoothBrokenPowerLawJacobian
 
 _H5PY_INSTALLED = True
 
@@ -612,3 +614,80 @@ class TestSimulator(object):
         with pytest.raises(KeyError):
             sim.read("sim.pickle", fmt="hdf5")
         os.remove("sim.pickle")
+
+    def test_GeneralizedLorentz1DJacobian(self):
+        """
+        Test the Jacobian function for GeneralizedLorentz1D model.
+        """
+        x = np.array([0.5, 1.0, 2.0, 5.0])
+        x_0, fwhm, value, power_coeff = 10, 1.0, 10.0, 2
+        jacobian = GeneralizedLorentz1DJacobian(x, x_0, fwhm, value, power_coeff)
+
+        assert jacobian.shape == (len(x), 4), "Jacobian shape mismatch"
+        assert np.all(np.isfinite(jacobian)), "Jacobian contains NaN/Inf"
+
+    def test_SmoothBrokenPowerLawJacobian(self):
+        """
+        Test the Jacobian function for SmoothBrokenPowerLaw model.
+        """
+        x = np.array([0.1, 1.0, 10.0, 100.0])
+        norm, gamma_low, gamma_high, break_freq = 1.0, 1.0, 2.0, 1.0
+        jacobian = SmoothBrokenPowerLawJacobian(x, norm, gamma_low, gamma_high, break_freq)
+
+        assert jacobian.shape == (len(x), 4), "Jacobian shape mismatch"
+        assert np.all(np.isfinite(jacobian)), "Jacobian contains NaN/Inf"
+
+    def test_simulate_GeneralizedLorentz1D_str(self):
+        """
+        Simulate a light curve using the GeneralizedLorentz1D model
+        called as a string
+        """
+        assert len(
+            self.simulator.simulate(
+                "GeneralizedLorentz1D", {"x_0": 10, "fwhm": 1.0, "value": 10.0, "power_coeff": 2}
+            )
+        ), 1024
+
+    def test_simulate_SmoothBrokenPowerLaw_str(self):
+        """
+        Simulate a light curve using the SmoothBrokenPowerLaw model
+        called as a string
+        """
+        assert len(
+            self.simulator.simulate(
+                "SmoothBrokenPowerLaw",
+                {"norm": 1.0, "gamma_low": 1.0, "gamma_high": 2.0, "break_freq": 1.0},
+            )
+        ), 1024
+
+    @pytest.mark.parametrize("poisson", [True, False])
+    def test_compare_composite(self, poisson):
+        """
+        Compare the PSD of a light curve simulated using a composite model
+        (using SmoothBrokenPowerLaw plus GeneralizedLorentz1D)
+        with the actual model
+        """
+        N = 50000
+        dt = 0.01
+        m = 30000.0
+
+        self.simulator = Simulator(N=N, mean=m, dt=dt, rms=self.rms, poisson=poisson)
+        smoothbknpo = SmoothBrokenPowerLaw(
+            norm=1.0, gamma_low=1.0, gamma_high=2.0, break_freq=1.0
+        )
+        lorentzian = GeneralizedLorentz1D(x_0=10, fwhm=1.0, value=10.0, power_coeff=2.0)
+        myModel = smoothbknpo + lorentzian
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            lc = [self.simulator.simulate(myModel) for i in range(1, 50)]
+
+        simulated = self.simulator.powerspectrum(lc, lc[0].tseg)
+
+        w = np.fft.rfftfreq(N, d=dt)[1:]
+        actual = myModel(w)[:-1]
+
+        actual_prob = actual / float(sum(actual))
+        simulated_prob = simulated / float(sum(simulated))
+
+        assert np.all(np.abs(actual_prob - simulated_prob) < 3 * np.sqrt(actual_prob))
