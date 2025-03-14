@@ -2,8 +2,11 @@ from astropy.modeling.models import custom_model
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 # TODO: Added Jacobian functions
-def GeneralizedLorentz1DJacobian(x: np.ndarray, x_0: float, fwhm: float, value: float, power_coeff: float) -> np.ndarray:
+def GeneralizedLorentz1DJacobian(
+    x: np.ndarray, x_0: float, fwhm: float, value: float, power_coeff: float
+) -> np.ndarray:
     """
     Compute the Jacobian matrix for the Generalized Lorentzian function.
 
@@ -28,14 +31,25 @@ def GeneralizedLorentz1DJacobian(x: np.ndarray, x_0: float, fwhm: float, value: 
     dx = x - x_0
     gamma_pow = (fwhm / 2) ** power_coeff
     denom = dx**power_coeff + gamma_pow
-    denom_sq = denom ** 2
-    
-    d_x0 = power_coeff * value * gamma_pow * dx**(power_coeff - 1) / denom_sq
-    d_fwhm = power_coeff * value * (fwhm / 2) ** (power_coeff - 1) / 2 * (1 + power_coeff * gamma_pow / denom) / denom
+    denom_sq = denom**2
+
+    d_x0 = power_coeff * value * gamma_pow * dx ** (power_coeff - 1) / denom_sq
+    d_fwhm = (
+        power_coeff
+        * value
+        * (fwhm / 2) ** (power_coeff - 1)
+        / 2
+        * (1 + power_coeff * gamma_pow / denom)
+        / denom
+    )
     d_value = gamma_pow / denom
-    d_power_coeff = value * gamma_pow * np.log(fwhm / 2) / denom - value * gamma_pow * np.log(abs(dx) + (fwhm / 2)) / denom
-    
+    d_power_coeff = (
+        value * gamma_pow * np.log(fwhm / 2) / denom
+        - value * gamma_pow * np.log(abs(dx) + (fwhm / 2)) / denom
+    )
+
     return np.vstack([-d_x0, d_fwhm, d_value, d_power_coeff]).T
+
 
 # TODO: Add Jacobian
 @custom_model
@@ -74,8 +88,11 @@ def GeneralizedLorentz1D(x, x_0=1.0, fwhm=1.0, value=1.0, power_coeff=1.0):
         / (abs(x - x_0) ** power_coeff + (fwhm / 2) ** power_coeff)
     )
 
+
 # TODO: Added Jacobian functions
-def SmoothBrokenPowerLawJacobian(x: np.ndarray, norm: float, gamma_low: float, gamma_high: float, break_freq: float) -> np.ndarray:
+def SmoothBrokenPowerLawJacobian(
+    x: np.ndarray, norm: float, gamma_low: float, gamma_high: float, break_freq: float
+) -> np.ndarray:
     """
     Compute the Jacobian matrix for the Smooth Broken Power Law function.
 
@@ -102,9 +119,17 @@ def SmoothBrokenPowerLawJacobian(x: np.ndarray, norm: float, gamma_low: float, g
     d_norm = x ** (-gamma_low) * denom
     d_gamma_low = -norm * np.log(x) * x ** (-gamma_low) * denom
     d_gamma_high = norm * x ** (-gamma_low) * denom * np.log(1 + x_bf2) / 2
-    d_break_freq = norm * x ** (-gamma_low) * denom * (gamma_low - gamma_high) * x_bf2 / (break_freq * (1 + x_bf2))
-    
+    d_break_freq = (
+        norm
+        * x ** (-gamma_low)
+        * denom
+        * (gamma_low - gamma_high)
+        * x_bf2
+        / (break_freq * (1 + x_bf2))
+    )
+
     return np.vstack([d_norm, d_gamma_low, d_gamma_high, d_break_freq]).T
+
 
 # TODO: Add Jacobian
 @custom_model
