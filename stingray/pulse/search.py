@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 __all__ = [
     "epoch_folding_search",
     "z_n_search",
+    "z_n_search_adaptive",
     "search_best_peaks",
     "plot_profile",
     "plot_phaseogram",
@@ -333,6 +334,235 @@ def z_n_search(
 
     return _folding_search(
         lambda x: z_n(_profile_fast(x, nbin=nbin), n=nharm, datatype="binned"),
+        times,
+        frequencies,
+        segment_size=segment_size,
+        fdots=fdots,
+    )
+
+
+def adaptive_optimal_harmonic_order(profile, phases, nmax=6):
+    """Adaptively determine the optimal harmonic truncation order using the H-test statistic.
+
+    For each harmonic order n (from 1 to nmax), the routine computes:
+
+        Z^2_n = 2/N * sum_{k=1}^n [ (sum_i profile[i] * cos(2πk * phases[i]))^2 +
+                                     (sum_i profile[i] * sin(2πk * phases[i]))^2 ]
+
+    and then calculates the H-test statistic:
+
+        H(n) = Z^2_n - 4n + 4.
+
+    The optimal harmonic order is the one that maximizes H(n).
+
+    Parameters
+    ----------
+    profile : array-like
+        the folded pulse profile (photon counts in each bin).
+
+    phases : array-like
+        the adjusted phase values for each bin.
+
+    nmax : int, optional
+        the maximum harmonic order to test (default is 20).
+
+    Returns
+    -------
+    n_opt : int
+        the optimal harmonic order.
+    H_values : ndarray
+        the H-test values for each harmonic order (1-indexed).
+    """
+    N = np.sum(profile)
+    if N == 0:
+        return 1, np.zeros(nmax)
+    H_values = np.zeros(nmax)
+    total = 0.0
+    for n in range(1, nmax + 1):
+        # For each harmonic order n, add the contribution from harmonic k=n.
+        cos_term = np.sum(profile * np.cos(2 * np.pi * n * phases))
+        sin_term = np.sum(profile * np.sin(2 * np.pi * n * phases))
+        total += cos_term**2 + sin_term**2
+        Z2_n = 2 * total / N
+        H_values[n - 1] = Z2_n - 4 * n + 4
+    n_opt = int(np.argmax(H_values)) + 1
+    return n_opt, H_values
+
+
+def adjust_bin_phases(binx, profile, order=1):
+    """Adjust the phase using a polynomial fit over the bin midpoints.
+
+    Parameters
+    ----------
+    binx : array-like
+        bin edges of the folded profile.
+    profile : array-like
+        counts in each bin.
+    order : int, optional
+        order of the polynomial fit (default is 1).
+
+    Returns
+    -------
+    adjusted_phases : ndarray
+        adjusted phase values based on the polynomial fit.
+    """
+    # Calculate bin midpoints
+    bin_mid = (binx[:-1] + binx[1:]) / 2.0
+    # Fit a polynomial to the profile
+    coeffs = np.polyfit(bin_mid, profile, order)
+    poly = np.poly1d(coeffs)
+    # Compute derivative of the polynomial
+    dpoly = np.polyder(poly)
+    # Adjust the bin midpoints based on the local derivative
+    adjustment = 0.01 * dpoly(
+        bin_mid
+    )  # This is somewhat a hard-coded value that proved efficient in all cases tested
+    adjusted = bin_mid + adjustment
+    adjusted = np.mod(adjusted, 1.0)
+    return adjusted
+
+
+def improved_z_n_binned(profile, phases, n_opt):
+    """Compute the improved Zn,bin2 statistic for binned pulsar data using adjusted phases.
+
+    Parameters
+    ----------
+    profile : array-like
+        the folded pulse profile (photon counts in each bin).
+
+    phases : array-like
+        the adjusted phase values for each bin.
+
+    n_opt : int
+        the optimal number of harmonics to use.
+
+    Returns
+    -------
+    z2n : float
+        the improved Zn,bin2 statistic.
+
+    Notes
+    -----
+    The statistic is computed as:
+
+        Z^2_n = 2/N * sum_{k=1}^{n_opt} [ (sum_i profile[i] * cos(2πk * phases[i]))^2 +
+                                         (sum_i profile[i] * sin(2πk * phases[i]))^2 ]
+
+    where N is the total number of counts.
+    """
+    N = np.sum(profile)
+    if N == 0:
+        return 0.0
+    total = 0.0
+    for k in range(1, n_opt + 1):
+        cos_term = np.sum(profile * np.cos(2 * np.pi * k * phases))
+        sin_term = np.sum(profile * np.sin(2 * np.pi * k * phases))
+        total += cos_term**2 + sin_term**2
+    return 2 * total / N
+
+
+def z_n_search_adaptive(
+    times,
+    frequencies,
+    nbin=128,
+    segment_size=np.inf,
+    expocorr=False,
+    weights=1,
+    gti=None,
+    fdots=0,
+    nmax_adapt=4,
+    order=1,
+):
+    """Calculates the improved Zn,bin2 statistics at trial frequencies for complex pulsar profiles,
+    using an adaptive calibration of the harmonic truncation order.
+
+    This method folds the event data into a binned profile, adjusts the bin phases using the
+    equal photon intensity division principle, and then computes the H-test statistic over a range
+    of harmonic orders. The harmonic order that maximizes the H-test is then used to compute the
+    final Zn,bin2 statistic.
+
+    Parameters
+    ----------
+    times : array-like
+        the event arrival times
+
+    frequencies : array-like
+        the trial values for the frequencies
+
+    Other Parameters
+    ----------------
+    nbin : int
+        the number of bins of the folded profiles
+
+    segment_size : float
+        the length of the segments to be averaged in the periodogram
+
+    fdots : array-like
+        trial values of the first frequency derivative (optional)
+
+    expocorr : bool
+        correct for the exposure (Use it if the period is comparable to the
+        length of the good time intervals.)
+
+    gti : [[gti0_0, gti0_1], [gti1_0, gti1_1], ...]
+        Good time intervals
+
+    weights : array-like
+        weight for each time. This might be, for example, the number of counts
+        if the times array contains the time bins of a light curve
+
+    nmax_adapt : int, optional
+        The maximum harmonic order to test in the adaptive calibration (default is 6).
+
+    order : int, optional
+        Order of the polynomial fit (default is 2).
+
+    Returns
+    -------
+    (fgrid, stats) or (fgrid, fdgrid, stats), as follows:
+
+    fgrid : array-like
+        frequency grid of the epoch folding periodogram
+    fdgrid : array-like
+        frequency derivative grid. Only returned if fdots is an array.
+    stats : array-like
+        the Zn,bin2 statistics for each frequency bin.
+    """
+    if expocorr or not HAS_NUMBA or isinstance(weights, Iterable):
+        if expocorr and gti is None:
+            raise ValueError("To calculate exposure correction, you need to specify the GTIs")
+
+        def stat_fun(t, f, fd=0, **kwargs):
+            # Fold events to obtain bin edges and binned profile.
+            bin_edges, profile = fold_events(t, f, fd, nbin=nbin, **kwargs)
+            # Adjust the bin phases using the equal photon intensity division principle.
+            adjusted_phases = adjust_bin_phases(bin_edges, profile, order)
+            # Use adaptive calibration to select the optimal harmonic order.
+            n_opt, _ = adaptive_optimal_harmonic_order(profile, adjusted_phases, nmax=nmax_adapt)
+            # Compute and return the improved Zn,bin2 statistic.
+            return improved_z_n_binned(profile, adjusted_phases, n_opt)
+
+        return _folding_search(
+            stat_fun,
+            times,
+            frequencies,
+            segment_size=segment_size,
+            use_times=True,
+            expocorr=expocorr,
+            weights=weights,
+            gti=gti,
+            fdots=fdots,
+        )
+
+    def fast_stat(phases):
+        profile = _profile_fast(phases, nbin=nbin)
+        bin_edges = np.linspace(0, 1, nbin + 1)
+        adjusted_phases = adjust_bin_phases(bin_edges, profile, order)
+        n_opt, _ = adaptive_optimal_harmonic_order(profile, adjusted_phases, nmax=nmax_adapt)
+        return improved_z_n_binned(profile, adjusted_phases, n_opt)
+
+    return _folding_search(
+        lambda x: fast_stat(x),
         times,
         frequencies,
         segment_size=segment_size,
