@@ -7,6 +7,7 @@ or to save existing light curves in a class that's easy to use.
 
 import os
 import logging
+import copy
 import warnings
 from collections.abc import Iterable
 
@@ -18,6 +19,7 @@ from astropy import units as u
 from stingray.base import StingrayTimeseries, reduce_precision_if_extended
 import stingray.utils as utils
 from stingray.exceptions import StingrayError
+from scipy.signal import savgol_filter
 from stingray.gti import (
     check_gtis,
     create_gti_mask,
@@ -1158,6 +1160,50 @@ class Lightcurve(StingrayTimeseries):
         """
 
         return super().truncate(start=start, stop=stop, method=method)
+
+    def smothen(self,window_length=101,polyorder=3, method="savgol", normalize=False):
+        """
+        Smoothens the light curve by removing short-term fluctuations.
+        
+        Parameters
+        ----------
+        window_length : int
+            The length of the smoothing window (must be an odd integer).
+        polyorder : int
+            The polynomial order for the Savitzky-Golay filter (must be < window_length).
+        method : str, optional
+            Smoothing method to use. Options: "savgol" (Savitzky-Golay) or "moving_avg".
+        normalize : bool, optional
+            If True, normalizes the output light curve.
+
+        Returns
+        -------
+        smoothed_lc : Lightcurve
+            A new Lightcurve object with the smoothed data.
+        """
+        if window_length % 2 == 0:
+            raise ValueError("window_length must be an odd integer.")
+        
+        if len(self.counts) < window_length:
+            raise ValueError("window_length must be smaller than the number of data points.")
+
+        if polyorder >= window_length:
+            raise ValueError("polyorder must be smaller than window_length.")
+
+        if method == "savgol":
+            trend = savgol_filter(self.counts, window_length, polyorder)
+        elif method == "moving_avg":
+            trend = np.convolve(self.counts, np.ones(window_length)/window_length, mode="same")
+        else:
+            raise ValueError("Invalid method. Use 'savgol' or 'moving_avg'.")
+
+        if normalize:
+            trend /= np.nanmedian(trend)
+
+        smoothed_lc = copy.deepcopy(self)
+        smoothed_lc.counts = trend  
+
+        return smoothed_lc
 
     def split(self, min_gap, min_points=1):
         """
