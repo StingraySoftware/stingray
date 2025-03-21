@@ -1,7 +1,7 @@
-jinja2==3.1.4
+jinja2==3.1.5
 docutils
 sphinx-astropy
 nbsphinx>=0.8.3,!=0.8.8
 pandoc
 ipython
-towncrier<22.12.0
+towncrier

@@ -1,0 +1,1 @@
+Suppressed deprecation warnings related to `numpy.core.einsumfunc` as it is causing test failure described in (https://github.com/StingraySoftware/stingray/issues/882#issuecomment-2663641175)

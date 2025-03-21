@@ -1,1 +1,0 @@
-Fix issue when passing a single GTI to FitsTimeseriesReader.apply_gti_lists()

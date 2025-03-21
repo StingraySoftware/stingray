@@ -1,0 +1,1 @@
+Added a test to check ``profile``, when ``fold_events`` method called with ``mode= "pdm"`` after the bug fix #872.

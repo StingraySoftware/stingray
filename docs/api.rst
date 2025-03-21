@@ -237,6 +237,14 @@ ExcessVarianceSpectrum
 
 ----
 
+CountSpectrum
+----------------------
+
+.. autoclass:: stingray.varenergyspectrum.CountSpectrum
+   :members:
+   :inherited-members:
+
+----
 
 Utilities
 =========

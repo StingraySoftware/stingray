@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 import numpy as np
 import warnings
 from stingray.base import StingrayObject
@@ -188,30 +189,50 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
 
     def __init__(
         self,
-        events,
-        freq_interval,
-        energy_spec,
+        events=None,
+        freq_interval=None,
+        energy_spec=None,
         ref_band=None,
         bin_time=1,
         use_pi=False,
         segment_size=None,
         events2=None,
         return_complex=False,
+        min_phot_per_segment=10,
     ):
-        self.events1 = events
-        self.events2 = assign_value_if_none(events2, events)
-        self._analyze_inputs()
+        if isinstance(energy_spec, tuple):
+            energies = _decode_energy_specification(energy_spec)
+        elif isinstance(energy_spec, Iterable) and not isinstance(energy_spec, str):
+            energies = np.asanyarray(energy_spec)
+        elif events is not None:
+            raise ValueError(
+                f"Energy specification must be a tuple or a list (input: {energy_spec})"
+            )
+
         # This will be set to True in ComplexCovariance
         self.return_complex = return_complex
-
         self.freq_interval = freq_interval
         self.use_pi = use_pi
         self.bin_time = bin_time
-
-        if isinstance(energy_spec, tuple):
-            energies = _decode_energy_specification(energy_spec)
+        self.min_phot_per_segment = min_phot_per_segment
+        if energy_spec is not None:
+            self.energy_intervals = list(zip(energies[0:-1], energies[1:]))
         else:
-            energies = np.asanyarray(energy_spec)
+            self.energy_intervals = None
+        self.ref_band = np.asanyarray(assign_value_if_none(ref_band, [0, np.inf]))
+        if len(self.ref_band.shape) <= 1:
+            self.ref_band = np.asanyarray([self.ref_band])
+
+        self.segment_size = self.delta_nu = None
+
+        if events is None:
+            self.events1 = self.events2 = None
+            # This will be set to True in ComplexCovariance
+            return
+
+        self.events1 = events
+        self.events2 = assign_value_if_none(events2, events)
+        self._analyze_inputs()
 
         self.energy_intervals = list(zip(energies[0:-1], energies[1:]))
 
@@ -235,7 +256,16 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
     @property
     def energy(self):
         """Give the centers of the energy intervals."""
-        return np.sum(self.energy_intervals, axis=1) / 2
+        if not hasattr(self, "_energy") or self._energy is None:
+            if self.energy_intervals is None or len(self.energy_intervals) == 0:
+                self._energy = []
+            else:
+                self._energy = np.sum(self.energy_intervals, axis=1) / 2
+        return self._energy
+
+    @energy.setter
+    def energy(self, value):
+        self._energy = value
 
     def _analyze_inputs(self):
         """Make some checks on the inputs and set some internal variable.
@@ -414,14 +444,27 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
     def _spectrum_function(self):
         pass
 
-    def from_astropy_table(self, *args, **kwargs):
-        raise NotImplementedError("from_XXXX methods are not implemented for VarEnergySpectrum")
+    def check_phot_per_segment(self, phot_per_segment, eint):
+        """Check if the number of photons per segment is enough.
 
-    def from_xarray(self, *args, **kwargs):
-        raise NotImplementedError("from_XXXX methods are not implemented for VarEnergySpectrum")
-
-    def from_pandas(self, *args, **kwargs):
-        raise NotImplementedError("from_XXXX methods are not implemented for VarEnergySpectrum")
+        Parameters
+        ----------
+        phot_per_segment: float or int
+            Number of photons in the segment
+        eint: iterable
+            Energy interval
+        """
+        if phot_per_segment < self.min_phot_per_segment:
+            streint = [f"{x:g}" for x in eint]
+            warnings.warn(
+                f"Low count rate in the {streint[0]}-{streint[1]} subject band: "
+                f"{phot_per_segment:g} ct/segment (<{self.min_phot_per_segment:g}). Skipping. "
+                "If you know what you're doing, you can set the `min_phot_per_segment` "
+                "parameter to a lower value, but in general, we recommend to use fewer "
+                "subject bands",
+            )
+            return False
+        return True
 
 
 class RmsSpectrum(VarEnergySpectrum):
@@ -487,8 +530,8 @@ class RmsSpectrum(VarEnergySpectrum):
 
     def __init__(
         self,
-        events,
-        energy_spec,
+        events=None,
+        energy_spec=None,
         ref_band=None,
         freq_interval=[0, 1],
         bin_time=1,
@@ -524,6 +567,8 @@ class RmsSpectrum(VarEnergySpectrum):
             sub_events = self._get_times_from_energy_range(self.events1, eint)
             countrate_sub = get_average_ctrate(sub_events, self.gti, self.segment_size)
             sub_power_noise = poisson_level(norm="abs", meanrate=countrate_sub)
+            if not self.check_phot_per_segment(countrate_sub * self.segment_size, eint):
+                continue
 
             # If we provided the `events2` array, calculate the rms from the
             # cospectrum, otherwise from the PDS
@@ -533,6 +578,8 @@ class RmsSpectrum(VarEnergySpectrum):
                 sub_events2 = self._get_times_from_energy_range(self.events2, eint)
                 countrate_sub2 = get_average_ctrate(sub_events2, self.gti, self.segment_size)
                 sub2_power_noise = poisson_level(norm="abs", meanrate=countrate_sub2)
+                if not self.check_phot_per_segment(countrate_sub2 * self.segment_size, eint):
+                    continue
 
                 # Calculate the cross spectrum
                 results = avg_cs_from_timeseries(
@@ -783,9 +830,9 @@ class LagSpectrum(VarEnergySpectrum):
     # events, freq_interval, energy_spec, ref_band = None
     def __init__(
         self,
-        events,
-        freq_interval,
-        energy_spec,
+        events=None,
+        freq_interval=None,
+        energy_spec=None,
         ref_band=None,
         bin_time=1,
         use_pi=False,
@@ -955,8 +1002,8 @@ class ComplexCovarianceSpectrum(VarEnergySpectrum):
 
     def __init__(
         self,
-        events,
-        energy_spec,
+        events=None,
+        energy_spec=None,
         ref_band=None,
         freq_interval=[0, 1],
         bin_time=1,
@@ -965,6 +1012,7 @@ class ComplexCovarianceSpectrum(VarEnergySpectrum):
         events2=None,
         norm="frac",
         return_complex=True,
+        min_phot_per_segment=10,
     ):
         self.norm = norm
         VarEnergySpectrum.__init__(
@@ -978,6 +1026,7 @@ class ComplexCovarianceSpectrum(VarEnergySpectrum):
             segment_size=segment_size,
             events2=events2,
             return_complex=return_complex,
+            min_phot_per_segment=min_phot_per_segment,
         )
 
     def _spectrum_function(self):
@@ -1007,6 +1056,10 @@ class ComplexCovarianceSpectrum(VarEnergySpectrum):
             # Extract events from the subject band
             sub_events = self._get_times_from_energy_range(self.events1, eint)
             countrate_sub = get_average_ctrate(sub_events, self.gti, self.segment_size)
+            phot_per_segment = countrate_sub * self.segment_size
+            if not self.check_phot_per_segment(phot_per_segment, eint):
+                continue
+
             sub_power_noise = poisson_level(norm="abs", meanrate=countrate_sub)
 
             results_cross = avg_cs_from_timeseries(
@@ -1131,8 +1184,8 @@ class CovarianceSpectrum(ComplexCovarianceSpectrum):
 
     def __init__(
         self,
-        events,
-        energy_spec,
+        events=None,
+        energy_spec=None,
         ref_band=None,
         freq_interval=[0, 1],
         bin_time=1,

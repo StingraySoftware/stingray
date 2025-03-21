@@ -115,8 +115,8 @@ def _create_responses(range_z):
         Yks = sign * np.sqrt(2 / absz) * q_ks
         Zks = sign * np.sqrt(2 / absz) * (q_ks + z)
         # print(Yks, Zks)
-        [SZs, CZs] = special.fresnel(Zks)
-        [SYs, CYs] = special.fresnel(Yks)
+        [SZs, CZs] = special.fresnel(Zks.astype(float))
+        [SYs, CYs] = special.fresnel(Yks.astype(float))
         weights = SZs - SYs + 1j * (CYs - CZs)
         responses.append(weights * exponentials * factor)
     return responses

@@ -2822,6 +2822,8 @@ def crossspectrum_from_events(
     if gti is None:
         gti = cross_two_gtis(events1.gti, events2.gti)
 
+    dt = events1.suggest_compatible_dt(dt)
+
     return crossspectrum_from_time_array(
         events1.time,
         events2.time,
