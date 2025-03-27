@@ -124,6 +124,22 @@ class TestIO(object):
         assert np.allclose(data.energy_list.min(), 2.06)
         assert np.allclose(data.energy_list.max(), 117.86)
 
+    def test_event_file_read_chandra(self):
+        """Test event file reading."""
+        fname = os.path.join(datadir, "chandra_test.fits")
+        data = load_events_and_gtis(fname)
+        assert data.mission.lower() == "axaf"
+        assert hasattr(data, "energy_list")
+        assert data.energy_list.max() < 18
+
+    def test_event_file_read_chandra_noE(self):
+        """Test event file reading."""
+        fname = os.path.join(datadir, "chandra_noener_test.fits")
+        data = load_events_and_gtis(fname)
+        assert data.mission.lower() == "axaf"
+        assert hasattr(data, "energy_list")
+        assert data.energy_list.max() < 18
+
     def test_event_file_read_no_mission(self):
         """Test event file reading."""
         fname = os.path.join(datadir, "nomission.evt")

@@ -58,7 +58,8 @@ def _lscg_gen(src_counts, bkg_counts, bkg_area, rate_conversion, density_gp):
     log_src_crs_grid : iterable, `:class:numpy.array` of floats
         An array of log(source count rates).
     """
-
+    src_counts = np.asanyarray(src_counts, dtype=float)
+    bkg_counts = np.asanyarray(bkg_counts, dtype=float)
     # lowest count rate
     a = scipy.special.gammaincinv(src_counts + 1, 0.001) / rate_conversion
     # highest background count rate
@@ -113,7 +114,7 @@ def _estimate_source_cr_marginalised(
     # background counts give background count rates deterministically
     N = 1000
     u = np.linspace(0, 1, N)[1:-1]
-    bkg_cr = scipy.special.gammaincinv(bkg_counts + 1, u) / bkg_area
+    bkg_cr = scipy.special.gammaincinv(float(bkg_counts) + 1, u) / bkg_area
 
     def prob(log_src_cr):
         src_cr = 10**log_src_cr * rate_conversion

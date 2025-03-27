@@ -144,6 +144,7 @@ SIMPLE_CONVERSION_FUNCTIONS = {
     "xmm": lambda pi: pi * 0.001,
     "nicer": lambda pi: pi * 0.01,
     "ixpe": lambda pi: pi / 375 * 15,
+    "axaf": lambda pi: (pi - 1) * 14.6e-3,
 }
 
 
