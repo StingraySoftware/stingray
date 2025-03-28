@@ -19,7 +19,6 @@ from astropy import units as u
 from stingray.base import StingrayTimeseries, reduce_precision_if_extended
 import stingray.utils as utils
 from stingray.exceptions import StingrayError
-from scipy.signal import savgol_filter
 from stingray.gti import (
     check_gtis,
     create_gti_mask,
@@ -1192,20 +1191,6 @@ class Lightcurve(StingrayTimeseries):
         Poisson regression model for smoothing.
         - The `SplineTransformer` is used to transform time data into a spline basis, which
         allows flexible smoothing of the count rates.
-
-        Examples
-        --------
-        >>> from stingray import Lightcurve
-        >>> import numpy as np
-        >>> time = np.arange(0, 100, 1)
-        >>> counts = np.random.poisson(lam=100, size=len(time))
-        >>> lc = Lightcurve(time, counts)
-        >>> smoothed_lc = lc.smothen(n_knots=50, degree=3, alpha=0.2)
-        >>> import matplotlib.pyplot as plt
-        >>> plt.plot(lc.time, lc.counts, label="Original")
-        >>> plt.plot(smoothed_lc.time, smoothed_lc.counts, label="Smoothed", linestyle="dashed")
-        >>> plt.legend()
-        >>> plt.show()
         """
         try:
             import sklearn
