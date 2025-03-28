@@ -19,7 +19,6 @@ from astropy import units as u
 from stingray.base import StingrayTimeseries, reduce_precision_if_extended
 import stingray.utils as utils
 from stingray.exceptions import StingrayError
-from scipy.signal import savgol_filter
 from stingray.gti import (
     check_gtis,
     create_gti_mask,
