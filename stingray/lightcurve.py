@@ -38,9 +38,6 @@ from stingray.io import lcurve_from_fits
 from stingray import bexvar
 from stingray.base import interpret_times
 from stingray.loggingconfig import setup_logger
-from sklearn.linear_model import PoissonRegressor
-from sklearn.preprocessing import SplineTransformer
-from sklearn.pipeline import make_pipeline
 
 __all__ = ["Lightcurve"]
 
@@ -1210,6 +1207,17 @@ class Lightcurve(StingrayTimeseries):
         >>> plt.legend()
         >>> plt.show()
         """
+        try:
+            import sklearn
+        except ImportError:
+            raise ImportError(
+                "You need to install sickit-learn to use this method try pip install -U scikit-learn"
+            )
+
+        from sklearn.linear_model import PoissonRegressor
+        from sklearn.preprocessing import SplineTransformer
+        from sklearn.pipeline import make_pipeline
+
         X = self.time.reshape(-1, 1)
         spline = SplineTransformer(n_knots=n_knots, degree=degree, extrapolation="constant")
         model = make_pipeline(spline, PoissonRegressor(alpha=alpha, max_iter=1000))
