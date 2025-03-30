@@ -39,7 +39,7 @@ from stingray.loggingconfig import setup_logger
 
 __all__ = ["Lightcurve"]
 
-valid_statistics = ["poisson", "gauss", None]
+valid_statistics = ["poisson", "gauss", "None"]
 
 logger = setup_logger()
 
