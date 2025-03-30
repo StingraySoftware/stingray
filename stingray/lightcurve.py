@@ -215,7 +215,7 @@ class Lightcurve(StingrayTimeseries):
         err=None,
         input_counts=True,
         gti=None,
-        err_dist="poisson",
+        err_dist="none",
         bg_counts=None,
         bg_ratio=None,
         frac_exp=None,
