@@ -1211,6 +1211,7 @@ class Lightcurve(StingrayTimeseries):
         smoothed_counts = model.predict(X)
         smoothed_lc = copy.deepcopy(self)
         smoothed_lc.counts = smoothed_counts
+        smoothed_lc.err_dist = "gauss"
 
         return smoothed_lc
 
