@@ -197,7 +197,7 @@ class CrossCorrelation(object):
             # Note that self.corr is normalized so that the maximum is
             # proportional to the number of bins in the first input
             # light curve. Hence, the division by the lc size
-            variance1 = np.var(lc1.counts) - np.var(lc1.counts_err) 
+            variance1 = np.var(lc1.counts) - np.var(lc1.counts_err)
             variance2 = np.var(lc2.counts) - np.var(lc2.counts_err)
             self.corr = self.corr / np.sqrt(variance1 * variance2) / lc1_counts.size
 
