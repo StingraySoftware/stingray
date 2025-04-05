@@ -275,7 +275,9 @@ class Lightcurve(StingrayTimeseries):
         if not skip_checks:
             time, counts, err = self.initial_optional_checks(time, counts, err, gti=gti)
 
-        if err_dist is None:
+        if err_dist is None and input_counts:
+            err_dist = "poisson"
+        else:
             err_dist = "none"
 
         if err_dist.lower() not in valid_statistics:
