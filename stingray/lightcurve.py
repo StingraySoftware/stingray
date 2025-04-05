@@ -215,7 +215,7 @@ class Lightcurve(StingrayTimeseries):
         err=None,
         input_counts=True,
         gti=None,
-        err_dist="none",
+        err_dist=None,
         bg_counts=None,
         bg_ratio=None,
         frac_exp=None,
@@ -275,6 +275,9 @@ class Lightcurve(StingrayTimeseries):
         if not skip_checks:
             time, counts, err = self.initial_optional_checks(time, counts, err, gti=gti)
 
+        if err_dist is None:
+            err_dist = "none"
+
         if err_dist.lower() not in valid_statistics:
             # err_dist set can be increased with other statistics
             raise StingrayError(
@@ -283,10 +286,8 @@ class Lightcurve(StingrayTimeseries):
             )
         elif not err_dist.lower() == "poisson":
             simon(
-                "Stingray only uses poisson err_dist at the moment. "
-                "All analysis in the light curve will assume Poisson "
-                "errors. "
-                "Sorry for the inconvenience."
+                "Beware! Stingray only supports poisson err_dist at the moment in many methods"
+                ", and 'gauss' in a few more. "
             )
 
         self._time = time
