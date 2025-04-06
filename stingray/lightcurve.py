@@ -277,7 +277,7 @@ class Lightcurve(StingrayTimeseries):
 
         if err_dist is None and input_counts:
             err_dist = "poisson"
-        else:
+        elif err_dist is None:
             err_dist = "none"
 
         if err_dist.lower() not in valid_statistics:
