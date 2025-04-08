@@ -278,7 +278,8 @@ class Simulator(object):
         h_zeros = np.zeros(int(start / self.dt))
 
         # Define constant impulse response
-        h_ones = np.ones(int(width / self.dt)) * intensity
+        num_bins = max(int(width / self.dt), 1)  # Ensure at least 1 bin
+        h_ones = np.ones(num_bins) * intensity
 
         return np.append(h_zeros, h_ones)
 
