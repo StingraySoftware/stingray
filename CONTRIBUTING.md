@@ -20,6 +20,15 @@ combined, unrelenting efforts of coders, testers, reviewers, and documentation
 writers. There are a few guidelines that we need all contributors to follow so
 that we can have a chance of keeping on top of things.
 
+### Usage of Generative AI
+
+We expect authentic engagement in our community.
+Be wary of posting output from Large Language Models or similar generative AI as comments on GitHub or
+our discourse server, as such comments tend to be formulaic and low content.
+If you use generative AI tools as an aid in developing code or documentation
+changes, ensure that you fully understand the proposed changes and can explain
+why they are the correct approach and an improvement to the current state.
+
 ## Contribution Guidelines
 
 ---
