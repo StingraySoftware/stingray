@@ -23,9 +23,9 @@ class TestCrossCorrelationBase(object):
         freq = 1 / 50
         flux1 = 0.5 + 0.5 * np.sin(2 * np.pi * freq * times)
         flux2 = 0.5 + 0.5 * np.sin(2 * np.pi * freq * (times - 20))
-
-        cls.lc1 = Lightcurve(times, flux1, dt=dt, err_dist="gauss", gti=gti, skip_checks=True)
-        cls.lc2 = Lightcurve(times, flux2, dt=dt, err_dist="gauss", gti=gti, skip_checks=True)
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            cls.lc1 = Lightcurve(times, flux1, dt=dt, err_dist="gauss", gti=gti, skip_checks=True)
+            cls.lc2 = Lightcurve(times, flux2, dt=dt, err_dist="gauss", gti=gti, skip_checks=True)
 
     def test_crosscorr(self):
         cr = CrossCorrelation(self.lc1, self.lc2)
@@ -41,16 +41,16 @@ class TestCrossCorrelationBase(object):
 class TestCrossCorrelation(object):
     @classmethod
     def setup_class(cls):
-        cls.lc1 = Lightcurve([1, 2, 3, 4, 5], [2, 3, 2, 4, 1])
-        cls.lc2 = Lightcurve([1, 2, 3, 4, 5], [4, 8, 1, 9, 11])
+        cls.lc1 = Lightcurve([1, 2, 3, 4, 5], [2, 3, 2, 4, 1], err_dist="poisson")
+        cls.lc2 = Lightcurve([1, 2, 3, 4, 5], [4, 8, 1, 9, 11], err_dist="poisson")
         # Smaller Light curve
-        cls.lc_s = Lightcurve([1, 2, 3], [5, 3, 2])
+        cls.lc_s = Lightcurve([1, 2, 3], [5, 3, 2], err_dist="poisson")
         # lc with different time resolution
-        cls.lc_u = Lightcurve([1, 3, 5, 7, 9], [4, 8, 1, 9, 11])
+        cls.lc_u = Lightcurve([1, 3, 5, 7, 9], [4, 8, 1, 9, 11], err_dist="poisson")
         # Light curve with odd number of data points
-        cls.lc_odd = Lightcurve([1, 2, 3, 4, 5], [2, 3, 2, 4, 1])
+        cls.lc_odd = Lightcurve([1, 2, 3, 4, 5], [2, 3, 2, 4, 1], err_dist="poisson")
         # Light curve with even number of data points
-        cls.lc_even = Lightcurve([1, 2, 3, 4, 5, 6], [2, 3, 2, 4, 1, 3])
+        cls.lc_even = Lightcurve([1, 2, 3, 4, 5, 6], [2, 3, 2, 4, 1, 3], err_dist="poisson")
 
     def test_empty_cross_correlation(self):
         cr = CrossCorrelation()
