@@ -49,15 +49,15 @@ class TestLombScargleCrossspectrum:
         t_new[1:-1] = t[1:-1] + (rng.rand(len(t) - 2) / (high - low))
         s1_new = interp1d(t, s1, fill_value="extrapolate")(t_new)
         s2_new = interp1d(t, s2, fill_value="extrapolate")(t_new)
-        self.lc1 = Lightcurve(t, s1_new, dt=lc1.dt, err_dist="poisson")
-        self.lc2 = Lightcurve(t, s2_new, dt=lc2.dt, err_dist="poisson")
+        self.lc1 = Lightcurve(t, s1_new, dt=lc1.dt)
+        self.lc2 = Lightcurve(t, s2_new, dt=lc2.dt)
         self.lscs = LombScargleCrossspectrum(lc1, lc2)
 
     def test_eventlist(self):
         counts = rng.poisson(10, 1000)
         times = np.arange(0, 1000, 1)
-        lc1 = Lightcurve(times, counts, dt=1, err_dist="poisson")
-        lc2 = Lightcurve(times, counts, dt=1, err_dist="poisson")
+        lc1 = Lightcurve(times, counts, dt=1)
+        lc2 = Lightcurve(times, counts, dt=1)
         ev1 = EventList.from_lc(lc1)
         ev2 = EventList.from_lc(lc2)
         ev_lscs = LombScargleCrossspectrum(ev1, ev2, dt=1)
@@ -258,7 +258,7 @@ class TestLombScarglePowerspectrum:
         t_new = t.copy()
         t_new[1:-1] = t[1:-1] + (rng.rand(len(t) - 2) / (high - low))
         s_new = interp1d(t, s1, fill_value="extrapolate")(t_new)
-        self.lc = Lightcurve(t, s_new, dt=lc.dt, err_dist="poisson")
+        self.lc = Lightcurve(t, s_new, dt=lc.dt)
 
     @pytest.mark.parametrize("norm", ["leahy", "frac", "abs", "none"])
     def test_normalize_powerspectrum(self, norm):
@@ -288,7 +288,7 @@ class TestLombScarglePowerspectrum:
     def test_ps_real(self):
         counts = rng.poisson(10, 1000)
         times = np.arange(0, 1000, 1)
-        lc = Lightcurve(times, counts, dt=1, err_dist="poisson")
+        lc = Lightcurve(times, counts, dt=1)
         ps = LombScarglePowerspectrum(lc)
         assert np.allclose(ps.power.imag, np.zeros_like(ps.power.imag), atol=1e-4)
 
