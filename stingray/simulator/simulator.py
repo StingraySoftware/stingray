@@ -8,6 +8,7 @@ import astropy.modeling.models
 from stingray import utils
 from stingray import Lightcurve
 from stingray import AveragedPowerspectrum
+import math
 
 __all__ = ["Simulator"]
 
@@ -275,10 +276,10 @@ class Simulator(object):
         """
 
         # Fill in 0 entries until the start time
-        h_zeros = np.zeros(int(start / self.dt))
+        h_zeros = np.zeros(math.ceil(start / self.dt))
 
         # Define constant impulse response
-        h_ones = np.ones(int(width / self.dt)) * intensity
+        h_ones = np.ones(math.ceil(width / self.dt)) * intensity
 
         return np.append(h_zeros, h_ones)
 
