@@ -149,26 +149,29 @@ class Simulator(object):
         lightCurve : `LightCurve` object
 
         """
-        if isinstance(args[0], (numbers.Integral, float)) and len(args) == 1:
-            return self._simulate_power_law(args[0])
+        arg_len = len(args)
 
-        elif isinstance(args[0], astropy.modeling.Model) and len(args) == 1:
-            return self._simulate_model(args[0])
-
-        elif utils.is_string(args[0]) and len(args) == 2:
-            return self._simulate_model_string(args[0], args[1])
-
-        elif len(args) == 1:
+        if arg_len == 1:
+            if isinstance(args[0], (numbers.Integral, float)):
+                return self._simulate_power_law(args[0])
+            
+            elif isinstance(args[0], astropy.modeling.Model):
+                return self._simulate_model(args[0])
+            
             return self._simulate_power_spectrum(args[0])
 
-        elif len(args) == 2:
+        elif arg_len == 2:
+            if utils.is_string(args[0]):
+                return self._simulate_model_string(args[0], args[1])
+            
             return self._simulate_impulse_response(args[0], args[1])
 
-        elif len(args) == 3:
+        elif arg_len == 3:
             return self._simulate_impulse_response(args[0], args[1], args[2])
 
         else:
-            raise ValueError("Length of arguments must be 1, 2 or 3.")
+            raise ValueError("Length of arguments must be 1, 2, or 3.")
+
 
     def simulate_channel(self, channel, *args):
         """
