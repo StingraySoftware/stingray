@@ -25,6 +25,7 @@ The examples here assume that the following libraries and modules have been impo
 	>>> import numpy as np
 	>>> from stingray import Lightcurve, sampledata
 	>>> from stingray.simulator import simulator, models
+   >>> import pytest
 
 Creating a Simulator Object
 ---------------------------
@@ -48,7 +49,8 @@ Simulate Method
 Stingray provides multiple ways to simulate a light curve. However, all these methods follow a common recipe::
 
   >>> sim = simulator.Simulator(N=1024, mean=0.5, dt=0.125, rms=1.0)
-  >>> lc = sim.simulate(2)
+  >>> with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+  ...    lc = sim.simulate(2)
 
 Using Power-Law Spectrum
 ------------------------
@@ -154,7 +156,8 @@ Channel Simulation
 The `simulator` class provides the functionality to simulate light curves independently for each channel. This is useful, for example, when dealing with energy dependent impulse responses where we can create a di↵erent simulation channel for each energy range. The module provides options to count, retrieve and delete channels.::
 
   >>> sim = simulator.Simulator(N=1024, mean=0.5, dt=0.125, rms=1.0)
-  >>> sim.simulate_channel('3.5 - 4.5', 2)
+  >>> with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+  ...    sim.simulate_channel('3.5 - 4.5', 2)
   >>> sim.count_channels()
   1
   >>> lc = sim.get_channel('3.5 - 4.5')
@@ -164,9 +167,10 @@ Alternatively, assume that we have light curves in the simulated energy channels
 
   >>> sim.count_channels()
   0
-  >>> sim.simulate_channel('3.5 - 4.5', 2)
-  >>> sim.simulate_channel('4.5 - 5.5', 2)
-  >>> sim.simulate_channel('5.5 - 6.5', 2)
+  >>> with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+  ...    sim.simulate_channel('3.5 - 4.5', 2)
+  ...    sim.simulate_channel('4.5 - 5.5', 2)
+  ...    sim.simulate_channel('5.5 - 6.5', 2)
   >>> chans = sim.get_channels(['3.5 - 4.5','4.5 - 5.5','5.5 - 6.5'])
   >>> sim.delete_channels(['3.5 - 4.5','4.5 - 5.5','5.5 - 6.5'])
 
