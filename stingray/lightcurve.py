@@ -8,6 +8,7 @@ or to save existing light curves in a class that's easy to use.
 import os
 import logging
 import warnings
+import copy
 from collections.abc import Iterable
 
 import numpy as np
@@ -83,10 +84,13 @@ class Lightcurve(StingrayTimeseries):
         They will be used by other methods to have an indication of the
         "safe" time intervals to use during analysis.
 
-    err_dist: str, optional, default ``None``
+    err_dist: str, optional, None, default ``poisson``
         Statistical distribution used to calculate the
         uncertainties and other statistical values appropriately.
         Default makes no assumptions and keep errors equal to zero.
+
+        At the moment Stingray only uses ``poisson`` err_dist.
+        All analysis in the light curve will assume Poisson errors.
 
     bg_counts: iterable,`:class:numpy.array` or `:class:List` of floats, optional, default ``None``
         A list or array of background counts detected in the background extraction region
@@ -275,19 +279,20 @@ class Lightcurve(StingrayTimeseries):
         if not skip_checks:
             time, counts, err = self.initial_optional_checks(time, counts, err, gti=gti)
 
-        if err_dist.lower() not in valid_statistics:
-            # err_dist set can be increased with other statistics
-            raise StingrayError(
-                "Statistic not recognized." "Please select one of these: ",
-                "{}".format(valid_statistics),
-            )
-        elif not err_dist.lower() == "poisson":
-            simon(
-                "Stingray only uses poisson err_dist at the moment. "
-                "All analysis in the light curve will assume Poisson "
-                "errors. "
-                "Sorry for the inconvenience."
-            )
+        if err_dist is not None:
+            if err_dist.lower() not in valid_statistics:
+                # err_dist set can be increased with other statistics
+                raise StingrayError(
+                    "Statistic not recognized." "Please select one of these: ",
+                    "{}".format(valid_statistics),
+                )
+            elif not err_dist.lower() == "poisson":
+                simon(
+                    "Stingray only uses poisson err_dist at the moment. "
+                    "All analysis in the light curve will assume Poisson "
+                    "errors. "
+                    "Sorry for the inconvenience."
+                )
 
         self._time = time
 
@@ -1158,6 +1163,45 @@ class Lightcurve(StingrayTimeseries):
         """
 
         return super().truncate(start=start, stop=stop, method=method)
+
+    def shift(self, time_shift: float, inplace=False):
+        """Shift the time and the GTIs by the same amount
+
+        Parameters
+        ----------
+        time_shift: float
+            The time interval by which the time series will be shifted (in
+            the same units as the time array in :class:`StingrayTimeseries`
+
+        Other parameters
+        ----------------
+        inplace : bool
+            If True, overwrite the current time series. Otherwise, return a new one.
+
+        Returns
+        -------
+        ts : ``StingrayTimeseries`` object
+            The new time series shifted by ``time_shift``
+
+        """
+        if inplace:
+            ts = self
+        else:
+            ts = copy.deepcopy(self)
+        ts.time = ts._time = np.asanyarray(ts.time) + time_shift  # type: ignore
+
+        if isinstance(self.dt, Iterable):
+            ts.tstart = ts._time[0] - 0.5 * self.dt[0]
+            ts.tseg = ts._time[-1] - ts._time[0] + self.dt[-1] / 2 + self.dt[0] / 2
+        else:
+            ts.tstart = ts._time[0] - 0.5 * self.dt
+            ts.tseg = ts._time[-1] - ts._time[0] + self.dt
+        # Pay attention here: if the GTIs are created dynamically while we
+        # access the property,
+        if ts._gti is not None:
+            ts._gti = np.asanyarray(ts._gti) + time_shift  # type: ignore
+
+        return ts
 
     def split(self, min_gap, min_points=1):
         """
