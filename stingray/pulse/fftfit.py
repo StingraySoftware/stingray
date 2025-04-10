@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.optimize import minimize, brentq
+from scipy.optimize import brentq
 
 
 def _find_delay_with_ccf(amp, pha):

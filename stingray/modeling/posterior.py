@@ -6,7 +6,6 @@ from collections.abc import Iterable
 
 np.seterr("warn")
 
-from scipy.special import gamma as scipy_gamma
 from scipy.special import gammaln as scipy_gammaln
 
 try:

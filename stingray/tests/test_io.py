@@ -12,8 +12,6 @@ from ..io import load_events_and_gtis, read_mission_info
 from ..io import read_header_key, FITSTimeseriesReader, DEFAULT_FORMAT
 from ..events import EventList
 
-import warnings
-
 curdir = os.path.abspath(os.path.dirname(__file__))
 datadir = os.path.join(curdir, "data")
 

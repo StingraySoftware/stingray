@@ -6,7 +6,6 @@ import functools
 import math
 from collections.abc import Iterable
 import warnings
-from scipy.optimize import minimize, basinhopping
 import scipy.stats
 import numpy as np
 import matplotlib.pyplot as plt

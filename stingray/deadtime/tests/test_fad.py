@@ -2,9 +2,6 @@ import os
 import numpy as np
 import pytest
 
-# import warnings
-import warnings
-
 from astropy.table import Table
 from stingray import Lightcurve, EventList
 from stingray.deadtime.fad import calculate_FAD_correction, FAD

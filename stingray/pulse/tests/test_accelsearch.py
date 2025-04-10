@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 from stingray.pulse.accelsearch import accelsearch, _create_responses
-from stingray.utils import HAS_NUMBA
 
 pytestmark = pytest.mark.slow
 

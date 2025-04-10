@@ -6,7 +6,6 @@ or to save existing light curves in a class that's easy to use.
 """
 
 import os
-import logging
 import warnings
 from collections.abc import Iterable
 

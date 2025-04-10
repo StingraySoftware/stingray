@@ -6,15 +6,13 @@ from stingray.powerspectrum import Powerspectrum
 import warnings
 
 import numpy as np
-import scipy.optimize
-import scipy.stats
 from scipy import signal, interpolate
 
 from astropy.timeseries import LombScargle
 
 from .events import EventList
 from .lightcurve import Lightcurve
-from .utils import rebin_data, simon, fft, rfft, rfftfreq
+from .utils import rebin_data, simon, rfft, rfftfreq
 
 try:
     integration_func = np.trapezoid

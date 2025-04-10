@@ -1,7 +1,5 @@
 import numpy as np
-
 import pytest
-import warnings
 
 from stingray import AveragedCovariancespectrum, Covariancespectrum, Lightcurve
 from stingray.events import EventList

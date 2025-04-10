@@ -1,5 +1,4 @@
 import copy
-from multiprocessing import Event
 import os
 import numpy as np
 from stingray.events import EventList
