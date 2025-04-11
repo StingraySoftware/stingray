@@ -72,8 +72,7 @@ class GeneralizedLorentz1D(Fittable1DModel):
         denom = mod_x_pc + fwhm_pc
         denom_sq = np.power(denom, 2)
 
-        d_x = -1.0 * num / denom_sq * (power_coeff * mod_x_pc / np.abs(x - x_0)) * np.sign(x - x_0)
-        d_x_0 = -d_x
+        d_x_0 = 1.0 * num / denom_sq * (power_coeff * mod_x_pc / np.abs(x - x_0)) * np.sign(x - x_0)
         d_value = fwhm_pc / denom
 
         pre_compute = 1.0 / 2.0 * power_coeff * fwhm_pc / (fwhm / 2)
@@ -87,7 +86,7 @@ class GeneralizedLorentz1D(Fittable1DModel):
                 - num * (np.log(abs(x - x_0)) * mod_x_pc + np.log(fwhm / 2) * fwhm_pc)
             )
         )
-        return [d_x, d_x_0, d_value, d_fwhm, d_power_coeff]
+        return [d_x_0, d_value, d_fwhm, d_power_coeff]
 
     def bounding_box(self, factor=25):
         """Tuple defining the default ``bounding_box`` limits,
@@ -156,9 +155,9 @@ class SmoothBrokenPowerLaw(Fittable1DModel):
     """
 
     norm = Parameter(default=1.0, description="normalization frequency")
-    break_freq = Parameter(default=1.0, description="Break frequency")
     gamma_low = Parameter(default=-1.0, description="Power law index for f --> zero")
     gamma_high = Parameter(default=1.0, description="Power law index for f --> infinity")
+    break_freq = Parameter(default=1.0, description="Break frequency")
 
     def _norm_validator(self, value):
         if np.any(value <= 0):
@@ -189,19 +188,15 @@ class SmoothBrokenPowerLaw(Fittable1DModel):
         threshold = 30  # corresponding to exp(30) ~ 1e13
         i = logt > threshold
         if i.max():
-            log_f = (
-                np.log(norm) - gamma_low * np.log(x[i]) + (gamma_low - gamma_high) * np.log(xx[i])
-            )
-            f[i] = np.exp(log_f)
+            f[i] = norm * np.power(x[i], -gamma_low) * np.power(xx[i], gamma_low - gamma_high)
 
         i = logt < -threshold
         if i.max():
-            log_f = np.log(norm) - gamma_low * np.log(x[i])
-            f[i] = np.exp(log_f)
+            f[i] = norm * np.power(x[i], -gamma_low)
 
         i = np.abs(logt) <= threshold
         if i.max():
-            # In this case the `t` value is "comparable" to 1, hence we
+            # In this case the `t` value is "comparable" to 1, hence
             # we will evaluate the whole formula.
             f[i] = (
                 norm
@@ -230,10 +225,7 @@ class SmoothBrokenPowerLaw(Fittable1DModel):
         threshold = 30  # (see comments in SmoothBrokenPowerLaw.evaluate)
         i = logt > threshold
         if i.max():
-            log_f = (
-                np.log(norm) - gamma_low * np.log(x[i]) + (gamma_low - gamma_high) * np.log(xx[i])
-            )
-            f[i] = np.exp(log_f)
+            f[i] = norm * np.power(x[i], -gamma_low) * np.power(xx[i], gamma_low - gamma_high)
 
             d_norm[i] = f[i] / norm
             d_gamma_low[i] = f[i] * (-np.log(x[i]) + np.log(xx[i]))
@@ -242,8 +234,7 @@ class SmoothBrokenPowerLaw(Fittable1DModel):
 
         i = logt < -threshold
         if i.max():
-            log_f = np.log(norm) - gamma_low * np.log(x[i])
-            f[i] = np.exp(log_f)
+            f[i] = norm * np.power(x[i], -gamma_low)
 
             d_norm[i] = f[i] / norm
             d_gamma_low[i] = -f[i] * np.log(x[i])
