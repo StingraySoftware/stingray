@@ -86,7 +86,7 @@ class GeneralizedLorentz1D(Fittable1DModel):
                 - num * (np.log(abs(x - x_0)) * mod_x_pc + np.log(fwhm / 2) * fwhm_pc)
             )
         )
-        return [d_x_0, d_value, d_fwhm, d_power_coeff]
+        return np.array([d_x_0, d_value, d_fwhm, d_power_coeff])
 
     def bounding_box(self, factor=25):
         """Tuple defining the default ``bounding_box`` limits,
@@ -259,7 +259,7 @@ class SmoothBrokenPowerLaw(Fittable1DModel):
                 / (break_freq * (np.power(break_freq, 2) + np.power(x[i], 2)))
             )
 
-        return [d_norm, d_gamma_low, d_gamma_high, d_break_freq]
+        return np.array([d_norm, d_gamma_low, d_gamma_high, d_break_freq])
 
     # NOTE:
     # In astropy 4.3 'Parameter' object has no attribute 'input_unit',
