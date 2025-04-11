@@ -30,22 +30,32 @@ class TestModel(object):
             smoothPowerlaw.param_names, np.array(["norm", "gamma_low", "gamma_high", "break_freq"])
         )
 
-    def test_power_coeff(self):
+    def test_lorentz_power_coeff(self):
         with pytest.raises(
             InputParameterError, match="The power coefficient should be greater than zero."
         ):
             models.GeneralizedLorentz1D(x_0=2, fwhm=100, value=3, power_coeff=-1)
 
+    def test_lorentz_bounding_box(self):
+        lorentz1D = self.lorentz1D
+
+        assert np.allclose(lorentz1D.bounding_box(), [-797, 803])
+
     @pytest.mark.parametrize(
-        "model, yy_func, params",
+        "model, yy_func, params, x_lim",
         [
-            (models.SmoothBrokenPowerLaw, models.smoothbknpo, [1, -2, 2, 10]),
-            (models.GeneralizedLorentz1D, models.generalized_lorentzian, [3, 32, 2.5, 2]),
+            (models.SmoothBrokenPowerLaw, models.smoothbknpo, [1, -2, 2, 10], [0.01, 100]),
+            (
+                models.GeneralizedLorentz1D,
+                models.generalized_lorentzian,
+                [3, 32, 2.5, 2],
+                [-10, 10],
+            ),
         ],
     )
-    def test_model_evaluate(self, model, yy_func, params):
+    def test_model_evaluate(self, model, yy_func, params, x_lim):
         model = model(*params)
-        xx = np.linspace(2, 4, 6)
+        xx = np.logspace(x_lim[0], x_lim[1], 100)
         yy = model(xx)
         yy_ref = yy_func(xx, params)
 
@@ -71,8 +81,8 @@ class TestModel(object):
         n = 0.1 * (rsn_rand_0 - 0.5)
 
         data = model_with_deriv(x) + n
-        fitter_with_deriv = fitting.LMLSQFitter()
+        fitter_with_deriv = fitting.LevMarLSQFitter()
         new_model_with_deriv = fitter_with_deriv(model_with_deriv, x, data)
-        fitter_no_deriv = fitting.LMLSQFitter()
+        fitter_no_deriv = fitting.LevMarLSQFitter()
         new_model_no_deriv = fitter_no_deriv(model_no_deriv, x, data, estimate_jacobian=True)
         assert_allclose(new_model_with_deriv.parameters, new_model_no_deriv.parameters, atol=0.5)
