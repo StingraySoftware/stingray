@@ -19,7 +19,6 @@ from astropy import units as u
 from stingray.base import StingrayTimeseries, reduce_precision_if_extended
 import stingray.utils as utils
 from stingray.exceptions import StingrayError
-from scipy.signal import savgol_filter
 from stingray.gti import (
     check_gtis,
     create_gti_mask,
@@ -821,7 +820,7 @@ class Lightcurve(StingrayTimeseries):
         """
         Make a light curve out of photon arrival times, with a given time resolution ``dt``.
         Note that ``dt`` should be larger than the native time resolution of the instrument
-        that has taken the data.
+        that has taken the data, and possibly a multiple!
 
         Parameters
         ----------
@@ -1161,47 +1160,59 @@ class Lightcurve(StingrayTimeseries):
 
         return super().truncate(start=start, stop=stop, method=method)
 
-    def smothen(self,window_length=101,polyorder=3, method="savgol", normalize=False):
+    def smothen(self, n_knots=15, degree=3, alpha=0.1):
         """
-        Smoothens the light curve by removing short-term fluctuations.
-        
+        Smooths the light curve using a spline-based Poisson regression model.
+
+        This method fits a Poisson regression model with a spline transformer to the light curve data,
+        producing a smoothed version of the original light curve. The method retains the same time bins
+        while adjusting the counts to a smoother representation.
+
         Parameters
         ----------
-        window_length : int
-            The length of the smoothing window (must be an odd integer).
-        polyorder : int
-            The polynomial order for the Savitzky-Golay filter (must be < window_length).
-        method : str, optional
-            Smoothing method to use. Options: "savgol" (Savitzky-Golay) or "moving_avg".
-        normalize : bool, optional
-            If True, normalizes the output light curve.
+        n_knots : int, optional
+            The number of knots used for the spline transformation. More knots allow finer details
+            to be captured but may lead to overfitting. Default is 20.
+        degree : int, optional
+            The degree of the spline function. A higher degree allows for more flexibility in the
+            smoothing but may introduce unwanted oscillations. Default is 3.
+        alpha : float, optional
+            Regularization strength for the Poisson regression model. Higher values lead to stronger
+            smoothing. Default is 0.1.
 
         Returns
         -------
         smoothed_lc : Lightcurve
-            A new Lightcurve object with the smoothed data.
+            A new Lightcurve object with the same time bins but with smoothed count values.
+
+        Notes
+        -----
+        - This method assumes that the light curve follows Poisson statistics and applies a
+        Poisson regression model for smoothing.
+        - The `SplineTransformer` is used to transform time data into a spline basis, which
+        allows flexible smoothing of the count rates.
         """
-        if window_length % 2 == 0:
-            raise ValueError("window_length must be an odd integer.")
-        
-        if len(self.counts) < window_length:
-            raise ValueError("window_length must be smaller than the number of data points.")
+        try:
+            import sklearn
+        except ImportError:
+            raise ImportError(
+                "You need to install sickit-learn to use this method try pip install -U scikit-learn"
+            )
 
-        if polyorder >= window_length:
-            raise ValueError("polyorder must be smaller than window_length.")
+        from sklearn.linear_model import PoissonRegressor
+        from sklearn.preprocessing import SplineTransformer
+        from sklearn.pipeline import make_pipeline
 
-        if method == "savgol":
-            trend = savgol_filter(self.counts, window_length, polyorder)
-        elif method == "moving_avg":
-            trend = np.convolve(self.counts, np.ones(window_length)/window_length, mode="same")
-        else:
-            raise ValueError("Invalid method. Use 'savgol' or 'moving_avg'.")
+        X = self.time.reshape(-1, 1)
+        spline = SplineTransformer(n_knots=n_knots, degree=degree, extrapolation="constant")
+        model = make_pipeline(spline, PoissonRegressor(alpha=alpha, max_iter=1000))
+        model.fit(X, self.counts)
 
-        if normalize:
-            trend /= np.nanmedian(trend)
-
+        smoothed_counts = model.predict(X)
         smoothed_lc = copy.deepcopy(self)
-        smoothed_lc.counts = trend  
+        smoothed_lc.counts = smoothed_counts
+        smoothed_lc.err_dist = "gauss"
+        smoothed_lc.err = smoothed_counts - self.counts
 
         return smoothed_lc
 
