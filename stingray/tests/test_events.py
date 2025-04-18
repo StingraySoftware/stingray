@@ -3,6 +3,9 @@ import copy
 import os
 import pytest
 import numpy as np
+from numpy.testing import assert_allclose, assert_array_equal, assert_equal
+
+from astropy.io import fits
 from astropy.time import Time
 
 from ..events import EventList
@@ -368,6 +371,39 @@ class TestEvents(object):
             assert np.allclose(getattr(ev, attr), getattr(new_ev, attr))
         for attr in ["mission", "instr", "mjdref"]:
             assert getattr(ev, attr) == getattr(new_ev, attr)
+
+
+class TestEventsFermi(object):
+    @classmethod
+    def setup_class(self):
+        self.fermi_file = os.path.join(datadir, "fermi_gbm_tte.fits")
+        with fits.open(self.fermi_file) as hdul:
+            self.header = hdul[0].header
+            self.time = hdul[2].data["TIME"]
+            self.gti = hdul[3].data[0]
+
+            self.pi = hdul[2].data["PHA"]
+            elower = hdul[1].data["E_MIN"]
+            ehigher = hdul[1].data["E_MAX"]
+            emid = elower + (ehigher - elower) / 2.0
+            self.energy = np.array([emid[c] for c in self.pi])
+
+    def test_read_fermi(self):
+        assert EventList.read(self.fermi_file) is not None
+
+    def test_check_energy_pi(self):
+        evt = EventList.read(self.fermi_file)
+
+        assert_allclose(evt.energy, self.energy, atol=1e-8)
+        assert_array_equal(evt.pi, self.pi)
+
+    def test_check_time_gti(self):
+        evt = EventList.read(self.fermi_file)
+
+        assert_allclose(evt.time, self.time, atol=1e-8)
+        assert_array_equal(evt.gti, np.array(self.gti).reshape(1, 2))
+        assert_equal(evt.ncounts, self.time.shape[0])
+        assert_allclose(evt.mjdref, self.header["MJDREFI"])
 
 
 class TestJoinEvents:

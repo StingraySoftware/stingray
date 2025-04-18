@@ -873,6 +873,7 @@ class FITSTimeseriesReader(object):
             ):
                 conversion = (1 * u.Unit(unit)).to(u.keV).value
             new_ts.energy = energy * conversion
+            new_ts.pi = channels
         else:
             if self.energy_column in data.dtype.names:
                 conversion = 1

@@ -109,7 +109,7 @@ class EventList(StingrayTimeseries):
     ncounts: int
         Number of desired data points in event list. Deprecated
 
-    gtis: ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``
+    gti: ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``
         Good Time Intervals
 
     pi : integer, numpy.ndarray
@@ -171,7 +171,7 @@ class EventList(StingrayTimeseries):
     mjdref : float
         The MJD used as a reference for the time array.
 
-    gtis: ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``
+    gti: ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``
         Good Time Intervals
 
     pi : integer, numpy.ndarray
