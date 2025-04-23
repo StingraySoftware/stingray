@@ -6,6 +6,7 @@ import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 
 from astropy.io import fits
+import astropy.units as u
 from astropy.time import Time
 
 from ..events import EventList
@@ -386,6 +387,7 @@ class TestEventsFermi(object):
             elower = hdul[1].data["E_MIN"]
             ehigher = hdul[1].data["E_MAX"]
             emid = elower + (ehigher - elower) / 2.0
+            self.emin, self.emax = np.min(elower), np.max(ehigher)
             self.energy = np.array([emid[c] for c in self.pi])
 
     def test_read_fermi(self):
@@ -397,6 +399,43 @@ class TestEventsFermi(object):
         assert_allclose(evt.energy, self.energy, atol=1e-8)
         assert_array_equal(evt.pi, self.pi)
 
+    def test_high_precision(self):
+        evt = EventList.read(self.fermi_file, high_precision=True)
+
+        assert np.issubdtype(evt.time.dtype, np.float128)
+        assert np.issubdtype(evt.pi.dtype, np.float128)
+
+    @pytest.mark.parametrize(
+        "emin, emax",
+        [
+            (2, 45.2),
+            (2 * u.keV, 45.2 * u.keV),
+            (2000 * u.eV, 45.2 * u.keV),
+            (None, 45.2 * u.keV),
+            (2000 * u.eV, None),
+            (None, None),
+        ],
+    )
+    def test_mask_ebound(self, emin, emax):
+        evt = EventList.read(self.fermi_file, emin=emin, emax=emax)
+
+        emin = emin if emin is not None else self.emin
+        emax = emax if emax is not None else self.emax
+
+        if isinstance(emin, u.Quantity):
+            emin = emin.to(u.keV).value
+        if isinstance(emax, u.Quantity):
+            emax = emax.to(u.keV).value
+
+        mask = (self.energy > emin) & (self.energy < emax)
+        energy = self.energy[mask]
+        time = self.time[mask]
+        pi = self.pi[mask]
+
+        assert_array_equal(evt.time, time)
+        assert_array_equal(evt.pi, pi)
+        assert_array_equal(evt.energy, energy)
+
     def test_check_time_gti(self):
         evt = EventList.read(self.fermi_file)
 
@@ -404,6 +443,10 @@ class TestEventsFermi(object):
         assert_array_equal(evt.gti, np.array(self.gti).reshape(1, 2))
         assert_equal(evt.ncounts, self.time.shape[0])
         assert_allclose(evt.mjdref, self.header["MJDREFI"])
+
+    def test_kwargs(self):
+        with pytest.warns(UserWarning, match="Unrecognized keywords:"):
+            EventList.read(self.fermi_file, alpha=1)
 
 
 class TestJoinEvents:

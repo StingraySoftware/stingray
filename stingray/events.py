@@ -631,7 +631,7 @@ class EventList(StingrayTimeseries):
             additional_columns = kwargs.pop("additional_columns", None)
 
             evt = FITSTimeseriesReader(
-                filename, output_class=EventList, additional_columns=additional_columns
+                filename, output_class=EventList, additional_columns=additional_columns, **kwargs
             )[:]
 
             if rmf_file is not None:
