@@ -8,6 +8,7 @@ from collections.abc import Iterable
 
 import numpy as np
 from astropy.io import fits
+import astropy.units as u
 from astropy.table import Table
 from astropy.logger import AstropyUserWarning
 import matplotlib.pyplot as plt
@@ -741,6 +742,7 @@ class FITSTimeseriesReader(object):
         gtistring=None,
         additional_columns=None,
         data_kind="events",
+        **kwargs,
     ):
         self.fname = fname
         self._data = fits.open(self.fname)
@@ -757,6 +759,8 @@ class FITSTimeseriesReader(object):
                 f"{data_kind} is an unknown data kind."
             )
         self.data_kind = data_kind
+        self.high_precision = kwargs.pop("high_precision", None)
+
         if additional_columns is None and self.detector_key != "NONE":
             additional_columns = [self.detector_key]
         elif self.detector_key != "NONE":
@@ -765,8 +769,12 @@ class FITSTimeseriesReader(object):
 
         if self.energy_column == "EBOUNDS":
             self.edata_hdu = self._data["EBOUNDS"]
+            self.emin = kwargs.pop("emin", None)
+            self.emax = kwargs.pop("emax", None)
         self.gti_file = gti_file
         self._read_gtis(self.gti_file)
+        if kwargs != {}:
+            warnings.warn(f"Unrecognized keywords: {list(kwargs.keys())}")
 
     @property
     def time(self):
@@ -843,12 +851,6 @@ class FITSTimeseriesReader(object):
         if self._mission_specific_processing is not None:
             data = self._mission_specific_processing(data, header=self.header, hduname=self.hduname)
 
-        # Set the times
-        setattr(
-            new_ts,
-            self.main_array_attr,
-            data[self.time_column][:] + self.timezero,
-        )
         # Get conversion function PI->Energy
         try:
             pi_energy_func = get_rough_conversion_function(
@@ -865,15 +867,32 @@ class FITSTimeseriesReader(object):
             ehigher = self.edata_hdu.data["E_MAX"]
             emid = elower + (ehigher - elower) / 2.0
 
-            energy = np.array([emid[c] for c in channels])
+            self.emin = np.min(elower) if self.emin is None else self.emin
+            self.emax = np.max(ehigher) if self.emax is None else self.emax
 
+            energy = np.array([emid[c] for c in channels])
             if (
                 hasattr(self.edata_hdu.columns["E_MIN"], "unit")
                 and (unit := self.edata_hdu.columns["E_MIN"].unit) is not None
             ):
                 conversion = (1 * u.Unit(unit)).to(u.keV).value
-            new_ts.energy = energy * conversion
-            new_ts.pi = channels
+
+            if isinstance(self.emin, u.Quantity):
+                self.emin = self.emin.to(u.keV).value
+            if isinstance(self.emax, u.Quantity):
+                self.emax = self.emax.to(u.keV).value
+
+            if self.emin > self.emax:
+                self.emin, self.emax = self.emax, self.emin
+
+            mask = (energy > self.emin) & (energy < self.emax)
+            energy = energy[mask]
+            channels = channels[mask]
+
+            time_dtype = np.float128 if self.high_precision is True else np.float64
+
+            new_ts.energy = np.asanyarray(energy * conversion, dtype=np.float64)
+            new_ts.pi = np.asanyarray(channels, dtype=time_dtype)
         else:
             if self.energy_column in data.dtype.names:
                 conversion = 1
@@ -887,6 +906,16 @@ class FITSTimeseriesReader(object):
                 new_ts.pi = data[self.pi_column]
                 if pi_energy_func is not None:
                     new_ts.energy = pi_energy_func(new_ts.pi)
+
+        if "mask" not in locals():
+            mask = np.ones(data[self.time_column].shape, dtype=bool)
+
+        # Set the times
+        setattr(
+            new_ts,
+            self.main_array_attr,
+            data[self.time_column][mask] + self.timezero,
+        )
 
         det_numbers = None
         if self.detector_key is not None and self.detector_key in data.dtype.names:
