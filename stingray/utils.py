@@ -20,7 +20,7 @@ logger = setup_logger()
 
 try:
     import pyfftw
-    from pyfftw.interfaces.numpy_fft import (
+    from pyfftw.interfaces.scipy_fft import (
         ifft,
         fft,
         fftfreq,
@@ -37,7 +37,7 @@ try:
     HAS_PYFFTW = True
     logger.info("Using PyFFTW")
 except ImportError:
-    from numpy.fft import ifft, fft, fftfreq, fftn, ifftn, fftshift, fft2, ifftshift, rfft, rfftfreq
+    from scipy.fft import ifft, fft, fftfreq, fftn, ifftn, fftshift, fft2, ifftshift, rfft, rfftfreq
 
     HAS_PYFFTW = False
 
