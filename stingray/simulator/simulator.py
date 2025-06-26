@@ -14,12 +14,12 @@ __all__ = ["Simulator"]
 
 class Simulator(object):
     """
-    provides a framework to simulate light curves with given variability distributions. 
-    In time series experiments, understanding the certainty is crucial to interpret the derived results in context of physical models. 
+    provides a framework to simulate light curves with given variability distributions.
+    In time series experiments, understanding the certainty is crucial to interpret the derived results in context of physical models.
     The simulator module provides tools to assess this uncertainty by simulating time series and spectral data.
 
-    Stingray simulator supports multiple methods to carry out these simulation. 
-    Light curves can be simulated through power-law spectrum, through a user-defined or pre-defined model, or through impulse responses. 
+    Stingray simulator supports multiple methods to carry out these simulation.
+    Light curves can be simulated through power-law spectrum, through a user-defined or pre-defined model, or through impulse responses.
     The module is designed in a way such that all these methods can be accessed using similar set of commands.
 
     Parameters
@@ -29,11 +29,11 @@ class Simulator(object):
     N : int, default 1024
         Number of time bins in the simulated light curve.
     mean : float, default 0
-        Mean count rate of the light curve (counts per second).
+        mean value of the simulated light curve.
     rms : float, default 1
         Fractional RMS amplitude of the light curve; actual RMS is `mean * rms`.
     err : float, default 0
-        Gaussian error per bin for the light curve (standard deviation of counts).
+        the errorbars on the final light curves.
     red_noise : int, default 1
         Factor by which to extend the light curve length to mitigate red noise leakage.
     random_state : int or numpy.random.RandomState, optional
@@ -46,7 +46,7 @@ class Simulator(object):
     Examples
     --------
     >>> sim = Simulator(dt=0.1, N=1024, mean=100, rms=0.2, poisson=True)
-    >>> lc = sim.simulate(2) 
+    >>> lc = sim.simulate(2)
     """
 
     def __init__(
