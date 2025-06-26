@@ -226,10 +226,10 @@ Finally, install ``stingray`` itself::
 Test Suite
 ----------
 
-Please be sure to run the test suite before you use the package, and please report anything
+It's generally a good idea to run the test suite before you use the package, and please report anything
 you think might be bugs on our GitHub `Issues page <https://github.com/StingraySoftware/stingray/issues>`_.
 
-Stingray uses `py.test <https://pytest.org>`_ and `tox
+Stingray uses `pytest <https://pytest.org>`_ and `tox
 <https://tox.readthedocs.io>`_ for testing.
 
 If you downloaded the source code, e.g. via `git clone`, run the tests with::
@@ -246,16 +246,13 @@ To run a specific test file (e.g., test_io.py), try::
     $ py.test tests/test_io.py
 
 If you have installed Stingray via pip or conda, the source directory might
-not be easily accessible. Once installed, you can also run the tests using::
+not be easily accessible. In this case, you can install the libraries needed for tests with::
 
-   $ python -c 'import stingray; stingray.test()'
+    $ pip install "stingray[test]"
 
-or from within a python interpreter:
+and then run the tests with::
 
-.. doctest-skip::
-
-   >>> import stingray
-   >>> stingray.test()
+    $ pytest --pyargs stingray
 
 Building the Documentation
 --------------------------

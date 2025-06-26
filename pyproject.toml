@@ -181,6 +181,7 @@ filterwarnings = [
     "ignore:.*__array_wrap__ must accept context and return_scalar arguments:DeprecationWarning",
     "ignore:.*Pyarrow:",
     "ignore:.*Creating an ndarray from ragged nested sequences:",
+    "ignore:.*the tpfmodel submodule is not available without oktopus.*:UserWarning"
 
 ]
 

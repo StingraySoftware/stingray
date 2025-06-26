@@ -1,0 +1,1 @@
+Fixed power upper limit in ``stingray.stats`` for n =/= 1
