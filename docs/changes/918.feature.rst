@@ -1,0 +1,1 @@
+Sidebar in documentation now scrolls independently of the main content and wraps long text to next line instead of cropping it.

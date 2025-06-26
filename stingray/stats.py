@@ -1002,11 +1002,11 @@ def power_upper_limit(pmeas, n=1, c=0.95):
 
     from scipy.optimize import minimize
 
-    initial = isf(pmeas)
+    initial = isf(pmeas * n)
 
-    res = minimize(func_to_minimize, [initial], pmeas, bounds=[(0, initial * 2)])
+    res = minimize(func_to_minimize, [initial], pmeas * n, bounds=[(0, initial * 2)])
 
-    return res.x[0]
+    return res.x[0] / n
 
 
 def amplitude_upper_limit(pmeas, counts, n=1, c=0.95, fft_corr=False, nyq_ratio=0):
