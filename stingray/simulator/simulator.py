@@ -14,7 +14,7 @@ __all__ = ["Simulator"]
 
 class Simulator(object):
     """
-    provides a framework to simulate light curves with given variability distributions.
+    Framework to simulate light curves with given variability distributions.
     In time series experiments, understanding the certainty is crucial to interpret the derived results in context of physical models.
     The simulator module provides tools to assess this uncertainty by simulating time series and spectral data.
 
