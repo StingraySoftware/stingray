@@ -15,7 +15,8 @@ __all__ = ["Simulator"]
 class Simulator(object):
     """
     Framework to simulate light curves with given variability distributions.
-    The simulator module provides tools to assess this uncertainty by simulating time series and spectral data.
+    The simulator module provides tools to simulate time series and spectral data. This can be useful, e.g.,
+    to access the uncertainty of a previous analysis or to develop an intuition of the detectability of a given phenomenon
 
     Stingray simulator supports multiple methods to carry out these simulation.
     Light curves can be simulated through power-law spectrum, through a user-defined or pre-defined model, or through impulse responses.
