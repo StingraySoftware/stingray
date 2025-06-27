@@ -18,7 +18,7 @@ class Simulator(object):
     The simulator module provides tools to simulate time series and spectral data. This can be useful, e.g.,
     to access the uncertainty of a previous analysis or to develop an intuition of the detectability of a given phenomenon
 
-    Stingray simulator supports multiple methods to carry out these simulation.
+    Stingray simulator supports multiple methods to carry out these simulations.
     Light curves can be simulated through power-law spectrum, through a user-defined or pre-defined model, or through impulse responses.
     The module is designed in a way such that all these methods can be accessed using similar set of commands.
 
