@@ -43,10 +43,6 @@ class Simulator(object):
     poisson : bool, default False
         If True, simulates Poisson-distributed counts; otherwise, assumes Gaussian noise.
 
-    Examples
-    --------
-    >>> sim = Simulator(dt=0.1, N=1024, mean=100, rms=0.2, poisson=True)
-    >>> lc = sim.simulate(2)
     """
 
     def __init__(
