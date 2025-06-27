@@ -20,7 +20,7 @@ class Simulator(object):
 
     Stingray simulator supports multiple methods to carry out these simulations.
     Light curves can be simulated through power-law spectrum, through a user-defined or pre-defined model, or through impulse responses.
-    The module is designed in a way such that all these methods can be accessed using similar set of commands.
+    The module is designed in a way such that all these methods can be accessed using a common interface.
 
     Parameters
     ----------
