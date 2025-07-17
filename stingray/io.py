@@ -8,6 +8,7 @@ from collections.abc import Iterable
 
 import numpy as np
 from astropy.io import fits
+import astropy.units as u
 from astropy.table import Table
 from astropy.logger import AstropyUserWarning
 import matplotlib.pyplot as plt
@@ -741,8 +742,11 @@ class FITSTimeseriesReader(object):
         gtistring=None,
         additional_columns=None,
         data_kind="events",
+        **kwargs,
     ):
         self.fname = fname
+        self._data = fits.open(self.fname)
+
         self._meta_attrs = []
         self.gtistring = gtistring
         self.output_class = output_class
@@ -755,13 +759,22 @@ class FITSTimeseriesReader(object):
                 f"{data_kind} is an unknown data kind."
             )
         self.data_kind = data_kind
+        self.high_precision = kwargs.pop("high_precision", None)
+
         if additional_columns is None and self.detector_key != "NONE":
             additional_columns = [self.detector_key]
         elif self.detector_key != "NONE":
             additional_columns.append(self.detector_key)
-        self.data_hdu = fits.open(self.fname)[self.hduname]
+        self.data_hdu = self._data[self.hduname]
+
+        if self.energy_column == "EBOUNDS":
+            self.edata_hdu = self._data["EBOUNDS"]
+            self.emin = kwargs.pop("emin", None)
+            self.emax = kwargs.pop("emax", None)
         self.gti_file = gti_file
         self._read_gtis(self.gti_file)
+        if kwargs != {}:
+            warnings.warn(f"Unrecognized keywords: {list(kwargs.keys())}")
 
     @property
     def time(self):
@@ -793,7 +806,6 @@ class FITSTimeseriesReader(object):
         """Return an element or a slice of the object, e.g. ``ts[1]`` or ``ts[1:2]."""
 
         data = self.data_hdu.data[index]
-
         return self.transform_slice(data)
 
     def transform_slice(self, data):
@@ -839,12 +851,6 @@ class FITSTimeseriesReader(object):
         if self._mission_specific_processing is not None:
             data = self._mission_specific_processing(data, header=self.header, hduname=self.hduname)
 
-        # Set the times
-        setattr(
-            new_ts,
-            self.main_array_attr,
-            data[self.time_column][:] + self.timezero,
-        )
         # Get conversion function PI->Energy
         try:
             pi_energy_func = get_rough_conversion_function(
@@ -854,18 +860,62 @@ class FITSTimeseriesReader(object):
             )
         except ValueError:
             pi_energy_func = None
-        if self.energy_column in data.dtype.names:
-            conversion = 1
+
+        if self.energy_column is not None and self.energy_column.lower() == "ebounds":
+            channels = self.data_hdu.data["PHA"]
+            elower = self.edata_hdu.data["E_MIN"]
+            ehigher = self.edata_hdu.data["E_MAX"]
+            emid = elower + (ehigher - elower) / 2.0
+
+            self.emin = np.min(elower) if self.emin is None else self.emin
+            self.emax = np.max(ehigher) if self.emax is None else self.emax
+
+            energy = np.array([emid[c] for c in channels])
             if (
-                hasattr(data.columns[self.energy_column], "unit")
-                and (unit := data.columns[self.energy_column].unit) is not None
+                hasattr(self.edata_hdu.columns["E_MIN"], "unit")
+                and (unit := self.edata_hdu.columns["E_MIN"].unit) is not None
             ):
                 conversion = (1 * u.Unit(unit)).to(u.keV).value
-            new_ts.energy = data[self.energy_column] * conversion
-        elif self.pi_column.lower() in [col.lower() for col in data.dtype.names]:
-            new_ts.pi = data[self.pi_column]
-            if pi_energy_func is not None:
-                new_ts.energy = pi_energy_func(new_ts.pi)
+
+            if isinstance(self.emin, u.Quantity):
+                self.emin = self.emin.to(u.keV).value
+            if isinstance(self.emax, u.Quantity):
+                self.emax = self.emax.to(u.keV).value
+
+            if self.emin > self.emax:
+                self.emin, self.emax = self.emax, self.emin
+
+            mask = (energy > self.emin) & (energy < self.emax)
+            energy = energy[mask]
+            channels = channels[mask]
+
+            time_dtype = np.float128 if self.high_precision is True else np.float64
+
+            new_ts.energy = np.asanyarray(energy * conversion, dtype=np.float64)
+            new_ts.pi = np.asanyarray(channels, dtype=time_dtype)
+        else:
+            if self.energy_column in data.dtype.names:
+                conversion = 1
+                if (
+                    hasattr(data.columns[self.energy_column], "unit")
+                    and (unit := data.columns[self.energy_column].unit) is not None
+                ):
+                    conversion = (1 * u.Unit(unit)).to(u.keV).value
+                new_ts.energy = data[self.energy_column] * conversion
+            elif self.pi_column.lower() in [col.lower() for col in data.dtype.names]:
+                new_ts.pi = data[self.pi_column]
+                if pi_energy_func is not None:
+                    new_ts.energy = pi_energy_func(new_ts.pi)
+
+        if "mask" not in locals():
+            mask = np.ones(data[self.time_column].shape, dtype=bool)
+
+        # Set the times
+        setattr(
+            new_ts,
+            self.main_array_attr,
+            data[self.time_column][mask] + self.timezero,
+        )
 
         det_numbers = None
         if self.detector_key is not None and self.detector_key in data.dtype.names:
@@ -906,15 +956,15 @@ class FITSTimeseriesReader(object):
             If not None, the name of the HDU to read. If None, an extension called
             EVENTS or the first extension.
         """
-        hdulist = fits.open(fname)
+        hdulist = self._data
 
         if not force_hduname:
-            for hdu in hdulist:
+            for hdu in self._data:
                 if "TELESCOP" in hdu.header or "MISSION" in hdu.header:
                     probe_header = hdu.header
                     break
         else:
-            probe_header = hdulist[force_hduname].header
+            probe_header = self._data[force_hduname].header
 
         # We need the minimal information to read the mission database.
         # That is, the name of the mission/telescope, the instrument and,
@@ -955,12 +1005,11 @@ class FITSTimeseriesReader(object):
 
         # If the EVENT/``force_hduname`` extension is not found, try the first extension
         # which is usually the one containing the data
-        if hduname not in hdulist:
+        if hduname not in self._data:
             warnings.warn(f"HDU {hduname} not found. Trying first extension")
             hduname = 1
         self._add_meta_attr("hduname", hduname)
-
-        header = hdulist[hduname].header
+        header = self._data[hduname].header
         if "OBS_ID" in header:
             self._add_meta_attr("obsid", header["OBS_ID"])
         if "TIMEDEL" in header:
@@ -970,7 +1019,7 @@ class FITSTimeseriesReader(object):
         # No need to cope with dicts working badly with Netcdf, for example. The header
         # can be saved back and forth to files and be interpreted through
         # fits.Header.fromstring(self.header) when needed.
-        self._add_meta_attr("header", hdulist[self.hduname].header.tostring())
+        self._add_meta_attr("header", self._data[self.hduname].header.tostring())
         self._add_meta_attr("nphot", header["NAXIS2"])
 
         # These are the important keywords for timing.
@@ -1016,7 +1065,14 @@ class FITSTimeseriesReader(object):
         default_pi_column = get_key_from_mission_info(db, "ecol", "PI", instr, self.mode)
         if isinstance(default_pi_column, str):
             default_pi_column = _case_insensitive_search_in_list(
-                default_pi_column, hdulist[self.hduname].data.columns.names
+                default_pi_column, self._data[self.hduname].data.columns.names
+            )
+        if default_pi_column is None:
+            default_pi_column = get_key_from_mission_info(db, "ecol", "PHA", instr, self.mode)
+
+        if isinstance(default_pi_column, str):
+            default_pi_column = _case_insensitive_search_in_list(
+                default_pi_column, self._data[self.hduname].data.columns.names
             )
 
         self._add_meta_attr("pi_column", default_pi_column)
@@ -1024,8 +1080,13 @@ class FITSTimeseriesReader(object):
         # If a column named "energy" is found, we read it and assume the energy conversion
         # is already done.
         energy_column = _case_insensitive_search_in_list(
-            "energy", hdulist[self.hduname].data.columns.names
+            "energy", self._data[self.hduname].data.columns.names
         )
+        if energy_column is None:
+            energy_column = _case_insensitive_search_in_list(
+                "ebounds", [hdu.name for hdu in self._data]
+            )
+
         self._add_meta_attr("energy_column", energy_column)
 
     def _read_gtis(self, gti_file=None, det_numbers=None):
