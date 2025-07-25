@@ -1,0 +1,1 @@
+Fix ligthcurve breaking when err_dist=None and changed default err_dist to None to match docs
