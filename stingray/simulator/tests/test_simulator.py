@@ -32,7 +32,8 @@ class TestSimulator(object):
         Class method to calculate lag between two light curves.
         """
         s = lc.counts
-        output = self.simulator.simulate(s, h, "same")[delay:]
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            output = self.simulator.simulate(s, h, "same")[delay:]
         s = s[delay:]
         time = lc.time[delay:]
         output = output.counts
@@ -51,7 +52,8 @@ class TestSimulator(object):
         self.simulator = Simulator(
             N=self.N, mean=self.mean, dt=self.dt, rms=self.rms, random_state=12
         )
-        assert len(self.simulator.simulate(2).counts), self.N
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            assert len(self.simulator.simulate(2).counts), self.N
 
     def test_simulate_with_tstart(self):
         """
@@ -80,28 +82,32 @@ class TestSimulator(object):
         """
         Simulate an energy channel.
         """
-        self.simulator.simulate_channel("3.5-4.5", "generalized_lorentzian", [1, 2, 3, 4])
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            self.simulator.simulate_channel("3.5-4.5", "generalized_lorentzian", [1, 2, 3, 4])
         self.simulator.delete_channel("3.5-4.5")
 
     def test_simulate_channel_odd(self):
         """
         Simulate an energy channel.
         """
-        self.simulator_odd.simulate_channel("3.5-4.5", "generalized_lorentzian", [1, 2, 3, 4])
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            self.simulator_odd.simulate_channel("3.5-4.5", "generalized_lorentzian", [1, 2, 3, 4])
         self.simulator_odd.delete_channel("3.5-4.5")
 
     def test_incorrect_simulate_channel(self):
         """Test simulating a channel that already exists."""
-        self.simulator.simulate_channel("3.5-4.5", 2)
-        with pytest.raises(KeyError):
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
             self.simulator.simulate_channel("3.5-4.5", 2)
+            with pytest.raises(KeyError):
+                self.simulator.simulate_channel("3.5-4.5", 2)
         self.simulator.delete_channel("3.5-4.5")
 
     def test_get_channel(self):
         """
         Retrieve an energy channel after it has been simulated.
         """
-        self.simulator.simulate_channel("3.5-4.5", 2)
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            self.simulator.simulate_channel("3.5-4.5", 2)
         lc = self.simulator.get_channel("3.5-4.5")
         self.simulator.delete_channel("3.5-4.5")
 
@@ -109,16 +115,18 @@ class TestSimulator(object):
         """
         Retrieve multiple energy channel after it has been simulated.
         """
-        self.simulator.simulate_channel("3.5-4.5", 2)
-        self.simulator.simulate_channel("4.5-5.5", "smoothbknpo", [1, 2, 3, 4])
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            self.simulator.simulate_channel("3.5-4.5", 2)
+            self.simulator.simulate_channel("4.5-5.5", "smoothbknpo", [1, 2, 3, 4])
         lc = self.simulator.get_channels(["3.5-4.5", "4.5-5.5"])
 
         self.simulator.delete_channels(["3.5-4.5", "4.5-5.5"])
 
     def test_get_all_channels(self):
         """Retrieve all energy channels."""
-        self.simulator.simulate_channel("3.5-4.5", 2)
-        self.simulator.simulate_channel("4.5-5.5", 1)
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            self.simulator.simulate_channel("3.5-4.5", 2)
+            self.simulator.simulate_channel("4.5-5.5", 1)
         lc = self.simulator.get_all_channels()
 
         self.simulator.delete_channels(["3.5-4.5", "4.5-5.5"])
@@ -127,8 +135,9 @@ class TestSimulator(object):
         """
         Count energy channels after they have been simulated.
         """
-        self.simulator.simulate_channel("3.5-4.5", 2)
-        self.simulator.simulate_channel("4.5-5.5", 1)
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            self.simulator.simulate_channel("3.5-4.5", 2)
+            self.simulator.simulate_channel("4.5-5.5", 1)
 
         assert self.simulator.count_channels() == 2
         self.simulator.delete_channels(["3.5-4.5", "4.5-5.5"])
@@ -173,8 +182,8 @@ class TestSimulator(object):
             model = astropy_model(freq_fine)
         elif model_kind == "float":
             model = 2.0
-
-        lc_all = [self.simulator.simulate(model) for i in range(nsim)]
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            lc_all = [self.simulator.simulate(model) for i in range(nsim)]
 
         mean_all = np.mean([np.mean(lc.counts) for lc in lc_all])
         std_all = np.mean([np.std(lc.counts) for lc in lc_all])
@@ -195,7 +204,8 @@ class TestSimulator(object):
         mean = 0.0
         with pytest.warns(UserWarning, match="Careful! A mean of zero is unphysical!"):
             sim = Simulator(dt=self.dt, N=self.N, rms=self.rms, mean=mean)
-        lc_all = [sim.simulate(-2.0) for i in range(nsim)]
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            lc_all = [sim.simulate(-2.0) for i in range(nsim)]
 
         mean_all = np.mean([np.mean(lc.counts) for lc in lc_all])
         std_all = np.mean([np.std(lc.counts) for lc in lc_all])
@@ -207,13 +217,15 @@ class TestSimulator(object):
         """
         Simulate light curve from power law spectrum.
         """
-        assert len(self.simulator.simulate(2).counts), 1024
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            assert len(self.simulator.simulate(2).counts), 1024
 
     def test_simulate_powerlaw_odd(self):
         """
         Simulate light curve from power law spectrum.
         """
-        assert len(self.simulator_odd.simulate(2).counts), 2039
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            assert len(self.simulator_odd.simulate(2).counts), 2039
 
     def test_compare_powerlaw(self):
         """
@@ -222,7 +234,8 @@ class TestSimulator(object):
         B, N, red_noise, dt = 2, 1024, 10, 1
 
         self.simulator = Simulator(N=N, dt=dt, mean=5, rms=1, red_noise=red_noise)
-        lc = [self.simulator.simulate(B) for i in range(1, 30)]
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            lc = [self.simulator.simulate(B) for i in range(1, 30)]
         simulated = self.simulator.powerspectrum(lc, lc[0].tseg)
 
         w = np.fft.rfftfreq(N, d=dt)[1:]
@@ -238,7 +251,8 @@ class TestSimulator(object):
         Simulate light curve from any power spectrum.
         """
         s = np.random.rand(1024)
-        assert len(self.simulator.simulate(s)), self.N
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            assert len(self.simulator.simulate(s)), self.N
 
     def test_simulate_model_pars_not_list_or_dict(self):
         """
@@ -252,13 +266,15 @@ class TestSimulator(object):
         """
         Simulate light curve using lorentzian model.
         """
-        assert len(self.simulator.simulate("generalized_lorentzian", [1, 2, 3, 4])), 1024
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            assert len(self.simulator.simulate("generalized_lorentzian", [1, 2, 3, 4])), 1024
 
     def test_simulate_lorentzian_odd(self):
         """
         Simulate light curve using lorentzian model.
         """
-        assert len(self.simulator_odd.simulate("generalized_lorentzian", [1, 2, 3, 4])), 1024
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            assert len(self.simulator_odd.simulate("generalized_lorentzian", [1, 2, 3, 4])), 1024
 
     def test_compare_lorentzian(self):
         """
@@ -267,10 +283,11 @@ class TestSimulator(object):
         N, red_noise, dt = 1024, 10, 1
 
         self.simulator = Simulator(N=N, dt=dt, mean=0.1, rms=0.4, red_noise=red_noise)
-        lc = [
-            self.simulator.simulate("generalized_lorentzian", [0.3, 0.9, 0.6, 0.5])
-            for i in range(1, 30)
-        ]
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            lc = [
+                self.simulator.simulate("generalized_lorentzian", [0.3, 0.9, 0.6, 0.5])
+                for i in range(1, 30)
+            ]
         simulated = self.simulator.powerspectrum(lc, lc[0].tseg)
 
         w = np.fft.rfftfreq(N, d=dt)[1:]
@@ -285,7 +302,8 @@ class TestSimulator(object):
         """
         Simulate light curve using smooth broken power law model.
         """
-        assert len(self.simulator.simulate("smoothbknpo", [1, 2, 3, 4])), 1024
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            assert len(self.simulator.simulate("smoothbknpo", [1, 2, 3, 4])), 1024
 
     def test_compare_smoothbknpo(self):
         """
@@ -295,7 +313,8 @@ class TestSimulator(object):
         N, red_noise, dt = 1024, 10, 1
 
         self.simulator = Simulator(N=N, dt=dt, mean=0.1, rms=0.7, red_noise=red_noise)
-        lc = [self.simulator.simulate("smoothbknpo", [0.6, 0.2, 0.6, 0.5]) for i in range(1, 30)]
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            lc = [self.simulator.simulate("smoothbknpo", [0.6, 0.2, 0.6, 0.5]) for i in range(1, 30)]
 
         simulated = self.simulator.powerspectrum(lc, lc[0].tseg)
 
@@ -312,22 +331,24 @@ class TestSimulator(object):
         Simulate a light curve using the GeneralizedLorentz1D model
         called as a string
         """
-        assert len(
-            self.simulator.simulate(
-                "GeneralizedLorentz1D", {"x_0": 10, "fwhm": 1.0, "value": 10.0, "power_coeff": 2}
-            )
-        ), 1024
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            assert len(
+                self.simulator.simulate(
+                    "GeneralizedLorentz1D", {"x_0": 10, "fwhm": 1.0, "value": 10.0, "power_coeff": 2}
+                )
+            ), 1024
 
     def test_simulate_GeneralizedLorentz1D_odd_str(self):
         """
         Simulate a light curve using the GeneralizedLorentz1D model
         called as a string
         """
-        assert len(
-            self.simulator_odd.simulate(
-                "GeneralizedLorentz1D", {"x_0": 10, "fwhm": 1.0, "value": 10.0, "power_coeff": 2}
-            )
-        ), 2039
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            assert len(
+                self.simulator_odd.simulate(
+                    "GeneralizedLorentz1D", {"x_0": 10, "fwhm": 1.0, "value": 10.0, "power_coeff": 2}
+                )
+            ), 2039
 
     def test_simulate_GeneralizedLorentz1D(self):
         """
@@ -335,19 +356,21 @@ class TestSimulator(object):
         called as a astropy.modeling.Model class
         """
         mod = models.GeneralizedLorentz1D(x_0=10, fwhm=1.0, value=10.0, power_coeff=2)
-        assert len(self.simulator.simulate(mod)), 1024
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            assert len(self.simulator.simulate(mod)), 1024
 
     def test_simulate_SmoothBrokenPowerLaw_str(self):
         """
         Simulate a light curve using SmoothBrokenPowerLaw model
         called as a string
         """
-        assert len(
-            self.simulator.simulate(
-                "SmoothBrokenPowerLaw",
-                {"norm": 1.0, "gamma_low": 1.0, "gamma_high": 2.0, "break_freq": 1.0},
-            )
-        ), 1024
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            assert len(
+                self.simulator.simulate(
+                    "SmoothBrokenPowerLaw",
+                    {"norm": 1.0, "gamma_low": 1.0, "gamma_high": 2.0, "break_freq": 1.0},
+                )
+            ), 1024
 
     def test_simulate_SmoothBrokenPowerLaw(self):
         """
@@ -355,7 +378,8 @@ class TestSimulator(object):
         called as a astropy.modeling.Model class
         """
         mod = models.SmoothBrokenPowerLaw(norm=1.0, gamma_low=1.0, gamma_high=2.0, break_freq=1.0)
-        assert len(self.simulator.simulate(mod)), 1024
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            assert len(self.simulator.simulate(mod)), 1024
 
     def test_simulate_generic_model(self):
         """
@@ -363,7 +387,8 @@ class TestSimulator(object):
         called as a astropy.modeling.Model class
         """
         mod = astropy.modeling.models.Gaussian1D(amplitude=10.0, mean=1.0, stddev=2.0)
-        assert len(self.simulator.simulate(mod)), 1024
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            assert len(self.simulator.simulate(mod)), 1024
 
     def test_simulate_generic_model_odd(self):
         """
@@ -371,7 +396,8 @@ class TestSimulator(object):
         called as a astropy.modeling.Model class
         """
         mod = astropy.modeling.models.Gaussian1D(amplitude=10.0, mean=1.0, stddev=2.0)
-        assert len(self.simulator_odd.simulate(mod)), 2039
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            assert len(self.simulator_odd.simulate(mod)), 2039
 
     @pytest.mark.parametrize("poisson", [True, False])
     def test_compare_composite(self, poisson):
@@ -451,7 +477,8 @@ class TestSimulator(object):
         lc = sampledata.sample_data()
         s = lc.counts
         h = self.simulator.simple_ir(10, 1, 1)
-        _ = self.simulator.simulate(s, h)
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            _ = self.simulator.simulate(s, h)
 
     def test_simulate_simple_impulse_odd(self):
         """
@@ -460,20 +487,23 @@ class TestSimulator(object):
         lc = sampledata.sample_data()
         s = lc.counts
         h = self.simulator_odd.simple_ir(10, 1, 1)
-        _ = self.simulator_odd.simulate(s, h)
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            _ = self.simulator_odd.simulate(s, h)
 
     def test_powerspectrum(self):
         """
         Create a power spectrum from light curve.
         """
-        lc = self.simulator.simulate(2)
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            lc = self.simulator.simulate(2)
         self.simulator.powerspectrum(lc)
 
     def test_powerspectrum_odd(self):
         """
         Create a power spectrum from light curve.
         """
-        lc = self.simulator_odd.simulate(2)
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            lc = self.simulator_odd.simulate(2)
         self.simulator_odd.powerspectrum(lc)
 
     def test_simulate_relativistic_impulse(self):
@@ -484,7 +514,8 @@ class TestSimulator(object):
         s = lc.counts
 
         h = self.simulator.relativistic_ir()
-        output = self.simulator.simulate(s, h)
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            output = self.simulator.simulate(s, h)
 
     def test_filtered_simulate(self):
         """
@@ -494,7 +525,8 @@ class TestSimulator(object):
         s = lc.counts
 
         h = self.simulator.simple_ir()
-        output = self.simulator.simulate(s, h, "filtered")
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            output = self.simulator.simulate(s, h, "filtered")
 
     def test_filtered_simulate_odd(self):
         """
@@ -504,7 +536,8 @@ class TestSimulator(object):
         s = lc.counts
 
         h = self.simulator_odd.simple_ir()
-        output = self.simulator_odd.simulate(s, h, "filtered")
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            output = self.simulator_odd.simulate(s, h, "filtered")
 
     def test_simple_lag_spectrum(self):
         """
@@ -553,10 +586,11 @@ class TestSimulator(object):
         delays = [int(5 / lc.dt), int(10 / lc.dt)]
 
         outputs = []
-        for i in h:
-            lc2 = self.simulator.simulate(s, i)
-            lc2 = lc2.shift(-lc2.time[0] + lc.time[0])
-            outputs.append(lc2)
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            for i in h:
+                lc2 = self.simulator.simulate(s, i)
+                lc2 = lc2.shift(-lc2.time[0] + lc.time[0])
+                outputs.append(lc2)
 
         with pytest.warns(UserWarning, match="Your lightcurves have different statistics"):
             cross = [Crossspectrum(lc2, lc).rebin(0.0075) for lc2 in outputs]
@@ -582,10 +616,11 @@ class TestSimulator(object):
         delay = int(5 / lc.dt)
 
         outputs = []
-        for i in h:
-            lc2 = self.simulator.simulate(s, i)
-            lc2 = lc2.shift(-lc2.time[0] + lc.time[0])
-            outputs.append(lc2)
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            for i in h:
+                lc2 = self.simulator.simulate(s, i)
+                lc2 = lc2.shift(-lc2.time[0] + lc.time[0])
+                outputs.append(lc2)
 
         with pytest.warns(UserWarning, match="Your lightcurves have different statistics"):
             cross = [Crossspectrum(lc2, lc).rebin(0.0075) for lc2 in outputs]
