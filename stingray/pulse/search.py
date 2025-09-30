@@ -227,8 +227,9 @@ def phase_dispersion_search(
 
     def stat_fun(t, f, fd=0, **kwargs):
         bins, profile, _ = fold_events(t, f, fd, **kwargs, mode="pdm")
-        len_flux = len(kwargs["weights"])
-        sigma = np.var(kwargs["weights"]) * len_flux / (len_flux - 1)
+        flux = kwargs["weights"]
+        len_flux = len(flux)
+        sigma = np.var(flux) * len_flux / (len_flux - 1)
         return pdm_profile_stat(profile, sigma, len_flux)
 
     return _folding_search(

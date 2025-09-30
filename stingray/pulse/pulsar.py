@@ -321,17 +321,13 @@ def fold_events(times, *frequency_derivatives, **opts):
                 + "`weights` attribute must be set to fluxes!"
             )
 
-        raw_profile, bins, bin_idx = scipy.stats.binned_statistic(
-            phases, weights, statistic=np.var, bins=np.linspace(0, 1, nbin + 1)
-        )
+        # sum-of-squared deviations
+        def ss_dev(values):
+            return np.sum((values - np.mean(values))**2)
 
-        # I need the variance uncorrected for the number of data points in each
-        # bin, so I need to find that first, and then multiply
-        # bin_idx should be from the list [1, ..., nbin], although some might not appear
-        # histogram bin-edges set as [0.5, 1.5, ..., nbin - 0.5, nbin + 0.5]
-        # to include the bin_idx int values
-        bincounts, _ = np.histogram(bin_idx, bins=np.arange(0.5, nbin + 1.5))
-        raw_profile = raw_profile * bincounts
+        raw_profile, bins, bin_idx = scipy.stats.binned_statistic(
+            phases, weights, statistic=ss_dev, bins=np.linspace(0, 1, nbin + 1)
+        )
 
         # dummy array for the error, which we don't have for the variance
         raw_profile_err = np.zeros_like(raw_profile)
