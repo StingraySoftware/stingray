@@ -329,16 +329,16 @@ def fold_events(times, *frequency_derivatives, **opts):
         bin_indices = np.clip(bin_indices, 0, nbin - 1)
 
         # for efficiency, the sum-of-squared deviations for each bin is split
-        # ss_dev = sum_in_bin( (values - mean_in_bin)**2 )
-        # mean_in_bin = sum_in_bin(values) / n_in_bin
-        # so need n_in_bin, sum_in_bin, sumsquared_in_bin
+        # ss_dev = sum_in_bin( (values_in_bin - mean_in_bin)**2 )
+        # mean_in_bin = sum_in_bin(values_in_bin) / n_in_bin
+        # so need n_in_bin, sum_in_bin, sumofsquares_in_bin
         # now compute the stats for each bin using bincount
         # minlength=nbin prevents array shortening when a bin index is not represented in bin_indices
         n_in_bin = np.bincount(bin_indices, minlength=nbin)
         sum_in_bin = np.bincount(bin_indices, weights=weights, minlength=nbin)
-        sumsquared_in_bin = np.bincount(bin_indices, weights=weights**2, minlength=nbin)
+        sumofsquares_in_bin = np.bincount(bin_indices, weights=weights**2, minlength=nbin)
         # put it together; avoid division by zero
-        raw_profile = sumsquared_in_bin - sum_in_bin**2 / np.maximum(n_in_bin, 1)
+        raw_profile = sumofsquares_in_bin - sum_in_bin**2 / np.maximum(n_in_bin, 1)
 
         # dummy array for the error, which we don't have for the variance
         raw_profile_err = np.zeros_like(raw_profile)
