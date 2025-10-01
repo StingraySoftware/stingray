@@ -234,10 +234,11 @@ def phase_dispersion_search(
         variances_local = kwargs.get("variances", None)
         event_weights = (1.0/np.asarray(variances_local)) if variances_local is not None else np.ones_like(flux)
         mean_grand = np.average(flux, weights=event_weights)
-        deviation2 = (flux - mean_grand)**2
-        sigma = np.dot( deviation2, event_weights ) / (len_flux - 1)
+        dev2_grand = (flux - mean_grand)**2
+        
+        sum_dev2_grand = np.dot( dev2_grand, event_weights )
 
-        return pdm_profile_stat(profile, sigma, len_flux)
+        return pdm_profile_stat(profile, sum_dev2_grand, len_flux)
 
     return _folding_search(
         stat_fun,

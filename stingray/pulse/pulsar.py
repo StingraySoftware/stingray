@@ -378,7 +378,7 @@ def ef_profile_stat(profile, err=None):
     return np.sum((profile - mean) ** 2 / err**2)
 
 
-def pdm_profile_stat(profile, sample_var, nsample):
+def pdm_profile_stat(profile, sum_dev2, nsample):
     """Calculate the phase dispersion minimization
     statistic following Stellingwerf (1978)
 
@@ -388,8 +388,9 @@ def pdm_profile_stat(profile, sample_var, nsample):
         The PDM pulse profile (variance as a function
         of phase)
 
-    sample_var : float
-        The total population variance of the sample
+    sum_dev2 : float
+        The sum-of-squared-deviations of the sample,
+        which uses the grand (whole sample together) mean
 
     nsample : int
         The number of time bins in the initial time
@@ -400,8 +401,9 @@ def pdm_profile_stat(profile, sample_var, nsample):
     stat : float
         The epoch folding statistics
     """
-    s2 = np.sum(profile) / (nsample - len(profile))
-    stat = s2 / sample_var
+    mean_dev2_in_bin = np.sum(profile) / (nsample - len(profile))
+    mean_dev2_grand = sum_dev2 / (nsample - 1)
+    stat = mean_dev2_in_bin / mean_dev2_grand
     return stat
 
 
