@@ -321,6 +321,10 @@ def fold_events(times, *frequency_derivatives, **opts):
                 + "`weights` attribute must be set to fluxes!"
             )
 
+        # For weighted pdm, the measured uncertainties (variances) for each event are required
+        variances = opts.get("variances", np.ones_like(weights))
+        event_weights = 1.0 / variances
+
         bins = np.linspace(0, 1, nbin + 1)
         # phases are already fractional values in [0, 1]
         # casting float to int removes the fractional part
@@ -334,9 +338,9 @@ def fold_events(times, *frequency_derivatives, **opts):
         # so need n_in_bin, sum_in_bin, sumofsquares_in_bin
         # now compute the stats for each bin using bincount
         # minlength=nbin prevents array shortening when a bin index is not represented in bin_indices
-        n_in_bin = np.bincount(bin_indices, minlength=nbin)
-        sum_in_bin = np.bincount(bin_indices, weights=weights, minlength=nbin)
-        sumofsquares_in_bin = np.bincount(bin_indices, weights=weights**2, minlength=nbin)
+        n_in_bin = np.bincount(bin_indices, weights=event_weights, minlength=nbin)
+        sum_in_bin = np.bincount(bin_indices, weights=weights * event_weights, minlength=nbin)
+        sumofsquares_in_bin = np.bincount(bin_indices, weights=weights**2 * event_weights, minlength=nbin)
         # put it together; avoid division by zero
         raw_profile = sumofsquares_in_bin - sum_in_bin**2 / np.maximum(n_in_bin, 1)
 
