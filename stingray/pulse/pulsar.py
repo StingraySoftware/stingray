@@ -311,6 +311,8 @@ def fold_events(times, *frequency_derivatives,
         raw_profile_err = raw_profile_err / expo_norm
 
     elif mode == "pdm":
+        # Convert the weights to a numpy array just in case it is a list
+        weights = np.asarray(weights)
         if np.allclose(weights, 1.0):
             raise ValueError(
                 "Can only calculate PDM for binned light curves!"
