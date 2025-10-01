@@ -229,8 +229,13 @@ def phase_dispersion_search(
         bins, profile, _ = fold_events(t, f, fd, **kwargs, mode="pdm")
         flux = kwargs["weights"]
         len_flux = len(flux)
-        # ddof = 1 computes the unbiased estimator of the variance
-        sigma = np.var(flux, ddof=1)
+        flux_variances = kwargs.get("variances", np.ones(len_flux))
+        event_weights = 1.0 / flux_variances
+
+        mean_grand = np.average(flux, weights=event_weights)
+        deviation2 = (flux - mean_grand)**2
+        sigma = np.dot( deviation2, event_weights ) / (len_flux - 1)
+
         return pdm_profile_stat(profile, sigma, len_flux)
 
     return _folding_search(
