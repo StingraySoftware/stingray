@@ -321,13 +321,24 @@ def fold_events(times, *frequency_derivatives, **opts):
                 + "`weights` attribute must be set to fluxes!"
             )
 
-        # sum-of-squared deviations
-        def ss_dev(values):
-            return np.sum((values - np.mean(values))**2)
+        bins = np.linspace(0, 1, nbin + 1)
+        # phases are already fractional values in [0, 1]
+        # casting float to int removes the fractional part
+        bin_indices = (phases * nbin).astype(int)
+        # to wrap: for phase = 1 then bin_index = nbin; clipping changes it to bin_index = 0
+        bin_indices = np.clip(bin_indices, 0, nbin - 1)
 
-        raw_profile, bins, bin_idx = scipy.stats.binned_statistic(
-            phases, weights, statistic=ss_dev, bins=np.linspace(0, 1, nbin + 1)
-        )
+        # for efficiency, the sum-of-squared deviations for each bin is split
+        # ss_dev = sum_in_bin( (values - mean_in_bin)**2 )
+        # mean_in_bin = sum_in_bin(values) / n_in_bin
+        # so need n_in_bin, sum_in_bin, sumsquared_in_bin
+        # now compute the stats for each bin using bincount
+        # minlength=nbin prevents array shortening when a bin index is not represented in bin_indices
+        n_in_bin = np.bincount(bin_indices, minlength=nbin)
+        sum_in_bin = np.bincount(bin_indices, weights=weights, minlength=nbin)
+        sumsquared_in_bin = np.bincount(bin_indices, weights=weights**2, minlength=nbin)
+        # put it together; avoid division by zero
+        raw_profile = sumsquared_in_bin - sum_in_bin**2 / np.maximum(n_in_bin, 1)
 
         # dummy array for the error, which we don't have for the variance
         raw_profile_err = np.zeros_like(raw_profile)
