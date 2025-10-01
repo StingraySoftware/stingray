@@ -209,7 +209,14 @@ def phase_exposure(start_time, stop_time, period, nbin=16, gti=None):
     return expo / np.max(expo)
 
 
-def fold_events(times, *frequency_derivatives, **opts):
+def fold_events(times, *frequency_derivatives,
+                mode = "ef",
+                nbin = 16,
+                weights = 1,
+                gti = None,
+                ref_time = 0,
+                expocorr = False,
+                variances = None):
     """Epoch folding with exposure correction.
 
     By default, the keyword `times` accepts a list of
@@ -264,23 +271,12 @@ def fold_events(times, *frequency_derivatives, **opts):
         The uncertainties on the pulse profile
     """
 
-    mode = opts.pop("mode", "ef")
-    nbin = opts.pop("nbin", 16)
-    weights = opts.pop("weights", 1)
     # If no key is passed, *or gti is None*, defaults to the
     # initial and final event
-    gti = opts.pop("gti", None)
     if gti is None:
         gti = [[times[0], times[-1]]]
     # Be safe if gtis are a list
     gti = np.asanyarray(gti)
-    ref_time = opts.pop("ref_time", 0)
-    expocorr = opts.pop("expocorr", False)
-
-    if opts:
-        raise ValueError(
-            f"Unidentified keyword(s) to fold_events: {', '.join([k for k in opts.keys()])} \n Please refer to the description of the function for optional parameters."
-        )
 
     if not isinstance(weights, Iterable):
         weights *= np.ones(len(times))
@@ -322,8 +318,8 @@ def fold_events(times, *frequency_derivatives, **opts):
             )
 
         # For weighted pdm, the measured uncertainties (variances) for each event are required
-        variances = opts.get("variances", np.ones_like(weights))
-        event_weights = 1.0 / variances
+        # set the event_weights as 1/variances or else 1s if variances=None
+        event_weights = (1.0/np.asarray(variances)) if variances is not None else np.ones_like(weights)
 
         bins = np.linspace(0, 1, nbin + 1)
         # phases are already fractional values in [0, 1]
