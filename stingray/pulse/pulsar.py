@@ -239,21 +239,21 @@ def fold_events(times, *frequency_derivatives,
     nbin : int, optional, default 16
         The number of bins in the pulse profile
 
-    weights : float or array of floats, optional
+    weights : float or array of floats, optional, default 1
         The weights of the data. It can either be specified as a single value
         for all points, or an array with the same length as ``time``
 
-    gti : [[gti0_0, gti0_1], [gti1_0, gti1_1], ...], optional
+    gti : [[gti0_0, gti0_1], [gti1_0, gti1_1], ...], optional, default None
         Good time intervals
 
     ref_time : float, optional, default 0
         Reference time for the timing solution
 
-    expocorr : bool, default False
+    expocorr : bool, optional, default False
         Correct each bin for exposure (use when the period of the pulsar is
         comparable to that of GTIs)
 
-    mode : str, ["ef", "pdm"], default "ef"
+    mode : str, ["ef", "pdm"], optional, default "ef"
         Whether to calculate the epoch folding or phase dispersion
         minimization folded profile. For "ef", it calculates the (weighted)
         sum of the data points in each phase bin, for "pdm", the variance
@@ -336,9 +336,12 @@ def fold_events(times, *frequency_derivatives,
         # so need n_in_bin, sum_in_bin, sumofsquares_in_bin
         # now compute the stats for each bin using bincount
         # minlength=nbin prevents array shortening when a bin index is not represented in bin_indices
-        n_in_bin = np.bincount(bin_indices, weights=event_weights, minlength=nbin)
-        sum_in_bin = np.bincount(bin_indices, weights=weights * event_weights, minlength=nbin)
-        sumofsquares_in_bin = np.bincount(bin_indices, weights=weights**2 * event_weights, minlength=nbin)
+        n_in_bin = np.bincount(bin_indices, weights=event_weights,
+                                minlength=nbin)
+        sum_in_bin = np.bincount(bin_indices, weights=weights * event_weights,
+                                minlength=nbin)
+        sumofsquares_in_bin = np.bincount(bin_indices, weights=weights**2 * event_weights,
+                                minlength=nbin)
         # put it together; avoid division by zero
         raw_profile = sumofsquares_in_bin - sum_in_bin**2 / np.maximum(n_in_bin, 1)
 
@@ -401,6 +404,10 @@ def pdm_profile_stat(profile, sum_dev2, nsample):
     stat : float
         The epoch folding statistics
     """
+    # Get the mean-of-squared-deviations from sum-of-squared-deviations by
+    # considering the number of degrees of freedom:
+    # nsample - nbin for the in_bin sum_dev2 because there are nbin means used
+    # nsample - 1 for the grand sum_dev2 because there is 1 grand mean used
     mean_dev2_in_bin = np.sum(profile) / (nsample - len(profile))
     mean_dev2_grand = sum_dev2 / (nsample - 1)
     stat = mean_dev2_in_bin / mean_dev2_grand
