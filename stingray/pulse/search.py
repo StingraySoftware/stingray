@@ -172,8 +172,15 @@ def epoch_folding_search(
 
 
 def phase_dispersion_search(
-    times, flux, frequencies, nbin=128, segment_size=5000, expocorr=False, gti=None, fdots=0,
-    variances=None
+    times,
+    flux,
+    frequencies,
+    nbin=128,
+    segment_size=5000,
+    expocorr=False,
+    gti=None,
+    fdots=0,
+    variances=None,
 ):
     """Performs folding at trial frequencies in time series data (i.e.~a light curve
     of flux or photon counts) and computes the Phase Dispersion Minimization statistic.
@@ -232,13 +239,17 @@ def phase_dispersion_search(
         len_flux = len(flux)
         # Get the local (possibly modified copy of variances) from kwargs rather than as a closure
         variances_local = kwargs.get("variances", None)
-        event_weights = (1.0/np.asarray(variances_local)) if variances_local is not None else np.ones_like(flux)
+        event_weights = (
+            (1.0 / np.asarray(variances_local))
+            if variances_local is not None
+            else np.ones_like(flux)
+        )
         mean_grand = np.average(flux, weights=event_weights)
-        dev2_grand = (flux - mean_grand)**2
-        
-        sum_dev2_grand = np.dot( dev2_grand, event_weights )
+        dev2_grand = (flux - mean_grand) ** 2
 
-        return pdm_profile_stat(profile, sum_dev2_grand, len_flux)
+        sosdev_grand = np.dot(dev2_grand, event_weights)
+
+        return pdm_profile_stat(profile, sosdev_grand, len_flux)
 
     return _folding_search(
         stat_fun,
