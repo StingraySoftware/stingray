@@ -209,14 +209,17 @@ def phase_exposure(start_time, stop_time, period, nbin=16, gti=None):
     return expo / np.max(expo)
 
 
-def fold_events(times, *frequency_derivatives,
-                mode = "ef",
-                nbin = 16,
-                weights = 1,
-                gti = None,
-                ref_time = 0,
-                expocorr = False,
-                variances = None):
+def fold_events(
+    times,
+    *frequency_derivatives,
+    mode="ef",
+    nbin=16,
+    weights=1,
+    gti=None,
+    ref_time=0,
+    expocorr=False,
+    variances=None,
+):
     """Epoch folding with exposure correction.
 
     By default, the keyword `times` accepts a list of
@@ -321,7 +324,9 @@ def fold_events(times, *frequency_derivatives,
 
         # For weighted pdm, the measured uncertainties (variances) for each event are required
         # set the event_weights as 1/variances or else 1s if variances=None
-        event_weights = (1.0/np.asarray(variances)) if variances is not None else np.ones_like(weights)
+        event_weights = (
+            (1.0 / np.asarray(variances)) if variances is not None else np.ones_like(weights)
+        )
 
         bins = np.linspace(0, 1, nbin + 1)
         # phases are already fractional values in [0, 1]
@@ -331,19 +336,16 @@ def fold_events(times, *frequency_derivatives,
         bin_indices = np.clip(bin_indices, 0, nbin - 1)
 
         # for efficiency, the sum-of-squared deviations for each bin is split
-        # ss_dev = sum_in_bin( (values_in_bin - mean_in_bin)**2 )
+        # sosdev = sum_in_bin( (values_in_bin - mean_in_bin)**2 )
         # mean_in_bin = sum_in_bin(values_in_bin) / n_in_bin
-        # so need n_in_bin, sum_in_bin, sumofsquares_in_bin
+        # so need n_in_bin, sum_in_bin, sos_in_bin (sum-of-squares)
         # now compute the stats for each bin using bincount
         # minlength=nbin prevents array shortening when a bin index is not represented in bin_indices
-        n_in_bin = np.bincount(bin_indices, weights=event_weights,
-                                minlength=nbin)
-        sum_in_bin = np.bincount(bin_indices, weights=weights * event_weights,
-                                minlength=nbin)
-        sumofsquares_in_bin = np.bincount(bin_indices, weights=weights**2 * event_weights,
-                                minlength=nbin)
-        # put it together; avoid division by zero
-        raw_profile = sumofsquares_in_bin - sum_in_bin**2 / np.maximum(n_in_bin, 1)
+        n_in_bin = np.bincount(bin_indices, weights=event_weights, minlength=nbin)
+        sum_in_bin = np.bincount(bin_indices, weights=weights * event_weights, minlength=nbin)
+        sos_in_bin = np.bincount(bin_indices, weights=weights**2 * event_weights, minlength=nbin)
+        # put it together to make sum-of-squared deviations: sosdev; avoid division by zero
+        raw_profile = sos_in_bin - sum_in_bin**2 / np.maximum(n_in_bin, 1)
 
         # dummy array for the error, which we don't have for the variance
         raw_profile_err = np.zeros_like(raw_profile)
