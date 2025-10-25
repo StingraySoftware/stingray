@@ -1,1 +1,0 @@
-use the power of fits.open to load remote datasets

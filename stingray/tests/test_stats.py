@@ -246,3 +246,24 @@ class TestClassicalSignificances(object):
     def test_power_upper_limit(self):
         # Use example from Vaughan+94
         assert np.isclose(power_upper_limit(40, 1, 0.99), 75, rtol=0.1)
+
+    def test_amplitude_upper_limit(self):
+        assert np.isclose(
+            amplitude_upper_limit(
+                100, 100000, n=100, c=0.95, fft_corr=False, nyq_ratio=0.01, summed_flag=True
+            ),
+            0.058,
+            rtol=0.1,
+        )
+
+    def test_amplitude_upper_limit_averaging(self):
+        assert np.isclose(
+            amplitude_upper_limit(
+                100, 100000, n=100, c=0.95, fft_corr=False, nyq_ratio=0.01, summed_flag=False
+            ),
+            0.045,
+            rtol=0.1,
+        )
+
+    def test_power_upper_limit_averaging(self):
+        assert np.isclose(power_upper_limit(100, 10, 0.997, summed_flag=False), 115, rtol=0.1)

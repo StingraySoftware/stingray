@@ -408,10 +408,16 @@ class Powerspectrum(Crossspectrum):
         maximum_val = np.argmax(power)
         nyq_ratio = freq[maximum_val] / fnyq
 
-        # I multiply by M because the formulas from Vaughan+94 treat summed
-        # powers, while here we have averaged powers.
+        # Since we have averaged powerspectra of segments, we need to set summed_flag to False.
+        # Check power_upper_limit/amplitude_upper_limit functions for more details.
         return amplitude_upper_limit(
-            power[maximum_val] * pds.m, pds.nphots, n=pds.m, c=c, nyq_ratio=nyq_ratio, fft_corr=True
+            power[maximum_val],
+            pds.nphots,
+            n=pds.m,
+            c=c,
+            nyq_ratio=nyq_ratio,
+            fft_corr=True,
+            summed_flag=False,
         )
 
     @staticmethod

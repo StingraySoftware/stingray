@@ -1,3 +1,20 @@
+v2.2.10 (2025-10-24)
+--------------------
+
+New Features
+^^^^^^^^^^^^
+
+- Update database of missions from NASA (`#939 <https://github.com/StingraySoftware/stingray/pull/939>`__)
+- use the power of fits.open to load remote datasets (`#940 <https://github.com/StingraySoftware/stingray/pull/940>`__)
+- Added a flag to switch between summed and averaged power to determine the upper limit. The default is still summed power to keep backward compatibility
+
+Bug Fixes
+^^^^^^^^^
+
+- Fix issue with float128 in recent Numba versions (`#947 <https://github.com/StingraySoftware/stingray/pull/947>`__)
+- Fixed a bug in the `stingray.stats.power_upper_limit` function where the current minimizing method did not lead to convergence in some cases. 
+
+
 v2.2.9 (2025-08-18)
 -------------------
 
