@@ -819,7 +819,7 @@ class Lightcurve(StingrayTimeseries):
         """
         Make a light curve out of photon arrival times, with a given time resolution ``dt``.
         Note that ``dt`` should be larger than the native time resolution of the instrument
-        that has taken the data.
+        that has taken the data, and possibly a multiple!
 
         Parameters
         ----------

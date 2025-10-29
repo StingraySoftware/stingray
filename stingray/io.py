@@ -7,14 +7,15 @@ import warnings
 from collections.abc import Iterable
 
 import numpy as np
-from astropy.io import fits
 from astropy.table import Table
 from astropy.logger import AstropyUserWarning
 import matplotlib.pyplot as plt
 from astropy.io import fits as pf
+from astropy import units as u
 
 import stingray.utils as utils
 from stingray.loggingconfig import setup_logger
+from stingray.utils import fits_open_including_remote
 
 
 from .utils import (
@@ -216,7 +217,14 @@ def _get_additional_data(lctable, additional_columns, warn_if_missing=True):
         for a in additional_columns:
             key = _case_insensitive_search_in_list(a, lctable._coldefs.names)
             if key is not None:
-                additional_data[a] = np.array(lctable.field(key))
+                conversion = 1
+                if (
+                    key.lower() == "energy"
+                    and hasattr(lctable.columns[key], "unit")
+                    and (unit := lctable.columns[key].unit) is not None
+                ):
+                    conversion = (1 * u.Unit(unit)).to(u.keV).value
+                additional_data[a] = np.array(lctable.field(key)) * conversion
             else:
                 if warn_if_missing:
                     warnings.warn("Column " + a + " not found")
@@ -286,7 +294,6 @@ def get_key_from_mission_info(info, key, default, inst=None, mode=None):
 
     if key in filt_info:
         return filt_info[key]
-
     return default
 
 
@@ -612,9 +619,15 @@ def load_events_and_gtis(
 
     det_number = None if detector_id is None else list(set(detector_id))
 
+    timedel = np.longdouble(0.0)
+    if "TIMEDEL" in header:
+        timedel = np.longdouble(header["TIMEDEL"])
     timezero = np.longdouble(0.0)
     if "TIMEZERO" in header:
         timezero = np.longdouble(header["TIMEZERO"])
+
+    if "TIMEPIXR" in header:
+        timezero += (0.5 - np.longdouble(header["TIMEPIXR"])) * timedel
 
     ev_list += timezero
 
@@ -752,7 +765,7 @@ class FITSTimeseriesReader(object):
             additional_columns = [self.detector_key]
         elif self.detector_key != "NONE":
             additional_columns.append(self.detector_key)
-        self.data_hdu = fits.open(self.fname)[self.hduname]
+        self.data_hdu = self.data_hdus[self.hduname]
         self.gti_file = gti_file
         self._read_gtis(self.gti_file)
 
@@ -847,10 +860,17 @@ class FITSTimeseriesReader(object):
             )
         except ValueError:
             pi_energy_func = None
-
         if self.energy_column in data.dtype.names:
-            new_ts.energy = data[self.energy_column]
-        elif self.pi_column in data.dtype.names:
+            conversion = 1
+            if (
+                hasattr(data.columns[self.energy_column], "unit")
+                and (unit := data.columns[self.energy_column].unit) is not None
+            ):
+                conversion = (1 * u.Unit(unit)).to(u.keV).value
+            new_ts.energy = data[self.energy_column] * conversion
+        elif self.pi_column is not None and self.pi_column.lower() in [
+            col.lower() for col in data.dtype.names
+        ]:
             new_ts.pi = data[self.pi_column]
             if pi_energy_func is not None:
                 new_ts.energy = pi_energy_func(new_ts.pi)
@@ -866,7 +886,7 @@ class FITSTimeseriesReader(object):
                 if col == self.detector_key:
                     continue
                 if col in data.dtype.names:
-                    setattr(new_ts, col.lower(), data[col])
+                    setattr(new_ts, col.replace(".", "_").lower(), data[col])
 
         for attr in self.meta_attrs():
             local_value = getattr(self, attr)
@@ -894,8 +914,8 @@ class FITSTimeseriesReader(object):
             If not None, the name of the HDU to read. If None, an extension called
             EVENTS or the first extension.
         """
-        hdulist = fits.open(fname)
-
+        hdulist = fits_open_including_remote(fname)
+        self.data_hdus = hdulist
         if not force_hduname:
             for hdu in hdulist:
                 if "TELESCOP" in hdu.header or "MISSION" in hdu.header:
@@ -952,6 +972,12 @@ class FITSTimeseriesReader(object):
         if "OBS_ID" in header:
             self._add_meta_attr("obsid", header["OBS_ID"])
 
+        timedel = np.longdouble(0.0)
+        if "TIMEDEL" in header:
+            timedel = np.longdouble(header["TIMEDEL"])
+
+        self._add_meta_attr("dt", timedel)
+
         # self.header has to be a string, for backwards compatibility and... for convenience!
         # No need to cope with dicts working badly with Netcdf, for example. The header
         # can be saved back and forth to files and be interpreted through
@@ -976,12 +1002,17 @@ class FITSTimeseriesReader(object):
         timezero = np.longdouble(0.0)
         if "TIMEZERO" in header:
             timezero = np.longdouble(header["TIMEZERO"])
+
+        if "TIMEPIXR" in header:
+            timezero += (0.5 - np.longdouble(header["TIMEPIXR"])) * timedel
+
         t_start = t_stop = None
         if "TSTART" in header:
             t_start = np.longdouble(header["TSTART"])
         if "TSTOP" in header:
             t_stop = np.longdouble(header["TSTOP"])
         self._add_meta_attr("timezero", timezero)
+
         self._add_meta_attr("t_start", t_start)
         self._add_meta_attr("t_stop", t_stop)
 
@@ -1000,16 +1031,18 @@ class FITSTimeseriesReader(object):
         # Try to get the information needed to calculate the event energy. We start from the
         # PI column
         default_pi_column = get_key_from_mission_info(db, "ecol", "PI", instr, self.mode)
-        if default_pi_column not in hdulist[self.hduname].data.columns.names:
-            default_pi_column = None
+        if isinstance(default_pi_column, str):
+            default_pi_column = _case_insensitive_search_in_list(
+                default_pi_column, hdulist[self.hduname].data.columns.names
+            )
+
         self._add_meta_attr("pi_column", default_pi_column)
 
         # If a column named "energy" is found, we read it and assume the energy conversion
         # is already done.
-        if "energy" in [val.lower() for val in hdulist[self.hduname].data.columns.names]:
-            energy_column = "energy"
-        else:
-            energy_column = None
+        energy_column = _case_insensitive_search_in_list(
+            "energy", hdulist[self.hduname].data.columns.names
+        )
         self._add_meta_attr("energy_column", energy_column)
 
     def _read_gtis(self, gti_file=None, det_numbers=None):
@@ -1019,11 +1052,11 @@ class FITSTimeseriesReader(object):
         # So, here I'm reading a bunch of rows hoping that they represent the
         # detector number population
         if self.detector_key is not None:
-            with fits.open(self.fname) as hdul:
-                data = hdul[self.hduname].data
-                if self.detector_key in data.dtype.names:
-                    probe_vals = data[:100][self.detector_key]
-                    det_numbers = list(set(probe_vals))
+            hdul = self.data_hdus
+            data = hdul[self.hduname].data
+            if self.detector_key in data.dtype.names:
+                probe_vals = data[:100][self.detector_key]
+                det_numbers = list(set(probe_vals))
             del hdul
 
         accepted_gtistrings = self.gtistring.split(",")
@@ -1094,7 +1127,7 @@ class FITSTimeseriesReader(object):
             time_edges[raw_max_idx] - stop >= 0
         ), f"Stop: {stop}; {time_edges[raw_max_idx] - stop} < 0"
 
-        with fits.open(self.fname) as hdulist:
+        with fits_open_including_remote(self.fname) as hdulist:
             filtered_times = hdulist[self.hduname].data[self.time_column][
                 raw_lower_edge : raw_upper_edge + 1
             ]
@@ -1186,7 +1219,7 @@ class FITSTimeseriesReader(object):
 
         fname = self.fname
 
-        with fits.open(fname) as hdul:
+        with fits_open_including_remote(fname) as hdul:
             size = hdul[1].header["NAXIS2"]
             nedges = min(nedges, size // 10 + 2)
 
@@ -1302,7 +1335,7 @@ def read_header_key(fits_file, key, hdu=1):
         The value stored under ``key`` in ``fits_file``
     """
 
-    hdulist = fits.open(fits_file, ignore_missing_end=True)
+    hdulist = fits_open_including_remote(fits_file, ignore_missing_end=True)
     try:
         value = hdulist[hdu].header[key]
     except KeyError:  # pragma: no cover
@@ -1334,7 +1367,7 @@ def ref_mjd(fits_file, hdu=1):
         fits_file = fits_file[0]
         logger.info("opening %s" % fits_file)
 
-    hdulist = fits.open(fits_file, ignore_missing_end=True)
+    hdulist = fits_open_including_remote(fits_file, ignore_missing_end=True)
 
     ref_mjd_val = high_precision_keyword_read(hdulist[hdu].header, "MJDREF")
 

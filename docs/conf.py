@@ -166,6 +166,7 @@ linkcheck_ignore = [
     r"https://zenodo.org/",
     r"https://opensource.org/",
     r"https://www.mathworks.com/",
+    r"http.*://stackoverflow.com/questions/.*",
 ]
 
 # -- Options for the edit_on_github extension ---------------------------------

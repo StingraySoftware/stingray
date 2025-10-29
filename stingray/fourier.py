@@ -2507,6 +2507,8 @@ def lsft_fast(
     Only considers non-negative frequencies.
     Subtracts mean from data as it is required for the working of the algorithm.
 
+    Adapted from original Matlab code by J. D. Scargle, using Astropy's ``trig_sum`` for speed.
+
     Parameters
     ----------
     y : a :class:`numpy.array` of floats
@@ -2603,6 +2605,8 @@ def lsft_slow(
     Calculates the Lomb-Scargle Fourier transform of a light curve.
     Only considers non-negative frequencies.
     Subtracts mean from data as it is required for the working of the algorithm.
+
+    Adapted from original Matlab code by J. D. Scargle.
 
     Parameters
     ----------

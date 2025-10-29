@@ -1,3 +1,4 @@
+import copy
 import warnings
 from collections.abc import Generator, Iterable
 
@@ -5,12 +6,13 @@ import numpy as np
 import scipy
 import scipy.optimize
 import scipy.stats
+import matplotlib.pyplot as plt
 
 from stingray.crossspectrum import AveragedCrossspectrum, Crossspectrum, DynamicalCrossspectrum
-from stingray.stats import pds_probability, amplitude_upper_limit
+from stingray.stats import pds_probability, amplitude_upper_limit, pds_detection_level
 
 from .events import EventList
-from .gti import cross_two_gtis, time_intervals_from_gtis
+from .gti import cross_two_gtis, time_intervals_from_gtis, create_gti_mask
 
 from .lightcurve import Lightcurve
 from .fourier import avg_pds_from_iterable, unnormalize_periodograms
@@ -406,10 +408,16 @@ class Powerspectrum(Crossspectrum):
         maximum_val = np.argmax(power)
         nyq_ratio = freq[maximum_val] / fnyq
 
-        # I multiply by M because the formulas from Vaughan+94 treat summed
-        # powers, while here we have averaged powers.
+        # Since we have averaged powerspectra of segments, we need to set summed_flag to False.
+        # Check power_upper_limit/amplitude_upper_limit functions for more details.
         return amplitude_upper_limit(
-            power[maximum_val] * pds.m, pds.nphots, n=pds.m, c=c, nyq_ratio=nyq_ratio, fft_corr=True
+            power[maximum_val],
+            pds.nphots,
+            n=pds.m,
+            c=c,
+            nyq_ratio=nyq_ratio,
+            fft_corr=True,
+            summed_flag=False,
         )
 
     @staticmethod
@@ -1183,6 +1191,203 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
         )
 
 
+class GtiCorrPowerspectrum(Powerspectrum):
+    main_array_attr = "freq"
+    type = "powerspectrum"
+
+    """Calculate the power spectrum of gappy light curves.
+
+    GtiCorrPowerspectrum computes the power spectrum of gappy light curves,
+    cleaning up the frequencies that are more affected by gaps.
+    Optionally, it fills bad time intervals (BTIs) with the mean count rate from
+    good time intervals (GTIs), mitigating window-induced features in the periodogram.
+    By analyzing the visibility light curve (synthetic light curve with constant mean
+    counts in GTIs), the class identifies strong peaks in the periodogram that correspond to
+    the missing data and applies notch filtering to the power spectrum to remove these
+    frequencies.
+    Additionally, it rescales the power spectrum to account for the number of bins in and out GTIs,
+    ensuring accurate white noise and rms estimation.
+
+    The detailed explanation of the method is given in
+    `El Byad et al. 2025 <https://arxiv.org/pdf/2505.16921>`__
+
+    Parameters
+    ----------
+    *args:
+        Any arguments that can be passed to ``Powerspectrum``
+
+    Other Parameters
+    ----------------
+    fill_lc: boolean, optional, default ``True``
+        If True, fill the BTIs of the light curve with the mean value of the counts in the GTIs.
+        Recommended.
+
+    sigma_threshold: float, optional, default ``3``
+        The sigma threshold for the detection of features in the power spectrum of the observing
+        window.
+
+    **kwargs:
+        Any other keyword arguments that can be passed to ``Powerspectrum``
+
+    Attributes
+    ----------
+    freq: numpy.ndarray
+        The array of mid-bin frequencies that the Fourier transform samples
+
+    power: numpy.ndarray
+        The array of power values
+
+    power_err: numpy.ndarray
+        The uncertainties of ``power``.
+        An approximation for each bin given by ``power_err= power/sqrt(m)``.
+        Where ``m`` is the number of power averaged in each bin (by frequency
+        binning, or averaging more than one spectra). Note that for a single
+        realization (``m=1``) the error is equal to the power.
+
+    df: float
+        The frequency resolution
+
+    m: int
+        The number of averaged cross-spectra amplitudes in each bin.
+
+    n: int
+        The number of data points/time bins in one segment of the light
+        curves.
+
+    k: array of int
+        The rebinning scheme if the object has been rebinned otherwise is set to 1.
+
+    nphots: float
+        The total number of photons in light curve
+
+    """
+
+    def __init__(self, *args, fill_lc=True, sigma_threshold=3, **kwargs):
+        dt = kwargs.pop("dt", None)
+        skip_checks = kwargs.pop("skip_checks", False)
+
+        if len(args) == 0:
+            self.lc = None
+        elif isinstance(args[0], EventList):
+            self.lc = args[0].to_lc(dt)
+        else:
+            self.lc = args[0]
+            if dt is None:
+                dt = self.lc.dt
+
+        if fill_lc:
+            self.fill_lc_with_mean()
+
+        self.sigma_threshold = sigma_threshold
+        if not skip_checks:
+            self.initial_checks(*args, dt=dt, **kwargs)
+
+        super().__init__(self.lc, *args[1:], dt=dt, **kwargs, skip_checks=True)
+
+        self.mjdref = None
+        if hasattr(self.lc, "mjdref"):
+            self.mjdref = self.lc.mjdref
+
+        if len(args) == 0:
+            self.mask = None
+            return
+
+        if fill_lc:
+            lc_mask = create_gti_mask(self.lc.time, self.lc.gti)
+            self.power *= lc_mask.size / np.count_nonzero(lc_mask)
+
+        self.mask = np.ones(self.power.size, dtype=bool)
+
+    def initial_checks(self, *args, **kwargs):
+        if self.lc is not None and not np.allclose(np.diff(self.lc.time), self.lc.dt):
+            raise ValueError(
+                "The time array in the light curve is not evenly spaced. "
+                "This is not supported by GtiCorrPowerspectrum."
+            )
+
+    def fill_lc_with_mean(self):
+        if self.lc is None:
+            return
+
+        mask = create_gti_mask(self.lc.time, self.lc.gti)
+        self.lc.counts = self.lc.counts.astype(float)
+        self.lc.counts[~mask] = np.mean(self.lc.counts[mask])
+
+    def clean_gti_features(self, plot=False, figname="gti_features"):
+        gti = getattr(self, "gti", None)
+        if gti is None:
+            raise AttributeError("GTI attribute is not set for this object.")
+        exposure = np.sum(gti[:, 1] - gti[:, 0])
+        ref_ctrate = self.nphots / exposure
+        self.exposure = exposure
+
+        lc = copy.deepcopy(self.lc)
+        lc.gti = np.array([[gti[0, 0], gti[-1, 1]]])
+        mask = create_gti_mask(lc.time, gti)
+        lc.counts = lc.counts.astype(float)
+        lc.counts[~mask] = 0
+        lc.counts[mask] = ref_ctrate * lc.dt
+
+        ps_gti = Powerspectrum(lc, norm="leahy")
+
+        # Correct the PS level to overcome the Nph from filling the lc with mean
+        prob = scipy.stats.norm.cdf(-self.sigma_threshold)
+        thresh = pds_detection_level(prob)
+
+        bad = ps_gti.power > thresh
+        if plot:
+            self._plot_gti_features(ps_gti, thresh, figname)
+        self.mask = self.mask & ~bad
+        newpow = self.apply_mask(self.mask)
+        return newpow
+
+    def _plot_gti_features(self, ps_gti, thresh, figname):
+        """Plot the features in the power spectrum of the GTI-corrected light curve.
+
+        This method generates a log-log plot of the power spectrum and saves it as a JPEG file.
+
+        Parameters
+        ----------
+        ps_gti : Powerspectrum
+            The power spectrum of the synthetic light curve having the mean counts inside GTIs
+            and 0 outside.
+        thresh : float
+            The threshold value for the power spectrum, above which features are considered significant.
+        figname : str
+            The name of the figure file to be saved (without extension).
+        """
+        fig = plt.figure(figname)
+        plt.loglog(ps_gti.freq, ps_gti.power)
+        plt.axhline(thresh)
+        plt.xlabel("Frequency (Hz)")
+        plt.ylabel(f"Power {ps_gti.norm}")
+        plt.savefig(figname + ".jpg")
+        plt.close(fig)
+
+    def rebin_log(self, *args, **kwargs):
+        """Rebin the power spectrum logarithmically and filter out NaN values.
+
+        This method overrides the parent class's `rebin_log` method by applying a mask
+        to remove any bins where the rebinned power is NaN.
+
+        Parameters
+        ----------
+        *args : tuple
+            Positional arguments passed to the parent class's `rebin_log` method.
+        **kwargs : dict
+            Keyword arguments passed to the parent class's `rebin_log` method.
+
+        Returns
+        -------
+        GtiCorrPowerspectrum
+            A new power spectrum object with rebinned frequencies and powers,
+            with NaN values filtered out.
+        """
+        new_ps = Powerspectrum.rebin_log(self, *args, **kwargs)
+        mask = ~np.isnan(new_ps.power)
+        return new_ps.apply_mask(mask)
+
+
 def powerspectrum_from_time_array(
     times,
     dt,
@@ -1308,6 +1513,9 @@ def powerspectrum_from_events(
     """
     if gti is None:
         gti = events.gti
+
+    dt = events.suggest_compatible_dt(dt)
+
     return powerspectrum_from_time_array(
         events.time,
         dt,

@@ -85,6 +85,10 @@ def _patch_mission_info(info, mission=None):
     if mission.lower() == "xte" and "ecol" in info:
         info["ecol"] = "PHA"
         info["ccol"] = "PCUID"
+    if mission.lower() == "astrosat":  # Check if instrument is part of info dict.
+        info["ecol"] = "Energy"
+        info["ccol"] = "LAXPC_No."
+        info["instkey"] = "INSTRUME"
     return info
 
 
@@ -144,6 +148,7 @@ SIMPLE_CONVERSION_FUNCTIONS = {
     "xmm": lambda pi: pi * 0.001,
     "nicer": lambda pi: pi * 0.01,
     "ixpe": lambda pi: pi / 375 * 15,
+    "axaf": lambda pi: (pi - 1) * 14.6e-3,
 }
 
 

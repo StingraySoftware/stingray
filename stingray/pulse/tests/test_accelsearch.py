@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from stingray.pulse.accelsearch import accelsearch
+from stingray.pulse.accelsearch import accelsearch, _create_responses
 from stingray.utils import HAS_NUMBA
 
 pytestmark = pytest.mark.slow
@@ -45,6 +45,16 @@ class TestAccelsearch(object):
 
     def test_prepare(self):
         pass
+
+    @pytest.mark.parametrize("kind", [float, np.longdouble])
+    def test_create_response_types(self, kind):
+        z = np.array([-1, 0, 1], dtype=kind)
+        zint = np.array([-1, 0, 1], dtype=int)
+
+        rs = _create_responses(z)
+        rints = _create_responses(zint)
+        for r, rint in zip(rs, rints):
+            assert np.allclose(r, rint)
 
     def test_signal(self):
         candidate_table = accelsearch(

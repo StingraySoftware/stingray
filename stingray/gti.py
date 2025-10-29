@@ -4,10 +4,11 @@ import warnings
 from collections.abc import Iterable
 import copy
 
-from astropy.io import fits
 from .utils import contiguous_regions, jit, HAS_NUMBA
 from .utils import assign_value_if_none, apply_function_if_none
 from .utils import check_iterables_close, is_sorted
+from .utils import fits_open_including_remote
+
 from stingray.exceptions import StingrayError
 from stingray.loggingconfig import setup_logger
 
@@ -122,7 +123,7 @@ def load_gtis(fits_file, gtistring=None):
 
     gtistring = assign_value_if_none(gtistring, "GTI")
     logger.info("Loading GTIS from file %s" % fits_file)
-    lchdulist = fits.open(fits_file, checksum=True, ignore_missing_end=True)
+    lchdulist = fits_open_including_remote(fits_file, checksum=True, ignore_missing_end=True)
     lchdulist.verify("warn")
 
     gtitable = lchdulist[gtistring].data
@@ -274,7 +275,7 @@ def get_gti_from_all_extensions(lchdulist, accepted_gtistrings=["GTI"], det_numb
     >>> assert np.allclose(gti, [[200, 250]])
     """
     if isinstance(lchdulist, str):
-        lchdulist = fits.open(lchdulist)
+        lchdulist = fits_open_including_remote(lchdulist)
     acc_gti_strs = copy.deepcopy(accepted_gtistrings)
     if det_numbers is not None:
         for i in det_numbers:

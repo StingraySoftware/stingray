@@ -5,6 +5,7 @@ from astropy.time import Time
 from astropy.table import Table
 
 from astropy.io import fits
+from stingray.utils import fits_open_including_remote
 
 c_match = re.compile(r"C\[(.*)\]")
 
@@ -343,7 +344,7 @@ def rxte_pca_event_file_interpretation(input_data, header=None, hduname=None):
 
     if isinstance(input_data, str):
         return rxte_pca_event_file_interpretation(
-            fits.open(input_data), header=header, hduname=hduname
+            fits_open_including_remote(input_data), header=header, hduname=hduname
         )
 
     if isinstance(input_data, fits.HDUList):

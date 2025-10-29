@@ -308,7 +308,6 @@ def fold_events(times, *frequency_derivatives, **opts):
         if expocorr:
             expo_norm = phase_exposure(start_phase, stop_phase, 1, nbin, gti=gti_phases)
             simon("For exposure != 1, the uncertainty might be incorrect")
-
         else:
             expo_norm = 1
 
@@ -328,7 +327,10 @@ def fold_events(times, *frequency_derivatives, **opts):
 
         # I need the variance uncorrected for the number of data points in each
         # bin, so I need to find that first, and then multiply
-        _, bincounts = np.unique(bin_idx, return_counts=True)
+        # bin_idx should be from the list [1, ..., nbin], although some might not appear
+        # histogram bin-edges set as [0.5, 1.5, ..., nbin - 0.5, nbin + 0.5]
+        # to include the bin_idx int values
+        bincounts, _ = np.histogram(bin_idx, bins=np.arange(0.5, nbin + 1.5))
         raw_profile = raw_profile * bincounts
 
         # dummy array for the error, which we don't have for the variance

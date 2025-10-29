@@ -945,7 +945,7 @@ def power_confidence_limits(preal, n=1, c=0.95):
     return rv.ppf([1 - c, c])
 
 
-def power_upper_limit(pmeas, n=1, c=0.95):
+def power_upper_limit(pmeas, n=1, c=0.95, summed_flag=True):
     """Upper limit on signal power, given a measured power in the PDS/Z search.
 
     Adapted from Vaughan et al. 1994, noting that, after appropriate
@@ -974,9 +974,15 @@ def power_upper_limit(pmeas, n=1, c=0.95):
     n: int
         The number of summed powers to obtain pmeas. It can be multiple
         harmonics of the PDS, adjacent bins in a PDS summed to collect all the
-        power in a QPO, or the n in Z^2_n
+        power in a QPO, the n in Z^2_n or the number of averaged PDS
     c: float
         The confidence value for the probability (e.g. 0.95 = 95%)
+    summed_flag: bool
+        If True, pmeas is the sum of n powers. If False, pmeas is the average
+        of n powers. This is relevant when dealing with averaged PDS, where
+        the powers are averaged rather than summed. For example, Z^2_n searches
+        deal with summed powers (i.e. summed_flag=True), while if power spectrum
+        is averaged to improve the statistics the summed_flag should be set to False.
 
     Returns
     -------
@@ -1002,14 +1008,24 @@ def power_upper_limit(pmeas, n=1, c=0.95):
 
     from scipy.optimize import minimize
 
-    initial = isf(pmeas)
+    if summed_flag:
+        pow = pmeas
+    else:
+        pow = pmeas * n
 
-    res = minimize(func_to_minimize, [initial], pmeas, bounds=[(0, initial * 2)])
+    initial = isf(pow)
+    res = minimize(
+        func_to_minimize, [initial], pow, bounds=[(initial / 2, initial * 2)], method="Nelder-Mead"
+    )
+    if summed_flag:
+        return res.x[0]
+    else:
+        return res.x[0] / n
 
-    return res.x[0]
 
-
-def amplitude_upper_limit(pmeas, counts, n=1, c=0.95, fft_corr=False, nyq_ratio=0):
+def amplitude_upper_limit(
+    pmeas, counts, n=1, c=0.95, fft_corr=False, nyq_ratio=0, summed_flag=True
+):
     r"""Upper limit on a sinusoidal modulation, given a measured power in the PDS/Z search.
 
     Eq. 10 in Vaughan+94 and `a_from_ssig`: they are equivalent but Vaughan+94
@@ -1042,7 +1058,7 @@ def amplitude_upper_limit(pmeas, counts, n=1, c=0.95, fft_corr=False, nyq_ratio=
     n: int
         The number of summed powers to obtain pmeas. It can be multiple
         harmonics of the PDS, adjacent bins in a PDS summed to collect all the
-        power in a QPO, or the n in Z^2_n
+        power in a QPO, the n in Z^2_n or the number of averaged PDS
     c: float
         The confidence value for the probability (e.g. 0.95 = 95%)
     fft_corr: bool
@@ -1054,6 +1070,12 @@ def amplitude_upper_limit(pmeas, counts, n=1, c=0.95, fft_corr=False, nyq_ratio=
         frequency. Important to know when dealing with FFTs, because the FFT
         response decays between 0 and f_Nyq similarly to the response inside
         a frequency bin: from 1 at 0 Hz to ~2/pi at f_Nyq
+    summed_flag: bool
+        If True, pmeas is the sum of n powers. If False, pmeas is the average
+        of n powers. This is relevant when dealing with averaged PDS, where
+        the powers are averaged rather than summed. For example, Z^2_n searches
+        deal with summed powers (i.e. summed_flag=True), while if power spectrum
+        is averaged to improve the statistics the summed_flag should be set to False.
 
     Returns
     -------
@@ -1069,7 +1091,7 @@ def amplitude_upper_limit(pmeas, counts, n=1, c=0.95, fft_corr=False, nyq_ratio=
     >>> assert np.isclose(aup_corr, aup / np.sqrt(0.773))
     """
 
-    uplim = power_upper_limit(pmeas, n, c)
+    uplim = power_upper_limit(pmeas, n, c, summed_flag=summed_flag)
     a = a_from_ssig(uplim, counts)
     if fft_corr:
         factor = 1 / np.sqrt(0.773)

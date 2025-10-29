@@ -1,1 +1,0 @@
-Read the OBS_ID keyword from the FITS file if present

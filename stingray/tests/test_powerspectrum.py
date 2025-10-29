@@ -3,6 +3,7 @@ import numpy as np
 import copy
 import warnings
 import importlib
+import tempfile
 
 import pytest
 import matplotlib.pyplot as plt
@@ -11,6 +12,7 @@ from stingray import Lightcurve
 from stingray.events import EventList
 from stingray.utils import HAS_NUMBA
 from stingray import Powerspectrum, AveragedPowerspectrum, DynamicalPowerspectrum
+from stingray.powerspectrum import GtiCorrPowerspectrum
 from stingray.powerspectrum import powerspectrum_from_time_array
 from astropy.modeling.models import Lorentz1D
 from stingray.filters import filter_for_deadtime
@@ -109,6 +111,24 @@ class TestAveragedPowerspectrumEvents(object):
             self.events, segment_size=self.segment_size, dt=self.dt, norm="leahy", silent=True
         )
         assert np.allclose(self.leahy_pds.power, pds_ev.power)
+
+    def test_from_events_works_ps_dt(self):
+        events = copy.deepcopy(self.events)
+        # Use an incompatible dt
+        events.dt = self.dt * np.pi / 3
+        with pytest.warns(UserWarning, match="The input event list has a time resolution of"):
+            pds_ev = Powerspectrum.from_events(events, dt=self.dt, norm="leahy", silent=True)
+            assert np.isclose(pds_ev.dt, events.suggest_compatible_dt(self.dt))
+
+    def test_from_events_works_aps_dt(self):
+        events = copy.deepcopy(self.events)
+        # Use an incompatible dt
+        events.dt = self.dt * np.pi / 3
+        with pytest.warns(UserWarning, match="The input event list has a time resolution of"):
+            pds_ev = AveragedPowerspectrum.from_events(
+                events, segment_size=self.segment_size, dt=self.dt, norm="leahy", silent=True
+            )
+            assert np.isclose(pds_ev.dt, events.suggest_compatible_dt(self.dt))
 
     def test_from_lc_iter_works(self):
         pds_ev = AveragedPowerspectrum.from_lc_iterable(
@@ -361,6 +381,144 @@ class TestAveragedPowerspectrumEvents(object):
         pds = pds_dt.deadtime_correct(dead_time=0.0025, rate=np.size(events_dt) / tmax)
         assert np.isclose(np.mean(pds.power), 2, rtol=0.1)
         assert np.isclose(np.std(pds.power), 2 / np.sqrt(tmax / segment_size), rtol=0.1)
+
+
+class TestGtiCorrPowerspectrum(object):
+    @classmethod
+    def setup_class(cls):
+        """Set up a light curve and an event list with GTIs for testing GtiCorrPowerspectrum."""
+        tstart = 0.0
+        tend = 100.0
+        dt = 0.01
+
+        time = np.arange(tstart + 0.5 * dt, tend + 0.5 * dt, dt)
+
+        mean_count_rate = 1000.0
+        mean_counts = mean_count_rate * dt
+
+        poisson_counts = rng.poisson(mean_counts, size=time.shape[0])
+
+        cls.lc = Lightcurve(time, counts=poisson_counts, gti=[[tstart, tend]], dt=dt)
+        cls.events = EventList(
+            np.sort(
+                np.random.uniform(
+                    tstart, tend, np.random.poisson(mean_count_rate * (tend - tstart))
+                )
+            ),
+            gti=[[tstart, tend]],
+        )
+
+    @pytest.mark.parametrize("norm", ["leahy", "frac", "abs", "none"])
+    def test_gti_corr_ps(self, norm):
+        """GtiCorrPowerspectrum results match Powerspectrum when GTIs are unimportant."""
+        gcps = GtiCorrPowerspectrum(self.lc, norm=norm)
+        ps = Powerspectrum(self.lc, norm=norm)
+        for attr in [
+            "freq",
+            "power",
+            "power_err",
+            "unnorm_power",
+            "unnorm_power_err",
+            "df",
+            "m",
+            "n",
+            "nphots",
+        ]:
+            assert np.array_equal(getattr(gcps, attr), getattr(ps, attr))
+
+    @pytest.mark.parametrize("norm", ["leahy", "frac", "abs", "none"])
+    def test_gti_corr_ps_events(self, norm):
+        """GtiCorrPowerspectrum results match Powerspectrum for event lists."""
+        gcps = GtiCorrPowerspectrum(self.events, dt=0.01, norm=norm)
+        ps = Powerspectrum(self.events, dt=0.01, norm=norm)
+        for attr in [
+            "freq",
+            "power",
+            "power_err",
+            "unnorm_power",
+            "unnorm_power_err",
+            "df",
+            "m",
+            "n",
+            "nphots",
+        ]:
+            assert np.array_equal(getattr(gcps, attr), getattr(ps, attr))
+
+    @pytest.mark.parametrize("norm", ["leahy", "frac", "abs", "none"])
+    def test_gti_corr_ps_fill_different(self, norm):
+        """Filling BTIs or not changes the power spectrum."""
+        lc = copy.deepcopy(self.lc)
+        lc.gti = [[0, 30], [35, 100]]  # Two GTIs, one gap
+        gcps_fill = GtiCorrPowerspectrum(lc, norm=norm, fill_lc=True)
+        gcps_nofill = GtiCorrPowerspectrum(lc, norm=norm, fill_lc=False)
+        gcps_fill = gcps_fill.clean_gti_features()
+        gcps_nofill = gcps_nofill.clean_gti_features()
+        mean_gcps_fill = np.mean(gcps_fill.power)
+        mean_gcps_nofill = np.mean(gcps_nofill.power)
+        assert not np.allclose(mean_gcps_fill, mean_gcps_nofill, rtol=0.01)
+
+    @pytest.mark.parametrize("norm", ["leahy", "frac", "abs", "none"])
+    def test_gti_corr_ps_fill(self, norm):
+        """Filling BTIs and correcting the normalization adjusts the power spectrum."""
+        lc = copy.deepcopy(self.lc)
+        lc.gti = [[0, 30], [35, 100]]  # Two GTIs, one gap
+        gcps = GtiCorrPowerspectrum(lc, norm=norm, fill_lc=True)
+        gcps = gcps.clean_gti_features()
+        ps = Powerspectrum(self.lc, norm=norm)
+        mean_ps = np.mean(ps.power)
+        mean_gcps = np.mean(gcps.power)
+        assert np.isclose(mean_gcps, mean_ps, rtol=0.01)
+
+    @pytest.mark.parametrize("norm", ["leahy", "frac", "abs", "none"])
+    def test_gti_corr_ps_fill_events(self, norm):
+        """Filling BTIs and correcting the normalization adjusts the power spectrum."""
+        lc = copy.deepcopy(self.events)
+        lc.gti = [[0, 30], [35, 100]]  # Two GTIs, one gap
+        gcps = GtiCorrPowerspectrum(lc, dt=0.01, norm=norm, fill_lc=True)
+        gcps = gcps.clean_gti_features()
+        ps = Powerspectrum(self.events, dt=0.01, norm=norm)
+        mean_ps = np.mean(ps.power)
+        mean_gcps = np.mean(gcps.power)
+        assert np.isclose(mean_gcps, mean_ps, rtol=0.01)
+
+    @pytest.mark.parametrize("norm", ["leahy", "frac", "abs", "none"])
+    def test_gti_corr_ps_fill_rebin(self, norm):
+        """Rebinning works on GtiCorrPowerspectrum."""
+        lc = copy.deepcopy(self.lc)
+        lc.gti = [[0, 30], [35, 100]]  # Two GTIs, one gap
+        gcps = GtiCorrPowerspectrum(lc, norm=norm, fill_lc=True)
+        gcps = gcps.clean_gti_features()
+        ps = Powerspectrum(self.lc, norm=norm)
+        ps = ps.rebin_log(0.01)
+        gcps = gcps.rebin_log(0.01)
+
+        mean_ps = np.mean(ps.power)
+        mean_gcps = np.mean(gcps.power)
+        assert np.isclose(mean_gcps, mean_ps, rtol=0.1)
+
+    def test_gti_corr_apply_gti_lc_fails(self):
+        """Applying GTIs to a light curve with gaps in the time array raises an error."""
+        lc = copy.deepcopy(self.lc)
+        lc.gti = [[0, 30], [35, 100]]  # Two GTIs, one gap
+        lc.apply_gtis()
+        with pytest.raises(ValueError, match="The time array in the light"):
+            GtiCorrPowerspectrum(lc, norm="leahy", fill_lc=True)
+
+    def test_gti_corr_plot(self):
+        """Plotting GtiCorrPowerspectrum works."""
+        lc = copy.deepcopy(self.events)
+        lc.gti = [[0, 30], [35, 100]]  # Two GTIs, one gap
+        gcps = GtiCorrPowerspectrum(lc, dt=0.01, norm="leahy", fill_lc=True)
+        with tempfile.NamedTemporaryFile(delete=False) as tmpfile:
+            figname = tmpfile.name
+        try:
+            gcps = gcps.clean_gti_features(plot=True, figname=figname)
+            jpg_name = figname + ".jpg"
+            assert os.path.exists(jpg_name)
+            os.unlink(jpg_name)
+        finally:
+            if os.path.exists(figname):
+                os.unlink(figname)
 
 
 class TestPowerspectrum(object):

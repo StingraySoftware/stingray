@@ -1,7 +1,102 @@
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+}
+
+/* Topbar --------------------------------------------------------------------*/
+
+div.topbar {
+  position: fixed;
+  width: 97.8%;
+}
+
 div.topbar a.brand {
-    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAALiMAAC4jAXilP3YAAASASURBVFhH5ZZbLGVXGMf/52B0CMclis4QqgkpiUTrFpcmiEvENUg8EKIkShDXuJVK0JdKiESbCeP+4qFoiGtimAT1MBmXqLiPpi4xhpQ65bC617IoOc6Mg+k89JfI2fu/lr3/69vf960lIgL4gIj57weDReDlXy+Q8ORrPPxZi8vvF01NTXR1dbFr0evj18T3t6/w+99r0Ks2hvqkBht4n1ADw8PD7Fr8RrYDf50gqP7xADgWMfG/RGzx0Wew0/wS4j9VoD77kMtXMTAwgKOjI6ysrKCiosLV++GtSSgWi5GamoqOjg6kpaWhsrISvb29SElJgampKZ91NxQaoC8vLS1lKw8NDUVkZCR8fHyQnp4OPT09tLa2oqamBm5ubhCJbv/pFBqgK6arTEhIwMbGBleByclJFBcXw9fXFyMjI8jJyUFDQwOsra35DOW41gBdlb+/P1vt/v4+V69CdRqFkJAQ9Pf3s2jQKCmLnAENDQ3k5eWhvLwcm5ubXFXM8fExmpqaEBcXh5iYGBYZZZAzQB+0sLCAgYEBrtyM+fl5VFdXo6SkBEFBQVx9N1cMGBkZISIiAhUVFVy5ObQ8bWxssLy8jMzMTGhp3ayrXjFAE66np4c9RFlowlpaWrIS3dragq2tLVRVVfmoYthe8Mubdnw3UYjn7hMICwvD+vo6H1aeuro69nKKTCbD6OgoqqqqsLS0BNmjI4ikYmhLJRet+MLAD+vfw18ajKdP69jAbXn82AQHBwfsT1uijeCgYBgafoza2lqsPVjFodM+HrV8ivEfJ9h8ZuDX/TEUz+RjdXUVdnZfsIHbsre3i5mZGZhbmONEdoJXq69wenrKxk4lJ4DZKQo+KUG8YSLTQA1Qtre3iYuLC5mbm+OK8jQ2NpKVlRWSnZ1Nmpubmbazs8N0T09PYhP+OXny/Cemn3ORhPr6+qyOy8rKqCmuKgcNe3x8PCtJY2Njpunq6iIqKgptbW1w1HZGe3knjo6O2BjjzMcZwgAJCAgg3d3dXFGewMBAkpycTIQE5Mq/CAaJ0DmJcBjhirBS/nuB0ICIn58fOTw85MrNGRsbI66urmR3d5cr8tTX15Pc3Fx+d+kTnCN8K5iYmLByUga6L2RlZaGoqAgSiYSr8lhYWGBtbY3fCXAjVxBaMUvIxcVFriiGrjYjI4N9utnZWa4qZmhoiERHR/O7ayJAoS6FScjPz4dUKuWqPH19fQgPD4eamhpaWlpgZmbGmhjdoBQxNTXFnn8BNyIHTaJvEhOJcC5gyXmOUNNEOAeQ2NhYliuDg4NECCkrPQcHB+Lk5ETc3d1ZGdK5lxkfHyfCVk+mp6e5QghrRNyLHLSs6JFMSEh4eHiwM4AQQlZGdO/38vJCe3s7W72Q/azc6IZGDy00F+he4OzsDHV1ddachBejoKAA3t7e/A28E/Lra6Hh7OzsZA+gZwV7e3sImc52v28LC7G7t4ekpCS2EV2G/t/ws2eYEl5Kr83NzZlhHR0dPuOMdxp4G7TF0rPjXbiTgfvgbvbvgf+7AeAfyDamVqLeB14AAAAASUVORK5CYII=');
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAALiMAAC4jAXilP3YAAASASURBVFhH5ZZbLGVXGMf/52B0CMclis4QqgkpiUTrFpcmiEvENUg8EKIkShDXuJVK0JdKiESbCeP+4qFoiGtimAT1MBmXqLiPpi4xhpQ65bC617IoOc6Mg+k89JfI2fu/lr3/69vf960lIgL4gIj57weDReDlXy+Q8ORrPPxZi8vvF01NTXR1dbFr0evj18T3t6/w+99r0Ks2hvqkBht4n1ADw8PD7Fr8RrYDf50gqP7xADgWMfG/RGzx0Wew0/wS4j9VoD77kMtXMTAwgKOjI6ysrKCiosLV++GtSSgWi5GamoqOjg6kpaWhsrISvb29SElJgampKZ91NxQaoC8vLS1lKw8NDUVkZCR8fHyQnp4OPT09tLa2oqamBm5ubhCJbv/pFBqgK6arTEhIwMbGBleByclJFBcXw9fXFyMjI8jJyUFDQwOsra35DOW41gBdlb+/P1vt/v4+V69CdRqFkJAQ9Pf3s2jQKCmLnAENDQ3k5eWhvLwcm5ubXFXM8fExmpqaEBcXh5iYGBYZZZAzQB+0sLCAgYEBrtyM+fl5VFdXo6SkBEFBQVx9N1cMGBkZISIiAhUVFVy5ObQ8bWxssLy8jMzMTGhp3ayrXjFAE66np4c9RFlowlpaWrIS3dragq2tLVRVVfmoYthe8Mubdnw3UYjn7hMICwvD+vo6H1aeuro69nKKTCbD6OgoqqqqsLS0BNmjI4ikYmhLJRet+MLAD+vfw18ajKdP69jAbXn82AQHBwfsT1uijeCgYBgafoza2lqsPVjFodM+HrV8ivEfJ9h8ZuDX/TEUz+RjdXUVdnZfsIHbsre3i5mZGZhbmONEdoJXq69wenrKxk4lJ4DZKQo+KUG8YSLTQA1Qtre3iYuLC5mbm+OK8jQ2NpKVlRWSnZ1Nmpubmbazs8N0T09PYhP+OXny/Cemn3ORhPr6+qyOy8rKqCmuKgcNe3x8PCtJY2Njpunq6iIqKgptbW1w1HZGe3knjo6O2BjjzMcZwgAJCAgg3d3dXFGewMBAkpycTIQE5Mq/CAaJ0DmJcBjhirBS/nuB0ICIn58fOTw85MrNGRsbI66urmR3d5cr8tTX15Pc3Fx+d+kTnCN8K5iYmLByUga6L2RlZaGoqAgSiYSr8lhYWGBtbY3fCXAjVxBaMUvIxcVFriiGrjYjI4N9utnZWa4qZmhoiERHR/O7ayJAoS6FScjPz4dUKuWqPH19fQgPD4eamhpaWlpgZmbGmhjdoBQxNTXFnn8BNyIHTaJvEhOJcC5gyXmOUNNEOAeQ2NhYliuDg4NECCkrPQcHB+Lk5ETc3d1ZGdK5lxkfHyfCVk+mp6e5QghrRNyLHLSs6JFMSEh4eHiwM4AQQlZGdO/38vJCe3s7W72Q/azc6IZGDy00F+he4OzsDHV1ddachBejoKAA3t7e/A28E/Lra6Hh7OzsZA+gZwV7e3sImc52v28LC7G7t4ekpCS2EV2G/t/ws2eYEl5Kr83NzZlhHR0dPuOMdxp4G7TF0rPjXbiTgfvgbvbvgf+7AeAfyDamVqLeB14AAAAASUVORK5CYII=');
+}
+
+/* Relation bar (prev, next) ------------------------------------*/
+
+div.related {
+  position: fixed;
+  top: 40px;
+  width: 97.8%;
+}
+
+div.document {
+  display: flex;
+  margin-top: 100px;
+  min-height: 100vh;
+}
+
+/* Contents ------------------------------------------------------------*/
+
+div.documentwrapper {
+  position: relative;
+  height: auto;
+  overflow: visible;
+}
+
+div.bodywrapper {
+  margin-left: 500px;
+  position: relative;
+  height: auto;
+  overflow: visible;
+}
+
+/* Sphinx sidebar ------------------------------------------------------------*/
+
+div.sphinxsidebar {
+  height: 100vh;
+  width: 450px;
+  position: sticky;
+  top: 0;
 }
 
 div.sphinxsidebarwrapper {
-    overflow: scroll;
+  overflow-y: scroll;
+  word-break: break-all;
+  box-sizing: border-box;
+  word-wrap: break-word;
+  /* overflow-wrap is the canonical name for word-wrap in the CSS3 text draft.
+  We include it here mainly for future-proofing. */
+  overflow-wrap: break-word;
+  white-space: normal;
+  width: 100%;
+  height: 100vh;
+
+  max-width: 100%;
+  line-height: 2;
+  font-size: 1em;
+  padding-bottom: 100px;
+  padding-top: 25px;
+}
+
+div.sphinxsidebarwrapper * {
+  word-wrap: break-word;
+  /* overflow-wrap is the canonical name for word-wrap in the CSS3 text draft.
+  We include it here mainly for future-proofing. */
+  overflow-wrap: break-word;
+  white-space: normal;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Sidebar Button ------------------------------------------------------------*/
+
+div#sidebarbutton {
+  top: 0px;
+  right: 0px;
+  width: 12px;
+  height: 100vh;
+  margin: 0;
+  max-height: 100vh;
+}
+
+/* Footer --------------------------------------------------------------------*/
+
+div.footer {
+  position: fixed;
 }

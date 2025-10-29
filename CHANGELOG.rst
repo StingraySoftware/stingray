@@ -1,18 +1,82 @@
-v2.2.2 (2024-10-25)
+v2.2.10 (2025-10-24)
+--------------------
+
+New Features
+^^^^^^^^^^^^
+
+- Update database of missions from NASA (`#939 <https://github.com/StingraySoftware/stingray/pull/939>`__)
+- use the power of fits.open to load remote datasets (`#940 <https://github.com/StingraySoftware/stingray/pull/940>`__)
+- Added a flag to switch between summed and averaged power to determine the upper limit. The default is still summed power to keep backward compatibility
+
+Bug Fixes
+^^^^^^^^^
+
+- Fix issue with float128 in recent Numba versions (`#947 <https://github.com/StingraySoftware/stingray/pull/947>`__)
+- Fixed a bug in the `stingray.stats.power_upper_limit` function where the current minimizing method did not lead to convergence in some cases. 
+
+
+v2.2.9 (2025-08-18)
 -------------------
+
+Deprecations
+^^^^^^^^^^^^
+
+- The use of ``astropy.tests.runner.TestRunner``  is now deprecated. (`#888 <https://github.com/StingraySoftware/stingray/pull/888>`__)
+
+
+New Features
+^^^^^^^^^^^^
+
+- Better support for Chandra event files (`#877 <https://github.com/StingraySoftware/stingray/pull/877>`__)
+- Added functionality to read LAXPC observations. (`#929 <https://github.com/StingraySoftware/stingray/pull/929>`__)
+- GtiCorrPowerspectrum is a new class to calculate long-term power spectra from gappy data (`#933 <https://github.com/StingraySoftware/stingray/pull/933>`__)
+
+
+Bug Fixes
+^^^^^^^^^
+
+- Fixed issue with counting ``0`` bin occupancy in ``fold_events`` with ``mode='pdm'`` (`#872 <https://github.com/StingraySoftware/stingray/pull/872>`__)
+- Fixed power upper limit in ``stingray.stats`` for n =/= 1 (`#922 <https://github.com/StingraySoftware/stingray/pull/922>`__)
+- Account for the TIMEPIXR and TIMEDEL keywords when calculating times (`#937 <https://github.com/StingraySoftware/stingray/pull/937>`__)
+
+
+Documentation
+^^^^^^^^^^^^^
+
+- Sidebar in documentation now scrolls independently of the main content and wraps long text to next line instead of cropping it. (`#918 <https://github.com/StingraySoftware/stingray/pull/918>`__)
+- Added `stingray.varenergyspectrum.CountSpectrum` to docs. (`#884 <https://github.com/StingraySoftware/stingray/pull/884>`__)
+
+
+Internal Changes
+^^^^^^^^^^^^^^^^
+
+- Bump jinja2 version to 3.1.5 (`#878 <https://github.com/StingraySoftware/stingray/pull/878>`__)
+- Added a test to check ``profile``, when ``fold_events`` method called with ``mode= "pdm"`` after the bug fix #872. (`#880 <https://github.com/StingraySoftware/stingray/pull/880>`__)
+- Suppressed deprecation warnings related to `numpy.core.einsumfunc` as it is causing test failure described in (https://github.com/StingraySoftware/stingray/issues/882) (`#886 <https://github.com/StingraySoftware/stingray/pull/886>`__)
+
+
+v2.2.7 (2025-04-08)
+-------------------
+
+New Features
+^^^^^^^^^^^^
+
+- Read the OBS_ID keyword from the FITS file if present (`#863 <https://github.com/StingraySoftware/stingray/pull/863>`__)
+- Use the formulas from Ingram+2019 consistently when calculating cross spectral errors, including lags (`#865 <https://github.com/StingraySoftware/stingray/pull/865>`__)
+- Implement filter by time interval in stingraytimeseries objects (`#866 <https://github.com/StingraySoftware/stingray/pull/866>`__)
+
+Bug Fixes
+^^^^^^^^^
+- Fix issue with FITS headers, especially for RXTE data (`#853 <https://github.com/StingraySoftware/stingray/pull/853>`__)
+- Fix issue when passing a single GTI to FitsTimeseriesReader.apply_gti_lists() (`#858 <https://github.com/StingraySoftware/stingray/pull/858>`__)
+- Fix scipy futurewarning about the inputs to the Toeplitz matrix in bispectrum (`#861 <https://github.com/StingraySoftware/stingray/pull/861>`__)
+- Fix problem with data types fed to scipy special functions (`#870 <https://github.com/StingraySoftware/stingray/pull/870>`__)
+- Set a lower limit to the number of photons in a segment of data used for certain ``VarEnergySpectrum`` subclasses. This avoids, e.g., spurious high covariance measurements in low-count data sets. (`#874 <https://github.com/StingraySoftware/stingray/pull/874>`__)
 
 Docs
 ^^^^
 
 - Add newly-accepted JOSS paper to docs, update citation information, and fresh new badges (`#829 <https://github.com/StingraySoftware/stingray/pull/829>`__)
-
-v2.2.1 (2024-10-23)
--------------------
-
-Bug Fixes
-^^^^^^^^^
-
-- Fix issue with FITS headers, especially for RXTE data (`#853 <https://github.com/StingraySoftware/stingray/pull/853>`__)
 
 
 v2.2 (2024-10-22)

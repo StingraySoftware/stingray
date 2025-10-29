@@ -14,30 +14,35 @@ __all__ = ["Simulator"]
 
 class Simulator(object):
     """
-    Methods to simulate and visualize light curves.
+    Framework to simulate light curves with given variability distributions.
+    The simulator module provides tools to simulate time series and spectral data. This can be useful, e.g.,
+    to access the uncertainty of a previous analysis or to develop an intuition of the detectability of a given phenomenon
 
-    TODO: Improve documentation
+    Stingray simulator supports multiple methods to carry out these simulations.
+    Light curves can be simulated through power-law spectrum, through a user-defined or pre-defined model, or through impulse responses.
+    The module is designed in a way such that all these methods can be accessed using a common interface.
 
     Parameters
     ----------
-    dt : int, default 1
-        time resolution of simulated light curve
+    dt : float, default 1
+        Time resolution (sampling interval) of the simulated light curve in seconds.
     N : int, default 1024
-        bins count of simulated light curve
+        Number of time bins in the simulated light curve.
     mean : float, default 0
-        mean value of the simulated light curve
+        mean value of the simulated light curve.
     rms : float, default 1
-        fractional rms of the simulated light curve,
-        actual rms is calculated by mean*rms
+        Fractional RMS amplitude of the light curve; actual RMS is `mean * rms`.
     err : float, default 0
-        the errorbars on the final light curve
+        the errorbars on the final light curves.
     red_noise : int, default 1
-        multiple of real length of light curve, by
-        which to simulate, to avoid red noise leakage
-    random_state : int, default None
-        seed value for random processes
+        Factor by which to extend the light curve length to mitigate red noise leakage.
+    random_state : int or numpy.random.RandomState, optional
+        Seed or random state for reproducible random number generation.
+    tstart : float, default 0
+        Start time of the light curve in seconds.
     poisson : bool, default False
-        return Poisson-distributed light curves.
+        If True, simulates Poisson-distributed counts; otherwise, assumes Gaussian noise.
+
     """
 
     def __init__(

@@ -319,15 +319,17 @@ class StingrayObject(object):
                 if not getattr(self, attr, None) == getattr(other_ts, attr, None):
                     return False
             else:
-                if not np.array_equal(getattr(self, attr, None), getattr(other_ts, attr, None)):
+                if not np.array_equal(
+                    getattr(self, attr, None), getattr(other_ts, attr, None), equal_nan=True
+                ):
                     return False
 
         for attr in self.array_attrs():
-            if not np.array_equal(getattr(self, attr), getattr(other_ts, attr)):
+            if not np.array_equal(getattr(self, attr), getattr(other_ts, attr), equal_nan=True):
                 return False
 
         for attr in self.internal_array_attrs():
-            if not np.array_equal(getattr(self, attr), getattr(other_ts, attr)):
+            if not np.array_equal(getattr(self, attr), getattr(other_ts, attr), equal_nan=True):
                 return False
 
         return True

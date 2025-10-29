@@ -285,6 +285,7 @@ class EventList(StingrayTimeseries):
         -------
         lc: :class:`stingray.Lightcurve` object
         """
+        dt = self.suggest_compatible_dt(dt)
         return Lightcurve.make_lightcurve(
             self.time, dt, tstart=tstart, gti=self._gti, tseg=tseg, mjdref=self.mjdref
         )
@@ -672,6 +673,33 @@ class EventList(StingrayTimeseries):
             energies = self.energy
         return (energies >= energy_range[0]) & (energies < energy_range[1])
 
+    def suggest_compatible_dt(self, dt, warn=True):
+        """Suggest a compatible time resolution for the event list.
+
+        If the event list has a time resolution, it is better to avoid
+        using a time bin smaller than that for sure, but also a time bin which is
+        not a multiple of it, as it will create beats that appear in the power spectrum
+        as a comb of peaks. This method suggests a compatible time resolution.
+
+        Parameters
+        ----------
+        dt : float
+            Desired time resolution
+
+        Other Parameters
+        ----------------
+        warn : bool, default True
+            Issue a warning if the time resolution is changed
+        """
+        if hasattr(self, "dt") and self.dt > 0 and not np.isclose(self.dt, dt, rtol=1e-4):
+            dt = self.dt * max(np.rint(dt / self.dt), 1)
+            warnings.warn(
+                f"The input event list has a time resolution of {self.dt}. "
+                f"Using a multiple of that as dt ({dt})."
+            )
+            return dt
+        return dt
+
     def filter_energy_range(self, energy_range, inplace=False, use_pi=False):
         """Filter the event list from a given energy range.
 
@@ -834,3 +862,33 @@ class EventList(StingrayTimeseries):
         starts, stops, (rate, rate_err) = self.analyze_segments(intensity, segment_size)
 
         return starts, stops, rate, rate_err
+
+    def get_mask_for_filter_by_detector_id(self, value):
+        """Supplies a mask to filter the data for a particular detector(s) for a event file.
+        For example can be used to filter the data for a single unit of LAXPC or a selected NICER detector ID
+
+
+        Args:
+            value: The value for which the mask returns 1
+        """
+        if isinstance(value, int):
+            col = self.detector_id
+            return col == value
+        elif isinstance(value, list) and all(isinstance(i, int) for i in value):
+            col = self.detector_id
+            full_mask = col == value[0]
+            for i in range(1, len(value)):
+                mask = col == value[i]
+                full_mask = full_mask | mask
+            return full_mask
+
+    def filter_detector_id(self, detector_id, inplace=False):
+        """Filters the data selecting only a selected detector or a list of detectors.
+
+        Args:
+            detector_id (int, optional): The detector id on which the filtering needs to be applied. It can be a list.
+        """
+
+        mask = self.get_mask_for_filter_by_detector_id(detector_id)
+        new_ev = self.apply_mask(mask, inplace=inplace)
+        return new_ev
