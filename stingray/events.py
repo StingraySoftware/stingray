@@ -614,7 +614,7 @@ class EventList(StingrayTimeseries):
             calibration applied to selected missions).
 
         kwargs : dict
-            Any further keyword arguments to be passed to `load_events_and_gtis`
+            Any further keyword arguments to be passed to ``FITSTimeseriesReader``
             for reading in event lists in OGIP/HEASOFT format
 
         Returns
