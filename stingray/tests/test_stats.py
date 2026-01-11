@@ -267,3 +267,14 @@ class TestClassicalSignificances(object):
 
     def test_power_upper_limit_averaging(self):
         assert np.isclose(power_upper_limit(100, 10, 0.997, summed_flag=False), 115, rtol=0.1)
+
+    def test_power_confidence_limits(self):
+        from scipy.stats import ncx2
+        preal = 25.0
+        n = 2
+        c = 0.95
+        low, high = power_confidence_limits(preal, n, c)
+
+        # Check boundaries against Scipy CDF definition
+        assert np.isclose(ncx2.cdf(high, df=2 * n, nc=preal), 0.975, atol=1e-4)
+        assert np.isclose(ncx2.cdf(low, df=2 * n, nc=preal), 0.025, atol=1e-4)
