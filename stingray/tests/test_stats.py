@@ -270,6 +270,7 @@ class TestClassicalSignificances(object):
 
     def test_power_confidence_limits(self):
         from scipy.stats import ncx2
+
         preal = 25.0
         n = 2
         c = 0.95
