@@ -934,15 +934,16 @@ def power_confidence_limits(preal, n=1, c=0.95):
     Returns
     -------
     pmeas: [float, float]
-        The upper and lower confidence interval (a, 1-a) on the measured power
+        The lower and upper bounds of the symmetric ``c``-level confidence
+        interval on the measured power
 
     Examples
     --------
-    >>> cl = power_confidence_limits(150, c=0.84)
-    >>> assert np.allclose(cl, [127, 176], atol=1)
+    >>> cl = power_confidence_limits(150, c=0.68)
+    >>> assert np.allclose(cl, [128, 176], atol=1)
     """
     rv = stats.ncx2(2 * n, preal)
-    return rv.ppf([1 - c, c])
+    return rv.ppf([(1 - c) / 2, (1 + c) / 2])
 
 
 def power_upper_limit(pmeas, n=1, c=0.95, summed_flag=True):
