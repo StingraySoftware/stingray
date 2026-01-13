@@ -1635,9 +1635,10 @@ class Lightcurve(StingrayTimeseries):
         if not self.input_counts:
             flux_attr = "countrate"
 
-        return super().plot(
+        # 1. Let the parent plot the main points (We force witherrors=False so it doesn't try and fail)
+        ax = super().plot(
             flux_attr,
-            witherrors=witherrors,
+            witherrors=False,   
             labels=labels,
             ax=ax,
             title=title,
@@ -1647,6 +1648,22 @@ class Lightcurve(StingrayTimeseries):
             plot_btis=plot_btis,
             axis_limits=axis_limits,
         )
+
+        # 2. Manually plot the error bars ourselves
+        if witherrors:
+            err_col = flux_attr + "_err"
+            # Only try to plot if the error data actually exists
+            if hasattr(self, err_col):
+                ax.errorbar(
+                    self.time,
+                    getattr(self, flux_attr),
+                    yerr=getattr(self, err_col),
+                    fmt="none",  # "none" means don't draw the dots again (parent already did)
+                    ecolor="k",  # Black error bars (optional, but looks standard)
+                    zorder=10
+                )
+
+        return ax
 
     @classmethod
     def read(
