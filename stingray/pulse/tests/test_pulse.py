@@ -91,9 +91,10 @@ class TestAll(object):
     def test_pdm_stat(self):
         """Test pulse phase calculation, frequency only."""
         prof = np.array([1, 1, 1, 1, 1])
-        sample_var = 2.0
+        sample_var = 2
         nsample = 10
-        np.testing.assert_array_almost_equal(pdm_profile_stat(prof, sample_var, nsample), 0.5)
+        sum_dev2 = sample_var * (nsample - 1)
+        np.testing.assert_array_almost_equal(pdm_profile_stat(prof, sum_dev2, nsample), 0.5)
 
     def test_zn(self):
         """Test pulse phase calculation, frequency only."""
@@ -221,7 +222,8 @@ class TestAll(object):
         )
         for pdm, ef in zip(profile, profile_ef):
             if ef == 0:
-                assert np.isnan(pdm)
+                # PDM implementation avoids division by 0, instead returns 0
+                assert pdm == 0
             else:
                 assert pdm == 2
                 assert ef == 8
