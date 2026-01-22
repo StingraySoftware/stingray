@@ -534,15 +534,15 @@ def rebin_data(x, y, dx_new, yerr=None, method="sum", dx=None):
     --------
     >>> x = np.arange(0, 100, 0.01)
     >>> y = np.ones(x.size)
-    >>> yerr = np.ones(x.size)
+    >>> yerr = np.ones(x.size) * 2  # Each point has σ=2
     >>> xbin, ybin, ybinerr, step_size = rebin_data(
     ...     x, y, 4, yerr=yerr, method='sum', dx=0.01)
     >>> assert np.allclose(ybin, 400)
-    >>> assert np.allclose(ybinerr, 20)
+    >>> assert np.allclose(ybinerr, 40)  # sqrt(400 * 2**2) = 40
     >>> xbin, ybin, ybinerr, step_size = rebin_data(
     ...     x, y, 4, yerr=yerr, method='mean')
     >>> assert np.allclose(ybin, 1)
-    >>> assert np.allclose(ybinerr, 0.05)
+    >>> assert np.allclose(ybinerr, 0.1)  # sqrt(400 * 2**2) / 400 = 0.1
     """
 
     y = np.asanyarray(y)
@@ -572,7 +572,7 @@ def rebin_data(x, y, dx_new, yerr=None, method="sum", dx=None):
     xbin = np.arange(xedges[0], xedges[-1] + dx_new, dx_new)
 
     output = np.zeros(xbin.shape[0] - 1, dtype=type(y[0]))
-    outputerr = np.zeros(xbin.shape[0] - 1, dtype=type(yerr[0]))
+    outputvar = np.zeros(xbin.shape[0] - 1, dtype=type(yerr[0]))
     step_size = np.zeros(xbin.shape[0] - 1)
 
     all_x = np.searchsorted(xedges, xbin)
@@ -584,29 +584,29 @@ def rebin_data(x, y, dx_new, yerr=None, method="sum", dx=None):
         filtered_y = y[min_ind : max_ind - 1]
         filtered_yerr = yerr[min_ind : max_ind - 1]
         output[i] = np.sum(filtered_y)
-        outputerr[i] = np.sum(filtered_yerr)
+        outputvar[i] = np.sum(filtered_yerr**2)
         step_size[i] = max_ind - 1 - min_ind
 
         prev_dx = xedges[min_ind] - xedges[min_ind - 1]
         prev_frac = (xedges[min_ind] - xmin) / prev_dx
         output[i] += y[min_ind - 1] * prev_frac
-        outputerr[i] += yerr[min_ind - 1] * prev_frac
+        outputvar[i] += (yerr[min_ind - 1] * prev_frac) ** 2
         step_size[i] += prev_frac
 
         if not max_ind == xedges.size:
             dx_post = xedges[max_ind] - xedges[max_ind - 1]
             post_frac = (xmax - xedges[max_ind - 1]) / dx_post
             output[i] += y[max_ind - 1] * post_frac
-            outputerr[i] += yerr[max_ind - 1] * post_frac
+            outputvar[i] += (yerr[max_ind - 1] * post_frac) ** 2
             step_size[i] += post_frac
 
     if method in ["mean", "avg", "average", "arithmetic mean"]:
         ybin = output / step_size
-        ybinerr = np.sqrt(outputerr) / step_size
+        ybinerr = np.sqrt(outputvar) / step_size
 
     elif method == "sum":
         ybin = output
-        ybinerr = np.sqrt(outputerr)
+        ybinerr = np.sqrt(outputvar)
 
     else:
         raise ValueError(

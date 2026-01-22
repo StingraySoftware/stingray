@@ -88,6 +88,19 @@ class TestRebinData(object):
         assert len(xbin) == 20
         assert np.allclose(ybin, counts)
 
+    def test_rebin_error_propagation(self):
+        x = np.arange(0, 4, 1.0)  # 4 points
+        y = np.ones(4) * 10
+        yerr = np.ones(4) * 2  # Each point has σ=2
+
+        xbin, ybin, ybinerr, _ = utils.rebin_data(x, y, 4.0, yerr=yerr, method="sum")
+        # Correct: sqrt(4*2**2) = sqrt(16) = 4
+        assert np.allclose(ybinerr, 4.0)
+
+        xbin, ybin, ybinerr, _ = utils.rebin_data(x, y, 4.0, yerr=yerr, method="mean")
+        # Correct: sqrt(4*2**2) / 4 = 4/4 = 1
+        assert np.allclose(ybinerr, 1.0)
+
 
 class TestRebinDataLog(object):
     @classmethod
