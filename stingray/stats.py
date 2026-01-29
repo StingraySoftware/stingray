@@ -1018,24 +1018,45 @@ def power_upper_limit(pmeas, n=1, c=0.95, summed_flag=True):
         rv = stats.ncx2(2 * n, x)
         return rv.ppf(c)
 
-    def func_to_minimize(x, xmeas):
-        return np.abs(ppf(x) - xmeas)
+    def func_to_minimize(x):
+        rv = stats.ncx2(2 * n, x)
+        return rv.ppf(1 - c) - pow
 
-    from scipy.optimize import minimize
+    from scipy.optimize import brentq
 
     if summed_flag:
         pow = pmeas
     else:
         pow = pmeas * n
 
-    initial = isf(pow)
-    res = minimize(
-        func_to_minimize, [initial], pow, bounds=[(initial / 2, initial * 2)], method="Nelder-Mead"
-    )
+    # Check if we are below the noise floor (S=0 case)
+    # ncx2 with nc=0 is just chi2
+    val_at_0 = stats.chi2.ppf(1 - c, 2 * n)
+    if val_at_0 > pow:
+        return 0.0
+
+    # Bracket finding
+    high = pow if pow > 1 else 1.0
+    while stats.ncx2(2 * n, high).ppf(1 - c) <= pow:
+        high *= 2
+        # If high goes too high, we might run into numerical issues or the
+        # power is really consistent with a huge signal (unlikely for ppf(0.05))
+        # but let's put a sane limit
+        if high > 1e15:
+            warnings.warn("Could not bracket upper limit. Returning NaN.")
+            return np.nan
+
+    try:
+        # We are looking for the root of ppf(1-c, S) - pow = 0
+        sol = brentq(func_to_minimize, 0, high)
+    except Exception as e:
+        warnings.warn(f"Root finding failed: {e}")
+        return np.nan
+
     if summed_flag:
-        return res.x[0]
+        return sol
     else:
-        return res.x[0] / n
+        return sol / n
 
 
 def amplitude_upper_limit(
