@@ -344,8 +344,8 @@ def fold_events(
         n_in_bin = np.bincount(bin_indices, weights=event_weights, minlength=nbin)
         sum_in_bin = np.bincount(bin_indices, weights=weights * event_weights, minlength=nbin)
         sos_in_bin = np.bincount(bin_indices, weights=weights**2 * event_weights, minlength=nbin)
-        # put it together to make sum-of-squared deviations: sosdev; avoid division by zero
-        raw_profile = sos_in_bin - sum_in_bin**2 / np.maximum(n_in_bin, 1)
+        # put it together to make sum-of-squared deviations: sosdev
+        raw_profile = sos_in_bin - sum_in_bin**2 / n_in_bin
 
         # dummy array for the error, which we don't have for the variance
         raw_profile_err = np.zeros_like(raw_profile)
@@ -408,8 +408,8 @@ def pdm_profile_stat(profile, sum_dev2, nsample):
     """
     # Get the mean-of-squared-deviations from sum-of-squared-deviations by
     # considering the number of degrees of freedom:
-    # nsample - nbin for the in_bin sum_dev2 because there are nbin means used
-    # nsample - 1 for the grand sum_dev2 because there is 1 grand mean used
+    # (nsample - nbin) for the within bin sum_dev2 because there are nbin means used
+    # (nsample - 1) for the grand sum_dev2 because there is 1 grand mean used
     mean_dev2_in_bin = np.sum(profile) / (nsample - len(profile))
     mean_dev2_grand = sum_dev2 / (nsample - 1)
     stat = mean_dev2_in_bin / mean_dev2_grand
