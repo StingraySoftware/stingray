@@ -104,13 +104,15 @@ class TestAll(object):
         # Constant signal: flux=10 everywhere. The pdm should be 0.
         times = np.array([0.1, 0.3, 0.5, 0.7, 0.9])
         fluxes = np.array([10.0, 10.0, 10.0, 10.0, 10.0])
-        std_var = 1.0
+        std_var = (
+            0.1  # instead of 1.0, to check that avoiding division by zero isn't changing results
+        )
         variances_base = np.ones_like(fluxes) * std_var
 
         _, profile_base, _ = fold_events(
             times, 1 / period, nbin=nbin, weights=fluxes, mode="pdm", ref_time=0
         )
-        assert np.allclose(profile_base, 0.0) # equal with the mean at every bin
+        assert np.allclose(profile_base, 0.0)  # equal with the mean at every bin
 
         # An outlier point at 0.15 (Bin 0) with flux 1000
         times_out = np.append(times, 0.15)
@@ -124,7 +126,7 @@ class TestAll(object):
         _, profile_unweighted, _ = fold_events(
             times_out, 1 / period, nbin=nbin, weights=fluxes_out, mode="pdm", ref_time=0
         )
-        assert profile_unweighted[0] > 1000.0 # the profile bin should deviate from 0
+        assert profile_unweighted[0] > 1000.0  # the profile bin should deviate from 0
 
         # Weighted PDM on dirty data (should effectively ignore outlier)
         _, profile_weighted, _ = fold_events(
@@ -268,8 +270,7 @@ class TestAll(object):
         )
         for pdm, ef in zip(profile, profile_ef):
             if ef == 0:
-                # PDM implementation avoids division by 0, instead returns 0
-                assert pdm == 0
+                assert np.isnan(pdm)
             else:
                 assert pdm == 2
                 assert ef == 8
