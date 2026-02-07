@@ -390,11 +390,11 @@ def pdm_profile_stat(profile, sum_dev2, nsample):
     Parameters
     ----------
     profile : array
-        The PDM pulse profile (variance as a function
-        of phase)
+        The PDM pulse profile (normalised sum-of-squared-deviations),
+        which uses the within bin means
 
     sum_dev2 : float
-        The sum-of-squared-deviations of the sample,
+        The sum-of-squared-deviations of the whole sample,
         which uses the grand (whole sample together) mean
 
     nsample : int
@@ -408,8 +408,9 @@ def pdm_profile_stat(profile, sum_dev2, nsample):
     """
     # Get the mean-of-squared-deviations from sum-of-squared-deviations by
     # considering the number of degrees of freedom:
-    # (nsample - nbin) for the within bin sum_dev2 because there are nbin means used
-    # (nsample - 1) for the grand sum_dev2 because there is 1 grand mean used
+    # - (nsample - nbin) since there are nbin means used for
+    #   the within bin sum-of-squared-deviations, which is stored in the profile
+    # - (nsample - 1) for the grand sum_dev2 because there is 1 grand mean used
     mean_dev2_in_bin = np.sum(profile) / (nsample - len(profile))
     mean_dev2_grand = sum_dev2 / (nsample - 1)
     stat = mean_dev2_in_bin / mean_dev2_grand

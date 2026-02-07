@@ -237,7 +237,7 @@ def phase_dispersion_search(
         bins, profile, _ = fold_events(t, f, fd, **kwargs, mode="pdm")
         flux = kwargs["weights"]
         len_flux = len(flux)
-        # Get the local (possibly modified copy of variances) from kwargs rather than as a closure
+        # Get the variances from kwargs (possibly modified) rather than as a closure
         variances_local = kwargs.get("variances", None)
         event_weights = (
             (1.0 / np.asarray(variances_local))
