@@ -96,6 +96,52 @@ class TestAll(object):
         sum_dev2 = sample_var * (nsample - 1)
         np.testing.assert_array_almost_equal(pdm_profile_stat(prof, sum_dev2, nsample), 0.5)
 
+    def test_weighted_pdm_stat(self):
+        """Test the PDM calculation with weighted events (variances)."""
+        period = 1.0
+        nbin = 5
+
+        # Constant signal: flux=10 everywhere. The pdm should be 0.
+        times = np.array([0.1, 0.3, 0.5, 0.7, 0.9])
+        fluxes = np.array([10.0, 10.0, 10.0, 10.0, 10.0])
+        std_var = 1.0
+        variances_base = np.ones_like(fluxes) * std_var
+
+        _, profile_base, _ = fold_events(
+            times, 1 / period, nbin=nbin, weights=fluxes, mode="pdm", ref_time=0
+        )
+        assert np.allclose(profile_base, 0.0) # equal with the mean at every bin
+
+        # An outlier point at 0.15 (Bin 0) with flux 1000
+        times_out = np.append(times, 0.15)
+        fluxes_out = np.append(fluxes, 1000.0)
+
+        # High variance for the outlier, standard for the rest
+        outlier_var = 1.0e6
+        variances = np.append(variances_base, outlier_var)
+
+        # Unweighted PDM on dirty data (should be skewed)
+        _, profile_unweighted, _ = fold_events(
+            times_out, 1 / period, nbin=nbin, weights=fluxes_out, mode="pdm", ref_time=0
+        )
+        assert profile_unweighted[0] > 1000.0 # the profile bin should deviate from 0
+
+        # Weighted PDM on dirty data (should effectively ignore outlier)
+        _, profile_weighted, _ = fold_events(
+            times_out,
+            1 / period,
+            nbin=nbin,
+            weights=fluxes_out,
+            variances=variances,
+            mode="pdm",
+            ref_time=0,
+        )
+        # With high variance, the outlier's weight is tiny.
+        # The bin statistics should be dominated by the point with flux 10.
+        # The result should be very close to the baseline (0) and smaller than the unweighted result.
+        assert np.all(profile_weighted <= profile_unweighted)
+        assert np.allclose(profile_weighted, 0.0, atol=2.0)
+
     def test_zn(self):
         """Test pulse phase calculation, frequency only."""
         ph = np.array([0, 1])
