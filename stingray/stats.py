@@ -906,7 +906,7 @@ def _pavnosigfun(power, nspec):
     return sum
 
 
-def power_confidence_limits(preal, n=1, c=0.95):
+def power_confidence_limits(preal, n=1, c=0.95, summed_flag=True):
     """Confidence limits on power, given a (theoretical) signal power.
 
     This is to be used when we *expect* a given power (e.g. from the pulsed
@@ -930,19 +930,34 @@ def power_confidence_limits(preal, n=1, c=0.95):
         power in a QPO, or the n in Z^2_n
     c: float
         The confidence level (e.g. 0.95=95%)
+    summed_flag: bool
+        Whether the power is (if True) summed or (if False) averaged. Only
+        relevant if n > 1
 
     Returns
     -------
     pmeas: [float, float]
-        The upper and lower confidence interval (a, 1-a) on the measured power
+        The lower and upper bounds of the symmetric ``c``-level confidence
+        interval on the measured power
 
     Examples
     --------
-    >>> cl = power_confidence_limits(150, c=0.84)
+    >>> cl = power_confidence_limits(150, c=0.68, n=1, summed_flag=True)
     >>> assert np.allclose(cl, [127, 176], atol=1)
+    >>> cl = power_confidence_limits(150, c=0.68, n=8, summed_flag=True)
+    >>> assert np.allclose(cl, [141, 190], atol=1)
+    >>> cl = power_confidence_limits(150, c=0.68, n=1, summed_flag=False)
+    >>> assert np.allclose(cl, [127, 176], atol=1)
+    >>> cl = power_confidence_limits(150, c=0.68, n=8, summed_flag=False)
+    >>> assert np.allclose(cl, [143, 160], atol=1)
     """
-    rv = stats.ncx2(2 * n, preal)
-    return rv.ppf([1 - c, c])
+    if summed_flag:
+        rv = stats.ncx2(2 * n, preal)
+        ints = rv.ppf([(1 - c) / 2, (1 + c) / 2])
+    else:
+        rv = stats.ncx2(2 * n, preal * n)
+        ints = rv.ppf([(1 - c) / 2, (1 + c) / 2]) / n
+    return ints
 
 
 def power_upper_limit(pmeas, n=1, c=0.95, summed_flag=True):
