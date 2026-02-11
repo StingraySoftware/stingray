@@ -152,7 +152,13 @@ class TestRebinDataLog(object):
         assert binyerr.shape[0] == nsamples.shape[0]
 
     def test_binning_works_correctly(self):
-        binx, biny, binyerr, nsamples = utils.rebin_data_log(self.x, self.y, self.f, y_err=self.y_err, dx=self.dx)
+        binx, biny, binyerr, nsamples = utils.rebin_data_log(
+            self.x, 
+            self.y, 
+            self.f, 
+            y_err=self.y_err, 
+            dx=self.dx,
+        )
 
         assert np.allclose(np.diff(binx), self.true_bins)
         assert np.allclose(binx, self.true_bin_edges)
