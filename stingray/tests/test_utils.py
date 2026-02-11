@@ -110,7 +110,7 @@ class TestRebinDataLog(object):
         cls.xmin = 1
         cls.x = np.arange(cls.xmin, cls.xmax, cls.dx)
         cls.y = np.arange(cls.xmin, cls.xmax, cls.dx)
-        cls.y_err = np.ones_like(cls.y)
+        cls.y_err = np.ones_like(cls.y) * 2
 
         cls.true_bins = np.array([1.0, 1.0, 1.5, 1.5, 1.5, 1.5, 1.5, 2.5, 2.5, 2.5, 2.0])
 
@@ -153,10 +153,10 @@ class TestRebinDataLog(object):
 
     def test_binning_works_correctly(self):
         binx, biny, binyerr, nsamples = utils.rebin_data_log(
-            self.x, 
-            self.y, 
-            self.f, 
-            y_err=self.y_err, 
+            self.x,
+            self.y,
+            self.f,
+            y_err=self.y_err,
             dx=self.dx,
         )
 
@@ -164,7 +164,7 @@ class TestRebinDataLog(object):
         assert np.allclose(binx, self.true_bin_edges)
         assert np.allclose(biny, self.true_values)
         assert np.allclose(nsamples, self.true_nsamples)
-        assert np.allclose(binyerr, 2/np.sqrt(self.true_nsamples))
+        assert np.allclose(binyerr, 2 / np.sqrt(self.true_nsamples))
 
     def test_method_works_on_complex_numbers(self):
         re = np.arange(self.xmin, self.xmax, self.dx)
