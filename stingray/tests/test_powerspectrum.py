@@ -1267,9 +1267,17 @@ class TestRoundTrip:
     @pytest.mark.skipif("not _HAS_XSPEC")
     def test_save_as_xspec(self):
         so = self.cs
-        so.save_as_xspec("dummy")
-        assert os.path.exists("dummy.pha")
-        assert os.path.exists("dummy.rsp")
+        so.save_as_xspec("dummy_pow")
+        assert os.path.exists("dummy_pow.pha")
+        assert os.path.exists("dummy_pow.rsp")
+        os.unlink("dummy_pow.pha")
+        os.unlink("dummy_pow.rsp")
+
+    @pytest.mark.skipif("_HAS_XSPEC")
+    def test_save_as_xspec_fails(self):
+        so = self.cs
+        with pytest.raises(RuntimeError):
+            so.save_as_xspec("dummy")
 
     @pytest.mark.parametrize("fmt", ["pickle"])
     def test_file_roundtrip(self, fmt):

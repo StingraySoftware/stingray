@@ -1384,10 +1384,9 @@ class TestRoundTrip:
     def test_save_as_xspec(self):
         so = self.cs
         so.save_as_xspec("dummy")
-        assert os.path.exists("dummy_real.pha")
-        assert os.path.exists("dummy_real.rsp")
-        assert os.path.exists("dummy_imag.pha")
-        assert os.path.exists("dummy_imag.rsp")
+        for ext in ["real.pha", "real.rsp", "imag.pha", "imag.rsp"]:
+            assert os.path.exists(f"dummy_{ext}")
+            os.unlink(f"dummy_{ext}")
 
     @pytest.mark.skipif("_HAS_XSPEC")
     def test_save_as_xspec_fails(self):
