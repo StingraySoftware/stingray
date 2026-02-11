@@ -1,0 +1,1 @@
+Fixed convergence issues in ``power_upper_limit`` for summed powers and low count rates by replacing ``minimize`` with ``brentq``.

@@ -6,7 +6,6 @@ from scipy import stats
 from stingray.utils import simon
 from stingray.utils import vectorize, float64, float32, int32, int64
 
-
 __all__ = [
     "p_multitrial_from_single_trial",
     "p_single_trial_from_p_multitrial",
@@ -1009,6 +1008,7 @@ def power_upper_limit(pmeas, n=1, c=0.95, summed_flag=True):
     >>> pup = power_upper_limit(40, 1, 0.99)
     >>> assert np.isclose(pup, 75, atol=2)
     """
+    from scipy.optimize import brentq
 
     def ppf(x):
         rv = stats.ncx2(2 * n, x)
@@ -1018,24 +1018,28 @@ def power_upper_limit(pmeas, n=1, c=0.95, summed_flag=True):
         rv = stats.ncx2(2 * n, x)
         return rv.ppf(c)
 
-    def func_to_minimize(x, xmeas):
-        return np.abs(ppf(x) - xmeas)
-
-    from scipy.optimize import minimize
-
     if summed_flag:
         pow = pmeas
     else:
         pow = pmeas * n
 
+    def func_to_minimize(x):
+        return ppf(x) - pow
+
+    rv = stats.chi2(2 * n)
+    plow = rv.ppf(1 - c)
+    if pow < plow:
+        # Any power below plow is consistent with noise,
+        # so the upper limit on the signal power is 0.
+        return 0.0
+
     initial = isf(pow)
-    res = minimize(
-        func_to_minimize, [initial], pow, bounds=[(initial / 2, initial * 2)], method="Nelder-Mead"
-    )
+    sol = brentq(func_to_minimize, 0, initial * 2)
+
     if summed_flag:
-        return res.x[0]
+        return sol
     else:
-        return res.x[0] / n
+        return sol / n
 
 
 def amplitude_upper_limit(
