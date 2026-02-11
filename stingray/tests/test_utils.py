@@ -88,6 +88,19 @@ class TestRebinData(object):
         assert len(xbin) == 20
         assert np.allclose(ybin, counts)
 
+    def test_rebin_error_propagation(self):
+        x = np.arange(0, 4, 1.0)  # 4 points
+        y = np.ones(4) * 10
+        yerr = np.ones(4) * 2  # Each point has σ=2
+
+        xbin, ybin, ybinerr, _ = utils.rebin_data(x, y, 4.0, yerr=yerr, method="sum")
+        # Correct: sqrt(4*2**2) = sqrt(16) = 4
+        assert np.allclose(ybinerr, 4.0)
+
+        xbin, ybin, ybinerr, _ = utils.rebin_data(x, y, 4.0, yerr=yerr, method="mean")
+        # Correct: sqrt(4*2**2) / 4 = 4/4 = 1
+        assert np.allclose(ybinerr, 1.0)
+
 
 class TestRebinDataLog(object):
     @classmethod
@@ -97,7 +110,7 @@ class TestRebinDataLog(object):
         cls.xmin = 1
         cls.x = np.arange(cls.xmin, cls.xmax, cls.dx)
         cls.y = np.arange(cls.xmin, cls.xmax, cls.dx)
-        cls.y_err = np.ones_like(cls.y)
+        cls.y_err = np.ones_like(cls.y) * 2
 
         cls.true_bins = np.array([1.0, 1.0, 1.5, 1.5, 1.5, 1.5, 1.5, 2.5, 2.5, 2.5, 2.0])
 
@@ -139,26 +152,19 @@ class TestRebinDataLog(object):
         assert binyerr.shape[0] == nsamples.shape[0]
 
     def test_binning_works_correctly(self):
-        binx, _, _, _ = utils.rebin_data_log(self.x, self.y, self.f, y_err=self.y_err, dx=self.dx)
-
-        assert np.allclose(np.diff(binx), self.true_bins)
-
-    def test_bin_edges_are_correct(self):
-        binx, _, _, _ = utils.rebin_data_log(self.x, self.y, self.f, y_err=self.y_err, dx=self.dx)
-
-        assert np.allclose(binx, self.true_bin_edges)
-
-    def test_bin_values_are_correct(self):
-        _, biny, _, _ = utils.rebin_data_log(self.x, self.y, self.f, y_err=self.y_err, dx=self.dx)
-
-        assert np.allclose(biny, self.true_values)
-
-    def test_nsamples_are_correctly_calculated(self):
-        _, _, _, nsamples = utils.rebin_data_log(
-            self.x, self.y, self.f, y_err=self.y_err, dx=self.dx
+        binx, biny, binyerr, nsamples = utils.rebin_data_log(
+            self.x,
+            self.y,
+            self.f,
+            y_err=self.y_err,
+            dx=self.dx,
         )
 
+        assert np.allclose(np.diff(binx), self.true_bins)
+        assert np.allclose(binx, self.true_bin_edges)
+        assert np.allclose(biny, self.true_values)
         assert np.allclose(nsamples, self.true_nsamples)
+        assert np.allclose(binyerr, 2 / np.sqrt(self.true_nsamples))
 
     def test_method_works_on_complex_numbers(self):
         re = np.arange(self.xmin, self.xmax, self.dx)
