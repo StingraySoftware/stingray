@@ -4,6 +4,7 @@ import os
 import sys
 import traceback
 import warnings
+import subprocess as sp
 from collections.abc import Iterable
 
 import numpy as np
@@ -1567,3 +1568,36 @@ def _can_serialize_meta(probe_file: str, fmt: str) -> bool:
         )
         yes_it_can = False
     return yes_it_can
+
+
+def save_as_xspec(x, dx, y, yerr, outroot):
+    """Save frequency spectra in a format readable to FTOOLS and Xspec.
+
+    Parameters
+    ----------
+    x: float array
+        The energies of the spectrum
+    dx: float array
+        The width of the energy bins
+    y: float array
+        The power of the spectrum in each bin
+    yerr: float array
+        The error on the power in each bin
+
+    Notes
+    -----
+    Uses method described by Ingram and Done in Appendix A of
+    `this paper<https://arxiv.org/pdf/1108.0789>__`
+    """
+
+    flo = x - dx / 2
+    fhi = x + dx / 2
+    power = y * dx
+    power_err = yerr * dx
+    outname = outroot + ".txt"
+
+    np.savetxt(outname, np.transpose([flo, fhi, power, power_err]))
+    try:
+        sp.check_call(f"flx2xsp {outname} {outroot}.pha {outroot}.rsp".split())
+    except FileNotFoundError:
+        raise RuntimeError("You need to install and initialize HEASOFT to save in Xspec format")
