@@ -1388,6 +1388,23 @@ class TestRoundTrip:
             assert os.path.exists(f"dummy_{ext}")
             os.unlink(f"dummy_{ext}")
 
+    def test_save_as_xspec_mock(self):
+        from unittest.mock import patch
+
+        def function(blah, root):
+            for fnames in [root + ".pha", root + ".rsp"]:
+                with open(fnames, "w") as f:
+                    f.write("dummy")
+
+        so = self.cs
+
+        with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
+            so.save_as_xspec("dummy")
+
+        for ext in ["real.pha", "real.rsp", "imag.pha", "imag.rsp"]:
+            assert os.path.exists(f"dummy_{ext}")
+            os.unlink(f"dummy_{ext}")
+
     @pytest.mark.skipif("_HAS_XSPEC")
     def test_save_as_xspec_fails(self):
         so = self.cs

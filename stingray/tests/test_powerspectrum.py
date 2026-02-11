@@ -1279,6 +1279,23 @@ class TestRoundTrip:
         with pytest.raises(RuntimeError):
             so.save_as_xspec("dummy")
 
+    def test_save_as_xspec_mock(self):
+        from unittest.mock import patch
+
+        def function(blah, root):
+            for fnames in [root + ".pha", root + ".rsp"]:
+                with open(fnames, "w") as f:
+                    f.write("dummy")
+
+        so = self.cs
+
+        with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
+            so.save_as_xspec("dummy_pow")
+
+        for ext in [".pha", ".rsp"]:
+            assert os.path.exists(f"dummy_pow{ext}")
+            os.unlink(f"dummy_pow{ext}")
+
     @pytest.mark.parametrize("fmt", ["pickle"])
     def test_file_roundtrip(self, fmt):
         so = self.cs

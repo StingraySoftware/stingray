@@ -1570,6 +1570,10 @@ def _can_serialize_meta(probe_file: str, fmt: str) -> bool:
     return yes_it_can
 
 
+def run_flx2xsp(infile, outroot):
+    sp.check_call(f"flx2xsp {infile} {outroot}.pha {outroot}.rsp".split())
+
+
 def save_as_xspec(x, dx, y, yerr, outroot):
     """Save frequency spectra in a format readable to FTOOLS and Xspec.
 
@@ -1601,6 +1605,6 @@ def save_as_xspec(x, dx, y, yerr, outroot):
 
     np.savetxt(outname, np.transpose([flo, fhi, power, power_err]))
     try:
-        sp.check_call(f"flx2xsp {outname} {outroot}.pha {outroot}.rsp".split())
+        run_flx2xsp(outname, outroot)
     except FileNotFoundError:
         raise RuntimeError("You need to install and initialize HEASOFT to save in Xspec format")
