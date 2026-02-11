@@ -1571,7 +1571,23 @@ def _can_serialize_meta(probe_file: str, fmt: str) -> bool:
 
 
 def run_flx2xsp(infile, outroot):
-    sp.check_call(f"flx2xsp {infile} {outroot}.pha {outroot}.rsp".split())
+    """Wrapper around the HEASOFT tool ``flx2xsp``.
+
+    Converts a spectrum in text format to Xspec format.
+
+    Parameters
+    ----------
+    infile: str
+        The name of the input file, containing the spectrum in text format. The file should have
+        four columns: the lower energy of the bin, the higher energy of the bin, the power in the bin and the error on the power in the bin.
+    outroot: str
+        The root name of the output files. The file name will be appended with
+        ".pha" and ".rsp" for the different files that will be created. The output files will be in Xspec format.
+    """
+    try:
+        sp.check_call(f"flx2xsp {infile} {outroot}.pha {outroot}.rsp".split())
+    except FileNotFoundError:
+        raise RuntimeError("You need to install and initialize HEASOFT to save in Xspec format")
 
 
 def save_as_xspec(x, dx, y, yerr, outroot):
@@ -1604,7 +1620,4 @@ def save_as_xspec(x, dx, y, yerr, outroot):
     outname = outroot + ".txt"
 
     np.savetxt(outname, np.transpose([flo, fhi, power, power_err]))
-    try:
-        run_flx2xsp(outname, outroot)
-    except FileNotFoundError:
-        raise RuntimeError("You need to install and initialize HEASOFT to save in Xspec format")
+    run_flx2xsp(outname, outroot)
