@@ -710,7 +710,7 @@ class StingrayObject(object):
 
         if fmt is None or "ascii" in fmt:
             for col in ts.colnames:
-                if np.iscomplex(ts[col].flatten()[0]):
+                if "complex" in str(ts[col][0].dtype):
                     ts[f"{col}.real"] = ts[col].real
                     ts[f"{col}.imag"] = ts[col].imag
                     ts.remove_column(col)
