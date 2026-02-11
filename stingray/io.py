@@ -1583,6 +1583,9 @@ def save_as_xspec(x, dx, y, yerr, outroot):
         The power of the spectrum in each bin
     yerr: float array
         The error on the power in each bin
+    outroot: str
+        The root name of the output files. The file name will be appended with
+        ".txt", ".pha" and ".rsp" for the different files that will be created
 
     Notes
     -----

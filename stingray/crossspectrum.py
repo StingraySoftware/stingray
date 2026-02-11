@@ -1044,6 +1044,27 @@ class Crossspectrum(StingrayObject):
         else:
             raise AttributeError("Object has no attribute named 'time_lag' !")
 
+    def save_as_xspec(self, outroot):
+        """Save the cross spectrum in a format that can be read by XSPEC.
+
+        Parameters
+        ----------
+        outroot : str
+            The root name of the output files. The method will produce two files,
+            one with extension ``.pha`` and one with extension ``.rsp``.
+        """
+        from .io import save_as_xspec
+
+        if self.type == "powerspectrum":
+            save_as_xspec(self.freq, self.df, self.power.real, self.power_err.real, outroot)
+        else:
+            save_as_xspec(
+                self.freq, self.df, self.power.real, self.power_err.real, outroot + "_real"
+            )
+            save_as_xspec(
+                self.freq, self.df, self.power.imag, self.power_err.imag, outroot + "_imag"
+            )
+
     def plot(
         self, labels=None, axis=None, title=None, marker="-", save=False, filename=None, ax=None
     ):

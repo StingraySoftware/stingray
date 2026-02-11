@@ -24,6 +24,7 @@ import copy
 _HAS_XARRAY = importlib.util.find_spec("xarray") is not None
 _HAS_PANDAS = importlib.util.find_spec("pandas") is not None
 _HAS_H5PY = importlib.util.find_spec("h5py") is not None
+_HAS_XSPEC = os.getenv("HEADAS") is not None
 
 np.random.seed(20160528)
 curdir = os.path.abspath(os.path.dirname(__file__))
@@ -1347,6 +1348,8 @@ class TestRoundTrip:
         cls.cs.m = 1
         cls.cs.nphots1 = 34
         cls.cs.nphots2 = 25
+        cls.cs.df = 1
+        cls.cs.power_err = np.ones_like(cls.cs.power) * 0.5
 
     def _check_equal(self, so, new_so):
         for attr in ["freq", "power"]:
@@ -1376,6 +1379,21 @@ class TestRoundTrip:
         new_so = so.from_pandas(ts)
 
         self._check_equal(so, new_so)
+
+    @pytest.mark.skipif("not _HAS_XSPEC")
+    def test_save_as_xspec(self):
+        so = self.cs
+        so.save_as_xspec("dummy")
+        assert os.path.exists("dummy_real.pha")
+        assert os.path.exists("dummy_real.rsp")
+        assert os.path.exists("dummy_imag.pha")
+        assert os.path.exists("dummy_imag.rsp")
+
+    @pytest.mark.skipif("_HAS_XSPEC")
+    def test_save_as_xspec_fails(self):
+        so = self.cs
+        with pytest.raises(RuntimeError):
+            so.save_as_xspec("dummy")
 
     @pytest.mark.parametrize("fmt", ["pickle", "hdf5"])
     def test_file_roundtrip(self, fmt):
