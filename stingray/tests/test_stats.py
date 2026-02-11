@@ -20,7 +20,6 @@ from stingray.stats import (
     power_upper_limit,
     amplitude_upper_limit,
     power_confidence_limits,
-
 )
 
 
