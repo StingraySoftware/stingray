@@ -1,7 +1,27 @@
 import pytest
 import numpy as np
+from collections.abc import Iterable
 from scipy import stats
-from stingray.stats import *
+from stingray.stats import (
+    p_single_trial_from_p_multitrial,
+    p_multitrial_from_single_trial,
+    fold_detection_level,
+    phase_dispersion_detection_level,
+    z2_n_detection_level,
+    fold_profile_probability,
+    phase_dispersion_probability,
+    z2_n_probability,
+    classical_pvalue,
+    equivalent_gaussian_Nsigma_from_logp,
+    chi2_logp,
+    fold_profile_logprobability,
+    phase_dispersion_logprobability,
+    z2_n_logprobability,
+    power_upper_limit,
+    amplitude_upper_limit,
+    power_confidence_limits,
+
+)
 
 
 @pytest.mark.parametrize("ntrial", [1, 10, 100, 1000, 10000, 100000])
@@ -75,6 +95,18 @@ def test_pdm_probability(ntrial):
 def test_zn_probability(ntrial):
     detlev = z2_n_detection_level(2, 0.1, ntrial=ntrial)
     np.testing.assert_almost_equal(z2_n_probability(detlev, 2, ntrial=ntrial), 0.1)
+
+
+def ncx2_ppf(xs, n=1, c=0.99, summed_flag=True):
+    if isinstance(xs, Iterable):
+        return [ncx2_ppf(x, n, c, summed_flag) for x in xs]
+    if not summed_flag:
+        xs = xs * n
+    rv = stats.ncx2(2 * n, xs)
+    val = rv.ppf(1 - c)
+    if not summed_flag:
+        val = val / n
+    return val
 
 
 class TestClassicalSignificances(object):
@@ -248,12 +280,14 @@ class TestClassicalSignificances(object):
         assert np.isclose(power_upper_limit(40, 1, 0.99), 75, rtol=0.1)
 
     def test_amplitude_upper_limit(self):
+        # The measured power is much lower than the expected noise level
+        # (100 vs ~200 for n=100). The upper limit should be 0.
         assert np.isclose(
             amplitude_upper_limit(
-                210, 100000, n=100, c=0.95, fft_corr=False, nyq_ratio=0.01, summed_flag=True
+                100, 100000, n=100, c=0.95, fft_corr=False, nyq_ratio=0.01, summed_flag=True
             ),
-            0.0298,
-            rtol=0.1,
+            0.0,
+            atol=1e-4,
         )
 
     def test_amplitude_upper_limit_averaging(self):
@@ -277,15 +311,30 @@ class TestClassicalSignificances(object):
         low, high = power_confidence_limits(preal, n, c)
 
         # Check boundaries against Scipy CDF definition
+        assert np.isclose(ncx2.cdf(high, df=2 * n, nc=preal), 0.975, atol=1e-4)
         assert np.isclose(ncx2.cdf(low, df=2 * n, nc=preal), 0.025, atol=1e-4)
 
-    def test_power_upper_limit_low_power(self):
-        # Regression test for low power values (where pmeas is below noise floor)
-        # Should converge to 0 (or close to 0) without error
-        ul = power_upper_limit(0.1, n=2, c=0.95, summed_flag=True)
-        assert np.isclose(ul, 0.0, atol=1e-4)
-        
-        # Test valid convergence for summed power
-        ul = power_upper_limit(40, n=2, c=0.95, summed_flag=True)
-        # Calculated value from reliable reproduction
-        assert np.isclose(ul, 60.137, rtol=0.01)
+    @pytest.mark.parametrize("n", [1, 10, 100, 1000])
+    @pytest.mark.parametrize("c", [0.50, 0.95, 0.99])
+    @pytest.mark.parametrize("summed_flag", [True, False])
+    def test_power_upper_limit_roundtrip(self, n, c, summed_flag):
+        # our pmeas should be the lower limit of a certain preal. Let us go backwards,
+        # and simulate preal.
+        preal = 10 ** np.random.uniform(-1, 3, 100)
+        # and create the pmeas from there
+        pmeas = ncx2_ppf(preal, n=n, c=c, summed_flag=summed_flag)
+        # Now calculate the upper limit, which should coincide with preal.
+        uplim = [power_upper_limit(p, c=c, n=n, summed_flag=summed_flag) for p in pmeas]
+        assert np.allclose(uplim, preal, rtol=0.1)
+
+    @pytest.mark.parametrize("n", [1, 100])
+    @pytest.mark.parametrize("c", [0.50, 0.99])
+    @pytest.mark.parametrize("summed_flag", [True, False])
+    def test_power_upper_limit_low_val(self, n, c, summed_flag):
+        # consistent with power==0 if the measured power is below the given confidence limit
+        # for no power
+        maxval = ncx2_ppf(0, n=n, c=c, summed_flag=summed_flag)
+
+        vals = np.random.uniform(0, maxval, 10)
+        for val in vals:
+            assert np.isclose(power_upper_limit(val, c=c, n=n, summed_flag=summed_flag), 0.0)

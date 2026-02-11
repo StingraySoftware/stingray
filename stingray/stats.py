@@ -6,7 +6,6 @@ from scipy import stats
 from stingray.utils import simon
 from stingray.utils import vectorize, float64, float32, int32, int64
 
-
 __all__ = [
     "p_multitrial_from_single_trial",
     "p_single_trial_from_p_multitrial",
@@ -1009,6 +1008,7 @@ def power_upper_limit(pmeas, n=1, c=0.95, summed_flag=True):
     >>> pup = power_upper_limit(40, 1, 0.99)
     >>> assert np.isclose(pup, 75, atol=2)
     """
+    from scipy.optimize import brentq
 
     def ppf(x):
         rv = stats.ncx2(2 * n, x)
@@ -1018,40 +1018,23 @@ def power_upper_limit(pmeas, n=1, c=0.95, summed_flag=True):
         rv = stats.ncx2(2 * n, x)
         return rv.ppf(c)
 
-    def func_to_minimize(x):
-        rv = stats.ncx2(2 * n, x)
-        return rv.ppf(1 - c) - pow
-
-    from scipy.optimize import brentq
-
     if summed_flag:
         pow = pmeas
     else:
         pow = pmeas * n
 
-    # Check if we are below the noise floor (S=0 case)
-    # ncx2 with nc=0 is just chi2
-    val_at_0 = stats.chi2.ppf(1 - c, 2 * n)
-    if val_at_0 > pow:
+    def func_to_minimize(x):
+        return ppf(x) - pow
+
+    rv = stats.chi2(2 * n)
+    plow = rv.ppf(1 - c)
+    if pow < plow:
+        # Any power below plow is consistent with noise,
+        # so the upper limit on the signal power is 0.
         return 0.0
 
-    # Bracket finding
-    high = pow if pow > 1 else 1.0
-    while stats.ncx2(2 * n, high).ppf(1 - c) <= pow:
-        high *= 2
-        # If high goes too high, we might run into numerical issues or the
-        # power is really consistent with a huge signal (unlikely for ppf(0.05))
-        # but let's put a sane limit
-        if high > 1e15:
-            warnings.warn("Could not bracket upper limit. Returning NaN.")
-            return np.nan
-
-    try:
-        # We are looking for the root of ppf(1-c, S) - pow = 0
-        sol = brentq(func_to_minimize, 0, high)
-    except Exception as e:
-        warnings.warn(f"Root finding failed: {e}")
-        return np.nan
+    initial = isf(pow)
+    sol = brentq(func_to_minimize, 0, initial * 2)
 
     if summed_flag:
         return sol
