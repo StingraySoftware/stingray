@@ -152,26 +152,13 @@ class TestRebinDataLog(object):
         assert binyerr.shape[0] == nsamples.shape[0]
 
     def test_binning_works_correctly(self):
-        binx, _, _, _ = utils.rebin_data_log(self.x, self.y, self.f, y_err=self.y_err, dx=self.dx)
+        binx, biny, binyerr, nsamples = utils.rebin_data_log(self.x, self.y, self.f, y_err=self.y_err, dx=self.dx)
 
         assert np.allclose(np.diff(binx), self.true_bins)
-
-    def test_bin_edges_are_correct(self):
-        binx, _, _, _ = utils.rebin_data_log(self.x, self.y, self.f, y_err=self.y_err, dx=self.dx)
-
         assert np.allclose(binx, self.true_bin_edges)
-
-    def test_bin_values_are_correct(self):
-        _, biny, _, _ = utils.rebin_data_log(self.x, self.y, self.f, y_err=self.y_err, dx=self.dx)
-
         assert np.allclose(biny, self.true_values)
-
-    def test_nsamples_are_correctly_calculated(self):
-        _, _, _, nsamples = utils.rebin_data_log(
-            self.x, self.y, self.f, y_err=self.y_err, dx=self.dx
-        )
-
         assert np.allclose(nsamples, self.true_nsamples)
+        assert np.allclose(binyerr, 2/np.sqrt(self.true_nsamples))
 
     def test_method_works_on_complex_numbers(self):
         re = np.arange(self.xmin, self.xmax, self.dx)
