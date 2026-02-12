@@ -238,6 +238,33 @@ class TestProperties(object):
         # (because low_memory, and input_counts is now False)
         assert lc._counts_err is None
 
+    def test_counts_err_after_init_poisson(self):
+        dt = 0.2
+        # Set to 10000 counts per bin. The error bar will be sqrt(10000) = 100 counts per bin
+        # Note that poisson_symmetrical_errors returns something different from sqrt(counts)
+        lc = Lightcurve(np.arange(10) * dt, np.ones(10) * 10000, dt=dt, err_dist="poisson")
+        assert np.allclose(lc.counts_err, 100, rtol=0.1)
+
+    def test_countrate_err_after_init_poisson(self):
+        dt = 0.2
+        # Set to 10000 counts per bin. The error bar will be sqrt(10000) = 100 counts per bin,
+        # which translates to 100 / dt in count rate error.
+        # Note that poisson_symmetrical_errors returns something different from sqrt(counts)
+        lc = Lightcurve(np.arange(10) * dt, np.ones(10) * 10000, dt=dt, err_dist="poisson")
+        assert np.allclose(lc.countrate_err, 100 / dt, rtol=0.1)
+
+    def test_counts_err_after_init_gauss(self):
+        dt = 0.2
+        # If errors are Gaussian, we set them to 0 by default, so the count rate error should also be 0.
+        lc = Lightcurve(np.arange(10) * dt, np.ones(10) * 10000, dt=dt, err_dist="gauss")
+        assert np.allclose(lc.counts_err, 0)
+
+    def test_countrate_err_after_init_gauss(self):
+        dt = 0.2
+        # If errors are Gaussian, we set them to 0 by default, so the count rate error should also be 0.
+        lc = Lightcurve(np.arange(10) * dt, np.ones(10) * 10000, dt=dt, err_dist="gauss")
+        assert np.allclose(lc.countrate_err, 0, rtol=0.1)
+
     @pytest.mark.parametrize("attr", "time,counts,countrate".split(","))
     def test_add_data_to_empty_lightcurve_wrong(self, attr):
         lc0 = Lightcurve()
