@@ -1268,20 +1268,25 @@ class TestRoundTrip:
     @pytest.mark.skipif("not _HAS_FLX2XSP")
     def test_save_as_xspec(self):
         so = self.cs
-        so.save_as_xspec("dummy_pow")
-        assert os.path.exists("dummy_pow.pha")
-        assert os.path.exists("dummy_pow.rsp")
-        assert os.path.exists("dummy_pow.txt")
-        os.unlink("dummy_pow.pha")
-        os.unlink("dummy_pow.rsp")
-        os.unlink("dummy_pow.txt")
+        try:
+            so.save_as_xspec("dummy_pow")
+            assert os.path.exists("dummy_pow.pha")
+            assert os.path.exists("dummy_pow.rsp")
+            assert os.path.exists("dummy_pow.txt")
+        finally:
+            for ext in [".pha", ".rsp", ".txt"]:
+                if os.path.exists(f"dummy_pow{ext}"):
+                    os.unlink(f"dummy_pow{ext}")
 
     @pytest.mark.skipif("_HAS_FLX2XSP")
     def test_save_as_xspec_fails_no_flx2xsp(self):
         so = self.cs
-        with pytest.raises(RuntimeError, match="install and initialize HEASOFT to save"):
-            so.save_as_xspec("dummy")
-        os.unlink("dummy.txt")
+        try:
+            with pytest.raises(RuntimeError, match="install and initialize HEASOFT to save"):
+                so.save_as_xspec("dummy")
+        finally:
+            if os.path.exists("dummy.txt"):
+                os.unlink("dummy.txt")
 
     def test_save_as_xspec_fails_no_df(self):
         so = copy.deepcopy(self.cs)
@@ -1310,12 +1315,16 @@ class TestRoundTrip:
 
         so = self.cs
 
-        with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
-            so.save_as_xspec("dummy_pow")
+        try:
+            with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
+                so.save_as_xspec("dummy_pow")
 
-        for ext in [".pha", ".rsp", ".txt"]:
-            assert os.path.exists(f"dummy_pow{ext}")
-            os.unlink(f"dummy_pow{ext}")
+            for ext in [".pha", ".rsp", ".txt"]:
+                assert os.path.exists(f"dummy_pow{ext}")
+        finally:
+            for ext in [".pha", ".rsp", ".txt"]:
+                if os.path.exists(f"dummy_pow{ext}"):
+                    os.unlink(f"dummy_pow{ext}")
 
     @pytest.mark.parametrize("fmt", ["pickle"])
     def test_file_roundtrip(self, fmt):

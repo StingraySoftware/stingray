@@ -1384,11 +1384,16 @@ class TestRoundTrip:
     @pytest.mark.skipif("not _HAS_FLX2XSP")
     def test_save_as_xspec(self):
         so = self.cs
-        so.save_as_xspec("dummy")
-        for part in ["real", "imag"]:
-            for ext in ["pha", "rsp", "txt"]:
-                assert os.path.exists(f"dummy_{part}.{ext}")
-                os.unlink(f"dummy_{part}.{ext}")
+        try:
+            so.save_as_xspec("dummy")
+            for part in ["real", "imag"]:
+                for ext in ["pha", "rsp", "txt"]:
+                    assert os.path.exists(f"dummy_{part}.{ext}")
+        finally:
+            for part in ["real", "imag"]:
+                for ext in ["pha", "rsp", "txt"]:
+                    if os.path.exists(f"dummy_{part}.{ext}"):
+                        os.unlink(f"dummy_{part}.{ext}")
 
     @pytest.mark.skipif("_HAS_FLX2XSP")
     def test_save_as_xspec_mock(self):
@@ -1401,20 +1406,28 @@ class TestRoundTrip:
 
         so = self.cs
 
-        with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
-            so.save_as_xspec("dummy")
+        try:
+            with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
+                so.save_as_xspec("dummy")
 
-        for part in ["real", "imag"]:
-            for ext in ["pha", "rsp", "txt"]:
-                assert os.path.exists(f"dummy_{part}.{ext}")
-                os.unlink(f"dummy_{part}.{ext}")
+            for part in ["real", "imag"]:
+                for ext in ["pha", "rsp", "txt"]:
+                    assert os.path.exists(f"dummy_{part}.{ext}")
+        finally:
+            for part in ["real", "imag"]:
+                for ext in ["pha", "rsp", "txt"]:
+                    if os.path.exists(f"dummy_{part}.{ext}"):
+                        os.unlink(f"dummy_{part}.{ext}")
 
     @pytest.mark.skipif("_HAS_FLX2XSP")
     def test_save_as_xspec_fails_noflx2xsp(self):
         so = self.cs
-        with pytest.raises(RuntimeError, match="install and initialize HEASOFT to save"):
-            so.save_as_xspec("dummy")
-        os.unlink("dummy_real.txt")
+        try:
+            with pytest.raises(RuntimeError, match="install and initialize HEASOFT to save"):
+                so.save_as_xspec("dummy")
+        finally:
+            if os.path.exists("dummy_real.txt"):
+                os.unlink("dummy_real.txt")
 
     def test_save_as_xspec_fails_no_df(self):
         so = copy.deepcopy(self.cs)
