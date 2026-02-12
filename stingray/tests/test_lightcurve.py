@@ -1191,6 +1191,29 @@ class TestLightcurve(object):
         assert plt.fignum_exists(1)
         plt.close("all")
 
+    def test_plot_countrate(self):
+        plt.close("all")
+        lc = Lightcurve(self.times, self.counts, input_counts=False)
+        lc.plot(witherrors=True)
+        assert plt.fignum_exists("countrate")
+        plt.close("all")
+
+    def test_plot_counts(self):
+        plt.close("all")
+        lc = Lightcurve(self.times, self.counts, input_counts=True)
+        lc.plot(witherrors=True)
+
+        assert plt.fignum_exists("counts")
+        plt.close("all")
+
+    def test_plot_force_ctrate(self):
+        plt.close("all")
+        lc = Lightcurve(self.times, self.counts)
+        lc.plot(witherrors=True, attr="countrate")
+
+        assert plt.fignum_exists("countrate")
+        plt.close("all")
+
     def test_plot_wrong_label_type(self):
         lc = Lightcurve(self.times, self.counts)
 
