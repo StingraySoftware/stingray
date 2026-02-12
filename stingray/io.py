@@ -1611,7 +1611,7 @@ def save_as_xspec(x, dx, y, yerr, outroot):
     Notes
     -----
     Uses method described by Ingram and Done in Appendix A of
-    `this paper<https://arxiv.org/pdf/1108.0789>__`
+    `this paper <https://arxiv.org/pdf/1108.0789>`__
     """
 
     flo = x - dx / 2
