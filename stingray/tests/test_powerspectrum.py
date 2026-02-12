@@ -3,6 +3,7 @@ import numpy as np
 import copy
 import warnings
 import importlib
+import shutil
 import tempfile
 
 import pytest
@@ -20,7 +21,7 @@ from stingray.filters import filter_for_deadtime
 _HAS_XARRAY = importlib.util.find_spec("xarray") is not None
 _HAS_PANDAS = importlib.util.find_spec("pandas") is not None
 _HAS_H5PY = importlib.util.find_spec("h5py") is not None
-_HAS_XSPEC = os.getenv("HEADAS") is not None
+_HAS_FLX2XSP = (os.getenv("HEADAS") is not None) and (shutil.which("flx2xsp") is not None)
 
 
 def clear_all_figs():
@@ -1264,26 +1265,30 @@ class TestRoundTrip:
 
         self._check_equal(so, new_so)
 
-    @pytest.mark.skipif("not _HAS_XSPEC")
+    @pytest.mark.skipif("not _HAS_FLX2XSP")
     def test_save_as_xspec(self):
         so = self.cs
         so.save_as_xspec("dummy_pow")
         assert os.path.exists("dummy_pow.pha")
         assert os.path.exists("dummy_pow.rsp")
+        assert os.path.exists("dummy_pow.txt")
         os.unlink("dummy_pow.pha")
         os.unlink("dummy_pow.rsp")
+        os.unlink("dummy_pow.txt")
 
-    @pytest.mark.skipif("_HAS_XSPEC")
+    @pytest.mark.skipif("_HAS_FLX2XSP")
     def test_save_as_xspec_fails(self):
         so = self.cs
         with pytest.raises(RuntimeError):
             so.save_as_xspec("dummy")
+        os.unlink("dummy.txt")
 
+    @pytest.mark.skipif("_HAS_FLX2XSP")
     def test_save_as_xspec_mock(self):
         from unittest.mock import patch
 
         def function(blah, root):
-            for fnames in [root + ".pha", root + ".rsp"]:
+            for fnames in [root + ".pha", root + ".rsp", root + ".txt"]:
                 with open(fnames, "w") as f:
                     f.write("dummy")
 
@@ -1292,7 +1297,7 @@ class TestRoundTrip:
         with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
             so.save_as_xspec("dummy_pow")
 
-        for ext in [".pha", ".rsp"]:
+        for ext in [".pha", ".rsp", ".txt"]:
             assert os.path.exists(f"dummy_pow{ext}")
             os.unlink(f"dummy_pow{ext}")
 

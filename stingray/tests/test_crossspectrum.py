@@ -1,5 +1,6 @@
 import os
 import importlib
+import shutil
 import numpy as np
 import pytest
 import warnings
@@ -24,7 +25,7 @@ import copy
 _HAS_XARRAY = importlib.util.find_spec("xarray") is not None
 _HAS_PANDAS = importlib.util.find_spec("pandas") is not None
 _HAS_H5PY = importlib.util.find_spec("h5py") is not None
-_HAS_XSPEC = os.getenv("HEADAS") is not None
+_HAS_FLX2XSP = (os.getenv("HEADAS") is not None) and (shutil.which("flx2xsp") is not None)
 
 np.random.seed(20160528)
 curdir = os.path.abspath(os.path.dirname(__file__))
@@ -1380,19 +1381,21 @@ class TestRoundTrip:
 
         self._check_equal(so, new_so)
 
-    @pytest.mark.skipif("not _HAS_XSPEC")
+    @pytest.mark.skipif("not _HAS_FLX2XSP")
     def test_save_as_xspec(self):
         so = self.cs
         so.save_as_xspec("dummy")
-        for ext in ["real.pha", "real.rsp", "imag.pha", "imag.rsp"]:
-            assert os.path.exists(f"dummy_{ext}")
-            os.unlink(f"dummy_{ext}")
+        for part in ["real", "imag"]:
+            for ext in ["pha", "rsp", "txt"]:
+                assert os.path.exists(f"dummy_{part}.{ext}")
+                os.unlink(f"dummy_{part}.{ext}")
 
+    @pytest.mark.skipif("_HAS_FLX2XSP")
     def test_save_as_xspec_mock(self):
         from unittest.mock import patch
 
         def function(blah, root):
-            for fnames in [root + ".pha", root + ".rsp"]:
+            for fnames in [root + ".pha", root + ".rsp", root + ".txt"]:
                 with open(fnames, "w") as f:
                     f.write("dummy")
 
@@ -1401,15 +1404,17 @@ class TestRoundTrip:
         with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
             so.save_as_xspec("dummy")
 
-        for ext in ["real.pha", "real.rsp", "imag.pha", "imag.rsp"]:
-            assert os.path.exists(f"dummy_{ext}")
-            os.unlink(f"dummy_{ext}")
+        for part in ["real", "imag"]:
+            for ext in ["pha", "rsp", "txt"]:
+                assert os.path.exists(f"dummy_{part}.{ext}")
+                os.unlink(f"dummy_{part}.{ext}")
 
-    @pytest.mark.skipif("_HAS_XSPEC")
+    @pytest.mark.skipif("_HAS_FLX2XSP")
     def test_save_as_xspec_fails(self):
         so = self.cs
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError, match="install and initialize HEASOFT to save"):
             so.save_as_xspec("dummy")
+        os.unlink("dummy_real.txt")
 
     @pytest.mark.parametrize("fmt", ["pickle", "hdf5"])
     def test_file_roundtrip(self, fmt):

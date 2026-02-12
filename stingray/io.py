@@ -3,6 +3,7 @@ import copy
 import os
 import sys
 import traceback
+import shutil
 import warnings
 import subprocess as sp
 from collections.abc import Iterable
@@ -1584,10 +1585,10 @@ def run_flx2xsp(infile, outroot):
         The root name of the output files. The file name will be appended with
         ".pha" and ".rsp" for the different files that will be created. The output files will be in Xspec format.
     """
-    try:
-        sp.check_call(f"flx2xsp {infile} {outroot}.pha {outroot}.rsp".split())
-    except FileNotFoundError:
+    if shutil.which("flx2xsp") is None:
         raise RuntimeError("You need to install and initialize HEASOFT to save in Xspec format")
+
+    sp.check_call(f"flx2xsp {infile} {outroot}.pha {outroot}.rsp".split())
 
 
 def save_as_xspec(x, dx, y, yerr, outroot):
@@ -1619,5 +1620,7 @@ def save_as_xspec(x, dx, y, yerr, outroot):
     power_err = yerr * dx
     outname = outroot + ".txt"
 
+    logger.info(f"Saving spectrum in {outname}")
     np.savetxt(outname, np.transpose([flo, fhi, power, power_err]))
+    logger.info(f"Converting {outname} to Xspec format")
     run_flx2xsp(outname, outroot)
