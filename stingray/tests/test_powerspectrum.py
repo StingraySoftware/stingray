@@ -21,7 +21,7 @@ from stingray.filters import filter_for_deadtime
 _HAS_XARRAY = importlib.util.find_spec("xarray") is not None
 _HAS_PANDAS = importlib.util.find_spec("pandas") is not None
 _HAS_H5PY = importlib.util.find_spec("h5py") is not None
-_HAS_FLX2XSP = (os.getenv("HEADAS") is not None) and (shutil.which("flx2xsp") is not None)
+_HAS_FLX2XSP = (os.getenv("HEADAS") is not None) and (shutil.which("ftflx2xsp") is not None)
 
 
 def clear_all_figs():

@@ -1572,7 +1572,7 @@ def _can_serialize_meta(probe_file: str, fmt: str) -> bool:
 
 
 def run_flx2xsp(infile, outroot):
-    """Wrapper around the HEASOFT tool ``flx2xsp``.
+    """Wrapper around the HEASOFT tool ``ftflx2xsp``.
 
     Converts a spectrum in text format to Xspec format.
 
@@ -1588,12 +1588,12 @@ def run_flx2xsp(infile, outroot):
     Raises
     ------
     RuntimeError
-        If the ``flx2xsp`` tool is not found in the system PATH.
+        If the ``ftflx2xsp`` tool is not found in the system PATH.
     """
-    if shutil.which("flx2xsp") is None:
+    if shutil.which("ftflx2xsp") is None:
         raise RuntimeError("You need to install and initialize HEASOFT to save in Xspec format")
 
-    sp.check_call(f"flx2xsp {infile} {outroot}.pha {outroot}.rsp".split())
+    sp.check_call(f"ftflx2xsp {infile} {outroot}.pha {outroot}.rsp".split())
 
 
 def save_as_xspec(x, dx, y, yerr, outroot):
@@ -1622,7 +1622,7 @@ def save_as_xspec(x, dx, y, yerr, outroot):
     Raises
     ------
     RuntimeError
-        If the ``flx2xsp`` tool is not found in the system PATH (HEASOFT not
+        If the ``ftflx2xsp`` tool is not found in the system PATH (HEASOFT not
         installed or not initialized).
     """
 
