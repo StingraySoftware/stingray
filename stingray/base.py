@@ -2443,15 +2443,21 @@ class StingrayTimeseries(StingrayObject):
         ylabel = labels[1]
         # Default values for labels
 
-        ax.plot(self.time, getattr(self, attr), marker, ds="steps-mid", label=attr, zorder=10)
+        ax.plot(
+            self.time, getattr(self, attr), marker, ds="steps-mid", label=attr, zorder=10, color="k"
+        )
 
-        if witherrors and attr + "_err" in self.array_attrs():
+        if witherrors and (
+            attr + "_err" in self.array_attrs()
+            or "_" + attr + "_err" in self.internal_array_attrs()
+        ):
             ax.errorbar(
                 self.time,
                 getattr(self, attr),
                 yerr=getattr(self, attr + "_err"),
                 fmt="o",
                 zorder=10,
+                color="k",
             )
 
         ax.set_ylabel(ylabel)
