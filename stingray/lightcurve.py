@@ -1636,6 +1636,10 @@ class Lightcurve(StingrayTimeseries):
         flux_attr = "counts"
         if not self.input_counts:
             flux_attr = "countrate"
+        if witherrors and self.input_counts:
+            self.counts_err  # Make sure counts_err exists
+        elif witherrors:
+            self.countrate_err  # Make sure countrate_err exists
 
         return super().plot(
             flux_attr,

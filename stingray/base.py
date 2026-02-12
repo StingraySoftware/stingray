@@ -2445,7 +2445,10 @@ class StingrayTimeseries(StingrayObject):
 
         ax.plot(self.time, getattr(self, attr), marker, ds="steps-mid", label=attr, zorder=10)
 
-        if witherrors and attr + "_err" in self.array_attrs():
+        if witherrors and (
+            attr + "_err" in self.array_attrs()
+            or "_" + attr + "_err" in self.internal_array_attrs()
+        ):
             ax.errorbar(
                 self.time,
                 getattr(self, attr),
