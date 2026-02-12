@@ -1047,13 +1047,30 @@ class Crossspectrum(StingrayObject):
     def save_as_xspec(self, outroot):
         """Save the cross spectrum in a format that can be read by XSPEC.
 
+        For power spectra (``self.type == "powerspectrum"``), the method will
+        produce two files: one with extension ``.pha`` and one with extension
+        ``.rsp``, both using ``outroot`` as the base name.
+        For non-powerspectrum cross spectra, the method will produce four files:
+        ``outroot_real.pha``, ``outroot_real.rsp``, ``outroot_imag.pha``, and
+        ``outroot_imag.rsp``, corresponding to the real and imaginary parts of
+        the cross spectrum.
+
         Parameters
         ----------
         outroot : str
-            The root name of the output files. The method will produce two files,
-            one with extension ``.pha`` and one with extension ``.rsp``.
+            The root name of the output files.
         """
         from .io import save_as_xspec
+
+        if not hasattr(self, "df") or self.df is None:
+            raise ValueError(
+                f"{self.type} object has no attribute 'df' or it is None. Cannot save as xspec."
+            )
+        if not hasattr(self, "power_err") or self.power_err is None:
+            raise ValueError(
+                f"{self.type} object has no attribute 'power_err' or it is None. "
+                "Cannot save as xspec."
+            )
 
         if self.type == "powerspectrum":
             save_as_xspec(self.freq, self.df, self.power.real, self.power_err.real, outroot)

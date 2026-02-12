@@ -1410,11 +1410,27 @@ class TestRoundTrip:
                 os.unlink(f"dummy_{part}.{ext}")
 
     @pytest.mark.skipif("_HAS_FLX2XSP")
-    def test_save_as_xspec_fails(self):
+    def test_save_as_xspec_fails_noflx2xsp(self):
         so = self.cs
         with pytest.raises(RuntimeError, match="install and initialize HEASOFT to save"):
             so.save_as_xspec("dummy")
         os.unlink("dummy_real.txt")
+
+    def test_save_as_xspec_fails_no_df(self):
+        so = copy.deepcopy(self.cs)
+        so.df = None
+        with pytest.raises(
+            ValueError, match="crossspectrum object has no attribute 'df' or it is None."
+        ):
+            so.save_as_xspec("dummy")
+
+    def test_save_as_xspec_fails_no_power_err(self):
+        so = copy.deepcopy(self.cs)
+        so.power_err = None
+        with pytest.raises(
+            ValueError, match="crossspectrum object has no attribute 'power_err' or it is None."
+        ):
+            so.save_as_xspec("dummy")
 
     @pytest.mark.parametrize("fmt", ["pickle", "hdf5"])
     def test_file_roundtrip(self, fmt):
