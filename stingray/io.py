@@ -1592,18 +1592,18 @@ def run_flx2xsp(infile, outroot):
 
 
 def save_as_xspec(x, dx, y, yerr, outroot):
-    """Save frequency spectra in a format readable to FTOOLS and Xspec.
+    """Save generic spectra in a format readable to FTOOLS and Xspec.
 
     Parameters
     ----------
     x: float array
-        The energies of the spectrum
+        The energies/frequencies of the spectrum
     dx: float array
-        The width of the energy bins
+        The width of the energy/frequency bins
     y: float array
-        The power of the spectrum in each bin
+        The flux/power of the spectrum in each bin
     yerr: float array
-        The error on the power in each bin
+        The error on the flux/power in each bin
     outroot: str
         The root name of the output files. The file name will be appended with
         ".txt", ".pha" and ".rsp" for the different files that will be created
