@@ -1,0 +1,1 @@
+Fix initialization of countrate_err if errors are Poisson
