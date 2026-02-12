@@ -1650,7 +1650,7 @@ class Lightcurve(StingrayTimeseries):
         getattr(self, flux_attr)  # Check that the attribute exists
         if witherrors:
             err_attr = flux_attr + "_err"
-            print(getattr(self, err_attr, None))  # Check that the error attribute exists
+            getattr(self, err_attr, None)  # Check that the error attribute exists
 
         return super().plot(
             flux_attr,
