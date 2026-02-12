@@ -1584,6 +1584,11 @@ def run_flx2xsp(infile, outroot):
     outroot: str
         The root name of the output files. The file name will be appended with
         ".pha" and ".rsp" for the different files that will be created. The output files will be in Xspec format.
+
+    Raises
+    ------
+    RuntimeError
+        If the ``flx2xsp`` tool is not found in the system PATH.
     """
     if shutil.which("flx2xsp") is None:
         raise RuntimeError("You need to install and initialize HEASOFT to save in Xspec format")
@@ -1598,8 +1603,9 @@ def save_as_xspec(x, dx, y, yerr, outroot):
     ----------
     x: float array
         The energies/frequencies of the spectrum
-    dx: float array
-        The width of the energy/frequency bins
+    dx: float or float array
+        The width of the energy/frequency bins. If a scalar is given,
+        it is interpreted as a constant bin width for all values in ``x``.
     y: float array
         The flux/power of the spectrum in each bin
     yerr: float array
@@ -1612,6 +1618,12 @@ def save_as_xspec(x, dx, y, yerr, outroot):
     -----
     Uses method described by Ingram and Done in Appendix A of
     `this paper <https://arxiv.org/pdf/1108.0789>`__
+
+    Raises
+    ------
+    RuntimeError
+        If the ``flx2xsp`` tool is not found in the system PATH (HEASOFT not
+        installed or not initialized).
     """
 
     flo = x - dx / 2
