@@ -3,7 +3,9 @@ import copy
 import os
 import sys
 import traceback
+import shutil
 import warnings
+import subprocess as sp
 from collections.abc import Iterable
 
 import numpy as np
@@ -1567,3 +1569,70 @@ def _can_serialize_meta(probe_file: str, fmt: str) -> bool:
         )
         yes_it_can = False
     return yes_it_can
+
+
+def run_flx2xsp(infile, outroot):
+    """Wrapper around the HEASOFT tool ``ftflx2xsp``.
+
+    Converts a spectrum in text format to Xspec format.
+
+    Parameters
+    ----------
+    infile: str
+        The name of the input file, containing the spectrum in text format. The file should have
+        four columns: the lower energy of the bin, the higher energy of the bin, the power in the bin and the error on the power in the bin.
+    outroot: str
+        The root name of the output files. The file name will be appended with
+        ".pha" and ".rsp" for the different files that will be created. The output files will be in Xspec format.
+
+    Raises
+    ------
+    RuntimeError
+        If the ``ftflx2xsp`` tool is not found in the system PATH.
+    """
+    if shutil.which("ftflx2xsp") is None:
+        raise RuntimeError("You need to install and initialize HEASOFT to save in Xspec format")
+
+    sp.check_call(f"ftflx2xsp {infile} {outroot}.pha {outroot}.rsp".split())
+
+
+def save_as_xspec(x, dx, y, yerr, outroot):
+    """Save generic spectra in a format readable to FTOOLS and Xspec.
+
+    Parameters
+    ----------
+    x: float array
+        The energies/frequencies of the spectrum
+    dx: float or float array
+        The width of the energy/frequency bins. If a scalar is given,
+        it is interpreted as a constant bin width for all values in ``x``.
+    y: float array
+        The flux/power of the spectrum in each bin
+    yerr: float array
+        The error on the flux/power in each bin
+    outroot: str
+        The root name of the output files. The file name will be appended with
+        ".txt", ".pha" and ".rsp" for the different files that will be created
+
+    Notes
+    -----
+    Uses method described by Ingram and Done in Appendix A of
+    `this paper <https://arxiv.org/pdf/1108.0789>`__
+
+    Raises
+    ------
+    RuntimeError
+        If the ``ftflx2xsp`` tool is not found in the system PATH (HEASOFT not
+        installed or not initialized).
+    """
+
+    flo = x - dx / 2
+    fhi = x + dx / 2
+    power = y * dx
+    power_err = yerr * dx
+    outname = outroot + ".txt"
+
+    logger.info(f"Saving spectrum in {outname}")
+    np.savetxt(outname, np.transpose([flo, fhi, power, power_err]))
+    logger.info(f"Converting {outname} to Xspec format")
+    run_flx2xsp(outname, outroot)

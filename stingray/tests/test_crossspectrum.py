@@ -1,5 +1,6 @@
 import os
 import importlib
+import shutil
 import numpy as np
 import pytest
 import warnings
@@ -24,6 +25,7 @@ import copy
 _HAS_XARRAY = importlib.util.find_spec("xarray") is not None
 _HAS_PANDAS = importlib.util.find_spec("pandas") is not None
 _HAS_H5PY = importlib.util.find_spec("h5py") is not None
+_HAS_FLX2XSP = (os.getenv("HEADAS") is not None) and (shutil.which("ftflx2xsp") is not None)
 
 np.random.seed(20160528)
 curdir = os.path.abspath(os.path.dirname(__file__))
@@ -1347,6 +1349,8 @@ class TestRoundTrip:
         cls.cs.m = 1
         cls.cs.nphots1 = 34
         cls.cs.nphots2 = 25
+        cls.cs.df = 1
+        cls.cs.power_err = np.ones_like(cls.cs.power) * 0.5
 
     def _check_equal(self, so, new_so):
         for attr in ["freq", "power"]:
@@ -1376,6 +1380,70 @@ class TestRoundTrip:
         new_so = so.from_pandas(ts)
 
         self._check_equal(so, new_so)
+
+    @pytest.mark.skipif("not _HAS_FLX2XSP")
+    def test_save_as_xspec(self):
+        so = self.cs
+        try:
+            so.save_as_xspec("dummy")
+            for part in ["real", "imag"]:
+                for ext in ["pha", "rsp", "txt"]:
+                    assert os.path.exists(f"dummy_{part}.{ext}")
+        finally:
+            for part in ["real", "imag"]:
+                for ext in ["pha", "rsp", "txt"]:
+                    if os.path.exists(f"dummy_{part}.{ext}"):
+                        os.unlink(f"dummy_{part}.{ext}")
+
+    @pytest.mark.skipif("_HAS_FLX2XSP")
+    def test_save_as_xspec_mock(self):
+        from unittest.mock import patch
+
+        def function(blah, root):
+            for fnames in [root + ".pha", root + ".rsp", root + ".txt"]:
+                with open(fnames, "w") as f:
+                    f.write("dummy")
+
+        so = self.cs
+
+        try:
+            with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
+                so.save_as_xspec("dummy")
+
+            for part in ["real", "imag"]:
+                for ext in ["pha", "rsp", "txt"]:
+                    assert os.path.exists(f"dummy_{part}.{ext}")
+        finally:
+            for part in ["real", "imag"]:
+                for ext in ["pha", "rsp", "txt"]:
+                    if os.path.exists(f"dummy_{part}.{ext}"):
+                        os.unlink(f"dummy_{part}.{ext}")
+
+    @pytest.mark.skipif("_HAS_FLX2XSP")
+    def test_save_as_xspec_fails_noflx2xsp(self):
+        so = self.cs
+        try:
+            with pytest.raises(RuntimeError, match="install and initialize HEASOFT to save"):
+                so.save_as_xspec("dummy")
+        finally:
+            if os.path.exists("dummy_real.txt"):
+                os.unlink("dummy_real.txt")
+
+    def test_save_as_xspec_fails_no_df(self):
+        so = copy.deepcopy(self.cs)
+        so.df = None
+        with pytest.raises(
+            ValueError, match="crossspectrum object has no attribute 'df' or it is None."
+        ):
+            so.save_as_xspec("dummy")
+
+    def test_save_as_xspec_fails_no_power_err(self):
+        so = copy.deepcopy(self.cs)
+        so.power_err = None
+        with pytest.raises(
+            ValueError, match="crossspectrum object has no attribute 'power_err' or it is None."
+        ):
+            so.save_as_xspec("dummy")
 
     @pytest.mark.parametrize("fmt", ["pickle", "hdf5"])
     def test_file_roundtrip(self, fmt):

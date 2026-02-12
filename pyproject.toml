@@ -43,6 +43,7 @@ dependencies = [
 test = [
     "pytest",
     "pytest-astropy",
+
 ]
 test_all = [
     "astropy[test]",  # installs the [test] dependencies

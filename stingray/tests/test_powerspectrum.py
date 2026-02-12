@@ -3,6 +3,7 @@ import numpy as np
 import copy
 import warnings
 import importlib
+import shutil
 import tempfile
 
 import pytest
@@ -20,6 +21,7 @@ from stingray.filters import filter_for_deadtime
 _HAS_XARRAY = importlib.util.find_spec("xarray") is not None
 _HAS_PANDAS = importlib.util.find_spec("pandas") is not None
 _HAS_H5PY = importlib.util.find_spec("h5py") is not None
+_HAS_FLX2XSP = (os.getenv("HEADAS") is not None) and (shutil.which("ftflx2xsp") is not None)
 
 
 def clear_all_figs():
@@ -1222,6 +1224,8 @@ class TestRoundTrip:
         cls.cs.power = rng.uniform(0, 10, 10)
         cls.cs.m = 2
         cls.cs.nphots1 = 34
+        cls.cs.df = 1
+        cls.cs.power_err = np.ones_like(cls.cs.power) * 0.5
 
     def _check_equal(self, so, new_so):
         for attr in ["freq", "power"]:
@@ -1260,6 +1264,67 @@ class TestRoundTrip:
         os.unlink("dummy.hdf5")
 
         self._check_equal(so, new_so)
+
+    @pytest.mark.skipif("not _HAS_FLX2XSP")
+    def test_save_as_xspec(self):
+        so = self.cs
+        try:
+            so.save_as_xspec("dummy_pow")
+            assert os.path.exists("dummy_pow.pha")
+            assert os.path.exists("dummy_pow.rsp")
+            assert os.path.exists("dummy_pow.txt")
+        finally:
+            for ext in [".pha", ".rsp", ".txt"]:
+                if os.path.exists(f"dummy_pow{ext}"):
+                    os.unlink(f"dummy_pow{ext}")
+
+    @pytest.mark.skipif("_HAS_FLX2XSP")
+    def test_save_as_xspec_fails_no_flx2xsp(self):
+        so = self.cs
+        try:
+            with pytest.raises(RuntimeError, match="install and initialize HEASOFT to save"):
+                so.save_as_xspec("dummy")
+        finally:
+            if os.path.exists("dummy.txt"):
+                os.unlink("dummy.txt")
+
+    def test_save_as_xspec_fails_no_df(self):
+        so = copy.deepcopy(self.cs)
+        so.df = None
+        with pytest.raises(
+            ValueError, match="powerspectrum object has no attribute 'df' or it is None."
+        ):
+            so.save_as_xspec("dummy")
+
+    def test_save_as_xspec_fails_no_power_err(self):
+        so = copy.deepcopy(self.cs)
+        so.power_err = None
+        with pytest.raises(
+            ValueError, match="powerspectrum object has no attribute 'power_err' or it is None."
+        ):
+            so.save_as_xspec("dummy")
+
+    @pytest.mark.skipif("_HAS_FLX2XSP")
+    def test_save_as_xspec_mock(self):
+        from unittest.mock import patch
+
+        def function(blah, root):
+            for fnames in [root + ".pha", root + ".rsp", root + ".txt"]:
+                with open(fnames, "w") as f:
+                    f.write("dummy")
+
+        so = self.cs
+
+        try:
+            with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
+                so.save_as_xspec("dummy_pow")
+
+            for ext in [".pha", ".rsp", ".txt"]:
+                assert os.path.exists(f"dummy_pow{ext}")
+        finally:
+            for ext in [".pha", ".rsp", ".txt"]:
+                if os.path.exists(f"dummy_pow{ext}"):
+                    os.unlink(f"dummy_pow{ext}")
 
     @pytest.mark.parametrize("fmt", ["pickle"])
     def test_file_roundtrip(self, fmt):

@@ -1044,6 +1044,61 @@ class Crossspectrum(StingrayObject):
         else:
             raise AttributeError("Object has no attribute named 'time_lag' !")
 
+    def save_as_xspec(self, outroot):
+        """Save the cross spectrum in a format that can be read by XSPEC.
+
+        For power spectra (``self.type == "powerspectrum"``), the method will
+        produce three files using ``outroot`` as the base name:
+
+        * ``outroot.txt``: a plain-text file containing the frequency, power,
+          and error columns used as input to XSPEC.
+        * ``outroot.pha``: the spectral file.
+        * ``outroot.rsp``: the corresponding response file.
+
+        For non-powerspectrum cross spectra, the method will produce six files,
+        corresponding to the real and imaginary parts of the cross spectrum:
+
+        * ``outroot_real.txt``, ``outroot_real.pha``, ``outroot_real.rsp`` for
+          the real part.
+        * ``outroot_imag.txt``, ``outroot_imag.pha``, ``outroot_imag.rsp`` for
+          the imaginary part.
+
+        Parameters
+        ----------
+        outroot : str
+            The root name of the output files.
+
+        Raises
+        ------
+        ValueError
+            If the object has no ``df`` attribute or ``power_err`` attribute, or
+            if either of them is ``None``.
+        RuntimeError
+            If the underlying XSPEC/HEASOFT tools needed to create the XSPEC
+            files are not available. This is raised by :func:`stingray.io.save_as_xspec`.
+        """
+        from .io import save_as_xspec
+
+        if not hasattr(self, "df") or self.df is None:
+            raise ValueError(
+                f"{self.type} object has no attribute 'df' or it is None. Cannot save as xspec."
+            )
+        if not hasattr(self, "power_err") or self.power_err is None:
+            raise ValueError(
+                f"{self.type} object has no attribute 'power_err' or it is None. "
+                "Cannot save as xspec."
+            )
+
+        if self.type == "powerspectrum":
+            save_as_xspec(self.freq, self.df, self.power.real, self.power_err.real, outroot)
+        else:
+            save_as_xspec(
+                self.freq, self.df, self.power.real, self.power_err.real, outroot + "_real"
+            )
+            save_as_xspec(
+                self.freq, self.df, self.power.imag, self.power_err.imag, outroot + "_imag"
+            )
+
     def plot(
         self, labels=None, axis=None, title=None, marker="-", save=False, filename=None, ax=None
     ):
