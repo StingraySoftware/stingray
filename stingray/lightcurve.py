@@ -454,8 +454,10 @@ class Lightcurve(StingrayTimeseries):
         if countrate_err is None and self._counts_err is not None:
             countrate_err = self._counts_err / self.dt
         elif countrate_err is None:
-            countrate_err = np.zeros(np.size(self.time))
-
+            if self.err_dist.lower() == "poisson":
+                countrate_err = poisson_symmetrical_errors(self.counts) / self.dt
+            else:
+                countrate_err = np.zeros_like(self.counts)
         # If not in low-memory regime, cache the values ONLY if they have
         # been changed!
         if countrate_err is not self._countrate_err:
