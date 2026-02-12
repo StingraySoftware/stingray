@@ -1581,6 +1581,7 @@ class Lightcurve(StingrayTimeseries):
         axis_limits=None,
         axis=None,
         plot_btis=True,
+        attr=None,
     ):
         """
         Plot the light curve using ``matplotlib``.
@@ -1624,6 +1625,12 @@ class Lightcurve(StingrayTimeseries):
 
         plot_btis : bool
             Plot the bad time intervals as red areas on the plot
+
+        attr : str
+            The attribute to plot on the y-axis. By default, it is ``counts`` if
+            ``input_counts`` is True, and ``countrate`` otherwise. It can be set
+            to any other array attribute of the light curve by passing its name
+            as a string.
         """
         if axis is not None:
             warnings.warn(
@@ -1633,13 +1640,17 @@ class Lightcurve(StingrayTimeseries):
             )
             axis_limits = axis
 
-        flux_attr = "counts"
-        if not self.input_counts:
-            flux_attr = "countrate"
-        if witherrors and self.input_counts:
-            self.counts_err  # Make sure counts_err exists
-        elif witherrors:
-            self.countrate_err  # Make sure countrate_err exists
+        if attr is not None:
+            flux_attr = attr
+        else:
+            flux_attr = "counts"
+            if not self.input_counts:
+                flux_attr = "countrate"
+
+        getattr(self, flux_attr)  # Check that the attribute exists
+        if witherrors:
+            err_attr = flux_attr + "_err"
+            print(getattr(self, err_attr, None))  # Check that the error attribute exists
 
         return super().plot(
             flux_attr,
