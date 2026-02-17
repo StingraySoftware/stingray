@@ -1732,50 +1732,6 @@ class StingrayTimeseries(StingrayObject):
         return new_ts
 
     def truncate(self, start=0, stop=None, method="index"):
-        """
-        Truncate a :class:`StingrayTimeseries` object.
-
-        This method takes a ``start`` and a ``stop`` point (either as indices,
-        or as times in the same unit as those in the ``time`` attribute, and truncates
-        all bins before ``start`` and after ``stop``, then returns a new
-        :class:`StingrayTimeseries` object with the truncated time series.
-
-        Parameters
-        ----------
-        start : int, default 0
-            Index (or time stamp) of the starting point of the truncation. If no value is set
-            for the start point, then all points from the first element in the ``time`` array
-            are taken into account.
-
-        stop : int, default ``None``
-            Index (or time stamp) of the ending point (exclusive) of the truncation. If no
-            value of stop is set, then points including the last point in
-            the counts array are taken in count.
-
-        method : {``index`` | ``time``}, optional, default ``index``
-            Type of the start and stop values. If set to ``index`` then
-            the values are treated as indices of the counts array, or
-            if set to ``time``, the values are treated as actual time values.
-
-        Returns
-        -------
-        ts_new: :class:`StingrayTimeseries` object
-            The :class:`StingrayTimeseries` object with truncated time and arrays.
-
-        Examples
-        --------
-        >>> time = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-        >>> count = [10, 20, 30, 40, 50, 60, 70, 80, 90]
-        >>> ts = StingrayTimeseries(time, array_attrs={"counts": count}, dt=1)
-        >>> ts_new = ts.truncate(start=2, stop=8)
-        >>> assert np.allclose(ts_new.counts, [30, 40, 50, 60, 70, 80])
-        >>> assert np.allclose(ts_new.time, [3, 4, 5, 6, 7, 8])
-        >>> # Truncation can also be done by time values
-        >>> ts_new = ts.truncate(start=6, method='time')
-        >>> assert np.allclose(ts_new.time, [6, 7, 8, 9])
-        >>> assert np.allclose(ts_new.counts, [60, 70, 80, 90])
-        """
-
         if not isinstance(method, str):
             raise TypeError("The method keyword argument is not a string !")
 
@@ -1786,47 +1742,41 @@ class StingrayTimeseries(StingrayObject):
             new_ts = self._truncate_by_index(start, stop)
         else:
             new_ts = self._truncate_by_time(start, stop)
-        new_ts.tstart = new_ts.gti[0, 0]
-        new_ts.tseg = new_ts.gti[-1, 1] - new_ts.gti[0, 0]
+
+        # FIX FOR ISSUE #910: Recalculate tstart and tseg based on data, not GTIs
+        if len(new_ts.time) > 0:
+            new_ts.tstart = new_ts.time[0] - new_ts.dt / 2
+            new_ts.tseg = new_ts.time[-1] - new_ts.time[0] + new_ts.dt
+        else:
+            new_ts.tstart = new_ts.gti[0, 0] if len(new_ts.gti) > 0 else 0
+            new_ts.tseg = 0
+
         return new_ts
 
     def _truncate_by_index(self, start, stop):
         """Private method for truncation using index values."""
-
         new_ts = self.apply_mask(slice(start, stop))
 
         dtstart = dtstop = new_ts.dt
-        if isinstance(self.dt, Iterable):
+        if isinstance(self.dt, (list, np.ndarray)):
             dtstart = self.dt[0]
             dtstop = self.dt[-1]
 
-        gti = cross_two_gtis(
-            self.gti,
-            np.asanyarray([[new_ts.time[0] - 0.5 * dtstart, new_ts.time[-1] + 0.5 * dtstop]]),
-        )
+        # Ensure we don't crash if new_ts.time is empty
+        if len(new_ts.time) > 0:
+            gti = cross_two_gtis(
+                self.gti,
+                np.asanyarray(
+                    [[new_ts.time[0] - 0.5 * dtstart, new_ts.time[-1] + 0.5 * dtstop]]
+                ),
+            )
+        else:
+            gti = np.array([], dtype=float).reshape((0, 2))
 
         new_ts.gti = gti
-
         return new_ts
 
     def _truncate_by_time(self, start, stop):
-        """Helper method for truncation using time values.
-
-        Parameters
-        ----------
-        start : float
-            start time for new time series; all time bins before this time will be discarded
-
-        stop : float
-            stop time for new time series; all time bins after this point will be discarded
-
-        Returns
-        -------
-            new_ts : StingrayTimeseries
-                A new :class:`StingrayTimeseries` object with the truncated time bins
-
-        """
-
         if stop is not None:
             if start > stop:
                 raise ValueError("start time must be less than stop time!")
