@@ -528,7 +528,8 @@ class BaseTestIO(abc.ABC):
         so = copy.deepcopy(self.sting_obj)
         if self.variant == "complcov":
             try:
-                so.save_as_xspec("dummy")
+                with pytest.warns(UserWarning, match="No header keywords provided. "):
+                    so.save_as_xspec("dummy")
                 for part in ["real", "imag"]:
                     for ext in ["pha", "rsp", "txt"]:
                         assert os.path.exists(f"dummy_{part}.{ext}")
@@ -539,7 +540,8 @@ class BaseTestIO(abc.ABC):
                             os.unlink(f"dummy_{part}.{ext}")
         else:
             try:
-                so.save_as_xspec("dummy_pow")
+                with pytest.warns(UserWarning, match="No header keywords provided. "):
+                    so.save_as_xspec("dummy_pow")
                 assert os.path.exists("dummy_pow.pha")
                 assert os.path.exists("dummy_pow.rsp")
                 assert os.path.exists("dummy_pow.txt")

@@ -466,7 +466,7 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
             return False
         return True
 
-    def save_as_xspec(self, outroot):
+    def save_as_xspec(self, outroot, header_keywords=None):
         """Save the cross spectrum in a format that can be read by XSPEC.
 
         For power spectra (``self.type == "powerspectrum"``), the method will
@@ -489,6 +489,8 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
         ----------
         outroot : str
             The root name of the output files.
+        header_keywords : dict, optional
+            A dictionary of header keys and values to be added to the output files.
 
         Raises
         ------
@@ -505,14 +507,38 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
         energies = np.sum(eints, axis=1) / 2
         de = np.diff(eints, axis=1).flatten()
 
+        if header_keywords is None:
+            warnings.warn(
+                "No header keywords provided. For spectral timing products, it"
+                "is likely that information on response files and backgrounds is needed "
+                "(e.g. the RESPFILE, ANCRFILE, BACKFILE keywords), so we recommend to provide them in the `header_keywords` argument."
+            )
+
         if "complex" not in str(self.spectrum.dtype):
-            save_as_xspec(energies, de, self.spectrum, self.spectrum_error, outroot)
+            save_as_xspec(
+                energies,
+                de,
+                self.spectrum,
+                self.spectrum_error,
+                outroot,
+                header_keywords=header_keywords,
+            )
         else:
             save_as_xspec(
-                energies, de, self.spectrum.real, self.spectrum_error.real, outroot + "_real"
+                energies,
+                de,
+                self.spectrum.real,
+                self.spectrum_error.real,
+                outroot + "_real",
+                header_keywords=header_keywords,
             )
             save_as_xspec(
-                energies, de, self.spectrum.imag, self.spectrum_error.imag, outroot + "_imag"
+                energies,
+                de,
+                self.spectrum.imag,
+                self.spectrum_error.imag,
+                outroot + "_imag",
+                header_keywords=header_keywords,
             )
 
 

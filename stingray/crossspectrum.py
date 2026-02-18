@@ -1044,7 +1044,7 @@ class Crossspectrum(StingrayObject):
         else:
             raise AttributeError("Object has no attribute named 'time_lag' !")
 
-    def save_as_xspec(self, outroot):
+    def save_as_xspec(self, outroot, header_keywords=None):
         """Save the cross spectrum in a format that can be read by XSPEC.
 
         For power spectra (``self.type == "powerspectrum"``), the method will
@@ -1067,6 +1067,8 @@ class Crossspectrum(StingrayObject):
         ----------
         outroot : str
             The root name of the output files.
+        header_keywords : dict, optional
+            A dictionary of header keys and values to be added to the output files.
 
         Raises
         ------
@@ -1090,13 +1092,30 @@ class Crossspectrum(StingrayObject):
             )
 
         if self.type == "powerspectrum":
-            save_as_xspec(self.freq, self.df, self.power.real, self.power_err.real, outroot)
+            save_as_xspec(
+                self.freq,
+                self.df,
+                self.power.real,
+                self.power_err.real,
+                outroot,
+                header_keywords=header_keywords,
+            )
         else:
             save_as_xspec(
-                self.freq, self.df, self.power.real, self.power_err.real, outroot + "_real"
+                self.freq,
+                self.df,
+                self.power.real,
+                self.power_err.real,
+                outroot + "_real",
+                header_keywords=header_keywords,
             )
             save_as_xspec(
-                self.freq, self.df, self.power.imag, self.power_err.imag, outroot + "_imag"
+                self.freq,
+                self.df,
+                self.power.imag,
+                self.power_err.imag,
+                outroot + "_imag",
+                header_keywords=header_keywords,
             )
 
     def plot(
