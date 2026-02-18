@@ -90,6 +90,7 @@ docs = [
     "pandoc",
     "ipython",
     "towncrier<22.12.0",
+    "seaborn",
 ]
 
 [project.urls]
