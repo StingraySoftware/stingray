@@ -1,6 +1,7 @@
 import copy
 from multiprocessing import Event
 import os
+import shutil
 import numpy as np
 from stingray.events import EventList
 from stingray.varenergyspectrum import VarEnergySpectrum
@@ -31,6 +32,8 @@ try:
     import h5py
 except ImportError:
     _HAS_H5PY = False
+
+_HAS_FLX2XSP = (os.getenv("HEADAS") is not None) and (shutil.which("ftflx2xsp") is not None)
 
 np.random.seed(20150907)
 curdir = os.path.abspath(os.path.dirname(__file__))
@@ -430,6 +433,12 @@ class BaseTestIO(abc.ABC):
         spec.bin_time = 0.01
         spec.segment_size = 100
         spec.cross = cls.variant == "complcov"
+        spec.spectrum = np.array([1.0, 2.0])
+        spec.spectrum_error = np.array([0.1, 0.2])
+        if spec.cross:
+            spec.spectrum = spec.spectrum + 1.0j
+            spec.spectrum_error = spec.spectrum_error + 0.1j
+        spec.energy_intervals = np.array([[0.3, 12], [12, 15]])
         cls.sting_obj = spec
 
     def test_astropy_roundtrip(self):
@@ -513,6 +522,31 @@ class BaseTestIO(abc.ABC):
         os.unlink(f"dummy.{fmt}")
 
         assert so == new_so
+
+    @pytest.mark.skipif("not _HAS_FLX2XSP")
+    def test_save_as_xspec(self):
+        so = copy.deepcopy(self.sting_obj)
+        if self.variant == "complcov":
+            try:
+                so.save_as_xspec("dummy")
+                for part in ["real", "imag"]:
+                    for ext in ["pha", "rsp", "txt"]:
+                        assert os.path.exists(f"dummy_{part}.{ext}")
+            finally:
+                for part in ["real", "imag"]:
+                    for ext in ["pha", "rsp", "txt"]:
+                        if os.path.exists(f"dummy_{part}.{ext}"):
+                            os.unlink(f"dummy_{part}.{ext}")
+        else:
+            try:
+                so.save_as_xspec("dummy_pow")
+                assert os.path.exists("dummy_pow.pha")
+                assert os.path.exists("dummy_pow.rsp")
+                assert os.path.exists("dummy_pow.txt")
+            finally:
+                for ext in [".pha", ".rsp", ".txt"]:
+                    if os.path.exists(f"dummy_pow{ext}"):
+                        os.unlink(f"dummy_pow{ext}")
 
 
 class TestCovarianceIO(BaseTestIO):
