@@ -523,32 +523,41 @@ class BaseTestIO(abc.ABC):
 
         assert so == new_so
 
-    @pytest.mark.skipif("not _HAS_FLX2XSP")
     def test_save_as_xspec(self):
+        from unittest.mock import patch
+
+        def function(blah, root):
+            for fnames in [root + ".pha", root + ".rsp", root + ".txt"]:
+                with open(fnames, "w") as f:
+                    f.write("dummy")
+
         so = copy.deepcopy(self.sting_obj)
-        if self.variant == "complcov":
-            try:
-                with pytest.warns(UserWarning, match="No header keywords provided. "):
-                    so.save_as_xspec("dummy")
-                for part in ["real", "imag"]:
-                    for ext in ["pha", "rsp", "txt"]:
-                        assert os.path.exists(f"dummy_{part}.{ext}")
-            finally:
-                for part in ["real", "imag"]:
-                    for ext in ["pha", "rsp", "txt"]:
-                        if os.path.exists(f"dummy_{part}.{ext}"):
-                            os.unlink(f"dummy_{part}.{ext}")
-        else:
-            try:
-                with pytest.warns(UserWarning, match="No header keywords provided. "):
-                    so.save_as_xspec("dummy_pow")
-                assert os.path.exists("dummy_pow.pha")
-                assert os.path.exists("dummy_pow.rsp")
-                assert os.path.exists("dummy_pow.txt")
-            finally:
-                for ext in [".pha", ".rsp", ".txt"]:
-                    if os.path.exists(f"dummy_pow{ext}"):
-                        os.unlink(f"dummy_pow{ext}")
+
+        with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
+
+            if self.variant == "complcov":
+                try:
+                    with pytest.warns(UserWarning, match="No header keywords provided. "):
+                        so.save_as_xspec("dummy")
+                    for part in ["real", "imag"]:
+                        for ext in ["pha", "rsp", "txt"]:
+                            assert os.path.exists(f"dummy_{part}.{ext}")
+                finally:
+                    for part in ["real", "imag"]:
+                        for ext in ["pha", "rsp", "txt"]:
+                            if os.path.exists(f"dummy_{part}.{ext}"):
+                                os.unlink(f"dummy_{part}.{ext}")
+            else:
+                try:
+                    with pytest.warns(UserWarning, match="No header keywords provided. "):
+                        so.save_as_xspec("dummy_pow")
+                    assert os.path.exists("dummy_pow.pha")
+                    assert os.path.exists("dummy_pow.rsp")
+                    assert os.path.exists("dummy_pow.txt")
+                finally:
+                    for ext in [".pha", ".rsp", ".txt"]:
+                        if os.path.exists(f"dummy_pow{ext}"):
+                            os.unlink(f"dummy_pow{ext}")
 
 
 class TestCovarianceIO(BaseTestIO):
