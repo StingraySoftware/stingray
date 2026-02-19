@@ -17,9 +17,10 @@ from .gti import cross_two_gtis, time_intervals_from_gtis
 from .lightcurve import Lightcurve
 from .fourier import avg_cs_from_iterables, error_on_averaged_cross_spectrum
 from .fourier import avg_cs_from_timeseries, poisson_level
-from .fourier import normalize_periodograms, raw_coherence
+from .fourier import normalize_periodograms
 from .fourier import get_flux_iterable_from_segments
 from .fourier import get_rms_from_unnorm_periodogram
+from .fourier import intrinsic_coherence, raw_coherence
 from .power_colors import power_color
 
 from scipy.special import factorial
@@ -2196,14 +2197,50 @@ class AveragedCrossspectrum(Crossspectrum):
         P1noise = poisson_level(norm="none", meanrate=meanrate1, n_ph=self.nphots1)
         P2noise = poisson_level(norm="none", meanrate=meanrate2, n_ph=self.nphots2)
 
-        coh = raw_coherence(c, p1, p2, P1noise, P2noise, self.n)
+        return raw_coherence(c, p1, p2, P1noise, P2noise, self.n, return_uncertainty=True)
 
-        # Calculate uncertainty
-        uncertainty = (2**0.5 * coh * (1 - coh)) / (np.sqrt(coh) * self.m**0.5)
+    def intrinsic_coherence(self):
+        """Averaged Coherence function.
 
-        uncertainty[coh == 0] = 0.0
 
-        return (coh, uncertainty)
+        Coherence is defined in Vaughan and Nowak, 1996 [#]_.
+        It is a Fourier frequency dependent measure of the linear correlation
+        between time series measured simultaneously in two energy channels.
+
+        Compute an averaged Coherence function of cross spectrum by computing
+        coherence function of each segment and averaging them. The return type
+        is a tuple with first element as the coherence function and the second
+        element as the corresponding uncertainty associated with it.
+
+        Note : The uncertainty in coherence function is strictly valid for Gaussian \
+               statistics only.
+
+        Returns
+        -------
+        (coh, uncertainty) : tuple of np.ndarray
+            Tuple comprising the coherence function and uncertainty.
+
+        References
+        ----------
+        .. [#] https://iopscience.iop.org/article/10.1086/310430
+        """
+        if np.any(self.m < 50):
+            simon(
+                "Number of segments used in averaging is "
+                "significantly low. The result might not follow the "
+                "expected statistical distributions."
+            )
+        c = self.unnorm_power
+        p1 = self.pds1.unnorm_power
+        p2 = self.pds2.unnorm_power
+
+        meanrate1 = self.nphots1 / self.n / self.dt
+        meanrate2 = self.nphots2 / self.n / self.dt
+
+        P1noise = poisson_level(norm="none", meanrate=meanrate1, n_ph=self.nphots1)
+        P2noise = poisson_level(norm="none", meanrate=meanrate2, n_ph=self.nphots2)
+
+        return intrinsic_coherence(c, p1, p2, P1noise, P2noise, self.n, return_uncertainty=True)
 
     def phase_lag(self):
         """Return the fourier phase lag of the cross spectrum."""
