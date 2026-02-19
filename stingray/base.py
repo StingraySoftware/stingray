@@ -639,7 +639,9 @@ class StingrayObject(object):
         # specified, make sure that complex values are treated correctly.
         if fmt is None or "ascii" in fmt:
             for col in ts.colnames:
-                if not ((is_real := col.endswith(".real")) or (is_imag := col.endswith(".imag"))):
+                is_real = col.endswith(".real")
+                is_imag = col.endswith(".imag")
+                if not is_real and not is_imag:
                     continue
 
                 new_value = ts[col]
