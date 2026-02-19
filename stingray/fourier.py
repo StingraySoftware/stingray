@@ -765,11 +765,17 @@ def raw_coherence(
     coherence = num / den
     min_uncertainty = 1 / n_ave
     uncertainty = (2**0.5 * coherence * (1 - coherence)) / (np.sqrt(coherence) * n_ave**0.5)
-    bad = np.where((coherence == 0) | (uncertainty < min_uncertainty))
-    if not isinstance(min_uncertainty, Iterable):
-        uncertainty[bad] = min_uncertainty
+    min_uncertainty = 1 / n_ave
+    if isinstance(coherence, Iterable):
+        bad = np.where((coherence == 0) | (uncertainty < min_uncertainty))
+        if not isinstance(min_uncertainty, Iterable):
+            uncertainty[bad] = min_uncertainty
+        else:
+            uncertainty[bad] = min_uncertainty[bad]
     else:
-        uncertainty[bad] = min_uncertainty[bad]
+        bad = (coherence == 0) | (uncertainty < min_uncertainty)
+        if bad:
+            uncertainty = min_uncertainty
 
     if return_uncertainty:
         return coherence, uncertainty
@@ -855,11 +861,16 @@ def intrinsic_coherence(
     uncertainty = coherence / np.sqrt(n_ave) * np.sqrt(err1 + err2 + err3)
 
     min_uncertainty = 1 / n_ave
-    bad = np.where((coherence == 0) | (uncertainty < min_uncertainty))
-    if not isinstance(min_uncertainty, Iterable):
-        uncertainty[bad] = min_uncertainty
+    if isinstance(coherence, Iterable):
+        bad = np.where((coherence == 0) | (uncertainty < min_uncertainty))
+        if not isinstance(min_uncertainty, Iterable):
+            uncertainty[bad] = min_uncertainty
+        else:
+            uncertainty[bad] = min_uncertainty[bad]
     else:
-        uncertainty[bad] = min_uncertainty[bad]
+        bad = (coherence == 0) | (uncertainty < min_uncertainty)
+        if bad:
+            uncertainty = min_uncertainty
 
     if return_uncertainty:
         return coherence, uncertainty
