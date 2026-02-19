@@ -536,7 +536,8 @@ class BaseTestIO(abc.ABC):
         with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
             if self.variant == "complcov":
                 try:
-                    so.save_as_xspec("dummy", header_keywords={"TEST": "blabla"})
+                    with pytest.warns(UserWarning, match="No header keywords provided. "):
+                        so.save_as_xspec("dummy")
                     for part in ["real", "imag"]:
                         for ext in ["pha", "rsp", "txt"]:
                             assert os.path.exists(f"dummy_{part}.{ext}")
