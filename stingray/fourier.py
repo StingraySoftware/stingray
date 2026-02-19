@@ -729,6 +729,29 @@ def _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertai
     uncertainty : float or float `np.array`
         The uncertainty on the coherence, with the low limit applied.
 
+    Examples
+    --------
+    >>> coherence = np.array([0.5, 0.0, 0.5])
+    >>> uncertainty = np.array([0.1, 0.0, 0.05])
+    >>> min_uncertainty = 0.01
+    >>> expected = np.array([0.1, 0.01, 0.05])
+    >>> res = _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty)
+    >>> assert np.allclose(res, expected)
+
+    # The same, but with a different minimum uncertainty for each frequency.
+    >>> min_uncertainty = np.array([0.01, 0.1, 0.1])
+    >>> res = _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty)
+    >>> expected = np.array([0.1, 0.1, 0.1])
+    >>> assert np.allclose(res, expected)
+
+    # All the same, but with scalar inputs.
+    >>> coherence = 0.5
+    >>> uncertainty = 0.0
+    >>> min_uncertainty = 0.01
+    >>> expected = 0.01
+    >>> res = _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty)
+    >>> assert np.isclose(res, expected)
+
     """
     if isinstance(coherence, Iterable):
         bad = np.where((coherence == 0) | (uncertainty < min_uncertainty))
