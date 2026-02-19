@@ -709,6 +709,40 @@ def bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coher
     return bsq / n_ave
 
 
+def _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty):
+    """
+    Apply a low limit to the uncertainty on the coherence, to avoid zero or negative uncertainties.
+
+    Parameters
+    ----------
+    coherence : float or float `np.array`
+        The coherence values at all frequencies.
+    uncertainty : float or float `np.array`
+        The uncertainty on the coherence at all frequencies. Must have the same
+        shape as `coherence`.
+    min_uncertainty : float or float `np.array`
+        The minimum uncertainty to apply. Can be a single value or an array of
+        the same shape as `coherence` and `uncertainty`.
+
+    Returns
+    -------
+    uncertainty : float or float `np.array`
+        The uncertainty on the coherence, with the low limit applied.
+
+    """
+    if isinstance(coherence, Iterable):
+        bad = np.where((coherence == 0) | (uncertainty < min_uncertainty))
+        if not isinstance(min_uncertainty, Iterable):
+            uncertainty[bad] = min_uncertainty
+        else:
+            uncertainty[bad] = min_uncertainty[bad]
+    else:
+        bad = (coherence == 0) | (uncertainty < min_uncertainty)
+        if bad:
+            uncertainty = min_uncertainty
+    return uncertainty
+
+
 def raw_coherence(
     cross_power,
     power1,
@@ -766,16 +800,7 @@ def raw_coherence(
     min_uncertainty = 1 / n_ave
     uncertainty = (2**0.5 * coherence * (1 - coherence)) / (np.sqrt(coherence) * n_ave**0.5)
     min_uncertainty = 1 / n_ave
-    if isinstance(coherence, Iterable):
-        bad = np.where((coherence == 0) | (uncertainty < min_uncertainty))
-        if not isinstance(min_uncertainty, Iterable):
-            uncertainty[bad] = min_uncertainty
-        else:
-            uncertainty[bad] = min_uncertainty[bad]
-    else:
-        bad = (coherence == 0) | (uncertainty < min_uncertainty)
-        if bad:
-            uncertainty = min_uncertainty
+    uncertainty = _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty)
 
     if return_uncertainty:
         return coherence, uncertainty
@@ -861,17 +886,7 @@ def intrinsic_coherence(
     uncertainty = coherence / np.sqrt(n_ave) * np.sqrt(err1 + err2 + err3)
 
     min_uncertainty = 1 / n_ave
-    if isinstance(coherence, Iterable):
-        bad = np.where((coherence == 0) | (uncertainty < min_uncertainty))
-        if not isinstance(min_uncertainty, Iterable):
-            uncertainty[bad] = min_uncertainty
-        else:
-            uncertainty[bad] = min_uncertainty[bad]
-    else:
-        bad = (coherence == 0) | (uncertainty < min_uncertainty)
-        if bad:
-            uncertainty = min_uncertainty
-
+    uncertainty = _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty)
     if return_uncertainty:
         return coherence, uncertainty
     return coherence
