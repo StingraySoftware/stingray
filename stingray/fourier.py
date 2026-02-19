@@ -755,25 +755,25 @@ def raw_coherence(
         power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=intrinsic_coherence
     )
     num = (cross_power * np.conj(cross_power)).real - bsq
-    neg_num_detected = False
     if isinstance(num, Iterable):
         neg_nums = num < 0
-        neg_num_detected = np.any(neg_nums)
         num[neg_nums] = 0
     elif num < 0:
-        neg_num_detected = True
         num = 0
-    if neg_num_detected:
-        warnings.warn(
-            "Negative numerator in intrinsic_coherence calculation. Setting coherence to 0"
-        )
     den = power1 * power2
 
-    coh = num / den
-    uncertainty = (2**0.5 * coh * (1 - coh)) / (np.sqrt(coh) * n_ave**0.5)
-    uncertainty[coh == 0] = np.nan
+    coherence = num / den
+    min_uncertainty = 1 / n_ave
+    uncertainty = (2**0.5 * coherence * (1 - coherence)) / (np.sqrt(coherence) * n_ave**0.5)
+    bad = np.where((coherence == 0) | (uncertainty < min_uncertainty))
+    if not isinstance(min_uncertainty, Iterable):
+        uncertainty[bad] = min_uncertainty
+    else:
+        uncertainty[bad] = min_uncertainty[bad]
 
-    return num / den, uncertainty if return_uncertainty else num / den
+    if return_uncertainty:
+        return coherence, uncertainty
+    return coherence
 
 
 def intrinsic_coherence(
@@ -824,18 +824,12 @@ def intrinsic_coherence(
     """
     bsq = bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=1.0)
     num = (cross_power * np.conj(cross_power)).real - bsq
-    neg_num_detected = False
     if isinstance(num, Iterable):
         neg_nums = num < 0
-        neg_num_detected = np.any(neg_nums)
-        num[neg_nums] = (cross_power * np.conj(cross_power)).real[neg_nums]
+        num[neg_nums] = 0
     elif num < 0:
-        neg_num_detected = True
-        num = (cross_power * np.conj(cross_power)).real
-    if neg_num_detected:
-        warnings.warn(
-            "Negative numerator in intrinsic_coherence calculation. Setting coherence to 0"
-        )
+        num = 0
+
     neg_den_detected = False
     power1_sub = power1 - power1_noise
     power2_sub = power2 - power2_noise
@@ -858,9 +852,18 @@ def intrinsic_coherence(
     err1 = 2.0 * (bsq**2) * n_ave / (num - bsq) ** 2
     err2 = (power1_noise / power1_sub) ** 2 + (power2_noise / power2_sub) ** 2
     err3 = 2.0 * ((1 - coherence) / (coherence**1.5)) ** 2
-    coherence_err = coherence / np.sqrt(n_ave) * np.sqrt(err1 + err2 + err3)
+    uncertainty = coherence / np.sqrt(n_ave) * np.sqrt(err1 + err2 + err3)
 
-    return coherence, coherence_err if return_uncertainty else coherence
+    min_uncertainty = 1 / n_ave
+    bad = np.where((coherence == 0) | (uncertainty < min_uncertainty))
+    if not isinstance(min_uncertainty, Iterable):
+        uncertainty[bad] = min_uncertainty
+    else:
+        uncertainty[bad] = min_uncertainty[bad]
+
+    if return_uncertainty:
+        return coherence, uncertainty
+    return coherence
 
 
 def _estimate_intrinsic_coherence_single(
@@ -1263,9 +1266,17 @@ def error_on_averaged_cross_spectrum(
         PrPs = ref_power * seg_power
         dRe = np.sqrt((PrPs + cross_power.real**2 - cross_power.imag**2) / two_n_ave)
         dIm = np.sqrt((PrPs - cross_power.real**2 + cross_power.imag**2) / two_n_ave)
+
         gsq = raw_coherence(
-            cross_power, seg_power, ref_power, seg_power_noise, ref_power_noise, n_ave
+            cross_power,
+            seg_power,
+            ref_power,
+            seg_power_noise,
+            ref_power_noise,
+            n_ave,
+            return_uncertainty=False,
         )
+        print(gsq)
         dphi = np.sqrt((1 - gsq) / (2 * gsq * n_ave))
         dG = np.sqrt(PrPs / n_ave)
 
