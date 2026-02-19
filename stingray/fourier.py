@@ -746,12 +746,84 @@ def raw_coherence(
         power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=intrinsic_coherence
     )
     num = (cross_power * np.conj(cross_power)).real - bsq
+    neg_num_detected = False
     if isinstance(num, Iterable):
-        num[num < 0] = (cross_power * np.conj(cross_power)).real[num < 0]
+        neg_nums = num < 0
+        neg_num_detected = np.any(neg_nums)
+        num[neg_nums] = (cross_power * np.conj(cross_power)).real[neg_nums]
     elif num < 0:
-        warnings.warn("Negative numerator in raw_coherence calculation. Setting bias term to 0")
+        neg_num_detected = True
         num = (cross_power * np.conj(cross_power)).real
+    if neg_num_detected:
+        warnings.warn(
+            "Negative numerator in intrinsic_coherence calculation. Setting coherence to 0"
+        )
     den = power1 * power2
+    return num / den
+
+
+def intrinsic_coherence(
+    cross_power, power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=1
+):
+    """
+    Intrinsic coherence estimations from cross and power spectra.
+
+    Vaughan & Nowak 1997, ApJ 474, L43
+
+    Parameters
+    ----------
+    cross_power : complex `np.array`
+        cross spectrum
+    power1 : float `np.array`
+        sub-band periodogram
+    power2 : float `np.array`
+        reference-band periodogram
+    power1_noise : float
+        Poisson noise level of the sub-band periodogram
+    power2_noise : float
+        Poisson noise level of the reference-band periodogram
+    n_ave : int
+        number of intervals that have been averaged to obtain the input spectra
+
+    Other Parameters
+    ----------------
+    intrinsic_coherence : float, default 1
+        If known, the intrinsic coherence.
+
+    Returns
+    -------
+    coherence : float `np.array`
+        The intrinsic coherence values at all frequencies.
+    """
+    bsq = bias_term(
+        power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=intrinsic_coherence
+    )
+    num = (cross_power * np.conj(cross_power)).real - bsq
+    neg_num_detected = False
+    if isinstance(num, Iterable):
+        neg_nums = num < 0
+        neg_num_detected = np.any(neg_nums)
+        num[neg_nums] = (cross_power * np.conj(cross_power)).real[neg_nums]
+    elif num < 0:
+        neg_num_detected = True
+        num = (cross_power * np.conj(cross_power)).real
+    if neg_num_detected:
+        warnings.warn(
+            "Negative numerator in intrinsic_coherence calculation. Setting coherence to 0"
+        )
+    neg_den_detected = False
+    den = (power1 - power1_noise) * (power2 - power2_noise)
+    if isinstance(power1, Iterable):
+        neg_dens = den <= 0
+        neg_den_detected = np.any(neg_dens)
+    else:
+        neg_den_detected = den <= 0
+
+    if neg_den_detected:
+        warnings.warn(
+            "Negative denominator detected in intrinsic_coherence calculation. "
+            "Coherence will be NaN where this happens."
+        )
     return num / den
 
 
