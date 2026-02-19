@@ -1350,7 +1350,7 @@ class TestRoundTrip:
         cls.cs.nphots1 = 34
         cls.cs.nphots2 = 25
         cls.cs.df = 1
-        cls.cs.power_err = np.ones_like(cls.cs.power) * 0.5
+        cls.cs.power_err = np.ones_like(cls.cs.power) * (0.5 + 1.0j)
 
     def _check_equal(self, so, new_so):
         for attr in ["freq", "power"]:
