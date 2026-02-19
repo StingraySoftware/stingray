@@ -534,7 +534,6 @@ class BaseTestIO(abc.ABC):
         so = copy.deepcopy(self.sting_obj)
 
         with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
-
             if self.variant == "complcov":
                 try:
                     with pytest.warns(UserWarning, match="No header keywords provided. "):
