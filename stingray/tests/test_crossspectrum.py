@@ -1833,6 +1833,13 @@ class TestAveragedCrossspectrumOverlap(object):
             assert len(coh[1]) == 4999
             assert issubclass(w[-1].category, UserWarning)
 
+    def test_intrinsic_coherence(self):
+        with pytest.warns(UserWarning) as w:
+            coh = self.cs.intrinsic_coherence()
+
+        assert len(coh[0]) == 4999
+        assert len(coh[1]) == 4999
+
     def test_normalize_crossspectrum(self):
         cs1 = Crossspectrum(self.lc1, self.lc2, norm="leahy", channels_overlap=True)
         cs2 = Crossspectrum(
