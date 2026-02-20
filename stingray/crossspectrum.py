@@ -2197,7 +2197,7 @@ class AveragedCrossspectrum(Crossspectrum):
         P1noise = poisson_level(norm="none", meanrate=meanrate1, n_ph=self.nphots1)
         P2noise = poisson_level(norm="none", meanrate=meanrate2, n_ph=self.nphots2)
 
-        return raw_coherence(c, p1, p2, P1noise, P2noise, self.n, return_uncertainty=True)
+        return raw_coherence(c, p1, p2, P1noise, P2noise, self.m, return_uncertainty=True)
 
     def intrinsic_coherence(self):
         """Averaged Coherence function.
@@ -2240,7 +2240,7 @@ class AveragedCrossspectrum(Crossspectrum):
         P1noise = poisson_level(norm="none", meanrate=meanrate1, n_ph=self.nphots1)
         P2noise = poisson_level(norm="none", meanrate=meanrate2, n_ph=self.nphots2)
 
-        return intrinsic_coherence(c, p1, p2, P1noise, P2noise, self.n, return_uncertainty=True)
+        return intrinsic_coherence(c, p1, p2, P1noise, P2noise, self.m, return_uncertainty=True)
 
     def phase_lag(self):
         """Return the fourier phase lag of the cross spectrum."""
