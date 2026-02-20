@@ -823,7 +823,6 @@ def raw_coherence(
     coherence = num / den
     min_uncertainty = 1 / n_ave
     uncertainty = (2**0.5 * coherence * (1 - coherence)) / (np.sqrt(coherence) * n_ave**0.5)
-    min_uncertainty = 1 / n_ave
     uncertainty = _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty)
 
     if return_uncertainty:
