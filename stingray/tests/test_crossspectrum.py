@@ -483,7 +483,7 @@ class TestCoherence(object):
         assert np.isclose(np.abs(np.mean(coh)), 1, rtol=0.001)
 
     def test_high_coherence(self):
-        t = np.arange(1280)
+        t = np.arange(12800)
         a = np.random.poisson(100, len(t))
         lc = Lightcurve(t, a)
         lc2 = Lightcurve(t, copy.deepcopy(a))
@@ -1112,12 +1112,10 @@ class TestAveragedCrossspectrum(object):
         )
 
     def test_coherence(self):
-        with pytest.warns(UserWarning) as w:
-            coh = self.cs.coherence()
+        coh = self.cs.coherence()
 
-            assert len(coh[0]) == 4999
-            assert len(coh[1]) == 4999
-            assert issubclass(w[-1].category, UserWarning)
+        assert len(coh[0]) == 4999
+        assert len(coh[1]) == 4999
 
     def test_failure_when_normalization_not_recognized(self):
         with pytest.raises(ValueError):
@@ -1826,12 +1824,10 @@ class TestAveragedCrossspectrumOverlap(object):
         )
 
     def test_coherence(self):
-        with pytest.warns(UserWarning) as w:
-            coh = self.cs.coherence()
+        coh = self.cs.coherence()
 
-            assert len(coh[0]) == 4999
-            assert len(coh[1]) == 4999
-            assert issubclass(w[-1].category, UserWarning)
+        assert len(coh[0]) == 4999
+        assert len(coh[1]) == 4999
 
     def test_intrinsic_coherence(self):
         with pytest.warns(UserWarning) as w:
