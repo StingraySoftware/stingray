@@ -865,16 +865,15 @@ def intrinsic_coherence(
 
     Other Parameters
     ----------------
-    intrinsic_coherence : float, default 1
-        If known, the intrinsic coherence.
     return_uncertainty : bool, default False
         Whether to return the uncertainty on the coherence, calculated according to
         Vaughan & Nowak 1997, ApJ 474, L43, eq. 8.
 
     Returns
     -------
-    coherence : float `np.array`
-        The intrinsic coherence values at all frequencies.
+    coherence : float `np.array` or tuple of two float `np.array`
+        The intrinsic coherence values at all frequencies. If ``return_uncertainty`` is True,
+        also returns the uncertainty on the coherence.
     """
     bsq = bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=1.0)
     num = (cross_power * np.conj(cross_power)).real - bsq
@@ -1325,7 +1324,6 @@ def error_on_averaged_cross_spectrum(
             n_ave,
             return_uncertainty=False,
         )
-        print(gsq)
         dphi = np.sqrt((1 - gsq) / (2 * gsq * n_ave))
         dG = np.sqrt(PrPs / n_ave)
 
