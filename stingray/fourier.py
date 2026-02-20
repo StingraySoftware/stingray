@@ -754,6 +754,7 @@ def _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertai
 
     """
     if isinstance(coherence, Iterable):
+        uncertainty = copy.deepcopy(uncertainty)
         bad = np.where((coherence == 0) | (uncertainty < min_uncertainty))
         if not isinstance(min_uncertainty, Iterable):
             uncertainty[bad] = min_uncertainty
