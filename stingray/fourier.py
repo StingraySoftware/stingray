@@ -802,7 +802,7 @@ def raw_coherence(
     intrinsic_coherence : float, default 1
         If known, the intrinsic coherence.
     return_uncertainty : bool, default False
-        Whether to return the uncertainty on the coherence, calculated according to
+        Whether to return the uncertainty on the coherence, calculated according to VN97
 
     Returns
     -------
