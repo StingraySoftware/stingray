@@ -22,6 +22,10 @@ from .utils import (
     fix_segment_size_to_integer_samples,
     rebin_data,
     njit,
+    vectorize,
+    float64,
+    int64,
+    UniTuple,
 )
 
 
@@ -666,6 +670,16 @@ def unnormalize_periodograms(
     raise ValueError("Unrecognized power type")
 
 
+@vectorize([float64(float64, float64, float64, float64, int64, float64)], nopython=True)
+def _bias_term(power1, power2, power1_noise, power2_noise, n_ave, input_intrinsic_coherence):
+    if n_ave > 500:
+        return 0.0
+    bsq = power1 * power2 - input_intrinsic_coherence * (power1 - power1_noise) * (
+        power2 - power2_noise
+    )
+    return bsq / n_ave
+
+
 def bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=1.0):
     """
     Bias term needed to calculate the coherence.
@@ -701,14 +715,11 @@ def bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coher
     bias : float `np.array`, same shape as ``power1`` and ``power2``
         The bias term
     """
-    if (isinstance(n_ave, Iterable) and np.all(n_ave > 500)) or (
-        not isinstance(n_ave, Iterable) and n_ave > 500
-    ):
-        return 0.0 * power1
-    bsq = power1 * power2 - intrinsic_coherence * (power1 - power1_noise) * (power2 - power2_noise)
-    return bsq / n_ave
+
+    return _bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence)
 
 
+@vectorize([float64(float64, float64, float64)], nopython=True)
 def _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty):
     """
     Apply a low limit to the uncertainty on the coherence, to avoid zero or negative uncertainties.
@@ -753,18 +764,74 @@ def _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertai
     >>> assert np.isclose(res, expected)
 
     """
-    if isinstance(coherence, Iterable):
-        uncertainty = copy.deepcopy(uncertainty)
-        bad = np.where((coherence == 0) | (uncertainty < min_uncertainty))
-        if not isinstance(min_uncertainty, Iterable):
-            uncertainty[bad] = min_uncertainty
-        else:
-            uncertainty[bad] = min_uncertainty[bad]
-    else:
-        bad = (coherence == 0) | (uncertainty < min_uncertainty)
-        if bad:
-            uncertainty = min_uncertainty
+
+    bad = (coherence == 0) | (uncertainty < min_uncertainty)
+    if bad:
+        uncertainty = min_uncertainty
     return uncertainty
+
+
+@vectorize(
+    [
+        "UniTuple(float64[:, :], 2)(float64[:, :], float64[:, :], float64[:, :], float64, float64, int64, float64)"
+    ],
+    nopython=True,
+)
+def _raw_coherence(
+    cross_power,
+    power1,
+    power2,
+    power1_noise,
+    power2_noise,
+    n_ave,
+    intrinsic_coherence=1,
+):
+    """
+    Raw coherence estimations from cross and power spectra.
+
+    Vaughan & Nowak 1997, ApJ 474, L43
+
+    Parameters
+    ----------
+    cross_power : complex `np.array`
+        cross spectrum
+    power1 : float `np.array`
+        sub-band periodogram
+    power2 : float `np.array`
+        reference-band periodogram
+    power1_noise : float
+        Poisson noise level of the sub-band periodogram
+    power2_noise : float
+        Poisson noise level of the reference-band periodogram
+    n_ave : int
+        number of intervals that have been averaged to obtain the input spectra
+
+    Other Parameters
+    ----------------
+    intrinsic_coherence : float, default 1
+        If known, the intrinsic coherence.
+    return_uncertainty : bool, default False
+        Whether to return the uncertainty on the coherence, calculated according to VN97
+
+    Returns
+    -------
+    coherence : float `np.array`
+        The raw coherence values at all frequencies.
+    """
+    bsq = bias_term(
+        power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=intrinsic_coherence
+    )
+    num = (cross_power * np.conj(cross_power)).real - bsq
+    if num < 0:
+        num = 0
+    den = power1 * power2
+
+    coherence = num / den
+    min_uncertainty = 1 / n_ave
+    uncertainty = (2**0.5 * coherence * (1 - coherence)) / (np.sqrt(coherence) * n_ave**0.5)
+    uncertainty = _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty)
+
+    return coherence, uncertainty
 
 
 def raw_coherence(
@@ -809,42 +876,40 @@ def raw_coherence(
     coherence : float `np.array`
         The raw coherence values at all frequencies.
     """
-    bsq = bias_term(
-        power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=intrinsic_coherence
+    coherence, uncertainty = _raw_coherence(
+        cross_power,
+        power1,
+        power2,
+        power1_noise,
+        power2_noise,
+        n_ave,
+        intrinsic_coherence=intrinsic_coherence,
     )
-    num = (cross_power * np.conj(cross_power)).real - bsq
-    if isinstance(num, Iterable):
-        neg_nums = num < 0
-        num[neg_nums] = 0
-    elif num < 0:
-        num = 0
-    den = power1 * power2
-
-    coherence = num / den
-    min_uncertainty = 1 / n_ave
-    uncertainty = (2**0.5 * coherence * (1 - coherence)) / (np.sqrt(coherence) * n_ave**0.5)
-    uncertainty = _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty)
-
     if return_uncertainty:
         return coherence, uncertainty
     return coherence
 
 
-def intrinsic_coherence(
+@vectorize(
+    ["UniTuple(float64[:, :], 2)(float64, float64, float64, float64, float64, int64, float64)"],
+    nopython=True,
+)
+def _intrinsic_coherence(
     cross_power,
     power1,
     power2,
     power1_noise,
     power2_noise,
     n_ave,
-    return_uncertainty=False,
 ):
     """
     Intrinsic coherence estimations from cross and power spectra.
 
     Vaughan & Nowak 1997, ApJ 474, L43
 
-    For errors, assumes high powers, high coherence. See eq. 8 of the paper.
+    For errors, assumes **high powers, high coherence**. See eq. 8 of the paper.
+    Powers below 3 sigma above the noise level (P_noise / sqrt(MW)) are considered too low,
+    and the coherence will be set to NaN.
 
     TODO: implement a more general treatment of the uncertainty.
 
@@ -875,40 +940,92 @@ def intrinsic_coherence(
         The intrinsic coherence values at all frequencies. If ``return_uncertainty`` is True,
         also returns the uncertainty on the coherence.
     """
-    bsq = bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=1.0)
+    bsq = _bias_term(power1, power2, power1_noise, power2_noise, n_ave, 1)
     num = (cross_power * np.conj(cross_power)).real - bsq
-    if isinstance(num, Iterable):
-        neg_nums = num < 0
-        num[neg_nums] = 0
-    elif num < 0:
+    if num < 0:
         num = 0
 
-    neg_den_detected = False
+    # Consider low power when the power is less than 3 sigma above the noise level.
+    # This is somewhat arbitrary, better criteria suggestions are welcome.
+    low_power1 = power1 - power1_noise <= 3 * power1_noise / np.sqrt(n_ave)
+    low_power2 = power2 - power2_noise <= 3 * power2_noise / np.sqrt(n_ave)
+    if low_power1 or low_power2:
+        # If the powers are too close to the noise level, the coherence is not well defined.
+        return np.nan, np.nan
+
     power1_sub = power1 - power1_noise
     power2_sub = power2 - power2_noise
 
     den = power1_sub * power2_sub
-    if isinstance(power1, Iterable):
-        neg_dens = den <= 0
-        neg_den_detected = np.any(neg_dens)
-    else:
-        neg_den_detected = den <= 0
-
-    if neg_den_detected:
-        warnings.warn(
-            "Negative denominator detected in intrinsic_coherence calculation. "
-            "Coherence will be NaN where this happens."
-        )
 
     coherence = num / den
+
     # Terms from VN97, eq. 8, for the uncertainty on the coherence.
     err1 = 2.0 * (bsq**2) * n_ave / (num - bsq) ** 2
     err2 = (power1_noise / power1_sub) ** 2 + (power2_noise / power2_sub) ** 2
     err3 = 2.0 * ((1 - coherence) / (coherence**1.5)) ** 2
     uncertainty = coherence / np.sqrt(n_ave) * np.sqrt(err1 + err2 + err3)
 
-    min_uncertainty = 1 / n_ave
-    uncertainty = _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty)
+    return coherence, uncertainty
+
+
+def intrinsic_coherence(
+    cross_power,
+    power1,
+    power2,
+    power1_noise,
+    power2_noise,
+    n_ave,
+    return_uncertainty=False,
+):
+    """
+    Intrinsic coherence estimations from cross and power spectra.
+
+    Vaughan & Nowak 1997, ApJ 474, L43
+
+    For errors, assumes **high powers, high coherence**. See eq. 8 of the paper.
+    Powers below 3 sigma above the noise level (P_noise / sqrt(MW)) are considered too low,
+    and the coherence will be set to NaN.
+
+    TODO: implement a more general treatment of the uncertainty.
+
+    Parameters
+    ----------
+    cross_power : complex `np.array`
+        cross spectrum
+    power1 : float `np.array`
+        sub-band periodogram
+    power2 : float `np.array`
+        reference-band periodogram
+    power1_noise : float
+        Poisson noise level of the sub-band periodogram
+    power2_noise : float
+        Poisson noise level of the reference-band periodogram
+    n_ave : int
+        number of intervals that have been averaged to obtain the input spectra
+
+    Other Parameters
+    ----------------
+    return_uncertainty : bool, default False
+        Whether to return the uncertainty on the coherence, calculated according to
+        Vaughan & Nowak 1997, ApJ 474, L43, eq. 8.
+
+    Returns
+    -------
+    coherence : float `np.array` or tuple of two float `np.array`
+        The intrinsic coherence values at all frequencies. If ``return_uncertainty`` is True,
+        also returns the uncertainty on the coherence.
+    """
+    result = _intrinsic_coherence(cross_power, power1, power2, power1_noise, power2_noise, n_ave)
+    coherence, uncertainty = result
+
+    if np.any(np.isnan(coherence)):
+        warnings.warn(
+            "NaN values detected in intrinsic_coherence calculation. This happens when the powers "
+            "are too close to the noise level, and the coherence is not well defined. Consider "
+            "rebinning the spectra to increase the signal-to-noise ratio."
+        )
+
     if return_uncertainty:
         return coherence, uncertainty
     return coherence

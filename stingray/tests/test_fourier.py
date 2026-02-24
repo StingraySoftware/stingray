@@ -13,7 +13,8 @@ from stingray.fourier import (
     avg_pds_from_events,
     avg_cs_from_events,
 )
-from stingray.fourier import normalize_periodograms, raw_coherence, estimate_intrinsic_coherence
+from stingray.fourier import normalize_periodograms, estimate_intrinsic_coherence
+from stingray.fourier import raw_coherence, intrinsic_coherence
 from stingray.fourier import bias_term, error_on_averaged_cross_spectrum, unnormalize_periodograms
 from stingray.fourier import impose_symmetry_lsft, lsft_slow, lsft_fast, rms_calculation
 from stingray.fourier import get_average_ctrate, normalize_leahy_from_variance
@@ -194,6 +195,23 @@ class TestCoherence(object):
         coh = raw_coherence(
             complex(low_coh_cross[0]), P1[0], P2[0], self.p1noise, self.p2noise, self.N
         )
+
+    def test_intrinsic_neg_pow_warns(self):
+        nbins = 2
+        C, P1, P2 = np.array([4, 4]), np.array([3, 3]), np.array([1, 1])
+
+        with pytest.warns(
+            UserWarning, match="NaN values detected in intrinsic_coherence calculation."
+        ):
+            coh = intrinsic_coherence(C, P1, P2, 2, 2, 40)
+            assert np.all(np.isnan(coh))
+        # Do it with a single number
+
+        with pytest.warns(
+            UserWarning, match="NaN values detected in intrinsic_coherence calculation."
+        ):
+            coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 40)
+            assert np.isnan(coh)
 
     def test_raw_high_bias(self):
         """Test when squared bias higher than squared norm of cross spec"""
