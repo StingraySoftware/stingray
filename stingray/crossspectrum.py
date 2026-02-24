@@ -151,7 +151,7 @@ def coherence(lc1, lc2):
 
     warnings.warn(
         "The coherence function, as implemented, does not work as expected. "
-        "Please use the coherence function of AveragedCrossspectrum, with the "
+        "Please use the `raw_coherence` function of AveragedCrossspectrum, with the "
         "correct parameters.",
         DeprecationWarning,
     )
@@ -999,24 +999,25 @@ class Crossspectrum(StingrayObject):
     def coherence(self):
         """Compute Raw Coherence function of the cross spectrum.
 
-        Coherence is defined in Vaughan and Nowak, 1996 [#]_.
-        It is a Fourier frequency dependent measure of the linear correlation
-        between time series measured simultaneously in two energy channels.
+        Deprecated. Please use the `raw_coherence` method of AveragedCrossspectrum, with the correct parameters.
 
         Returns
         -------
         coh : numpy.ndarray
             Coherence function
 
-        References
-        ----------
-        .. [#] https://iopscience.iop.org/article/10.1086/310430
         """
         # this computes the averaged power spectrum, but using the
         # cross spectrum code to avoid circular imports
+        warnings.warn(
+            "The coherence method of Crossspectrum is now deprecated as it is indentically 1"
+            " in the context of a single cross spectrum. Please use the "
+            "raw_coherence method of AveragedCrossspectrum, with the correct parameters.",
+            DeprecationWarning,
+        )
 
-        return raw_coherence(
-            self.unnorm_power, self.pds1.unnorm_power, self.pds2.unnorm_power, 0, 0, self.n
+        return (self.unnorm_power * self.unnorm_power.conj()).real / (
+            self.pds1.unnorm_power * self.pds2.unnorm_power
         )
 
     def phase_lag(self):

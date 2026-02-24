@@ -427,7 +427,7 @@ class TestAveragedCrossspectrumEvents(object):
 
     def test_coherence(self):
         with pytest.warns(UserWarning) as w:
-            coh = self.acs.coherence()
+            coh = self.acs.raw_coherence()
         assert len(coh[0]) == 4999
         assert len(coh[1]) == 4999
 
@@ -474,7 +474,9 @@ class TestCoherence(object):
         lc1 = Lightcurve([1, 2, 3, 4, 5], [2, 3, 2, 4, 1])
         lc2 = Lightcurve([1, 2, 3, 4, 5], [4, 8, 1, 9, 11])
 
-        with pytest.warns(UserWarning) as record:
+        with pytest.warns(
+            DeprecationWarning, match="The coherence method of Crossspectrum is now deprecated"
+        ) as record:
             cs = Crossspectrum(lc1, lc2)
             coh = cs.coherence()
 
@@ -488,9 +490,8 @@ class TestCoherence(object):
         lc = Lightcurve(t, a)
         lc2 = Lightcurve(t, copy.deepcopy(a))
 
-        with pytest.warns(UserWarning) as record:
-            c = AveragedCrossspectrum(lc, lc2, 128, use_common_mean=True)
-            coh, _ = c.coherence()
+        c = AveragedCrossspectrum(lc, lc2, 128, use_common_mean=True)
+        coh, _ = c.raw_coherence()
 
         assert np.isclose(np.mean(coh).real, 1.0, atol=0.01)
 
@@ -808,7 +809,10 @@ class TestCrossspectrum(object):
             cs = Crossspectrum(self.lc1, self.lc2, norm="wrong")
 
     def test_coherence_one_on_single_interval(self):
-        coh = self.cs.coherence()
+        with pytest.warns(
+            DeprecationWarning, match="The coherence method of Crossspectrum is now deprecated"
+        ) as record:
+            coh = self.cs.coherence()
         assert len(coh) == 4999
         assert np.isclose(coh[0], 1)
 
@@ -1112,7 +1116,7 @@ class TestAveragedCrossspectrum(object):
         )
 
     def test_coherence(self):
-        coh = self.cs.coherence()
+        coh = self.cs.raw_coherence()
 
         assert len(coh[0]) == 4999
         assert len(coh[1]) == 4999
@@ -1824,7 +1828,14 @@ class TestAveragedCrossspectrumOverlap(object):
         )
 
     def test_coherence(self):
-        coh = self.cs.coherence()
+        coh = self.cs.raw_coherence()
+
+        assert len(coh[0]) == 4999
+        assert len(coh[1]) == 4999
+
+    def test_old_coherence_warns(self):
+        with pytest.warns(DeprecationWarning, match="The `coherence` method is deprecated."):
+            coh = self.cs.coherence()
 
         assert len(coh[0]) == 4999
         assert len(coh[1]) == 4999
