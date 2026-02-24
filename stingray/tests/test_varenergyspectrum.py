@@ -536,7 +536,7 @@ class BaseTestIO(abc.ABC):
         with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
             if self.variant == "complcov":
                 try:
-                    with pytest.warns(UserWarning, match="No header keywords provided. "):
+                    with pytest.warns(UserWarning, match="The XSPEC-compatible files created "):
                         so.save_as_xspec("dummy")
                     for part in ["real", "imag"]:
                         for ext in ["pha", "rsp", "txt"]:
@@ -548,7 +548,7 @@ class BaseTestIO(abc.ABC):
                                 os.unlink(f"dummy_{part}.{ext}")
             else:
                 try:
-                    with pytest.warns(UserWarning, match="No header keywords provided. "):
+                    with pytest.warns(UserWarning, match="The XSPEC-compatible files created "):
                         so.save_as_xspec("dummy_pow")
                     assert os.path.exists("dummy_pow.pha")
                     assert os.path.exists("dummy_pow.rsp")
