@@ -29,6 +29,23 @@ from .utils import (
 )
 
 
+__all__ = [
+    "integrate_power_in_frequency_range",
+    "positive_fft_bins",
+    "poisson_level",
+    "normalize_frac",
+    "normalize_abs",
+    "normalize_leahy_from_variance",
+    "normalize_leahy_poisson",
+    "normalize_periodograms",
+    "unnormalize_periodograms",
+    "bias_term",
+    "raw_coherence",
+    "coherence",
+    "intrinsic_coherence",
+]
+
+
 def integrate_power_in_frequency_range(
     frequency,
     power,
@@ -184,21 +201,30 @@ def poisson_level(norm="frac", meanrate=None, n_ph=None, backrate=0):
     Poisson (white)-noise level in a periodogram of pure counting noise.
 
     For Leahy normalization, this is:
+
     .. math::
+
         P = 2
 
     For the fractional r.m.s. normalization, this is
+
     .. math::
+
         P = \frac{2}{\mu}
+
     where :math:`\mu` is the average count rate
 
     For the absolute r.m.s. normalization, this is
+
     .. math::
+
         P = 2 \mu
 
     Finally, for the unnormalized periodogram, this is
+
     .. math::
-        P = N_{ph}
+
+        P = N_{\rm ph}
 
     Parameters
     ----------
@@ -276,22 +302,27 @@ def normalize_frac(unnorm_power, dt, n_bin, mean_flux, background_flux=0):
     r"""
     Fractional rms normalization.
 
-    ..math::
-        P = \frac{P_{Leahy}}{\mu} = \frac{2T}{N_{ph}^2}P_{unnorm}
+    .. math::
+
+        P = \frac{P_{\rm Leahy}}{\mu} = \frac{2T}{N_{\rm ph}^2}P_{\rm unnorm}
 
     where :math:`\mu` is the mean count rate, :math:`T` is the length of
-    the observation, and :math:`N_{ph}` the number of photons.
+    the observation, and :math:`N_{\rm ph}` the number of photons.
     Alternative formulas found in the literature substitute :math:`T=N\,dt`,
-    :math:`\mu=N_{ph}/T`, which give equivalent results.
+    :math:`\mu=N_{\rm ph}/T`, which give equivalent results.
 
     If the background can be estimated, one can calculate the source rms
     normalized periodogram as
-    ..math::
-        P = P_{Leahy} * \frac{\mu}{(\mu - \beta)^2}
+
+    .. math::
+
+        P = P_{\rm Leahy} \frac{\mu}{(\mu - \beta)^2}
 
     or
-    ..math::
-        P = \frac{2T}{(N_{ph} - \beta T)^2}P_{unnorm}
+
+    .. math::
+
+        P = \frac{2T}{(N_{\rm ph} - \beta T)^2}P_{\rm unnorm}
 
     where :math:`\beta` is the background count rate.
 
@@ -365,11 +396,14 @@ def normalize_abs(unnorm_power, dt, n_bin):
     Absolute rms normalization.
 
     .. math::
-        P = P_{frac} * \mu^2
+
+        P = P_{\rm frac} * \mu^2
 
     where :math:`\mu` is the mean count rate, or equivalently
+
     .. math::
-        P = \frac{2}{T}P_{unnorm}
+
+        P = \frac{2}{T}P_{\rm unnorm}
 
     In this normalization, the periodogram is in units of
     :math:`rms^2 Hz^{-1}`, and the squared root of the
@@ -417,7 +451,8 @@ def normalize_leahy_from_variance(unnorm_power, variance, n_bin):
     Leahy+83 normalization, from the variance of the lc.
 
     .. math::
-        P = \frac{P_{unnorm}}{N <\delta{x}^2>}
+
+        P = \frac{P_{\rm unnorm}}{N <\delta{x}^2>}
 
     In this normalization, the periodogram of a single light curve
     is distributed according to a chi squared distribution with two
@@ -464,11 +499,12 @@ def normalize_leahy_from_variance(unnorm_power, variance, n_bin):
 
 
 def normalize_leahy_poisson(unnorm_power, n_ph):
-    """
+    r"""
     Leahy+83 normalization.
 
     .. math::
-        P = \frac{2}{N_{ph}} P_{unnorm}
+
+        P = \frac{2}{N_{\rm ph}} P_{\rm unnorm}
 
     In this normalization, the periodogram of a single light curve
     is distributed according to a chi squared distribution with two
@@ -844,10 +880,19 @@ def raw_coherence(
     intrinsic_coherence=1,
     return_uncertainty=False,
 ):
-    """
+    r"""
     Raw coherence estimations from cross and power spectra.
 
-    Vaughan & Nowak 1997, ApJ 474, L43
+    The function is defined as (see Ingram 2019 [#]_ :
+
+    .. math::
+
+        \tilde{g}^2(f) = \frac{|\langle \tilde{C}(f) \rangle|^2 - \tilde{b}^2}
+        {\langle \tilde{P}_1(f) \rangle \langle \tilde{P}_2(f) \rangle}
+
+    where :math:`\tilde{b}^2` is the bias term that accounts for the contribution of Poisson
+    noise to the cross spectrum (see :func:`stingray.fourier.bias_term`), and tilde generally indicates noisy
+    measurements of the cross spectrum :math:`C` and the power spectra :math:`P_n`.
 
     Parameters
     ----------
@@ -875,6 +920,10 @@ def raw_coherence(
     -------
     coherence : float `np.array`
         The raw coherence values at all frequencies.
+
+    References
+    ----------
+    .. [#] https://doi.org/10.1093/mnras/stz2409
     """
     coherence, uncertainty = _raw_coherence(
         cross_power,
@@ -978,10 +1027,22 @@ def intrinsic_coherence(
     n_ave,
     return_uncertainty=False,
 ):
-    """
+    r"""
     Intrinsic coherence estimations from cross and power spectra.
 
     Vaughan & Nowak 1997, ApJ 474, L43
+
+    .. math::
+
+        \tilde{\gamma}^2(f) = \frac{|\langle \tilde{C}(f) \rangle|^2 - \tilde{b}^2}
+        {(\langle \tilde{P}_1(f) \rangle - \tilde{P}_{1, \rm noise})
+        (\langle \tilde{P}_2(f) \rangle - \tilde{P}_{2, \rm noise})}
+
+    where :math:`\tilde{b}^2` is the bias term that accounts for the contribution of Poisson
+    noise to the cross spectrum (see :func:`stingray.fourier.bias_term`), and tilde generally indicates noisy
+    measurements of the cross spectrum :math:`C` and the power spectra :math:`P_n`. The terms
+    :math:`\tilde{P}_{\rm n, \rm noise}` are the estimates of the contribution of Poisson noise to
+    the power spectra.
 
     For errors, assumes **high powers, high coherence**. See eq. 8 of the paper.
     Powers below 3 sigma above the noise level (P_noise / sqrt(MW)) are considered too low,
