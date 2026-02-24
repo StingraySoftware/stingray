@@ -2193,7 +2193,8 @@ class AveragedCrossspectrum(Crossspectrum):
         """
         warnings.warn(
             "The `coherence` method is deprecated. Please use `raw_coherence` or "
-            "`intrinsic_coherence` instead, depending on your needs."
+            "`intrinsic_coherence` instead, depending on your needs.",
+            DeprecationWarning,
         )
 
         return self.raw_coherence()
