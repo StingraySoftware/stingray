@@ -470,7 +470,6 @@ class TestAveragedCrossspectrumEvents(object):
 
 
 class TestCoherence(object):
-
     def setup_class(cls):
         # Create power and cross spectrum from Fourier amplitudes, like
         # in the Timmer & Koenig method. This way, we can have a high coherence.
@@ -522,7 +521,6 @@ class TestCoherence(object):
 
     @pytest.mark.parametrize("adjust_bias", [True, False])
     def test_high_intr_coherence(self, adjust_bias):
-
         coh, _ = self.cs.intrinsic_coherence(adjust_bias=adjust_bias)
 
         assert np.isclose(np.nanmean(coh).real, 1.0, atol=0.01)
