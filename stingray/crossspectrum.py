@@ -2249,7 +2249,7 @@ class AveragedCrossspectrum(Crossspectrum):
 
         return raw_coherence(c, p1, p2, P1noise, P2noise, self.m, return_uncertainty=True)
 
-    def intrinsic_coherence(self):
+    def intrinsic_coherence(self, adjust_bias=False):
         r"""Averaged Coherence function.
 
         Intrinsic Coherence is defined in Vaughan and Nowak, 1997 [#]_, as
@@ -2271,6 +2271,14 @@ class AveragedCrossspectrum(Crossspectrum):
             This definition is strictly valid for Gaussian statistics only, meaning that the
             cross spectrum and the power spectra estimates have been obtained by averaging over
             at least 50 intervals. A warning will be raised if this is not the case
+
+        Parameters
+        ----------
+        adjust_bias: bool, default False
+            If True, the bias term is adjusted to account for the fact that the bias term depends
+            on the intrinsic coherence itself. This is done iteratively.
+            See Ingram 2019 [#]_ for details on the bias term and its dependence on the intrinsic
+            coherence, and the documentation of `intrinsic_coherence`.
 
         Returns
         -------
@@ -2297,7 +2305,9 @@ class AveragedCrossspectrum(Crossspectrum):
         P1noise = poisson_level(norm="none", meanrate=meanrate1, n_ph=self.nphots1)
         P2noise = poisson_level(norm="none", meanrate=meanrate2, n_ph=self.nphots2)
 
-        return intrinsic_coherence(c, p1, p2, P1noise, P2noise, self.m, return_uncertainty=True)
+        return intrinsic_coherence(
+            c, p1, p2, P1noise, P2noise, self.m, return_uncertainty=True, adjust_bias=adjust_bias
+        )
 
     def phase_lag(self):
         """Return the fourier phase lag of the cross spectrum."""

@@ -939,6 +939,39 @@ def raw_coherence(
     return coherence
 
 
+@njit
+def _intrinsic_coherence_uncertainties(
+    bsq, num, power1_sub, power2_sub, power1_noise, power2_noise, coherence, n_ave
+):
+    """Calculate the uncertainty on the intrinsic coherence, according to VN97, eq. 8.
+
+    Parameters
+    ----------
+    bsq : float
+        The bias term squared, calculated according to the bias_term function.
+    num : float
+        The numerator of the coherence calculation, i.e. (cross_power * np.conj(cross_power)).real - bsq.
+    power1_sub : float
+        The subtracted power of the first band, i.e. power1 - power1_noise
+    power2_sub : float
+        The subtracted power of the second band, i.e. power2 - power2_noise
+    power1_noise : float
+        The Poisson noise level of the first band periodogram
+    power2_noise : float
+        The Poisson noise level of the second band periodogram
+    coherence : float
+        The intrinsic coherence calculated according to the _intrinsic_coherence function.
+    n_ave : int
+        The number of intervals that have been averaged to obtain the input spectra
+    """
+    # Terms from VN97, eq. 8, for the uncertainty on the coherence.
+    err1 = 2.0 * (bsq**2) * n_ave / (num - bsq) ** 2
+    err2 = (power1_noise / power1_sub) ** 2 + (power2_noise / power2_sub) ** 2
+    err3 = 2.0 * ((1 - coherence) / (coherence**1.5)) ** 2
+    uncertainty = coherence / np.sqrt(n_ave) * np.sqrt(err1 + err2 + err3)
+    return uncertainty
+
+
 @vectorize(
     ["UniTuple(float64[:, :], 2)(float64, float64, float64, float64, float64, int64, float64)"],
     nopython=True,
@@ -1009,12 +1042,71 @@ def _intrinsic_coherence(
 
     coherence = num / den
 
-    # Terms from VN97, eq. 8, for the uncertainty on the coherence.
-    err1 = 2.0 * (bsq**2) * n_ave / (num - bsq) ** 2
-    err2 = (power1_noise / power1_sub) ** 2 + (power2_noise / power2_sub) ** 2
-    err3 = 2.0 * ((1 - coherence) / (coherence**1.5)) ** 2
-    uncertainty = coherence / np.sqrt(n_ave) * np.sqrt(err1 + err2 + err3)
+    uncertainty = _intrinsic_coherence_uncertainties(
+        bsq, num, power1_sub, power2_sub, power1_noise, power2_noise, coherence, n_ave
+    )
 
+    return coherence, uncertainty
+
+
+@vectorize(
+    ["UniTuple(float64[:, :], 2)(float64, float64, float64, float64, float64, int64)"],
+    nopython=True,
+)
+def _intrinsic_coherence_with_adjusted_bias(
+    cross_power,
+    power1,
+    power2,
+    power1_noise,
+    power2_noise,
+    n_ave,
+):
+    """
+    Intrinsic coherence estimations from cross and power spectra, with adjusted bias term.
+
+    Follows the procedure from sec. 5 of Ingram 2019, MNRAS 489, 3927, which iteratively
+    adjusts the bias term
+
+    For errors, assumes **high powers, high coherence**. See eq. 8 of Vaughan & Nowak 1997.
+    Powers below 3 sigma above the noise level (P_noise / sqrt(MW)) are considered too low,
+    and the coherence will be set to NaN.
+
+    """
+    # Consider low power when the power is less than 3 sigma above the noise level.
+    # This is somewhat arbitrary, better criteria suggestions are welcome.
+    power1_sub = power1 - power1_noise
+    power2_sub = power2 - power2_noise
+
+    low_power1 = power1_sub <= 3 * power1_noise / np.sqrt(n_ave)
+    low_power2 = power2_sub <= 3 * power2_noise / np.sqrt(n_ave)
+    if low_power1 or low_power2:
+        # If the powers are too close to the noise level, the coherence is not well defined.
+        return np.nan, np.nan
+
+    current_coherence = 1.0
+
+    for _ in range(40):
+        bsq = _bias_term(power1, power2, power1_noise, power2_noise, n_ave, current_coherence)
+        num = (cross_power * np.conj(cross_power)).real - bsq
+        if num < 0:
+            num = 0
+
+        den = power1_sub * power2_sub
+
+        coherence = num / den
+
+        if np.isclose(coherence, current_coherence, atol=0.01):
+            break
+        current_coherence = coherence
+    else:
+        warnings.warn(
+            "The iterative procedure to adjust the bias term did not converge after 40 iterations. "
+            "Consider rebinning the spectra to increase the signal-to-noise ratio."
+        )
+
+    uncertainty = _intrinsic_coherence_uncertainties(
+        bsq, num, power1_sub, power2_sub, power1_noise, power2_noise, coherence, n_ave
+    )
     return coherence, uncertainty
 
 
@@ -1026,6 +1118,7 @@ def intrinsic_coherence(
     power2_noise,
     n_ave,
     return_uncertainty=False,
+    adjust_bias=False,
 ):
     r"""
     Intrinsic coherence estimations from cross and power spectra.
@@ -1039,10 +1132,15 @@ def intrinsic_coherence(
         (\langle \tilde{P}_2(f) \rangle - \tilde{P}_{2, \rm noise})}
 
     where :math:`\tilde{b}^2` is the bias term that accounts for the contribution of Poisson
-    noise to the cross spectrum (see :func:`stingray.fourier.bias_term`), and tilde generally indicates noisy
-    measurements of the cross spectrum :math:`C` and the power spectra :math:`P_n`. The terms
-    :math:`\tilde{P}_{\rm n, \rm noise}` are the estimates of the contribution of Poisson noise to
-    the power spectra.
+    noise to the cross spectrum (see :func:`stingray.fourier.bias_term`), and tilde generally
+    indicates noisy measurements of the cross spectrum :math:`C` and the power spectra :math:`P_n`.
+    The terms :math:`\tilde{P}_{\rm n, \rm noise}` are the estimates of the contribution of
+    Poisson noise to the power spectra.
+
+    The bias term depends on the intrinsic coherence itself, so it can be calculated iteratively
+    following the procedure from sec. 5 of Ingram 2019, MNRAS 489, 3927, which adjusts the bias
+    term until convergence is reached. This is done if ``adjust_bias`` is set to True. It is
+    typically a very small correction.
 
     For errors, assumes **high powers, high coherence**. See eq. 8 of the paper.
     Powers below 3 sigma above the noise level (P_noise / sqrt(MW)) are considered too low,
@@ -1077,7 +1175,15 @@ def intrinsic_coherence(
         The intrinsic coherence values at all frequencies. If ``return_uncertainty`` is True,
         also returns the uncertainty on the coherence.
     """
-    result = _intrinsic_coherence(cross_power, power1, power2, power1_noise, power2_noise, n_ave)
+    if adjust_bias:
+        result = _intrinsic_coherence_with_adjusted_bias(
+            cross_power, power1, power2, power1_noise, power2_noise, n_ave
+        )
+    else:
+        result = _intrinsic_coherence(
+            cross_power, power1, power2, power1_noise, power2_noise, n_ave
+        )
+
     coherence, uncertainty = result
 
     if np.any(np.isnan(coherence)):
@@ -1090,57 +1196,6 @@ def intrinsic_coherence(
     if return_uncertainty:
         return coherence, uncertainty
     return coherence
-
-
-def _estimate_intrinsic_coherence_single(
-    cross_power, power1, power2, power1_noise, power2_noise, n_ave
-):
-    """
-    Estimate intrinsic coherence.
-
-    Use the iterative procedure from sec. 5 of
-
-    Ingram 2019, MNRAS 489, 392
-
-    Parameters
-    ----------
-    cross_power : complex
-        cross spectrum
-    power1 : float
-        sub-band power
-    power2 : float
-        reference-band power
-    power1_noise : float
-        Poisson noise level of the sub-band periodogram
-    power2_noise : float
-        Poisson noise level of the reference-band periodogram
-    n_ave : int
-        number of intervals that have been averaged to obtain the input spectra
-
-    Returns
-    -------
-    coherence : float `np.array`
-        The estimated intrinsic coherence, at all frequencies.
-    """
-    new_coherence = 1
-    old_coherence = 0
-    count = 0
-    while not np.isclose(new_coherence, old_coherence, atol=0.01) and count < 40:
-        old_coherence = new_coherence
-        bsq = bias_term(
-            power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=new_coherence
-        )
-        den = (power1 - power1_noise) * (power2 - power2_noise)
-        num = (cross_power * np.conj(cross_power)).real - bsq
-        if num < 0:
-            num = (cross_power * np.conj(cross_power)).real
-        new_coherence = num / den
-        count += 1
-    return new_coherence
-
-
-# This is the vectorized version of the function above.
-estimate_intrinsic_coherence_vec = np.vectorize(_estimate_intrinsic_coherence_single)
 
 
 def estimate_intrinsic_coherence(cross_power, power1, power2, power1_noise, power2_noise, n_ave):
@@ -1171,8 +1226,19 @@ def estimate_intrinsic_coherence(cross_power, power1, power2, power1_noise, powe
     coherence : float `np.array`
         The estimated intrinsic coherence, at all frequencies.
     """
-    new_coherence = estimate_intrinsic_coherence_vec(
-        cross_power, power1, power2, power1_noise, power2_noise, n_ave
+    warnings.warn(
+        "estimate_intrinsic_coherence is deprecated. Use intrinsic_coherence with adjust_bias=True instead.",
+        DeprecationWarning,
+    )
+    new_coherence = intrinsic_coherence(
+        cross_power,
+        power1,
+        power2,
+        power1_noise,
+        power2_noise,
+        n_ave,
+        return_uncertainty=False,
+        adjust_bias=True,
     )
     return new_coherence
 

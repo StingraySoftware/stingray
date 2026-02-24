@@ -171,10 +171,11 @@ class TestCoherence(object):
         cls.p1noise = poisson_level(meanrate=meanrate, norm="abs")
         cls.p2noise = poisson_level(meanrate=meanrate, norm="abs")
 
-    def test_intrinsic_coherence(self):
-        coh = estimate_intrinsic_coherence(
-            self.cross, self.pds1, self.pds2, self.p1noise, self.p2noise, self.N
-        )
+    def test_old_estimate_intrinsic_coherence(self):
+        with pytest.warns(DeprecationWarning):
+            coh = estimate_intrinsic_coherence(
+                self.cross, self.pds1, self.pds2, self.p1noise, self.p2noise, self.N
+            )
         assert np.allclose(coh, 1, atol=0.001)
 
     def test_raw_high_coherence(self):
