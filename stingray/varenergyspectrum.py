@@ -507,12 +507,13 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
         energies = np.sum(eints, axis=1) / 2
         de = np.diff(eints, axis=1).flatten()
 
-        if header_keywords is None:
-            warnings.warn(
-                "No header keywords provided. For spectral timing products, it"
-                "is likely that information on response files and backgrounds is needed "
-                "(e.g. the RESPFILE, ANCRFILE, BACKFILE keywords), so we recommend to provide them in the `header_keywords` argument."
-            )
+        simon(
+            "The XSPEC-compatible files created by the mission pipelines often include "
+            "corrections that we cannot reproduce here. When comparing or simultaneously "
+            "fitting these spectra with those produced by the pipelines, make sure to "
+            "take this into account. Some corrections can be introduced by providing the "
+            "necessary keywords using the `header_keywords` keyword argument if needed. "
+        )
 
         if "complex" not in str(self.spectrum.dtype):
             save_as_xspec(
