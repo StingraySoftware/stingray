@@ -129,8 +129,12 @@ def get_flux_generator(data, segment_size, dt=None):
 def coherence(lc1, lc2):
     """
     Estimate coherence function of two light curves.
-    For details on the definition of the coherence, see Vaughan and Nowak,
-    1996 [#]_.
+
+    .. note::
+
+        This function is deprecated because it does not make sense in the current
+        formulation. Please use the `raw_coherence` and `intrinsic_coherence` methods
+        of AveragedCrossspectrum, with the correct parameters.
 
     Parameters
     ----------
@@ -144,9 +148,6 @@ def coherence(lc1, lc2):
     coh : ``np.ndarray``
         The array of coherence versus frequency
 
-    References
-    ----------
-    .. [#] https://iopscience.iop.org/article/10.1086/310430
     """
 
     warnings.warn(
@@ -2163,17 +2164,6 @@ class AveragedCrossspectrum(Crossspectrum):
         Coherence is a Fourier frequency dependent measure of the linear correlation
         between time series measured simultaneously in two energy channels.
 
-        The function is defined as (see Ingram 2019 [#]_ :
-
-        .. math::
-
-            \tilde{g}^2(f) = \frac{|\langle \tilde{C}(f) \rangle|^2 - \tilde{b}^2}
-            {\langle \tilde{P}_1(f) \rangle \langle \tilde{P}_2(f) \rangle}
-
-        where :math:`\tilde{b}^2` is the bias term that accounts for the contribution of Poisson
-        noise to the cross spectrum, and tilde generally indicates noisy measurements of the cross
-        spectrum :math:`C` and the power spectra :math:`P_n`.
-
         .. note::
 
             This function is deprecated. Please use `raw_coherence` or
@@ -2186,10 +2176,6 @@ class AveragedCrossspectrum(Crossspectrum):
         -------
         (coh, uncertainty) : tuple of np.ndarray
             Tuple comprising the coherence function and uncertainty.
-
-        References
-        ----------
-        .. [#] https://doi.org/10.1093/mnras/stz2409
         """
         warnings.warn(
             "The `coherence` method is deprecated. Please use `raw_coherence` or "
@@ -2277,7 +2263,7 @@ class AveragedCrossspectrum(Crossspectrum):
         adjust_bias: bool, default False
             If True, the bias term is adjusted to account for the fact that the bias term depends
             on the intrinsic coherence itself. This is done iteratively.
-            See Ingram 2019 [#]_ for details on the bias term and its dependence on the intrinsic
+            See Ingram 2019, cited, for details on the bias term and its dependence on the intrinsic
             coherence, and the documentation of `intrinsic_coherence`.
 
         Returns
