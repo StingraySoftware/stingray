@@ -2337,6 +2337,8 @@ class StingrayTimeseries(StingrayObject):
             # However, this might be too much for short GTIs, so we set an upper limit to the
             # buffer size equal to the length of the longest GTI.
             buffer_size = min(buffer_size, max_samples_per_gti)
+            # Still, no less than 1
+            buffer_size = max(buffer_size, 1)
 
         # Eliminate series of GTIs that are shorter than max_length, to avoid particularly
         # problematic situations (ex. in NICER where many short GTIs can occur)
@@ -2396,13 +2398,13 @@ class StingrayTimeseries(StingrayObject):
                 # Calculate count rate from the buffer before the gap
                 # count_rate = number_of_events / time_span
                 if len(low_time_arr) > 0 and (filt_low_t - low_time_arr[0]) > 0:
-                    ctrate_low = np.count_nonzero(low_time_arr) / (filt_low_t - low_time_arr[0])
+                    ctrate_low = np.size(low_time_arr) / (filt_low_t - low_time_arr[0])
                 else:
                     ctrate_low = np.nan
 
                 # Calculate count rate from the buffer after the gap
                 if len(high_time_arr) > 0 and (high_time_arr[-1] - filt_hig_t) > 0:
-                    ctrate_high = np.count_nonzero(high_time_arr) / (high_time_arr[-1] - filt_hig_t)
+                    ctrate_high = np.size(high_time_arr) / (high_time_arr[-1] - filt_hig_t)
                 else:
                     ctrate_high = np.nan
 
@@ -2417,10 +2419,9 @@ class StingrayTimeseries(StingrayObject):
 
                 # Average the count rates (nanmean ignores NaN values)
                 ctrate = np.nanmean([ctrate_low, ctrate_high])
-
+                expected_counts = ctrate * (bti[1] - bti[0])
                 # Draw number of events from Poisson distribution with expected value = rate * duration
-                nevents = rs.poisson(ctrate * (bti[1] - bti[0]))
-
+                nevents = rs.poisson(expected_counts)
                 # Place events uniformly within the gap
                 local_new_times = np.sort(rs.uniform(bti[0], bti[1], nevents))
 
@@ -2437,7 +2438,7 @@ class StingrayTimeseries(StingrayObject):
                 # Get attribute values from buffer before the gap
                 # Note: the indexing here seems to have a bug - should probably be:
                 # getattr(self, attr)[max(filt_low_idx - buffer_size, 0) : filt_low_idx]
-                low_arr = getattr(new_ts, attr)[max(buffer_size - filt_low_idx, 0) : filt_low_idx]
+                low_arr = getattr(new_ts, attr)[max(filt_low_idx - buffer_size, 0) : filt_low_idx]
                 # Get attribute values from buffer after the gap
                 high_arr = getattr(new_ts, attr)[filt_hig_idx : buffer_size + filt_hig_idx]
 
