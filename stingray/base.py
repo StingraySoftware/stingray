@@ -24,6 +24,7 @@ from .utils import (
     get_random_state,
     find_nearest,
     rebin_data,
+    show_progress,
 )
 from .gti import (
     create_gti_mask,
@@ -2355,7 +2356,7 @@ class StingrayTimeseries(StingrayObject):
         added_gtis = []
 
         total_filled_time = 0
-        for bti in btis:
+        for bti in show_progress(btis):
             length = bti[1] - bti[0]
 
             # Skip gaps that are too long - we only fill short gaps
