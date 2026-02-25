@@ -2344,6 +2344,8 @@ class StingrayTimeseries(StingrayObject):
         if len(gti) < len(self.gti):
             new_ts = self.apply_gtis(gti, inplace=False)
             filtered_times = new_ts.time
+        else:
+            new_ts = self
 
         # Initialize output containers: start with the original valid data
         new_times = [filtered_times.copy()]
@@ -2375,7 +2377,7 @@ class StingrayTimeseries(StingrayObject):
             if even_sampling:
                 # For evenly sampled data: create a regular time grid within the gap.
                 # Start at bti[0] + dt/2 to place bin centers correctly.
-                local_new_times = np.arange(bti[0] + self.dt / 2, bti[1], self.dt)
+                local_new_times = np.arange(bti[0] + new_ts.dt / 2, bti[1], new_ts.dt)
                 nevents = local_new_times.size
             else:
                 # For unevenly sampled data (e.g., event lists): estimate count rate
@@ -2435,13 +2437,13 @@ class StingrayTimeseries(StingrayObject):
                 # Get attribute values from buffer before the gap
                 # Note: the indexing here seems to have a bug - should probably be:
                 # getattr(self, attr)[max(filt_low_idx - buffer_size, 0) : filt_low_idx]
-                low_arr = getattr(self, attr)[max(buffer_size - filt_low_idx, 0) : filt_low_idx]
+                low_arr = getattr(new_ts, attr)[max(buffer_size - filt_low_idx, 0) : filt_low_idx]
                 # Get attribute values from buffer after the gap
-                high_arr = getattr(self, attr)[filt_hig_idx : buffer_size + filt_hig_idx]
+                high_arr = getattr(new_ts, attr)[filt_hig_idx : buffer_size + filt_hig_idx]
 
                 # Initialize the output list with the original valid data (only once)
                 if attr not in new_attrs:
-                    new_attrs[attr] = [getattr(self, attr)[self.mask]]
+                    new_attrs[attr] = [getattr(new_ts, attr)[new_ts.mask]]
 
                 # Randomly sample from the combined buffer to fill the gap.
                 # This preserves the empirical distribution of values near the gap.
@@ -2450,7 +2452,7 @@ class StingrayTimeseries(StingrayObject):
             # ---------- Handle attributes that shouldn't be randomized ----------
             for attr in attrs_to_leave_alone:
                 if attr not in new_attrs:
-                    new_attrs[attr] = [getattr(self, attr)[self.mask]]
+                    new_attrs[attr] = [getattr(new_ts, attr)[new_ts.mask]]
 
                 # For mask: new points are always valid (True)
                 # For other attrs: fill with NaN to indicate simulated/unknown values
@@ -2472,7 +2474,7 @@ class StingrayTimeseries(StingrayObject):
         order = np.argsort(new_times)
 
         # Create new time series object of the same type as self
-        new_obj = type(self)()
+        new_obj = type(new_ts)()
         new_obj.time = new_times[order]
 
         # Copy all metadata attributes (scalars like mjdref, dt, etc.)
