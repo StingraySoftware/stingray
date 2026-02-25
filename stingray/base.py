@@ -2754,12 +2754,21 @@ class StingrayTimeseries(StingrayObject):
         True
         """
 
+        even_sampling = False
+        mean_data_separation = np.median(np.diff(self.time))
+        if (
+            self.dt is not None
+            and self.dt > 0
+            and np.isclose(mean_data_separation, self.dt, rtol=0.01)
+        ):
+            even_sampling = True
+
         if segment_size is None:
             start_times = self.gti[:, 0]
             stop_times = self.gti[:, 1]
             start = np.searchsorted(self.time, start_times)
             stop = np.searchsorted(self.time, stop_times)
-        elif self.dt > 0:
+        elif even_sampling:
             start, stop = bin_intervals_from_gtis(
                 self.gti, segment_size, self.time, fraction_step=fraction_step, dt=self.dt
             )
