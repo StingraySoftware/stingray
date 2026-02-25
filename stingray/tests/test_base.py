@@ -1390,7 +1390,7 @@ class TestFillBTI(object):
         ev_like_filt.gti = np.asanyarray(
             [[0, 498], [500, 520], [522, 700], [702, 900], [950, 1000]]
         )
-        ev_new = ev_like_filt.fill_bad_time_intervals()
+        ev_new = ev_like_filt.fill_bad_time_intervals(max_length=3, buffer_size=4)
 
         assert np.allclose(ev_new.gti, self.gti)
 
@@ -1420,7 +1420,7 @@ class TestFillBTI(object):
         lc_like_filt.gti = np.asanyarray(
             [[0, 498], [500, 520], [522, 700], [702, 900], [950, 1000]]
         )
-        lc_new = lc_like_filt.fill_bad_time_intervals()
+        lc_new = lc_like_filt.fill_bad_time_intervals(max_length=3, buffer_size=4)
         assert np.allclose(lc_new.gti, self.gti)
 
         lc_like_gtifilt = self.lc_like.apply_gtis(inplace=False)
