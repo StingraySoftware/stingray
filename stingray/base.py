@@ -294,7 +294,6 @@ class StingrayObject(object):
 
         All attributes (internal, array, meta) are compared.
         """
-
         if not isinstance(other_ts, type(self)):
             raise ValueError(f"{type(self)} can only be compared with a {type(self)} Object")
 
@@ -313,23 +312,43 @@ class StingrayObject(object):
         for attr in self.meta_attrs():
             # They are either both scalar or arrays
             if np.isscalar(getattr(self, attr)) != np.isscalar(getattr(other_ts, attr)):
+                logger.info(
+                    f"Attribute {attr} is scalar in one object and array in the other: "
+                    f"{getattr(self, attr)} vs {getattr(other_ts, attr)}"
+                )
                 return False
 
             if np.isscalar(getattr(self, attr)):
                 if not getattr(self, attr, None) == getattr(other_ts, attr, None):
+                    logger.info(
+                        f"Attribute {attr} is different in the two objects: "
+                        f"{getattr(self, attr, None)} vs {getattr(other_ts, attr, None)}"
+                    )  # noqa: T201
                     return False
             else:
                 if not np.array_equal(
                     getattr(self, attr, None), getattr(other_ts, attr, None), equal_nan=True
                 ):
+                    logger.info(
+                        f"Attribute {attr} is different in the two objects: "
+                        f"{getattr(self, attr, None)} vs {getattr(other_ts, attr, None)}"
+                    )  # noqa: T201
                     return False
 
         for attr in self.array_attrs():
             if not np.array_equal(getattr(self, attr), getattr(other_ts, attr), equal_nan=True):
+                logger.info(
+                    f"Array attribute {attr} is different in the two objects: "
+                    f"{getattr(self, attr)} vs {getattr(other_ts, attr)}"
+                )  # noqa: T201
                 return False
 
         for attr in self.internal_array_attrs():
             if not np.array_equal(getattr(self, attr), getattr(other_ts, attr), equal_nan=True):
+                logger.info(
+                    f"Internal array attribute {attr} is different in the two objects: "
+                    f"{getattr(self, attr)} vs {getattr(other_ts, attr)}"
+                )  # noqa: T201
                 return False
 
         return True
@@ -389,7 +408,6 @@ class StingrayObject(object):
                 value = int(value)
             meta_dict[attr] = value
         ts.meta.update(meta_dict)
-
         return ts
 
     @classmethod
@@ -639,7 +657,9 @@ class StingrayObject(object):
         # specified, make sure that complex values are treated correctly.
         if fmt is None or "ascii" in fmt:
             for col in ts.colnames:
-                if not ((is_real := col.endswith(".real")) or (is_imag := col.endswith(".imag"))):
+                is_real = col.endswith(".real")
+                is_imag = col.endswith(".imag")
+                if not is_real and not is_imag:
                     continue
 
                 new_value = ts[col]

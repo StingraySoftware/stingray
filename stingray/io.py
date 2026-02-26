@@ -1596,7 +1596,7 @@ def run_flx2xsp(infile, outroot):
     sp.check_call(f"ftflx2xsp {infile} {outroot}.pha {outroot}.rsp".split())
 
 
-def save_as_xspec(x, dx, y, yerr, outroot):
+def save_as_xspec(x, dx, y, yerr, outroot, header_keywords=None):
     """Save generic spectra in a format readable to FTOOLS and Xspec.
 
     Parameters
@@ -1613,6 +1613,8 @@ def save_as_xspec(x, dx, y, yerr, outroot):
     outroot: str
         The root name of the output files. The file name will be appended with
         ".txt", ".pha" and ".rsp" for the different files that will be created
+    header_keywords: dict, optional
+        A dictionary of header keywords to be added to the PHA file.
 
     Notes
     -----
@@ -1636,3 +1638,8 @@ def save_as_xspec(x, dx, y, yerr, outroot):
     np.savetxt(outname, np.transpose([flo, fhi, power, power_err]))
     logger.info(f"Converting {outname} to Xspec format")
     run_flx2xsp(outname, outroot)
+    if header_keywords is not None:
+        with fits_open_including_remote(outroot + ".pha", mode="update") as hdul:
+            for key, value in header_keywords.items():
+                hdul[1].header[key] = value
+            hdul.flush()

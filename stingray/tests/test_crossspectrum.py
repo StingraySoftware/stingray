@@ -1350,7 +1350,7 @@ class TestRoundTrip:
         cls.cs.nphots1 = 34
         cls.cs.nphots2 = 25
         cls.cs.df = 1
-        cls.cs.power_err = np.ones_like(cls.cs.power) * 0.5
+        cls.cs.power_err = np.ones_like(cls.cs.power) * (0.5 + 1.0j)
 
     def _check_equal(self, so, new_so):
         for attr in ["freq", "power"]:
@@ -1385,10 +1385,12 @@ class TestRoundTrip:
     def test_save_as_xspec(self):
         so = self.cs
         try:
-            so.save_as_xspec("dummy")
+            so.save_as_xspec("dummy", header_keywords={"TEST": "blabla"})
             for part in ["real", "imag"]:
                 for ext in ["pha", "rsp", "txt"]:
                     assert os.path.exists(f"dummy_{part}.{ext}")
+                with fits.open(f"dummy_{part}.pha") as hdul:
+                    assert hdul[1].header["TEST"] == "blabla"
         finally:
             for part in ["real", "imag"]:
                 for ext in ["pha", "rsp", "txt"]:
