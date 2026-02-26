@@ -973,6 +973,48 @@ def _intrinsic_coherence_uncertainties(
 
 
 @vectorize(
+    ["UniTuple(float64[:, :], 2)(float64[:, :], float64[:, :], float64, float64, int64)"],
+    nopython=True,
+)
+def check_powers_for_intrinsic_coherence(
+    power1, power2, power1_noise, power2_noise, n_ave, threshold=3
+):
+    """Check if the powers are above the threshold for the intrinsic coherence to be well defined.
+
+    Parameters
+    ----------
+    power1 : float `np.array`
+        sub-band periodogram
+    power2 : float `np.array`
+        reference-band periodogram
+    power1_noise : float
+        Poisson noise level of the sub-band periodogram
+    power2_noise : float
+        Poisson noise level of the reference-band periodogram
+    n_ave : int
+        number of intervals that have been averaged to obtain the input spectra
+
+    Other Parameters
+    ----------------
+    threshold : float, default 3
+        The threshold in sigma above the noise level for the powers to be considered "high".
+
+    Returns
+    -------
+    low_power1 : bool `np.array`
+        Whether the powers of the first band are below the threshold.
+    low_power2 : bool `np.array`
+        Whether the powers of the second band are below the threshold.
+
+    """
+    # Consider low power when the power is less than 3 sigma above the noise level.
+    # This is somewhat arbitrary, better criteria suggestions are welcome.
+    low_power1 = (power1 - power1_noise) <= 3 * power1_noise / np.sqrt(n_ave)
+    low_power2 = (power2 - power2_noise) <= 3 * power2_noise / np.sqrt(n_ave)
+    return low_power1 or low_power2
+
+
+@vectorize(
     ["UniTuple(float64[:, :], 2)(float64, float64, float64, float64, float64, int64, float64)"],
     nopython=True,
 )
@@ -1022,18 +1064,15 @@ def _intrinsic_coherence(
         The intrinsic coherence values at all frequencies. If ``return_uncertainty`` is True,
         also returns the uncertainty on the coherence.
     """
+
+    if check_powers_for_intrinsic_coherence(power1, power2, power1_noise, power2_noise, n_ave):
+        # If the powers are too close to the noise level, the coherence is not well defined.
+        return np.nan, np.nan
+
     bsq = _bias_term(power1, power2, power1_noise, power2_noise, n_ave, 1)
     num = (cross_power * np.conj(cross_power)).real - bsq
     if num < 0:
         num = 0
-
-    # Consider low power when the power is less than 3 sigma above the noise level.
-    # This is somewhat arbitrary, better criteria suggestions are welcome.
-    low_power1 = power1 - power1_noise <= 3 * power1_noise / np.sqrt(n_ave)
-    low_power2 = power2 - power2_noise <= 3 * power2_noise / np.sqrt(n_ave)
-    if low_power1 or low_power2:
-        # If the powers are too close to the noise level, the coherence is not well defined.
-        return np.nan, np.nan
 
     power1_sub = power1 - power1_noise
     power2_sub = power2 - power2_noise
@@ -1072,16 +1111,15 @@ def _intrinsic_coherence_with_adjusted_bias(
     and the coherence will be set to NaN.
 
     """
+
+    if check_powers_for_intrinsic_coherence(power1, power2, power1_noise, power2_noise, n_ave):
+        # If the powers are too close to the noise level, the coherence is not well defined.
+        return np.nan, np.nan
+
     # Consider low power when the power is less than 3 sigma above the noise level.
     # This is somewhat arbitrary, better criteria suggestions are welcome.
     power1_sub = power1 - power1_noise
     power2_sub = power2 - power2_noise
-
-    low_power1 = power1_sub <= 3 * power1_noise / np.sqrt(n_ave)
-    low_power2 = power2_sub <= 3 * power2_noise / np.sqrt(n_ave)
-    if low_power1 or low_power2:
-        # If the powers are too close to the noise level, the coherence is not well defined.
-        return np.nan, np.nan
 
     current_coherence = 1.0
 

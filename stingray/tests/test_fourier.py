@@ -20,6 +20,7 @@ from stingray.fourier import impose_symmetry_lsft, lsft_slow, lsft_fast, rms_cal
 from stingray.fourier import get_average_ctrate, normalize_leahy_from_variance
 from stingray.fourier import integrate_power_in_frequency_range
 from stingray.fourier import get_rms_from_rms_norm_periodogram, get_rms_from_unnorm_periodogram
+from stingray.fourier import check_powers_for_intrinsic_coherence
 
 from stingray.utils import check_allclose_and_print
 from astropy.modeling.models import Lorentz1D
@@ -226,6 +227,16 @@ class TestCoherence(object):
         coh_sngl = raw_coherence(C[0], P1[0], P2[0], P1noise, P2noise, 499, 1)
         assert np.allclose(coh, 0)
         assert np.isclose(coh_sngl, 0)
+
+    def test_check_powers_for_intrinsic_coherence(self):
+        pow1 = np.array([10, 20, 30])
+        pow2 = np.array([10, 20, 30])
+        pow1_noise = 5
+        pow2_noise = 5
+        n_ave = np.array([1, 10, 10])
+        # Only one power is below the threshold, due to the low number of averaged powers.
+        res = check_powers_for_intrinsic_coherence(pow1, pow2, pow1_noise, pow2_noise, n_ave)
+        assert np.all(res == np.array([True, False, False]))
 
 
 class TestFourier(object):
