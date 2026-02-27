@@ -1,1 +1,0 @@
-Add possibility to save to Xspec format for covariance/variability spectra

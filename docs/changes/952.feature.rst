@@ -1,1 +1,0 @@
-Added ``summed_flag`` to ``power_confidence_limits``, to make it work with averaged powers too.
