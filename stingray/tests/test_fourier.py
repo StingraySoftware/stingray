@@ -215,6 +215,31 @@ class TestCoherence(object):
             coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 40)
             assert np.isnan(coh)
 
+    def test_intrinsic_low_coh_iteration(self):
+        # bsq = (8 * 8 - 6 * 6) / 2. = 28 for coherence = 1
+        # C**2 = 36, so that C**2 - bsq is positive, but coherence is less than 1.
+        # This will trigger the iteration.
+
+        C, P1, P2 = np.array([6, 6]), np.array([8, 8]), np.array([8, 8])
+        coh = intrinsic_coherence(C, P1, P2, 2, 2, 2, adjust_bias=True)
+        assert np.allclose(coh, 0.22, atol=0.01)
+
+        coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=True)
+        assert np.isclose(coh, 0.22, atol=0.01)
+
+    def test_intrinsic_neg_0(self):
+        # bsq = (8 * 8 - gamma * 6 * 6) / 2. = 28 for gamma=1 and 36 for gamma=0
+        # C**2 = 25, so that C**2 - bsq is always negative.
+
+        C, P1, P2 = np.array([5, 5]), np.array([8, 8]), np.array([8, 8])
+        with pytest.warns(UserWarning, match="Zero values detected in intrinsic_coherence"):
+            coh = intrinsic_coherence(C, P1, P2, 2, 2, 2, adjust_bias=True)
+        assert np.allclose(coh, 0)
+
+        with pytest.warns(UserWarning, match="Zero values detected in intrinsic_coherence"):
+            coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=True)
+        assert np.isclose(coh, 0)
+
     def test_raw_high_bias(self):
         """Test when squared bias higher than squared norm of cross spec"""
         # Values chosen to have a high bias term, larger than |C|^2

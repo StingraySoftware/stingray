@@ -1127,13 +1127,15 @@ def _intrinsic_coherence_with_adjusted_bias(
         bsq = _bias_term(power1, power2, power1_noise, power2_noise, n_ave, current_coherence)
         num = (cross_power * np.conj(cross_power)).real - bsq
         if num < 0:
-            num = 0
+            coherence = 0
+            # if the current coherence still drops, the bias term increases,
+            # so at this point it is useless to keep iterating.
+            break
 
         den = power1_sub * power2_sub
 
         coherence = num / den
-
-        if np.isclose(coherence, current_coherence, atol=0.01):
+        if np.isclose(coherence, current_coherence, rtol=0.01):
             break
         current_coherence = coherence
     else:
@@ -1142,9 +1144,12 @@ def _intrinsic_coherence_with_adjusted_bias(
             "Consider rebinning the spectra to increase the signal-to-noise ratio."
         )
 
-    uncertainty = _intrinsic_coherence_uncertainties(
-        bsq, num, power1_sub, power2_sub, power1_noise, power2_noise, coherence, n_ave
-    )
+    if coherence <= 0:
+        uncertainty = np.nan
+    else:
+        uncertainty = _intrinsic_coherence_uncertainties(
+            bsq, num, power1_sub, power2_sub, power1_noise, power2_noise, coherence, n_ave
+        )
     return coherence, uncertainty
 
 
@@ -1229,6 +1234,12 @@ def intrinsic_coherence(
             "NaN values detected in intrinsic_coherence calculation. This happens when the powers "
             "are too close to the noise level, and the coherence is not well defined. Consider "
             "rebinning the spectra to increase the signal-to-noise ratio."
+        )
+    if np.any(np.isclose(coherence, 0)):
+        warnings.warn(
+            "Zero values detected in intrinsic_coherence calculation. This usually happens"
+            " when the bias term is larger than the cross spectrum, and the coherence is not"
+            " well defined. "
         )
 
     if return_uncertainty:
