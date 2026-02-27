@@ -427,7 +427,7 @@ class TestAveragedCrossspectrumEvents(object):
 
     def test_coherence(self):
         with pytest.warns(UserWarning) as w:
-            coh = self.acs.coherence()
+            coh = self.acs.raw_coherence()
         assert len(coh[0]) == 4999
         assert len(coh[1]) == 4999
 
@@ -470,11 +470,68 @@ class TestAveragedCrossspectrumEvents(object):
 
 
 class TestCoherence(object):
+    def setup_class(cls):
+        # Create power and cross spectrum from Fourier amplitudes, like
+        # in the Timmer & Koenig method. This way, we can have a high coherence.
+        N = 128000
+        dt = 1 / 64
+        segment_size = 128
+        n_per_seg = int(segment_size // dt)
+        cross_power = np.zeros(n_per_seg, dtype=complex)
+        power1 = np.zeros(n_per_seg)
+        power2 = np.zeros(n_per_seg)
+        nphot = 100
+
+        nloops = int(N // n_per_seg)
+        for i in range(nloops):
+            f1 = np.random.normal(0, 1, n_per_seg) + 1j * np.random.normal(0, 1, n_per_seg)
+            f2 = np.random.normal(0, 1, n_per_seg) + 1j * np.random.normal(0, 1, n_per_seg)
+            signal = np.random.normal(0, 100, n_per_seg) + 1j * np.random.normal(0, 100, n_per_seg)
+            f1 += signal
+            f2 += signal
+            cross_power += f1 * np.conj(f2)
+            power1 += (f1 * np.conj(f1)).real
+            power2 += (f2 * np.conj(f2)).real
+
+        c = AveragedCrossspectrum()
+        p1 = AveragedPowerspectrum()
+        p2 = AveragedPowerspectrum()
+
+        c.power = cross_power / nloops
+        c.unnorm_power = cross_power / 2 * nphot
+
+        p1.power = power1 / nloops
+        p1.unnorm_power = power1 / 2 * nphot
+        p2.power = power2 / nloops
+        p2.unnorm_power = power2 / 2 * nphot
+
+        for obj in [c, p1, p2]:
+            setattr(obj, "dt", dt)
+            setattr(obj, "segment_size", segment_size)
+            setattr(obj, "nphots1", nphot)
+            setattr(obj, "nphots2", nphot)
+            setattr(obj, "nphots", nphot)
+            setattr(obj, "norm", "leahy")
+            setattr(obj, "m", nloops)
+            setattr(obj, "n", n_per_seg)
+
+        c.pds1 = p1
+        c.pds2 = p2
+        cls.cs = c
+
+    @pytest.mark.parametrize("adjust_bias", [True, False])
+    def test_high_intr_coherence(self, adjust_bias):
+        coh, _ = self.cs.intrinsic_coherence(adjust_bias=adjust_bias)
+
+        assert np.isclose(np.nanmean(coh).real, 1.0, atol=0.01)
+
     def test_coherence_is_one_on_single_interval(self):
         lc1 = Lightcurve([1, 2, 3, 4, 5], [2, 3, 2, 4, 1])
         lc2 = Lightcurve([1, 2, 3, 4, 5], [4, 8, 1, 9, 11])
 
-        with pytest.warns(UserWarning) as record:
+        with pytest.warns(
+            DeprecationWarning, match="The coherence method of Crossspectrum is now deprecated"
+        ) as record:
             cs = Crossspectrum(lc1, lc2)
             coh = cs.coherence()
 
@@ -483,14 +540,7 @@ class TestCoherence(object):
         assert np.isclose(np.abs(np.mean(coh)), 1, rtol=0.001)
 
     def test_high_coherence(self):
-        t = np.arange(1280)
-        a = np.random.poisson(100, len(t))
-        lc = Lightcurve(t, a)
-        lc2 = Lightcurve(t, copy.deepcopy(a))
-
-        with pytest.warns(UserWarning) as record:
-            c = AveragedCrossspectrum(lc, lc2, 128, use_common_mean=True)
-            coh, _ = c.coherence()
+        coh, _ = self.cs.raw_coherence()
 
         assert np.isclose(np.mean(coh).real, 1.0, atol=0.01)
 
@@ -808,7 +858,10 @@ class TestCrossspectrum(object):
             cs = Crossspectrum(self.lc1, self.lc2, norm="wrong")
 
     def test_coherence_one_on_single_interval(self):
-        coh = self.cs.coherence()
+        with pytest.warns(
+            DeprecationWarning, match="The coherence method of Crossspectrum is now deprecated"
+        ) as record:
+            coh = self.cs.coherence()
         assert len(coh) == 4999
         assert np.isclose(coh[0], 1)
 
@@ -1112,12 +1165,10 @@ class TestAveragedCrossspectrum(object):
         )
 
     def test_coherence(self):
-        with pytest.warns(UserWarning) as w:
-            coh = self.cs.coherence()
+        coh = self.cs.raw_coherence()
 
-            assert len(coh[0]) == 4999
-            assert len(coh[1]) == 4999
-            assert issubclass(w[-1].category, UserWarning)
+        assert len(coh[0]) == 4999
+        assert len(coh[1]) == 4999
 
     def test_failure_when_normalization_not_recognized(self):
         with pytest.raises(ValueError):
@@ -1826,12 +1877,24 @@ class TestAveragedCrossspectrumOverlap(object):
         )
 
     def test_coherence(self):
-        with pytest.warns(UserWarning) as w:
+        coh = self.cs.raw_coherence()
+
+        assert len(coh[0]) == 4999
+        assert len(coh[1]) == 4999
+
+    def test_old_coherence_warns(self):
+        with pytest.warns(DeprecationWarning, match="The `coherence` method is deprecated."):
             coh = self.cs.coherence()
 
-            assert len(coh[0]) == 4999
-            assert len(coh[1]) == 4999
-            assert issubclass(w[-1].category, UserWarning)
+        assert len(coh[0]) == 4999
+        assert len(coh[1]) == 4999
+
+    def test_intrinsic_coherence(self):
+        with pytest.warns(UserWarning) as w:
+            coh = self.cs.intrinsic_coherence()
+
+        assert len(coh[0]) == 4999
+        assert len(coh[1]) == 4999
 
     def test_normalize_crossspectrum(self):
         cs1 = Crossspectrum(self.lc1, self.lc2, norm="leahy", channels_overlap=True)

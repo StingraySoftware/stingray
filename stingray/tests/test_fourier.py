@@ -13,12 +13,14 @@ from stingray.fourier import (
     avg_pds_from_events,
     avg_cs_from_events,
 )
-from stingray.fourier import normalize_periodograms, raw_coherence, estimate_intrinsic_coherence
+from stingray.fourier import normalize_periodograms, estimate_intrinsic_coherence
+from stingray.fourier import raw_coherence, intrinsic_coherence
 from stingray.fourier import bias_term, error_on_averaged_cross_spectrum, unnormalize_periodograms
 from stingray.fourier import impose_symmetry_lsft, lsft_slow, lsft_fast, rms_calculation
 from stingray.fourier import get_average_ctrate, normalize_leahy_from_variance
 from stingray.fourier import integrate_power_in_frequency_range
 from stingray.fourier import get_rms_from_rms_norm_periodogram, get_rms_from_unnorm_periodogram
+from stingray.fourier import check_powers_for_intrinsic_coherence
 
 from stingray.utils import check_allclose_and_print
 from astropy.modeling.models import Lorentz1D
@@ -145,7 +147,6 @@ class TestCoherence(object):
         data = (
             Table.read(os.path.join(datadir, "sample_variable_series.fits"))["data"][:10000] * 1000
         )
-        print(data.max(), data.min())
         cls.data1 = rng.poisson(data)
         cls.data2 = rng.poisson(data)
         ft1 = np.fft.fft(cls.data1)
@@ -170,10 +171,11 @@ class TestCoherence(object):
         cls.p1noise = poisson_level(meanrate=meanrate, norm="abs")
         cls.p2noise = poisson_level(meanrate=meanrate, norm="abs")
 
-    def test_intrinsic_coherence(self):
-        coh = estimate_intrinsic_coherence(
-            self.cross, self.pds1, self.pds2, self.p1noise, self.p2noise, self.N
-        )
+    def test_old_estimate_intrinsic_coherence(self):
+        with pytest.warns(DeprecationWarning):
+            coh = estimate_intrinsic_coherence(
+                self.cross, self.pds1, self.pds2, self.p1noise, self.p2noise, self.N
+            )
         assert np.allclose(coh, 1, atol=0.001)
 
     def test_raw_high_coherence(self):
@@ -195,6 +197,89 @@ class TestCoherence(object):
             complex(low_coh_cross[0]), P1[0], P2[0], self.p1noise, self.p2noise, self.N
         )
 
+    def test_intrinsic_neg_pow_warns(self):
+        nbins = 2
+        C, P1, P2 = np.array([4, 4]), np.array([3, 3]), np.array([1, 1])
+
+        with pytest.warns(
+            UserWarning, match="NaN values detected in intrinsic_coherence calculation."
+        ):
+            coh = intrinsic_coherence(C, P1, P2, 2, 2, 40)
+            assert np.all(np.isnan(coh))
+        # Do it with a single number
+
+        with pytest.warns(
+            UserWarning, match="NaN values detected in intrinsic_coherence calculation."
+        ):
+            coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 40)
+            assert np.isnan(coh)
+
+    def test_intrinsic_low_coh_iteration(self):
+        # bsq = (8 * 8 - 6 * 6) / 2. = 14 for coherence = 1, 36 for coherence = 0
+        # C**2 = 36, so that C**2 - bsq is positive, but coherence is less than 1.
+        # This will trigger the iteration.
+
+        C, P1, P2 = np.array([6, 6]), np.array([8, 8]), np.array([8, 8])
+        coh = intrinsic_coherence(C, P1, P2, 2, 2, 2, adjust_bias=True)
+        assert np.allclose(coh, 0.22, atol=0.01)
+
+        coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=True)
+        assert np.isclose(coh, 0.22, atol=0.01)
+
+    def test_intrinsic_low_coh_many_iteration(self):
+        # bsq = (8 * 8 - 6 * 6) / 2. = 14 for coherence = 1, 36 for coherence = 0
+        # C**2 > 36, so that C**2 - bsq is positive, but coherence is less than 1.
+        # This will trigger the iteration.
+
+        C, P1, P2 = np.array([6.1, 6.1]), np.array([8, 8]), np.array([8, 8])
+        with pytest.warns(
+            UserWarning,
+            match="The iterative procedure to adjust the bias term did not converge after 40 iterations.",
+        ):
+            coh = intrinsic_coherence(C, P1, P2, 2, 2, 2, adjust_bias=True, atol=1e-15)
+        assert np.allclose(coh, 0.2894444, atol=0.00001)
+
+        with pytest.warns(
+            UserWarning,
+            match="The iterative procedure to adjust the bias term did not converge after 40 iterations.",
+        ):
+            coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=True, atol=1e-15)
+        assert np.isclose(coh, 0.28944444, atol=0.00001)
+
+    @pytest.mark.parametrize("adjust_bias", [True, False])
+    def test_intrinsic_neg_0(self, adjust_bias):
+        # bsq = (8 * 8 - gamma * 6 * 6) / 2. = 14 for gamma=1 and 36 for gamma=0
+        # C**2 = 9, so that C**2 - bsq is always negative.
+
+        C, P1, P2 = np.array([3, 3]), np.array([8, 8]), np.array([8, 8])
+        with pytest.warns(UserWarning, match="Zero values detected in intrinsic_coherence"):
+            coh, unc = intrinsic_coherence(
+                C, P1, P2, 2, 2, 2, adjust_bias=adjust_bias, return_uncertainty=True
+            )
+        assert np.allclose(coh, 0)
+        assert np.all(np.isnan(unc))
+
+        with pytest.warns(UserWarning, match="Zero values detected in intrinsic_coherence"):
+            coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=adjust_bias)
+        assert np.isclose(coh, 0)
+
+    @pytest.mark.parametrize("adjust_bias", [True, False])
+    def test_intrinsic_invalid_power(self, adjust_bias):
+        # bsq = (8 * 8 - gamma * 6 * 6) / 2. = 14 for gamma=1 and 36 for gamma=0
+        # C**2 = 9, so that C**2 - bsq is always negative.
+
+        C, P1, P2 = np.array([3, 3]), np.array([1, 1]), np.array([8, 8])
+        with pytest.warns(UserWarning, match="NaN values detected in intrinsic_coherence"):
+            coh, unc = intrinsic_coherence(
+                C, P1, P2, 2, 2, 2, adjust_bias=adjust_bias, return_uncertainty=True
+            )
+        assert np.all(np.isnan(unc))
+        assert np.all(np.isnan(coh))
+
+        with pytest.warns(UserWarning, match="NaN values detected in intrinsic_coherence"):
+            coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=adjust_bias)
+        assert np.isnan(coh)
+
     def test_raw_high_bias(self):
         """Test when squared bias higher than squared norm of cross spec"""
         # Values chosen to have a high bias term, larger than |C|^2
@@ -204,15 +289,19 @@ class TestCoherence(object):
         P1noise = 495955
         P2noise = 494967
         coh = raw_coherence(C, P1, P2, P1noise, P2noise, 499, 1)
+        coh_sngl = raw_coherence(C[0], P1[0], P2[0], P1noise, P2noise, 499, 1)
+        assert np.allclose(coh, 0)
+        assert np.isclose(coh_sngl, 0)
 
-        # The warning is only raised when one gives a single value for power.
-        with pytest.warns(
-            UserWarning,
-            match="Negative numerator in raw_coherence calculation. Setting bias term to 0",
-        ):
-            coh_sngl = raw_coherence(C[0], P1[0], P2[0], P1noise, P2noise, 499, 1)
-        assert np.allclose(coh, (C * np.conj(C)).real / (P1 * P2))
-        assert np.isclose(coh_sngl, (C * np.conj(C)).real[0] / (P1[0] * P2[0]))
+    def test_check_powers_for_intrinsic_coherence(self):
+        pow1 = np.array([10, 20, 30])
+        pow2 = np.array([10, 20, 30])
+        pow1_noise = 5
+        pow2_noise = 5
+        n_ave = np.array([1, 10, 10])
+        # Only one power is below the threshold, due to the low number of averaged powers.
+        res = check_powers_for_intrinsic_coherence(pow1, pow2, pow1_noise, pow2_noise, n_ave)
+        assert np.all(res == np.array([True, False, False]))
 
 
 class TestFourier(object):

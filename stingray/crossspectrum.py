@@ -17,9 +17,10 @@ from .gti import cross_two_gtis, time_intervals_from_gtis
 from .lightcurve import Lightcurve
 from .fourier import avg_cs_from_iterables, error_on_averaged_cross_spectrum
 from .fourier import avg_cs_from_timeseries, poisson_level
-from .fourier import normalize_periodograms, raw_coherence
+from .fourier import normalize_periodograms
 from .fourier import get_flux_iterable_from_segments
 from .fourier import get_rms_from_unnorm_periodogram
+from .fourier import intrinsic_coherence, raw_coherence
 from .power_colors import power_color
 
 from scipy.special import factorial
@@ -128,8 +129,12 @@ def get_flux_generator(data, segment_size, dt=None):
 def coherence(lc1, lc2):
     """
     Estimate coherence function of two light curves.
-    For details on the definition of the coherence, see Vaughan and Nowak,
-    1996 [#]_.
+
+    .. note::
+
+        This function is deprecated because it does not make sense in the current
+        formulation. Please use the `raw_coherence` and `intrinsic_coherence` methods
+        of AveragedCrossspectrum, with the correct parameters.
 
     Parameters
     ----------
@@ -143,14 +148,11 @@ def coherence(lc1, lc2):
     coh : ``np.ndarray``
         The array of coherence versus frequency
 
-    References
-    ----------
-    .. [#] https://iopscience.iop.org/article/10.1086/310430
     """
 
     warnings.warn(
         "The coherence function, as implemented, does not work as expected. "
-        "Please use the coherence function of AveragedCrossspectrum, with the "
+        "Please use the `raw_coherence` function of AveragedCrossspectrum, with the "
         "correct parameters.",
         DeprecationWarning,
     )
@@ -996,26 +998,27 @@ class Crossspectrum(StingrayObject):
         return new_spec
 
     def coherence(self):
-        """Compute Coherence function of the cross spectrum.
+        """Compute Raw Coherence function of the cross spectrum.
 
-        Coherence is defined in Vaughan and Nowak, 1996 [#]_.
-        It is a Fourier frequency dependent measure of the linear correlation
-        between time series measured simultaneously in two energy channels.
+        Deprecated. Please use the `raw_coherence` method of AveragedCrossspectrum, with the correct parameters.
 
         Returns
         -------
         coh : numpy.ndarray
             Coherence function
 
-        References
-        ----------
-        .. [#] https://iopscience.iop.org/article/10.1086/310430
         """
         # this computes the averaged power spectrum, but using the
         # cross spectrum code to avoid circular imports
+        warnings.warn(
+            "The coherence method of Crossspectrum is now deprecated as it is indentically 1"
+            " in the context of a single cross spectrum. Please use the "
+            "raw_coherence method of AveragedCrossspectrum, with the correct parameters.",
+            DeprecationWarning,
+        )
 
-        return raw_coherence(
-            self.unnorm_power, self.pds1.unnorm_power, self.pds2.unnorm_power, 0, 0, self.n
+        return (self.unnorm_power * self.unnorm_power.conj()).real / (
+            self.pds1.unnorm_power * self.pds2.unnorm_power
         )
 
     def phase_lag(self):
@@ -2156,20 +2159,112 @@ class AveragedCrossspectrum(Crossspectrum):
         return True
 
     def coherence(self):
-        """Averaged Coherence function.
+        r"""Averaged Raw Coherence function.
 
-
-        Coherence is defined in Vaughan and Nowak, 1996 [#]_.
-        It is a Fourier frequency dependent measure of the linear correlation
+        Coherence is a Fourier frequency dependent measure of the linear correlation
         between time series measured simultaneously in two energy channels.
 
-        Compute an averaged Coherence function of cross spectrum by computing
-        coherence function of each segment and averaging them. The return type
-        is a tuple with first element as the coherence function and the second
-        element as the corresponding uncertainty associated with it.
+        .. note::
+
+            This function is deprecated. Please use `raw_coherence` or
+            `intrinsic_coherence` instead, depending on your needs.
 
         Note : The uncertainty in coherence function is strictly valid for Gaussian \
                statistics only.
+
+        Returns
+        -------
+        (coh, uncertainty) : tuple of np.ndarray
+            Tuple comprising the coherence function and uncertainty.
+        """
+        warnings.warn(
+            "The `coherence` method is deprecated. Please use `raw_coherence` or "
+            "`intrinsic_coherence` instead, depending on your needs.",
+            DeprecationWarning,
+        )
+
+        return self.raw_coherence()
+
+    def raw_coherence(self):
+        r"""Averaged Raw Coherence function.
+
+        Coherence is a Fourier frequency dependent measure of the linear correlation
+        between time series measured simultaneously in two energy channels.
+
+        The function is defined as (see Ingram 2019 [#]_ :
+
+        .. math::
+
+            \tilde{g}^2(f) = \frac{|\langle \tilde{C}(f) \rangle|^2 - \tilde{b}^2}
+            {\langle \tilde{P}_1(f) \rangle \langle \tilde{P}_2(f) \rangle}
+
+        where :math:`\tilde{b}^2` is the bias term that accounts for the contribution of Poisson
+        noise to the cross spectrum (see :func:`stingray.fourier.bias_term`), and tilde generally indicates noisy
+        measurements of the cross spectrum :math:`C` and the power spectra :math:`P_n`.
+
+        .. note::
+
+            This definition is strictly valid for Gaussian statistics only, meaning that the
+            cross spectrum and the power spectra estimates have been obtained by averaging over
+            at least 50 intervals. A warning will be raised if this is not the case
+
+        Returns
+        -------
+        (coh, uncertainty) : tuple of np.ndarray
+            Tuple comprising the coherence function and uncertainty.
+
+        References
+        ----------
+        .. [#] https://doi.org/10.1093/mnras/stz2409
+        """
+        if np.any(self.m < 50):
+            simon(
+                "Number of segments used in averaging is "
+                "significantly low. The result might not follow the "
+                "expected statistical distributions."
+            )
+        c = self.unnorm_power
+        p1 = self.pds1.unnorm_power
+        p2 = self.pds2.unnorm_power
+
+        meanrate1 = self.nphots1 / self.n / self.dt
+        meanrate2 = self.nphots2 / self.n / self.dt
+
+        P1noise = poisson_level(norm="none", meanrate=meanrate1, n_ph=self.nphots1)
+        P2noise = poisson_level(norm="none", meanrate=meanrate2, n_ph=self.nphots2)
+
+        return raw_coherence(c, p1, p2, P1noise, P2noise, self.m, return_uncertainty=True)
+
+    def intrinsic_coherence(self, adjust_bias=False):
+        r"""Averaged Coherence function.
+
+        Intrinsic Coherence is defined in Vaughan and Nowak, 1997 [#]_, as
+
+        .. math::
+
+            \tilde{\gamma}^2(f) = \frac{|\langle \tilde{C}(f) \rangle|^2 - \tilde{b}^2}
+            {(\langle \tilde{P}_1(f) \rangle - \tilde{P}_{1, \rm noise})
+            (\langle \tilde{P}_2(f) \rangle - \tilde{P}_{2, \rm noise})}
+
+        where :math:`\tilde{b}^2` is the bias term that accounts for the contribution of Poisson
+        noise to the cross spectrum (see :func:`stingray.fourier.bias_term`), and tilde generally indicates noisy
+        measurements of the cross spectrum :math:`C` and the power spectra :math:`P_n`. The terms
+        :math:`\tilde{P}_{n, \rm noise}` are the estimates of the contribution of Poisson noise to
+        the power spectra.
+
+        .. note::
+
+            This definition is strictly valid for Gaussian statistics only, meaning that the
+            cross spectrum and the power spectra estimates have been obtained by averaging over
+            at least 50 intervals. A warning will be raised if this is not the case
+
+        Parameters
+        ----------
+        adjust_bias: bool, default False
+            If True, the bias term is adjusted to account for the fact that the bias term depends
+            on the intrinsic coherence itself. This is done iteratively.
+            See Ingram 2019, cited, for details on the bias term and its dependence on the intrinsic
+            coherence, and the documentation of `intrinsic_coherence`.
 
         Returns
         -------
@@ -2196,14 +2291,9 @@ class AveragedCrossspectrum(Crossspectrum):
         P1noise = poisson_level(norm="none", meanrate=meanrate1, n_ph=self.nphots1)
         P2noise = poisson_level(norm="none", meanrate=meanrate2, n_ph=self.nphots2)
 
-        coh = raw_coherence(c, p1, p2, P1noise, P2noise, self.n)
-
-        # Calculate uncertainty
-        uncertainty = (2**0.5 * coh * (1 - coh)) / (np.sqrt(coh) * self.m**0.5)
-
-        uncertainty[coh == 0] = 0.0
-
-        return (coh, uncertainty)
+        return intrinsic_coherence(
+            c, p1, p2, P1noise, P2noise, self.m, return_uncertainty=True, adjust_bias=adjust_bias
+        )
 
     def phase_lag(self):
         """Return the fourier phase lag of the cross spectrum."""
