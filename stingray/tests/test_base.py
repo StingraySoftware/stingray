@@ -1385,6 +1385,16 @@ class TestFillBTI(object):
         ts_new = ts.fill_bad_time_intervals()
         assert ts == ts_new
 
+    def test_event_like_small_gtis_eliminated(self):
+        ev_like_filt = copy.deepcopy(self.ev_like)
+        # I introduce a small gap in the GTIs
+        ev_like_filt.gti = np.asanyarray(
+            [[0, 498], [500, 520], [522, 700], [702, 900], [910, 910.1], [911, 911.1], [950, 1000]]
+        )
+        ev_new = ev_like_filt.fill_bad_time_intervals(max_length=3, buffer_size=4)
+
+        assert np.allclose(ev_new.gti, self.gti)
+
     def test_event_like(self):
         ev_like_filt = copy.deepcopy(self.ev_like)
         # I introduce a small gap in the GTIs
