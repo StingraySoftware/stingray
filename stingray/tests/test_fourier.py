@@ -263,6 +263,23 @@ class TestCoherence(object):
             coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=adjust_bias)
         assert np.isclose(coh, 0)
 
+    @pytest.mark.parametrize("adjust_bias", [True, False])
+    def test_intrinsic_invalid_power(self, adjust_bias):
+        # bsq = (8 * 8 - gamma * 6 * 6) / 2. = 14 for gamma=1 and 36 for gamma=0
+        # C**2 = 9, so that C**2 - bsq is always negative.
+
+        C, P1, P2 = np.array([3, 3]), np.array([1, 1]), np.array([8, 8])
+        with pytest.warns(UserWarning, match="NaN values detected in intrinsic_coherence"):
+            coh, unc = intrinsic_coherence(
+                C, P1, P2, 2, 2, 2, adjust_bias=adjust_bias, return_uncertainty=True
+            )
+        assert np.all(np.isnan(unc))
+        assert np.all(np.isnan(coh))
+
+        with pytest.warns(UserWarning, match="NaN values detected in intrinsic_coherence"):
+            coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=adjust_bias)
+        assert np.isnan(coh)
+
     def test_raw_high_bias(self):
         """Test when squared bias higher than squared norm of cross spec"""
         # Values chosen to have a high bias term, larger than |C|^2
