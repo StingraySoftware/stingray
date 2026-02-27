@@ -1,3 +1,27 @@
+v2.3 (2026-02-27)
+-----------------
+
+New Features
+^^^^^^^^^^^^
+
+- Added ``summed_flag`` to ``power_confidence_limits``, to make it work with averaged powers too. (`#952 <https://github.com/StingraySoftware/stingray/pull/952>`__)
+- Add function to save spectra in Xspec-compatible format (`#957 <https://github.com/StingraySoftware/stingray/pull/957>`__)
+- Add possibility to save to Xspec format for covariance/variability spectra (`#963 <https://github.com/StingraySoftware/stingray/pull/963>`__)
+- Improve treatment of coherence (`#965 <https://github.com/StingraySoftware/stingray/pull/965>`__)
+
+
+Bug Fixes
+^^^^^^^^^
+
+- Fixed EventList.read to properly pass ``**kwargs.`` (`#950 <https://github.com/StingraySoftware/stingray/pull/950>`__)
+- Fixed an error in ``power_confidence_limits`` that led to systematically narrower confidence intervals. (`#951 <https://github.com/StingraySoftware/stingray/pull/951>`__)
+- Fixed uncertainty propogation error in ``Lightcurve.rebin()`` (`#953 <https://github.com/StingraySoftware/stingray/pull/953>`__)
+- Fixed convergence issues in ``power_upper_limit`` for summed powers and low count rates by replacing ``minimize`` with ``brentq``. (`#954 <https://github.com/StingraySoftware/stingray/pull/954>`__)
+- Fix initialization of ``countrate_err`` if errors are Poisson (`#958 <https://github.com/StingraySoftware/stingray/pull/958>`__)
+- Fix array_attrs property of ``Lightcurve`` (`#959 <https://github.com/StingraySoftware/stingray/pull/959>`__)
+- Speedup and improve robustness of ``fill_bad_time_intervals`` (`#968 <https://github.com/StingraySoftware/stingray/pull/968>`__)
+
+
 v2.2.10 (2025-10-24)
 --------------------
 
@@ -12,7 +36,7 @@ Bug Fixes
 ^^^^^^^^^
 
 - Fix issue with float128 in recent Numba versions (`#947 <https://github.com/StingraySoftware/stingray/pull/947>`__)
-- Fixed a bug in the `stingray.stats.power_upper_limit` function where the current minimizing method did not lead to convergence in some cases. 
+- Fixed a bug in the `stingray.stats.power_upper_limit` function where the current minimizing method did not lead to convergence in some cases.
 
 
 v2.2.9 (2025-08-18)
