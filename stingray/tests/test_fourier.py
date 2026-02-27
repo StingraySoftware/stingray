@@ -147,7 +147,6 @@ class TestCoherence(object):
         data = (
             Table.read(os.path.join(datadir, "sample_variable_series.fits"))["data"][:10000] * 1000
         )
-        print(data.max(), data.min())
         cls.data1 = rng.poisson(data)
         cls.data2 = rng.poisson(data)
         ft1 = np.fft.fft(cls.data1)
@@ -227,17 +226,21 @@ class TestCoherence(object):
         coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=True)
         assert np.isclose(coh, 0.22, atol=0.01)
 
-    def test_intrinsic_neg_0(self):
-        # bsq = (8 * 8 - gamma * 6 * 6) / 2. = 28 for gamma=1 and 36 for gamma=0
-        # C**2 = 25, so that C**2 - bsq is always negative.
+    @pytest.mark.parametrize("adjust_bias", [True, False])
+    def test_intrinsic_neg_0(self, adjust_bias):
+        # bsq = (8 * 8 - gamma * 6 * 6) / 2. = 14 for gamma=1 and 36 for gamma=0
+        # C**2 = 9, so that C**2 - bsq is always negative.
 
-        C, P1, P2 = np.array([5, 5]), np.array([8, 8]), np.array([8, 8])
+        C, P1, P2 = np.array([3, 3]), np.array([8, 8]), np.array([8, 8])
         with pytest.warns(UserWarning, match="Zero values detected in intrinsic_coherence"):
-            coh = intrinsic_coherence(C, P1, P2, 2, 2, 2, adjust_bias=True)
+            coh, unc = intrinsic_coherence(
+                C, P1, P2, 2, 2, 2, adjust_bias=adjust_bias, return_uncertainty=True
+            )
         assert np.allclose(coh, 0)
+        assert np.all(np.isnan(unc))
 
         with pytest.warns(UserWarning, match="Zero values detected in intrinsic_coherence"):
-            coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=True)
+            coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=adjust_bias)
         assert np.isclose(coh, 0)
 
     def test_raw_high_bias(self):

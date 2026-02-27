@@ -1061,8 +1061,12 @@ def _intrinsic_coherence(
     Returns
     -------
     coherence : float `np.array` or tuple of two float `np.array`
-        The intrinsic coherence values at all frequencies. If ``return_uncertainty`` is True,
-        also returns the uncertainty on the coherence.
+        The intrinsic coherence values at all frequencies. It is 0 if the numerator
+        of the coherence calculation is negative, and NaN if the powers are too low compared
+        to the noise level.
+    uncertainty : float `np.array`, optional
+        The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
+        1997, ApJ 474, L43, eq. 8.
     """
 
     if check_powers_for_intrinsic_coherence(power1, power2, power1_noise, power2_noise, n_ave):
@@ -1072,7 +1076,7 @@ def _intrinsic_coherence(
     bsq = _bias_term(power1, power2, power1_noise, power2_noise, n_ave, 1)
     num = (cross_power * np.conj(cross_power)).real - bsq
     if num < 0:
-        num = 0
+        return 0.0, np.nan
 
     power1_sub = power1 - power1_noise
     power2_sub = power2 - power2_noise
@@ -1110,6 +1114,37 @@ def _intrinsic_coherence_with_adjusted_bias(
     Powers below 3 sigma above the noise level (P_noise / sqrt(MW)) are considered too low,
     and the coherence will be set to NaN.
 
+    Parameters
+    ----------
+    cross_power : complex `np.array`
+        cross spectrum
+    power1 : float `np.array`
+        sub-band periodogram
+    power2 : float `np.array`
+        reference-band periodogram
+    power1_noise : float
+        Poisson noise level of the sub-band periodogram
+    power2_noise : float
+        Poisson noise level of the reference-band periodogram
+    n_ave : int
+        number of intervals that have been averaged to obtain the input spectra
+
+    Other Parameters
+    ----------------
+    return_uncertainty : bool, default False
+        Whether to return the uncertainty on the coherence, calculated according to
+        Vaughan & Nowak 1997, ApJ 474, L43, eq. 8.
+
+    Returns
+    -------
+    coherence : float `np.array` or tuple of two float `np.array`
+        The intrinsic coherence values at all frequencies. It is 0 if the numerator
+        of the coherence calculation is negative, and NaN if the powers are too low compared
+        to the noise level.
+    uncertainty : float `np.array`, optional
+        The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
+        1997, ApJ 474, L43, eq. 8.
+
     """
 
     if check_powers_for_intrinsic_coherence(power1, power2, power1_noise, power2_noise, n_ave):
@@ -1126,11 +1161,11 @@ def _intrinsic_coherence_with_adjusted_bias(
     for _ in range(40):
         bsq = _bias_term(power1, power2, power1_noise, power2_noise, n_ave, current_coherence)
         num = (cross_power * np.conj(cross_power)).real - bsq
-        if num < 0:
+        if num <= 0:
             coherence = 0
             # if the current coherence still drops, the bias term increases,
             # so at this point it is useless to keep iterating.
-            break
+            return 0, np.nan
 
         den = power1_sub * power2_sub
 
@@ -1144,12 +1179,9 @@ def _intrinsic_coherence_with_adjusted_bias(
             "Consider rebinning the spectra to increase the signal-to-noise ratio."
         )
 
-    if coherence <= 0:
-        uncertainty = np.nan
-    else:
-        uncertainty = _intrinsic_coherence_uncertainties(
-            bsq, num, power1_sub, power2_sub, power1_noise, power2_noise, coherence, n_ave
-        )
+    uncertainty = _intrinsic_coherence_uncertainties(
+        bsq, num, power1_sub, power2_sub, power1_noise, power2_noise, coherence, n_ave
+    )
     return coherence, uncertainty
 
 
@@ -1215,8 +1247,13 @@ def intrinsic_coherence(
     Returns
     -------
     coherence : float `np.array` or tuple of two float `np.array`
-        The intrinsic coherence values at all frequencies. If ``return_uncertainty`` is True,
-        also returns the uncertainty on the coherence.
+        The intrinsic coherence values at all frequencies. It is 0 if the numerator
+        of the coherence calculation is negative, and NaN if the powers are too low compared
+        to the noise level.
+    uncertainty : float `np.array`, optional
+        The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
+        1997, ApJ 474, L43, eq. 8.
+
     """
     if adjust_bias:
         result = _intrinsic_coherence_with_adjusted_bias(
@@ -1226,7 +1263,6 @@ def intrinsic_coherence(
         result = _intrinsic_coherence(
             cross_power, power1, power2, power1_noise, power2_noise, n_ave
         )
-
     coherence, uncertainty = result
 
     if np.any(np.isnan(coherence)):
