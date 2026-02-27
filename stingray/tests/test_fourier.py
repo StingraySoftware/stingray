@@ -215,7 +215,7 @@ class TestCoherence(object):
             assert np.isnan(coh)
 
     def test_intrinsic_low_coh_iteration(self):
-        # bsq = (8 * 8 - 6 * 6) / 2. = 28 for coherence = 1
+        # bsq = (8 * 8 - 6 * 6) / 2. = 14 for coherence = 1, 36 for coherence = 0
         # C**2 = 36, so that C**2 - bsq is positive, but coherence is less than 1.
         # This will trigger the iteration.
 
@@ -225,6 +225,26 @@ class TestCoherence(object):
 
         coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=True)
         assert np.isclose(coh, 0.22, atol=0.01)
+
+    def test_intrinsic_low_coh_many_iteration(self):
+        # bsq = (8 * 8 - 6 * 6) / 2. = 14 for coherence = 1, 36 for coherence = 0
+        # C**2 > 36, so that C**2 - bsq is positive, but coherence is less than 1.
+        # This will trigger the iteration.
+
+        C, P1, P2 = np.array([6.1, 6.1]), np.array([8, 8]), np.array([8, 8])
+        with pytest.warns(
+            UserWarning,
+            match="The iterative procedure to adjust the bias term did not converge after 40 iterations.",
+        ):
+            coh = intrinsic_coherence(C, P1, P2, 2, 2, 2, adjust_bias=True, atol=1e-15)
+        assert np.allclose(coh, 0.2894444, atol=0.00001)
+
+        with pytest.warns(
+            UserWarning,
+            match="The iterative procedure to adjust the bias term did not converge after 40 iterations.",
+        ):
+            coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=True, atol=1e-15)
+        assert np.isclose(coh, 0.28944444, atol=0.00001)
 
     @pytest.mark.parametrize("adjust_bias", [True, False])
     def test_intrinsic_neg_0(self, adjust_bias):

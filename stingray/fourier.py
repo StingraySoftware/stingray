@@ -1103,6 +1103,7 @@ def _intrinsic_coherence_with_adjusted_bias(
     power1_noise,
     power2_noise,
     n_ave,
+    atol=0.01,
 ):
     """
     Intrinsic coherence estimations from cross and power spectra, with adjusted bias term.
@@ -1131,9 +1132,9 @@ def _intrinsic_coherence_with_adjusted_bias(
 
     Other Parameters
     ----------------
-    return_uncertainty : bool, default False
-        Whether to return the uncertainty on the coherence, calculated according to
-        Vaughan & Nowak 1997, ApJ 474, L43, eq. 8.
+    atol: float, default 0.01
+        The absolute tolerance for the convergence of the iterative procedure to adjust
+        the bias term.
 
     Returns
     -------
@@ -1170,13 +1171,14 @@ def _intrinsic_coherence_with_adjusted_bias(
         den = power1_sub * power2_sub
 
         coherence = num / den
-        if np.isclose(coherence, current_coherence, rtol=0.01):
+        if np.abs(current_coherence - coherence) < atol:
             break
         current_coherence = coherence
     else:
         warnings.warn(
             "The iterative procedure to adjust the bias term did not converge after 40 iterations. "
-            "Consider rebinning the spectra to increase the signal-to-noise ratio."
+            "Consider rebinning the spectra to increase the signal-to-noise ratio, or to use a "
+            "more permissive tolerance (``atol`` parameter)."
         )
 
     uncertainty = _intrinsic_coherence_uncertainties(
@@ -1194,6 +1196,7 @@ def intrinsic_coherence(
     n_ave,
     return_uncertainty=False,
     adjust_bias=False,
+    atol=0.01,
 ):
     r"""
     Intrinsic coherence estimations from cross and power spectra.
@@ -1243,6 +1246,9 @@ def intrinsic_coherence(
     return_uncertainty : bool, default False
         Whether to return the uncertainty on the coherence, calculated according to
         Vaughan & Nowak 1997, ApJ 474, L43, eq. 8.
+    atol: float, default 0.01
+        The absolute tolerance for the convergence of the iterative procedure to adjust
+        the bias term.Only relevant if ``adjust_bias`` is True.
 
     Returns
     -------
@@ -1257,7 +1263,7 @@ def intrinsic_coherence(
     """
     if adjust_bias:
         result = _intrinsic_coherence_with_adjusted_bias(
-            cross_power, power1, power2, power1_noise, power2_noise, n_ave
+            cross_power, power1, power2, power1_noise, power2_noise, n_ave, atol=atol
         )
     else:
         result = _intrinsic_coherence(
