@@ -1,0 +1,3 @@
+Fixed notebook compatibility issues: added ``seaborn`` to docs build dependencies
+and fixed ``set_xdata`` scalar-vs-array bug in the interactive phaseogram widget
+in the Pulsar notebook.
