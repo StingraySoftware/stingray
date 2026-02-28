@@ -49,7 +49,8 @@ try:
     from numba import jit
 
     HAS_NUMBA = True
-    from numba import njit, prange, vectorize, float32, float64, int32, int64, UniTuple
+    from numba import njit, prange, vectorize, float32, float64, int32, int64
+
     from numba.core.errors import NumbaValueError, NumbaNotImplementedError, TypingError
 except ImportError:
     warnings.warn(
@@ -78,7 +79,7 @@ except ImportError:
     def generic(*args, **kwargs):
         return None
 
-    float32 = float64 = int32 = int64 = UniTuple = generic
+    float32 = float64 = int32 = int64 = generic
 
     def prange(x):
         return range(x)

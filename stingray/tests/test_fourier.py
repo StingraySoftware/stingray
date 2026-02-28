@@ -300,7 +300,7 @@ class TestCoherence(object):
         pow2_noise = 5
         n_ave = np.array([1, 10, 10])
         # Only one power is below the threshold, due to the low number of averaged powers.
-        res = check_powers_for_intrinsic_coherence(pow1, pow2, pow1_noise, pow2_noise, n_ave)
+        res = check_powers_for_intrinsic_coherence(pow1, pow2, pow1_noise, pow2_noise, n_ave, 3.0)
         assert np.all(res == np.array([True, False, False]))
 
 
