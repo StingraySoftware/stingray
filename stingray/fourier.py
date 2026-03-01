@@ -23,8 +23,6 @@ from .utils import (
     rebin_data,
     njit,
     vectorize,
-    float64,
-    int64,
 )
 
 
@@ -705,7 +703,13 @@ def unnormalize_periodograms(
     raise ValueError("Unrecognized power type")
 
 
-@vectorize([float64(float64, float64, float64, float64, int64, float64)], nopython=True)
+@vectorize(
+    [
+        "float64(float64, float64, float64, float64, int64, float64)",
+        "float64(float64, float64, float64, float64, float64, float64)",
+    ],
+    nopython=True,
+)
 def _bias_term(power1, power2, power1_noise, power2_noise, n_ave, input_intrinsic_coherence):
     if n_ave > 500:
         return 0.0
@@ -737,7 +741,7 @@ def bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coher
         Poisson noise level of the sub-band periodogram
     power2_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
 
     Other Parameters
@@ -754,7 +758,7 @@ def bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coher
     return _bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence)
 
 
-@vectorize([float64(float64, float64, float64)], nopython=True)
+@vectorize(["float64(float64, float64, float64)"], nopython=True)
 def _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty):
     """
     Apply a low limit to the uncertainty on the coherence, to avoid zero or negative uncertainties.
@@ -807,7 +811,10 @@ def _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertai
 
 
 @vectorize(
-    ["float64(complex128, float64, float64, float64, float64, int64, float64)"],
+    [
+        "float64(complex128, float64, float64, float64, float64, int64, float64)",
+        "float64(complex128, float64, float64, float64, float64, float64, float64)",
+    ],
     nopython=True,
 )
 def _raw_coherence(
@@ -836,7 +843,7 @@ def _raw_coherence(
         Poisson noise level of the sub-band periodogram
     power2_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
 
     Other Parameters
@@ -899,7 +906,7 @@ def raw_coherence(
         Poisson noise level of the sub-band periodogram
     power2_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
 
     Other Parameters
@@ -918,6 +925,16 @@ def raw_coherence(
     ----------
     .. [#] https://doi.org/10.1093/mnras/stz2409
     """
+    print(
+        cross_power,
+        power1,
+        power2,
+        power1_noise,
+        power2_noise,
+        n_ave,
+        intrinsic_coherence,
+    )
+
     coherence = _raw_coherence(
         cross_power,
         power1,
@@ -959,7 +976,7 @@ def _intrinsic_coherence_uncertainties(
         The Poisson noise level of the second band periodogram
     coherence : float
         The intrinsic coherence calculated according to the _intrinsic_coherence function.
-    n_ave : int
+    n_ave : int or float
         The number of intervals that have been averaged to obtain the input spectra
     """
     # Terms from VN97, eq. 8, for the uncertainty on the coherence.
@@ -971,7 +988,10 @@ def _intrinsic_coherence_uncertainties(
 
 
 @vectorize(
-    ["bool(float64, float64, float64, float64, int64, float64)"],
+    [
+        "bool(float64, float64, float64, float64, int64, float64)",
+        "bool(float64, float64, float64, float64, float64, float64)",
+    ],
     nopython=True,
 )
 def check_powers_for_intrinsic_coherence(
@@ -989,7 +1009,7 @@ def check_powers_for_intrinsic_coherence(
         Poisson noise level of the sub-band periodogram
     power2_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
 
     Other Parameters
@@ -1044,7 +1064,7 @@ def _intrinsic_coherence(
         Poisson noise level of the sub-band periodogram
     power2_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
 
     Other Parameters
@@ -1119,7 +1139,7 @@ def _intrinsic_coherence_with_adjusted_bias(
         Poisson noise level of the sub-band periodogram
     power2_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
 
     Other Parameters
@@ -1229,7 +1249,7 @@ def intrinsic_coherence_array(
     power2_noise : float `np.array`
         Poisson noise level of the reference-band periodogram. Can have a single value
         or the same shape as `cross_power`.
-    n_ave : int `np.array`
+    n_ave : int or float `np.array`
         number of intervals that have been averaged to obtain the input spectra. Can have
         a single value or the same shape as `cross_power`.
 
@@ -1340,7 +1360,7 @@ def intrinsic_coherence(
         Poisson noise level of the sub-band periodogram
     power2_noise : float or float `np.array` of the same shape as `cross_power`
         Poisson noise level of the reference-band periodogram
-    n_ave : int or int `np.array` of the same shape as `cross_power`
+    n_ave : int or float or int `np.array` of the same shape as `cross_power`
         number of intervals that have been averaged to obtain the input spectra
 
     Other Parameters
@@ -1436,7 +1456,7 @@ def estimate_intrinsic_coherence(cross_power, power1, power2, power1_noise, powe
         Poisson noise level of the sub-band periodogram
     power2_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
 
     Returns
@@ -1729,7 +1749,7 @@ def error_on_averaged_cross_spectrum(
         Poisson noise level of the sub-band periodogram
     ref_power_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
 
     Other Parameters
@@ -2957,7 +2977,7 @@ def avg_pds_from_timeseries(
         The normalized periodogram powers
     n_bin : int
         the number of bins in the light curves used in each segment
-    n_ave : int
+    n_ave : int or float
         the number of averaged periodograms
     mean : float
         the mean flux
@@ -3071,7 +3091,7 @@ def avg_cs_from_timeseries(
         The normalized periodogram powers
     n_bin : int
         the number of bins in the light curves used in each segment
-    n_ave : int
+    n_ave : int or float
         the number of averaged periodograms
     """
 
