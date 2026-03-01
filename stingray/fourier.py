@@ -555,27 +555,27 @@ def normalize_periodograms(
 
     Parameters
     ----------
-    unnorm_power: numpy.ndarray
+    unnorm_power : numpy.ndarray
         The unnormalized cross spectrum.
 
-    dt: float
+    dt : float
         The sampling time of the light curve
 
-    n_bin: int
+    n_bin : int
         The number of bins in the light curve
 
     Other parameters
     ----------------
-    mean_flux: float
+    mean_flux : float
         The mean of the light curve used to calculate the powers
         (If a cross spectrum, the geometrical mean of the light
         curves in the two channels). Only relevant for "frac" normalization
 
-    n_ph: int or float
+    n_ph : int or float
         The number of counts in the light curve used to calculate
         the unnormalized periodogram. Only relevant for Leahy normalization.
 
-    variance: float
+    variance : float
         The average variance of the measurements in light curve (if a cross
         spectrum,  the geometrical mean of the variances in the two channels).
         **NOT** the variance of the light curve, but of each flux measurement
@@ -595,7 +595,7 @@ def normalize_periodograms(
 
     Returns
     -------
-    power: numpy.nd.array
+    power : numpy.nd.array
         The normalized co-spectrum (real part of the cross spectrum). For
         'none' normalization, imaginary part is returned as well.
     """
@@ -633,27 +633,27 @@ def unnormalize_periodograms(
 
     Parameters
     ----------
-    norm_power: numpy.ndarray
+    norm_power : numpy.ndarray
         The normalized cross-spectrum or poisson noise
 
-    dt: float
+    dt : float
         The sampling time of the light curve
 
-    n_bin: int
+    n_bin : int
         The number of bins in the light curve
 
     Other parameters
     ----------------
-    mean_flux: float
+    mean_flux : float
         The mean of the light curve used to calculate the powers
         (If a cross spectrum, the geometrical mean of the light
         curves in the two channels). Only relevant for "frac" normalization
 
-    n_ph: int or float
+    n_ph : int or float
         The number of counts in the light curve used to calculate
         the unnormalized periodogram. Only relevant for Leahy normalization.
 
-    variance: float
+    variance : float
         The average variance of the measurements in light curve (if a cross
         spectrum,  the geometrical mean of the variances in the two channels).
         **NOT** the variance of the light curve, but of each flux measurement
@@ -673,7 +673,7 @@ def unnormalize_periodograms(
 
     Returns
     -------
-    power: numpy.nd.array
+    power : numpy.nd.array
         The normalized co-spectrum (real part of the cross spectrum). For
         'none' normalization, imaginary part is returned as well.
     """
@@ -1005,9 +1005,6 @@ def check_powers_for_intrinsic_coherence(
     threshold : float
         The threshold in sigma above the noise level for the powers to be considered "high".
 
-    Other Parameters
-    ----------------
-
     Returns
     -------
     low_power1 : bool `np.array`
@@ -1135,7 +1132,7 @@ def _intrinsic_coherence_with_adjusted_bias(
 
     Other Parameters
     ----------------
-    atol: float, default 0.01
+    atol : float, default 0.01
         The absolute tolerance for the convergence of the iterative procedure to adjust
         the bias term.
 
@@ -1246,7 +1243,11 @@ def _intrinsic_coherence_array(
 
     Other Parameters
     ----------------
-    atol: float, default 0.01
+    adjust_bias : bool, default False
+        Whether to adjust the bias term iteratively following the procedure from sec. 5 of
+        Ingram 2019, MNRAS 489, 3927. It is typically a very small correction, but it can be
+        relevant for low coherence values and/or low number of averaged intervals
+    atol : float, default 0.01
         The absolute tolerance for the convergence of the iterative procedure to adjust
         the bias term. Only relevant if ``adjust_bias`` is True.
 
@@ -1259,9 +1260,9 @@ def _intrinsic_coherence_array(
     uncertainty : float `np.array`
         The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
         1997, ApJ 474, L43, eq. 8.
-    flags : bool `np.array`
-        Whether the bias term adjustment procedure converged (False) or not (True). Only
-        relevant if ``adjust_bias`` is True.
+    no_conversion_flags : `list` of int
+        List of indices of ``coherence`` corresponding to frequencies where the bias term
+        adjustment procedure did not converge. Only relevant if ``adjust_bias`` is True.
 
     """
 
@@ -1359,7 +1360,7 @@ def intrinsic_coherence(
     return_uncertainty : bool, default False
         Whether to return the uncertainty on the coherence, calculated according to
         Vaughan & Nowak 1997, ApJ 474, L43, eq. 8.
-    atol: float, default 0.01
+    atol : float, default 0.01
         The absolute tolerance for the convergence of the iterative procedure to adjust
         the bias term.Only relevant if ``adjust_bias`` is True.
 
@@ -1480,13 +1481,13 @@ def get_rms_from_rms_norm_periodogram(power_sqrms, poisson_noise_sqrms, df, M, l
 
     Parameters
     ----------
-    power_sqrms: array-like
+    power_sqrms : array-like
         Powers, in units of fractional rms ($(rms/mean)^2 Hz{-1}$)
-    poisson_noise_sqrms: float
+    poisson_noise_sqrms : float
         Poisson noise level, in units of fractional rms ($(rms/mean)^2 Hz{-1}$
-    df: float or ``np.array``, same dimension of ``power_sqrms``
+    df : float or ``np.array``, same dimension of ``power_sqrms``
         The frequency resolution of each power
-    M: int or ``np.array``, same dimension of ``power_sqrms``
+    M : int or ``np.array``, same dimension of ``power_sqrms``
         The number of powers averaged to obtain each value of power.
 
     Other Parameters
@@ -1648,33 +1649,33 @@ def rms_calculation(
 
     Parameters
     ----------
-    unnorm_powers: array of float
+    unnorm_powers : array of float
         unnormalised power or cross spectrum, the array has already been
         filtered for the given frequency range
 
-    min_freq: float
+    min_freq : float
         The lower frequency bound for the calculation (from the freq grid).
 
-    max_freq: float
+    max_freq : float
         The upper frequency bound for the calculation (from the freq grid).
 
-    nphots: float
+    nphots : float
         Number of photons for the full power or cross spectrum
 
-    T: float
+    T : float
         Time length of the light curve
 
-    M_freq: scalar or array of float
+    M_freq : scalar or array of float
         If scalar, it is the number of segments in the AveragedCrossspectrum
         If array, it is the number of segments times the rebinning sample
         in the given frequency range.
 
-    K_freq: scalar or array of float
+    K_freq : scalar or array of float
         If scalar, the power or cross spectrum is not rebinned (K_freq = 1)
         If array,  the power or cross spectrum is rebinned and it is the
         rebinned sample in the given frequency range.
 
-    freq_bins: integer
+    freq_bins : integer
         if the cross or power spectrum is rebinned freq_bins = 1,
         if it NOT rebinned freq_bins is the number of frequency bins
         in the given frequency range.
@@ -1684,16 +1685,16 @@ def rms_calculation(
 
     Other parameters
     ----------------
-    deadtime: float
+    deadtime : float
         Deadtime of the instrument
 
     Returns
     -------
-    rms: float
+    rms : float
         The fractional rms amplitude contained between ``min_freq`` and
         ``max_freq``.
 
-    rms_err: float
+    rms_err : float
         The error on the fractional rms amplitude.
 
     """
@@ -1827,7 +1828,7 @@ def cross_to_covariance(cross_power, ref_power, ref_power_noise, delta_nu):
 
     Returns
     -------
-    covariance: complex `np.array`
+    covariance : complex `np.array`
         The cross spectrum, normalized as a covariance.
 
     """
