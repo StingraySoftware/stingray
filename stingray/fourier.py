@@ -1184,7 +1184,6 @@ def intrinsic_coherence_array(
     power1_noise,
     power2_noise,
     n_ave,
-    return_uncertainty=False,
     adjust_bias=False,
     atol=0.01,
 ):
@@ -1219,144 +1218,75 @@ def intrinsic_coherence_array(
     Parameters
     ----------
     cross_power : complex `np.array`
-        cross spectrum
+        Cross spectrum
     power1 : float `np.array`
-        sub-band periodogram
+        Sub-band periodogram. Must have the same shape as `cross_power`.
     power2 : float `np.array`
-        reference-band periodogram
-    power1_noise : float
-        Poisson noise level of the sub-band periodogram
-    power2_noise : float
-        Poisson noise level of the reference-band periodogram
-    n_ave : int
-        number of intervals that have been averaged to obtain the input spectra
+        Reference-band periodogram. Must have the same shape as `cross_power`.
+    power1_noise : float `np.array`
+        Poisson noise level of the sub-band periodogram. Can have a single value
+        or the same shape as `cross_power`.
+    power2_noise : float `np.array`
+        Poisson noise level of the reference-band periodogram. Can have a single value
+        or the same shape as `cross_power`.
+    n_ave : int `np.array`
+        number of intervals that have been averaged to obtain the input spectra. Can have
+        a single value or the same shape as `cross_power`.
 
     Other Parameters
     ----------------
-    return_uncertainty : bool, default False
-        Whether to return the uncertainty on the coherence, calculated according to
-        Vaughan & Nowak 1997, ApJ 474, L43, eq. 8.
     atol: float, default 0.01
         The absolute tolerance for the convergence of the iterative procedure to adjust
         the bias term.Only relevant if ``adjust_bias`` is True.
 
     Returns
     -------
-    coherence : float `np.array` or tuple of two float `np.array`
+    coherence : float `np.array`
         The intrinsic coherence values at all frequencies. It is 0 if the numerator
         of the coherence calculation is negative, and NaN if the powers are too low compared
         to the noise level.
-    uncertainty : float `np.array`, optional
+    uncertainty : float `np.array`
         The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
         1997, ApJ 474, L43, eq. 8.
+    flags : bool `np.array`
+        Whether the bias term adjustment procedure converged (False) or not (True). Only
+        relevant if ``adjust_bias`` is True.
 
     """
 
     coherence = np.empty(cross_power.shape, dtype=np.float64)
     uncertainty = np.empty(cross_power.shape, dtype=np.float64)
-    flags = np.zeros(cross_power.shape, dtype=np.bool_)
+    no_conversion_flags = []
 
     for i in range(cross_power.size):
+        if np.size(power1_noise) == np.size(cross_power):
+            p1_n = float(power1_noise[i])
+        else:
+            p1_n = float(power1_noise[0])
+
+        if np.size(power2_noise) == np.size(cross_power):
+            p2_n = float(power2_noise[i])
+        else:
+            p2_n = float(power2_noise[0])
+
+        if np.size(n_ave) == np.size(cross_power):
+            n_a = int(n_ave[i])
+        else:
+            n_a = int(n_ave[0])
+
         if adjust_bias:
-            coherence[i], uncertainty[i], flags[i] = _intrinsic_coherence_with_adjusted_bias(
-                cross_power[i], power1[i], power2[i], power1_noise, power2_noise, n_ave, atol=atol
+            coherence[i], uncertainty[i], flag = _intrinsic_coherence_with_adjusted_bias(
+                cross_power[i], power1[i], power2[i], p1_n, p2_n, n_a, atol=atol
             )
+            if flag:
+                no_conversion_flags.append(i)
 
         else:
             coherence[i], uncertainty[i] = _intrinsic_coherence(
-                cross_power[i], power1[i], power2[i], power1_noise, power2_noise, n_ave
+                cross_power[i], power1[i], power2[i], p1_n, p2_n, n_a
             )
 
-    return coherence, uncertainty, flags
-
-
-@njit
-def intrinsic_coherence_single(
-    cross_power,
-    power1,
-    power2,
-    power1_noise,
-    power2_noise,
-    n_ave,
-    return_uncertainty=False,
-    adjust_bias=False,
-    atol=0.01,
-):
-    r"""
-    Intrinsic coherence estimations from cross and power spectra.
-
-    Vaughan & Nowak 1997, ApJ 474, L43
-
-    .. math::
-
-        \tilde{\gamma}^2(f) = \frac{|\langle \tilde{C}(f) \rangle|^2 - \tilde{b}^2}
-        {(\langle \tilde{P}_1(f) \rangle - \tilde{P}_{1, \rm noise})
-        (\langle \tilde{P}_2(f) \rangle - \tilde{P}_{2, \rm noise})}
-
-    where :math:`\tilde{b}^2` is the bias term that accounts for the contribution of Poisson
-    noise to the cross spectrum (see :func:`stingray.fourier.bias_term`), and tilde generally
-    indicates noisy measurements of the cross spectrum :math:`C` and the power spectra :math:`P_n`.
-    The terms :math:`\tilde{P}_{\rm n, \rm noise}` are the estimates of the contribution of
-    Poisson noise to the power spectra.
-
-    The bias term depends on the intrinsic coherence itself, so it can be calculated iteratively
-    following the procedure from sec. 5 of Ingram 2019, MNRAS 489, 3927, which adjusts the bias
-    term until convergence is reached. This is done if ``adjust_bias`` is set to True. It is
-    typically a very small correction.
-
-    For errors, assumes **high powers, high coherence**. See eq. 8 of the paper.
-    Powers below 3 sigma above the noise level (P_noise / sqrt(MW)) are considered too low,
-    and the coherence will be set to NaN.
-
-    TODO: implement a more general treatment of the uncertainty.
-
-    Parameters
-    ----------
-    cross_power : complex `np.array`
-        cross spectrum
-    power1 : float `np.array`
-        sub-band periodogram
-    power2 : float `np.array`
-        reference-band periodogram
-    power1_noise : float
-        Poisson noise level of the sub-band periodogram
-    power2_noise : float
-        Poisson noise level of the reference-band periodogram
-    n_ave : int
-        number of intervals that have been averaged to obtain the input spectra
-
-    Other Parameters
-    ----------------
-    return_uncertainty : bool, default False
-        Whether to return the uncertainty on the coherence, calculated according to
-        Vaughan & Nowak 1997, ApJ 474, L43, eq. 8.
-    atol: float, default 0.01
-        The absolute tolerance for the convergence of the iterative procedure to adjust
-        the bias term.Only relevant if ``adjust_bias`` is True.
-
-    Returns
-    -------
-    coherence : float `np.array` or tuple of two float `np.array`
-        The intrinsic coherence values at all frequencies. It is 0 if the numerator
-        of the coherence calculation is negative, and NaN if the powers are too low compared
-        to the noise level.
-    uncertainty : float `np.array`, optional
-        The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
-        1997, ApJ 474, L43, eq. 8.
-
-    """
-
-    if adjust_bias:
-        coherence, uncertainty, flags = _intrinsic_coherence_with_adjusted_bias(
-            cross_power, power1, power2, power1_noise, power2_noise, n_ave, atol=atol
-        )
-    else:
-        coherence, uncertainty = _intrinsic_coherence(
-            cross_power, power1, power2, power1_noise, power2_noise, n_ave
-        )
-        flags = False
-
-    return coherence, uncertainty, flags
+    return coherence, uncertainty, no_conversion_flags
 
 
 def intrinsic_coherence(
@@ -1401,16 +1331,16 @@ def intrinsic_coherence(
     Parameters
     ----------
     cross_power : complex `np.array`
-        cross spectrum
+        Cross spectrum
     power1 : float `np.array`
-        sub-band periodogram
+        Sub-band periodogram. Must have the same shape as `cross_power`.
     power2 : float `np.array`
-        reference-band periodogram
-    power1_noise : float
+        Reference-band periodogram. Must have the same shape as `cross_power`.
+    power1_noise : float or float `np.array` of the same shape as `cross_power`
         Poisson noise level of the sub-band periodogram
-    power2_noise : float
+    power2_noise : float or float `np.array` of the same shape as `cross_power`
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or int `np.array` of the same shape as `cross_power`
         number of intervals that have been averaged to obtain the input spectra
 
     Other Parameters
@@ -1433,25 +1363,32 @@ def intrinsic_coherence(
         1997, ApJ 474, L43, eq. 8.
 
     """
+    single_power = False
+    if not isinstance(cross_power, np.ndarray):
+        cross_power = np.asanyarray([cross_power])
+        power1 = np.asanyarray([power1])
+        power2 = np.asanyarray([power2])
+        single_power = True
 
-    if isinstance(cross_power, Iterable):
-        func = intrinsic_coherence_array
-    else:
-        func = intrinsic_coherence_single
-    coherence, uncertainty, flags = func(
+    if not isinstance(power1_noise, Iterable):
+        power1_noise = np.asanyarray([power1_noise])
+    if not isinstance(power2_noise, Iterable):
+        power2_noise = np.asanyarray([power2_noise])
+    if not isinstance(n_ave, Iterable):
+        n_ave = np.asanyarray([n_ave])
+
+    coherence, uncertainty, flagged = intrinsic_coherence_array(
         cross_power,
         power1,
         power2,
         power1_noise,
         power2_noise,
         n_ave,
-        return_uncertainty=True,
         adjust_bias=adjust_bias,
         atol=atol,
     )
-    print(coherence, uncertainty, flags)
 
-    if np.any(flags):
+    if len(flagged) > 0:
         warnings.warn(
             "The iterative procedure to adjust the bias term did not converge after 40 "
             "iterations. Consider rebinning the spectra to increase the signal-to-noise "
@@ -1469,6 +1406,10 @@ def intrinsic_coherence(
             " when the bias term is larger than the cross spectrum, and the coherence is not"
             " well defined. "
         )
+
+    if single_power:
+        coherence = coherence[0]
+        uncertainty = uncertainty[0]
 
     if return_uncertainty:
         return coherence, uncertainty
