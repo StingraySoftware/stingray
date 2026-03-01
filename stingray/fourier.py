@@ -925,15 +925,6 @@ def raw_coherence(
     ----------
     .. [#] https://doi.org/10.1093/mnras/stz2409
     """
-    print(
-        cross_power,
-        power1,
-        power2,
-        power1_noise,
-        power2_noise,
-        n_ave,
-        intrinsic_coherence,
-    )
 
     coherence = _raw_coherence(
         cross_power,
@@ -1011,11 +1002,11 @@ def check_powers_for_intrinsic_coherence(
         Poisson noise level of the reference-band periodogram
     n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
+    threshold : float
+        The threshold in sigma above the noise level for the powers to be considered "high".
 
     Other Parameters
     ----------------
-    threshold : float, default 3
-        The threshold in sigma above the noise level for the powers to be considered "high".
 
     Returns
     -------
@@ -1157,8 +1148,8 @@ def _intrinsic_coherence_with_adjusted_bias(
     uncertainty : float `np.array`, optional
         The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
         1997, ApJ 474, L43, eq. 8.
-    non_converged_flag : bool `np.array`
-        Whether the bias term adjustment procedure converged (True) or not (False).
+    not_converged_flag : bool `np.array`
+        Whether the bias term adjustment procedure converged (False) or not (True).
 
     """
 
@@ -1197,7 +1188,7 @@ def _intrinsic_coherence_with_adjusted_bias(
 
 
 @njit
-def intrinsic_coherence_array(
+def _intrinsic_coherence_array(
     cross_power,
     power1,
     power2,
@@ -1257,7 +1248,7 @@ def intrinsic_coherence_array(
     ----------------
     atol: float, default 0.01
         The absolute tolerance for the convergence of the iterative procedure to adjust
-        the bias term.Only relevant if ``adjust_bias`` is True.
+        the bias term. Only relevant if ``adjust_bias`` is True.
 
     Returns
     -------
@@ -1397,7 +1388,7 @@ def intrinsic_coherence(
     if not isinstance(n_ave, Iterable):
         n_ave = np.asanyarray([n_ave])
 
-    coherence, uncertainty, flagged = intrinsic_coherence_array(
+    coherence, uncertainty, flagged = _intrinsic_coherence_array(
         cross_power,
         power1,
         power2,
