@@ -45,13 +45,11 @@ except ImportError:
 
 # If numba is installed, import jit. Otherwise, define an empty decorator with
 # the same name.
+
 try:
     from numba import jit
 
     HAS_NUMBA = True
-    from numba import njit, prange, vectorize, float32, float64, int32, int64
-
-    from numba.core.errors import NumbaValueError, NumbaNotImplementedError, TypingError
 except ImportError:
     warnings.warn(
         "The recommended numba package is not installed. Some functionality might be slower."
@@ -83,6 +81,12 @@ except ImportError:
 
     def prange(x):
         return range(x)
+
+
+if HAS_NUMBA:
+    from numba import njit, prange, vectorize, float32, float64, int32, int64
+
+    from numba.core.errors import NumbaValueError, NumbaNotImplementedError, TypingError
 
 
 try:
