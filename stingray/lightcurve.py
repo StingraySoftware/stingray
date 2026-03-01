@@ -8,6 +8,7 @@ or to save existing light curves in a class that's easy to use.
 import os
 import logging
 import warnings
+import copy
 from collections.abc import Iterable
 
 import numpy as np
@@ -88,6 +89,8 @@ class Lightcurve(StingrayTimeseries):
         uncertainties and other statistical values appropriately.
         Default makes no assumptions and keep errors equal to zero.
 
+        Stingray currently supports only Poisson error distribution.
+        All light curve analyses will assume Poisson errors.
     bg_counts: iterable,`:class:numpy.array` or `:class:List` of floats, optional, default ``None``
         A list or array of background counts detected in the background extraction region
         in each bin corresponding to the bins defined in `time`.
@@ -306,7 +309,6 @@ class Lightcurve(StingrayTimeseries):
             dt = 1.0
 
         self.dt = dt
-
         if isinstance(dt, Iterable):
             warnings.warn(
                 "Some functionalities of Stingray Lightcurve will not work when `dt` is Iterable"
@@ -1160,6 +1162,43 @@ class Lightcurve(StingrayTimeseries):
         """
 
         return super().truncate(start=start, stop=stop, method=method)
+
+    def shift(self, time_shift: float, inplace=False):
+        """Shift the time and the GTIs by the same amount
+
+        Parameters
+        ----------
+        time_shift: float
+            The time interval by which the time series will be shifted (in
+            the same units as the time array in :class:`StingrayTimeseries`
+
+        Other parameters
+        ----------------
+        inplace : bool
+            If True, overwrite the current time series. Otherwise, return a new one.
+
+        Returns
+        -------
+        ts : ``StingrayTimeseries`` object
+            The new time series shifted by ``time_shift``
+
+        """
+        if inplace:
+            ts = self
+        else:
+            ts = copy.deepcopy(self)
+        ts.time = ts._time = np.asanyarray(ts.time) + time_shift  # type: ignore
+
+        if isinstance(self.dt, Iterable):
+            ts.tstart = ts._time[0] - 0.5 * self.dt[0]
+        else:
+            ts.tstart = ts._time[0] - 0.5 * self.dt
+        # Pay attention here: if the GTIs are created dynamically while we
+        # access the property,
+        if ts._gti is not None:
+            ts._gti = np.asanyarray(ts._gti) + time_shift  # type: ignore
+
+        return ts
 
     def split(self, min_gap, min_points=1):
         """

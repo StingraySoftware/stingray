@@ -1379,12 +1379,31 @@ class TestLightcurve(object):
         lc = Lightcurve(times, counts, input_counts=True)
         lc2 = lc.shift(1)
         assert np.allclose(lc2.time - 1, times)
+        assert np.allclose(lc2.tstart - 1, lc.tstart)
+
+        lc1 = Lightcurve(times, counts, input_counts=True)
+        with pytest.warns(
+            UserWarning,
+            match="Some functionalities of Stingray Lightcurve will not work when `dt` is Iterable",
+        ):
+            lc2 = Lightcurve(
+                times, counts, input_counts=True, dt=[1.0] * len(times), skip_checks=True
+            )
+        lc1.shift(1, inplace=True)
+        lc2.shift(1, inplace=True)
+        assert np.allclose(lc1.time - 1, times)
+        assert np.allclose(lc1.tstart - 1, lc.tstart)
+        assert np.allclose(lc2.time - 1, times)
+        assert np.allclose(lc2.tstart - 1, lc.tstart)
+
         lc2 = lc.shift(-1)
         assert np.allclose(lc2.time + 1, times)
+        assert np.allclose(lc2.tstart + 1, lc.tstart)
         assert np.allclose(lc2.counts, lc.counts)
         assert np.allclose(lc2.countrate, lc.countrate)
         lc = Lightcurve(times, counts, input_counts=False)
         lc2 = lc.shift(1)
+        assert np.allclose(lc2.tstart - 1, lc.tstart)
         assert np.allclose(lc2.counts, lc.counts)
         assert np.allclose(lc2.countrate, lc.countrate)
 
