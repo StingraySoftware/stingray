@@ -557,14 +557,15 @@ class TestNormalization(object):
         counts1 = np.random.poisson(10000, size=time.shape[0])
         counts1_norm = counts1 / 13.4
         counts1_norm_err = np.std(counts1) / 13.4
-        self.lc1_norm = Lightcurve(
-            time,
-            counts1_norm,
-            gti=[[tstart, self.tseg]],
-            dt=dt,
-            err_dist="gauss",
-            err=np.zeros_like(counts1_norm) + counts1_norm_err,
-        )
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            self.lc1_norm = Lightcurve(
+                time,
+                counts1_norm,
+                gti=[[tstart, self.tseg]],
+                dt=dt,
+                err_dist="gauss",
+                err=np.zeros_like(counts1_norm) + counts1_norm_err,
+            )
         self.lc1 = Lightcurve(time, counts1, gti=[[tstart, self.tseg]], dt=dt)
         self.rate1 = np.mean(counts1) / dt  # mean count rate (counts/sec) of light curve 1
 
@@ -1270,7 +1271,8 @@ class TestAveragedCrossspectrum(object):
     def test_timelag(self):
         dt = 0.1
         simulator = Simulator(dt, 10000, rms=0.2, mean=1000)
-        test_lc1 = simulator.simulate(2)
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            test_lc1 = simulator.simulate(2)
         test_lc1.counts -= np.min(test_lc1.counts)
 
         with pytest.warns(UserWarning):
@@ -1538,7 +1540,7 @@ class TestDynamicalCrossspectrum(object):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=UserWarning)
 
-            lc = Lightcurve(timestamps, signal, err_dist="poisson", dt=dt, gti=[[0, 100]])
+            lc = Lightcurve(timestamps, signal, dt=dt, gti=[[0, 100]])
 
         cls.lc = lc
 

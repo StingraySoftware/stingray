@@ -35,8 +35,9 @@ def test_autofrequency():
 class TestLombScargleCrossspectrum:
     def setup_class(self):
         sim = Simulator(0.0001, 50, 100, 1, random_state=42, tstart=0)
-        lc1 = sim.simulate(0)
-        lc2 = sim.simulate(0)
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            lc1 = sim.simulate(0)
+            lc2 = sim.simulate(0)
         self.rate1 = lc1.countrate
         self.rate2 = lc2.countrate
         low, high = lc1.time.min(), lc1.time.max()
@@ -147,7 +148,9 @@ class TestLombScargleCrossspectrum:
             lscs = LombScargleCrossspectrum(self.lc1, self.lc2, max_freq=-1)
 
     def test_make_crossspectrum_diff_lc_counts_shape(self):
-        lc_ = Simulator(0.0001, 103, 100, 1, random_state=42, tstart=0).simulate(0)
+        sim = Simulator(0.0001, 103, 100, 1, random_state=42, tstart=0)
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            lc_ = sim.simulate(0)
         with pytest.warns(UserWarning) as record:
             lscs = LombScargleCrossspectrum(self.lc1, lc_)
         assert np.any(["different statistics" in r.message.args[0] for r in record])
@@ -246,7 +249,8 @@ class TestLombScargleCrossspectrum:
 class TestLombScarglePowerspectrum:
     def setup_class(self):
         sim = Simulator(0.0001, 100, 100, 1, random_state=42, tstart=0)
-        lc = sim.simulate(0)
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+            lc = sim.simulate(0)
         self.rate = lc.countrate
         low, high = lc.time.min(), lc.time.max()
         s1 = lc.counts
