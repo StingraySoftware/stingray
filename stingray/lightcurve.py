@@ -1665,6 +1665,36 @@ class Lightcurve(StingrayTimeseries):
             axis_limits=axis_limits,
         )
 
+    def shift(self, time_shift, inplace=False):
+        """
+        Shift the light curve and correctly update tstart.
+
+        Parameters
+        ----------
+        time_shift: float
+            The time interval by which the light curve will be shifted (in
+            the same units as the time array in :class:`Lightcurve`
+
+        Other parameters
+        ----------------
+        inplace : bool
+            If True, overwrite the current light curve. Otherwise, return a new one.
+
+        Returns
+        -------
+        lc_new : :class:`Lightcurve` object
+            The new light curve shifted by ``time_shift``
+        """
+        lc_new = super().shift(time_shift, inplace=inplace)
+
+        # Update tstart to be consistent with the shifted time
+        if isinstance(lc_new.dt, Iterable):
+            lc_new.tstart = lc_new.time[0] - 0.5 * lc_new.dt[0]
+        else:
+            lc_new.tstart = lc_new.time[0] - 0.5 * lc_new.dt
+
+        return lc_new
+
     @classmethod
     def read(
         cls, filename, fmt=None, format_=None, err_dist="gauss", skip_checks=False, **fits_kwargs
