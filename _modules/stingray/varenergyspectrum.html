@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>stingray.varenergyspectrum &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for stingray.varenergyspectrum</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">StingrayObject</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.gti</span><span class="w"> </span><span class="kn">import</span> <span class="n">check_separate</span><span class="p">,</span> <span class="n">cross_two_gtis</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.lightcurve</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">assign_value_if_none</span><span class="p">,</span> <span class="n">simon</span><span class="p">,</span> <span class="n">excess_variance</span><span class="p">,</span> <span class="n">show_progress</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.fourier</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">avg_cs_from_timeseries</span><span class="p">,</span>
+    <span class="n">avg_pds_from_timeseries</span><span class="p">,</span>
+    <span class="n">fftfreq</span><span class="p">,</span>
+    <span class="n">get_average_ctrate</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.fourier</span><span class="w"> </span><span class="kn">import</span> <span class="n">poisson_level</span><span class="p">,</span> <span class="n">error_on_averaged_cross_spectrum</span><span class="p">,</span> <span class="n">cross_to_covariance</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABCMeta</span><span class="p">,</span> <span class="n">abstractmethod</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;VarEnergySpectrum&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RmsEnergySpectrum&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RmsSpectrum&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;LagEnergySpectrum&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;LagSpectrum&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ExcessVarianceSpectrum&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CovarianceSpectrum&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ComplexCovarianceSpectrum&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CountSpectrum&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_non_overlapping_ref_band</span><span class="p">(</span><span class="n">channel_band</span><span class="p">,</span> <span class="n">ref_band</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Ensures that the ``channel_band`` (i.e. the band of interest) is</span>
+<span class="sd">    not contained within the ``ref_band`` (i.e. the reference band)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    channel_band : iterable of type ``[elow, ehigh]``</span>
+<span class="sd">        The lower/upper limits of the energies to be contained in the band</span>
+<span class="sd">        of interest</span>
+
+<span class="sd">    ref_band : iterable</span>
+<span class="sd">        The lower/upper limits of the energies in the reference band</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ref_intervals : iterable</span>
+<span class="sd">        The channels that are both in the reference band in not in the</span>
+<span class="sd">        bands of interest</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; channel_band = [2, 3]</span>
+<span class="sd">    &gt;&gt;&gt; ref_band = [[0, 10]]</span>
+<span class="sd">    &gt;&gt;&gt; new_ref = get_non_overlapping_ref_band(channel_band, ref_band)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(new_ref, [[0, 2], [3, 10]])</span>
+
+<span class="sd">    Test this also works with a 1-D ref. band</span>
+<span class="sd">    &gt;&gt;&gt; new_ref = get_non_overlapping_ref_band(channel_band, [0, 10])</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(new_ref, [[0, 2], [3, 10]])</span>
+<span class="sd">    &gt;&gt;&gt; new_ref = get_non_overlapping_ref_band([0, 1], [[2, 3]])</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(new_ref, [[2, 3]])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">channel_band</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">(</span><span class="n">channel_band</span><span class="p">)</span>
+    <span class="n">ref_band</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">(</span><span class="n">ref_band</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ref_band</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">ref_band</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">([</span><span class="n">ref_band</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">check_separate</span><span class="p">(</span><span class="n">ref_band</span><span class="p">,</span> <span class="p">[</span><span class="n">channel_band</span><span class="p">]):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">(</span><span class="n">ref_band</span><span class="p">)</span>
+    <span class="n">not_channel_band</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">channel_band</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span>
+        <span class="p">[</span><span class="n">channel_band</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">ref_band</span><span class="p">),</span> <span class="n">channel_band</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])],</span>
+    <span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">cross_two_gtis</span><span class="p">(</span><span class="n">ref_band</span><span class="p">,</span> <span class="n">not_channel_band</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_decode_energy_specification</span><span class="p">(</span><span class="n">energy_spec</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Decode the energy specification tuple.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    energy_spec : iterable</span>
+<span class="sd">        list containing the energy specification</span>
+<span class="sd">        Must have the following structure:</span>
+<span class="sd">            * energy_spec[0]: lower edge of (log) energy space</span>
+<span class="sd">            * energy_spec[1]: upper edge of (log) energy space</span>
+<span class="sd">            * energy_spec[2] +1 : energy bin edges (hence the +1)</span>
+<span class="sd">            * {`lin` | `log`} flat deciding whether the energy space is linear</span>
+<span class="sd">              or logarithmic</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    energies : numpy.ndarray</span>
+<span class="sd">        An array of lower/upper bin edges for the energy array</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; _decode_energy_specification([0, 2, 2, &#39;lin&#39;])</span>
+<span class="sd">    Traceback (most recent call last):</span>
+<span class="sd">     ...</span>
+<span class="sd">    ValueError: Energy specification must be a tuple</span>
+<span class="sd">    &gt;&gt;&gt; a = _decode_energy_specification((0, 2, 2, &#39;lin&#39;))</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(a, [0, 1, 2])</span>
+<span class="sd">    &gt;&gt;&gt; a = _decode_energy_specification((1, 4, 2, &#39;log&#39;))</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(a, [1, 2, 4])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">energy_spec</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Energy specification must be a tuple&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">energy_spec</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;lin&quot;</span><span class="p">,</span> <span class="s2">&quot;log&quot;</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Incorrect energy specification&quot;</span><span class="p">)</span>
+
+    <span class="n">log_distr</span> <span class="o">=</span> <span class="kc">True</span> <span class="k">if</span> <span class="n">energy_spec</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;log&quot;</span> <span class="k">else</span> <span class="kc">False</span>
+
+    <span class="k">if</span> <span class="n">log_distr</span><span class="p">:</span>
+        <span class="n">energies</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">energy_spec</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">energy_spec</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">energy_spec</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">energies</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">energy_spec</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">energy_spec</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">energy_spec</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">energies</span>
+
+
+<div class="viewcode-block" id="VarEnergySpectrum">
+<a class="viewcode-back" href="../../api.html#stingray.varenergyspectrum.VarEnergySpectrum">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">VarEnergySpectrum</span><span class="p">(</span><span class="n">StingrayObject</span><span class="p">,</span> <span class="n">metaclass</span><span class="o">=</span><span class="n">ABCMeta</span><span class="p">):</span>
+    <span class="n">main_array_attr</span> <span class="o">=</span> <span class="s2">&quot;energy&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for variability-energy spectrum.</span>
+
+<span class="sd">    This class is only a base for the various variability spectra, and it&#39;s</span>
+<span class="sd">    not to be instantiated by itself.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    events : :class:`stingray.events.EventList` object</span>
+<span class="sd">        event list</span>
+
+<span class="sd">    freq_interval : ``[f0, f1]``, floats</span>
+<span class="sd">        the frequency range over which calculating the variability quantity</span>
+
+<span class="sd">    energy_spec : list or tuple ``(emin, emax, N, type)``</span>
+<span class="sd">        if a ``list`` is specified, this is interpreted as a list of bin edges;</span>
+<span class="sd">        if a ``tuple`` is provided, this will encode the minimum and maximum</span>
+<span class="sd">        energies, the number of intervals, and ``lin`` or ``log``.</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ref_band : ``[emin, emax``], floats; default ``None``</span>
+<span class="sd">        minimum and maximum energy of the reference band. If ``None``, the</span>
+<span class="sd">        full band is used.</span>
+
+<span class="sd">    use_pi : bool, default ``False``</span>
+<span class="sd">        Use channel instead of energy</span>
+
+<span class="sd">    events2 : :class:`stingray.events.EventList` object</span>
+<span class="sd">        event list for the second channel, if not the same. Useful if the</span>
+<span class="sd">        reference band has to be taken from another detector.</span>
+
+<span class="sd">    return_complex: bool, default False</span>
+<span class="sd">        In spectra that produce complex values, return the whole spectrum.</span>
+<span class="sd">        Otherwise, the absolute value will be returned.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    events1 : array-like</span>
+<span class="sd">        list of events used to produce the spectrum</span>
+
+<span class="sd">    events2 : array-like</span>
+<span class="sd">        if the spectrum requires it, second list of events</span>
+
+<span class="sd">    freq_interval : array-like</span>
+<span class="sd">        interval of frequencies used to calculate the spectrum</span>
+
+<span class="sd">    energy_intervals : ``[[e00, e01], [e10, e11], ...]``</span>
+<span class="sd">        energy intervals used for the spectrum</span>
+
+<span class="sd">    spectrum : array-like</span>
+<span class="sd">        the spectral values, corresponding to each energy interval</span>
+
+<span class="sd">    spectrum_error : array-like</span>
+<span class="sd">        the error bars corresponding to spectrum</span>
+
+<span class="sd">    energy : array-like</span>
+<span class="sd">        The centers of energy intervals</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">events</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">freq_interval</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">energy_spec</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">ref_band</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">bin_time</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">use_pi</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">events2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">return_complex</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">min_phot_per_segment</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">energy_spec</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">energies</span> <span class="o">=</span> <span class="n">_decode_energy_specification</span><span class="p">(</span><span class="n">energy_spec</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">energy_spec</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">energy_spec</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">energies</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">(</span><span class="n">energy_spec</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">events</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Energy specification must be a tuple or a list (input: </span><span class="si">{</span><span class="n">energy_spec</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># This will be set to True in ComplexCovariance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">return_complex</span> <span class="o">=</span> <span class="n">return_complex</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">freq_interval</span> <span class="o">=</span> <span class="n">freq_interval</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_pi</span> <span class="o">=</span> <span class="n">use_pi</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bin_time</span> <span class="o">=</span> <span class="n">bin_time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_phot_per_segment</span> <span class="o">=</span> <span class="n">min_phot_per_segment</span>
+        <span class="k">if</span> <span class="n">energy_spec</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">energy_intervals</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">energies</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">energies</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">energy_intervals</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ref_band</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">(</span><span class="n">assign_value_if_none</span><span class="p">(</span><span class="n">ref_band</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">]))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ref_band</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ref_band</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">ref_band</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta_nu</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">events</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">events1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">events2</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="c1"># This will be set to True in ComplexCovariance</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">events1</span> <span class="o">=</span> <span class="n">events</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">events2</span> <span class="o">=</span> <span class="n">assign_value_if_none</span><span class="p">(</span><span class="n">events2</span><span class="p">,</span> <span class="n">events</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_analyze_inputs</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">energy_intervals</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">energies</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">energies</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ref_band</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">(</span><span class="n">assign_value_if_none</span><span class="p">(</span><span class="n">ref_band</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">]))</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ref_band</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ref_band</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">ref_band</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta_nu</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">segment_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span> <span class="o">=</span> <span class="n">segment_size</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">delta_nu</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_create_empty_spectrum</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">events</span><span class="o">.</span><span class="n">time</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">events</span><span class="o">.</span><span class="n">time</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">simon</span><span class="p">(</span><span class="s2">&quot;There are no events in your event list! Can&#39;t make a spectrum!&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_spectrum_function</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">energy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Give the centers of the energy intervals.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_energy&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_energy</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy_intervals</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_intervals</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_energy</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_energy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_intervals</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_energy</span>
+
+    <span class="nd">@energy</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">energy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_energy</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_analyze_inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Make some checks on the inputs and set some internal variable.</span>
+
+<span class="sd">        If the object of events1 is the same as events2, set `same_events` to True.</span>
+<span class="sd">        This will, for example, tell the methods to use events1 for the subject bands</span>
+<span class="sd">        and events2 for the reference band (useful in deadtime-affected data).</span>
+
+<span class="sd">        Also, if the event lists are distinct, calculate common GTIs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">events1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">events1</span>
+        <span class="n">events2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">events2</span>
+        <span class="n">common_gti</span> <span class="o">=</span> <span class="n">events1</span><span class="o">.</span><span class="n">gti</span>
+        <span class="k">if</span> <span class="n">events2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">events2</span> <span class="ow">is</span> <span class="n">events1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">events2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">events1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">same_events</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">common_gti</span> <span class="o">=</span> <span class="n">cross_two_gtis</span><span class="p">(</span><span class="n">events1</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="n">events2</span><span class="o">.</span><span class="n">gti</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">same_events</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gti</span> <span class="o">=</span> <span class="n">common_gti</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_empty_spectrum</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Allocate the arrays of the output spectrum.</span>
+
+<span class="sd">        Default value is NaN. This is because most spectral timing products are</span>
+<span class="sd">        prone to numerical errors, and it&#39;s more informative to have a default invalid</span>
+<span class="sd">        value rather than something like, e.g., 0 or 1</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">return_complex</span><span class="p">:</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="nb">complex</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="nb">float</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_intervals</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spectrum_error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_times_from_energy_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">events</span><span class="p">,</span> <span class="n">erange</span><span class="p">,</span> <span class="n">use_pi</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get event times from the wanted energy range.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        events : `EventList`</span>
+<span class="sd">            Input event list</span>
+<span class="sd">        erange : [e0, e1]</span>
+<span class="sd">            Energy range in keV</span>
+
+<span class="sd">        Other parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        use_pi : bool, default False</span>
+<span class="sd">            Use the PI channel instead of energies</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        out_ev : `EventList`</span>
+<span class="sd">            The filtered event list.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">use_pi</span><span class="p">:</span>
+            <span class="n">energies</span> <span class="o">=</span> <span class="n">events</span><span class="o">.</span><span class="n">pi</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">energies</span> <span class="o">=</span> <span class="n">events</span><span class="o">.</span><span class="n">energy</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">energies</span> <span class="o">&gt;=</span> <span class="n">erange</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">energies</span> <span class="o">&lt;</span> <span class="n">erange</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">events</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_good_frequency_bins</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get frequency mask corresponding to the wanted frequency interval</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        freq : `np.array`, default None</span>
+<span class="sd">            The frequency array. If None, it will get calculated from the number</span>
+<span class="sd">            of spectral bins using `np.fft.fftfreq`</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        freq_mask : `np.array` of bool</span>
+<span class="sd">            The frequency mask.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">freq</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">n_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">rint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">bin_time</span><span class="p">)</span>
+            <span class="n">freq</span> <span class="o">=</span> <span class="n">fftfreq</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">n_bin</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">bin_time</span><span class="p">)</span>
+            <span class="n">freq</span> <span class="o">=</span> <span class="n">freq</span><span class="p">[</span><span class="n">freq</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">good</span> <span class="o">=</span> <span class="p">(</span><span class="n">freq</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_interval</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">freq</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_interval</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">good</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_construct_lightcurves</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">channel_band</span><span class="p">,</span> <span class="n">tstart</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tstop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">only_base</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Construct light curves from event data, for each band of interest.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        channel_band : iterable of type ``[elow, ehigh]``</span>
+<span class="sd">            The lower/upper limits of the energies to be contained in the band</span>
+<span class="sd">            of interest</span>
+
+<span class="sd">        tstart : float, optional, default ``None``</span>
+<span class="sd">            A common start time (if start of observation is different from</span>
+<span class="sd">            the first recorded event)</span>
+
+<span class="sd">        tstop : float, optional, default ``None``</span>
+<span class="sd">            A common stop time (if start of observation is different from</span>
+<span class="sd">            the first recorded event)</span>
+
+<span class="sd">        exclude : bool, optional, default ``True``</span>
+<span class="sd">            if ``True``, exclude the band of interest from the reference band</span>
+
+<span class="sd">        only_base : bool, optional, default ``False``</span>
+<span class="sd">            if ``True``, only return the light curve of the channel of interest, not</span>
+<span class="sd">            that of the reference band</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        base_lc : :class:`Lightcurve` object</span>
+<span class="sd">            The light curve of the channels of interest</span>
+
+<span class="sd">        ref_lc : :class:`Lightcurve` object (only returned if ``only_base`` is ``False``)</span>
+<span class="sd">            The reference light curve for comparison with ``base_lc``</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_pi</span><span class="p">:</span>
+            <span class="n">energies1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">events1</span><span class="o">.</span><span class="n">pi</span>
+            <span class="n">energies2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">events2</span><span class="o">.</span><span class="n">pi</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">energies2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">events2</span><span class="o">.</span><span class="n">energy</span>
+            <span class="n">energies1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">events1</span><span class="o">.</span><span class="n">energy</span>
+
+        <span class="n">gti</span> <span class="o">=</span> <span class="n">cross_two_gtis</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">events1</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">events2</span><span class="o">.</span><span class="n">gti</span><span class="p">)</span>
+
+        <span class="n">tstart</span> <span class="o">=</span> <span class="n">assign_value_if_none</span><span class="p">(</span><span class="n">tstart</span><span class="p">,</span> <span class="n">gti</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+        <span class="n">tstop</span> <span class="o">=</span> <span class="n">assign_value_if_none</span><span class="p">(</span><span class="n">tstop</span><span class="p">,</span> <span class="n">gti</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="n">good</span> <span class="o">=</span> <span class="p">(</span><span class="n">energies1</span> <span class="o">&gt;=</span> <span class="n">channel_band</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">energies1</span> <span class="o">&lt;</span> <span class="n">channel_band</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">base_lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="o">.</span><span class="n">make_lightcurve</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">events1</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="n">good</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bin_time</span><span class="p">,</span>
+            <span class="n">tstart</span><span class="o">=</span><span class="n">tstart</span><span class="p">,</span>
+            <span class="n">tseg</span><span class="o">=</span><span class="n">tstop</span> <span class="o">-</span> <span class="n">tstart</span><span class="p">,</span>
+            <span class="n">gti</span><span class="o">=</span><span class="n">gti</span><span class="p">,</span>
+            <span class="n">mjdref</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">events1</span><span class="o">.</span><span class="n">mjdref</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">only_base</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">base_lc</span>
+
+        <span class="k">if</span> <span class="n">exclude</span><span class="p">:</span>
+            <span class="n">ref_intervals</span> <span class="o">=</span> <span class="n">get_non_overlapping_ref_band</span><span class="p">(</span><span class="n">channel_band</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_band</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ref_intervals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_band</span>
+
+        <span class="n">ref_lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span>
+            <span class="n">base_lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">base_lc</span><span class="o">.</span><span class="n">counts</span><span class="p">),</span>
+            <span class="n">gti</span><span class="o">=</span><span class="n">base_lc</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span>
+            <span class="n">mjdref</span><span class="o">=</span><span class="n">base_lc</span><span class="o">.</span><span class="n">mjdref</span><span class="p">,</span>
+            <span class="n">dt</span><span class="o">=</span><span class="n">base_lc</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span>
+            <span class="n">err_dist</span><span class="o">=</span><span class="n">base_lc</span><span class="o">.</span><span class="n">err_dist</span><span class="p">,</span>
+            <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">ref_intervals</span><span class="p">:</span>
+            <span class="n">good</span> <span class="o">=</span> <span class="p">(</span><span class="n">energies2</span> <span class="o">&gt;=</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">energies2</span> <span class="o">&lt;</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">new_lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="o">.</span><span class="n">make_lightcurve</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">events2</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="n">good</span><span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">bin_time</span><span class="p">,</span>
+                <span class="n">tstart</span><span class="o">=</span><span class="n">tstart</span><span class="p">,</span>
+                <span class="n">tseg</span><span class="o">=</span><span class="n">tstop</span> <span class="o">-</span> <span class="n">tstart</span><span class="p">,</span>
+                <span class="n">gti</span><span class="o">=</span><span class="n">base_lc</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span>
+                <span class="n">mjdref</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">events2</span><span class="o">.</span><span class="n">mjdref</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">ref_lc</span> <span class="o">=</span> <span class="n">ref_lc</span> <span class="o">+</span> <span class="n">new_lc</span>
+
+        <span class="n">ref_lc</span><span class="o">.</span><span class="n">err_dist</span> <span class="o">=</span> <span class="n">base_lc</span><span class="o">.</span><span class="n">err_dist</span>
+        <span class="k">return</span> <span class="n">base_lc</span><span class="p">,</span> <span class="n">ref_lc</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_spectrum_function</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="VarEnergySpectrum.check_phot_per_segment">
+<a class="viewcode-back" href="../../api.html#stingray.varenergyspectrum.VarEnergySpectrum.check_phot_per_segment">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_phot_per_segment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">phot_per_segment</span><span class="p">,</span> <span class="n">eint</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if the number of photons per segment is enough.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        phot_per_segment: float or int</span>
+<span class="sd">            Number of photons in the segment</span>
+<span class="sd">        eint: iterable</span>
+<span class="sd">            Energy interval</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">phot_per_segment</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_phot_per_segment</span><span class="p">:</span>
+            <span class="n">streint</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">x</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">eint</span><span class="p">]</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Low count rate in the </span><span class="si">{</span><span class="n">streint</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">streint</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> subject band: &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">phot_per_segment</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> ct/segment (&lt;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">min_phot_per_segment</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">). Skipping. &quot;</span>
+                <span class="s2">&quot;If you know what you&#39;re doing, you can set the `min_phot_per_segment` &quot;</span>
+                <span class="s2">&quot;parameter to a lower value, but in general, we recommend to use fewer &quot;</span>
+                <span class="s2">&quot;subject bands&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="VarEnergySpectrum.save_as_xspec">
+<a class="viewcode-back" href="../../api.html#stingray.varenergyspectrum.VarEnergySpectrum.save_as_xspec">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_as_xspec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outroot</span><span class="p">,</span> <span class="n">header_keywords</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save the cross spectrum in a format that can be read by XSPEC.</span>
+
+<span class="sd">        For power spectra (``self.type == &quot;powerspectrum&quot;``), the method will</span>
+<span class="sd">        produce three files using ``outroot`` as the base name:</span>
+
+<span class="sd">        * ``outroot.txt``: a plain-text file containing the frequency, power,</span>
+<span class="sd">          and error columns used as input to XSPEC.</span>
+<span class="sd">        * ``outroot.pha``: the spectral file.</span>
+<span class="sd">        * ``outroot.rsp``: the corresponding response file.</span>
+
+<span class="sd">        For non-powerspectrum cross spectra, the method will produce six files,</span>
+<span class="sd">        corresponding to the real and imaginary parts of the cross spectrum:</span>
+
+<span class="sd">        * ``outroot_real.txt``, ``outroot_real.pha``, ``outroot_real.rsp`` for</span>
+<span class="sd">          the real part.</span>
+<span class="sd">        * ``outroot_imag.txt``, ``outroot_imag.pha``, ``outroot_imag.rsp`` for</span>
+<span class="sd">          the imaginary part.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        outroot : str</span>
+<span class="sd">            The root name of the output files.</span>
+<span class="sd">        header_keywords : dict, optional</span>
+<span class="sd">            A dictionary of header keys and values to be added to the output files.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If the object has no ``df`` attribute or ``power_err`` attribute, or</span>
+<span class="sd">            if either of them is ``None``.</span>
+<span class="sd">        RuntimeError</span>
+<span class="sd">            If the underlying XSPEC/HEASOFT tools needed to create the XSPEC</span>
+<span class="sd">            files are not available. This is raised by :func:`stingray.io.save_as_xspec`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_as_xspec</span>
+
+        <span class="n">eints</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy_intervals</span>
+        <span class="n">energies</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">eints</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">de</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">eints</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+
+        <span class="n">simon</span><span class="p">(</span>
+            <span class="s2">&quot;The XSPEC-compatible files created by the mission pipelines often include &quot;</span>
+            <span class="s2">&quot;corrections that we cannot reproduce here. When comparing or simultaneously &quot;</span>
+            <span class="s2">&quot;fitting these spectra with those produced by the pipelines, make sure to &quot;</span>
+            <span class="s2">&quot;take this into account. Some corrections can be introduced by providing the &quot;</span>
+            <span class="s2">&quot;necessary keywords using the `header_keywords` keyword argument if needed. &quot;</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="s2">&quot;complex&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span><span class="o">.</span><span class="n">dtype</span><span class="p">):</span>
+            <span class="n">save_as_xspec</span><span class="p">(</span>
+                <span class="n">energies</span><span class="p">,</span>
+                <span class="n">de</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">spectrum_error</span><span class="p">,</span>
+                <span class="n">outroot</span><span class="p">,</span>
+                <span class="n">header_keywords</span><span class="o">=</span><span class="n">header_keywords</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">save_as_xspec</span><span class="p">(</span>
+                <span class="n">energies</span><span class="p">,</span>
+                <span class="n">de</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span><span class="o">.</span><span class="n">real</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">spectrum_error</span><span class="o">.</span><span class="n">real</span><span class="p">,</span>
+                <span class="n">outroot</span> <span class="o">+</span> <span class="s2">&quot;_real&quot;</span><span class="p">,</span>
+                <span class="n">header_keywords</span><span class="o">=</span><span class="n">header_keywords</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">save_as_xspec</span><span class="p">(</span>
+                <span class="n">energies</span><span class="p">,</span>
+                <span class="n">de</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span><span class="o">.</span><span class="n">imag</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">spectrum_error</span><span class="o">.</span><span class="n">imag</span><span class="p">,</span>
+                <span class="n">outroot</span> <span class="o">+</span> <span class="s2">&quot;_imag&quot;</span><span class="p">,</span>
+                <span class="n">header_keywords</span><span class="o">=</span><span class="n">header_keywords</span><span class="p">,</span>
+            <span class="p">)</span></div>
+</div>
+
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">RmsSpectrum</span><span class="p">(</span><span class="n">VarEnergySpectrum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the rms-Energy spectrum.</span>
+
+<span class="sd">    For each energy interval, calculate the power density spectrum in</span>
+<span class="sd">    absolute or fractional r.m.s. normalization, and integrate it in the</span>
+<span class="sd">    given frequency range to obtain the rms. If ``events2`` is specified,</span>
+<span class="sd">    the cospectrum is used instead of the PDS.</span>
+
+<span class="sd">    We assume absolute r.m.s. normalization. To get the fractional r.m.s.</span>
+<span class="sd">    we just divide by the mean count rate.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    events : :class:`stingray.events.EventList` object</span>
+<span class="sd">        event list</span>
+
+<span class="sd">    freq_interval : ``[f0, f1]``, list of float</span>
+<span class="sd">        the frequency range over which calculating the variability quantity</span>
+
+<span class="sd">    energy_spec : list or tuple ``(emin, emax, N, type)``</span>
+<span class="sd">        if a ``list`` is specified, this is interpreted as a list of bin edges;</span>
+<span class="sd">        if a ``tuple`` is provided, this will encode the minimum and maximum</span>
+<span class="sd">        energies, the number of intervals, and ``lin`` or ``log``.</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ref_band : ``[emin, emax]``, float; default ``None``</span>
+<span class="sd">        minimum and maximum energy of the reference band. If ``None``, the</span>
+<span class="sd">        full band is used.</span>
+
+<span class="sd">    use_pi : bool, default ``False``</span>
+<span class="sd">        Use channel instead of energy</span>
+
+<span class="sd">    events2 : :class:`stingray.events.EventList` object</span>
+<span class="sd">        event list for the second channel, if not the same. Useful if the</span>
+<span class="sd">        reference band has to be taken from another detector.</span>
+
+<span class="sd">    norm : str, one of [&quot;abs&quot;, &quot;frac&quot;]</span>
+<span class="sd">        The normalization of the rms, whether absolute or fractional.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    events1 : array-like</span>
+<span class="sd">        list of events used to produce the spectrum</span>
+
+<span class="sd">    events2 : array-like</span>
+<span class="sd">        if the spectrum requires it, second list of events</span>
+
+<span class="sd">    freq_interval : array-like</span>
+<span class="sd">        interval of frequencies used to calculate the spectrum</span>
+
+<span class="sd">    energy_intervals : ``[[e00, e01], [e10, e11], ...]``</span>
+<span class="sd">        energy intervals used for the spectrum</span>
+
+<span class="sd">    spectrum : array-like</span>
+<span class="sd">        the spectral values, corresponding to each energy interval</span>
+
+<span class="sd">    spectrum_error : array-like</span>
+<span class="sd">        the errorbars corresponding to spectrum</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">events</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">energy_spec</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">ref_band</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">freq_interval</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+        <span class="n">bin_time</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">use_pi</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">events2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;frac&quot;</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">norm</span> <span class="o">=</span> <span class="n">norm</span>
+        <span class="n">VarEnergySpectrum</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">events</span><span class="p">,</span>
+            <span class="n">freq_interval</span><span class="o">=</span><span class="n">freq_interval</span><span class="p">,</span>
+            <span class="n">energy_spec</span><span class="o">=</span><span class="n">energy_spec</span><span class="p">,</span>
+            <span class="n">bin_time</span><span class="o">=</span><span class="n">bin_time</span><span class="p">,</span>
+            <span class="n">use_pi</span><span class="o">=</span><span class="n">use_pi</span><span class="p">,</span>
+            <span class="n">ref_band</span><span class="o">=</span><span class="n">ref_band</span><span class="p">,</span>
+            <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span>
+            <span class="n">events2</span><span class="o">=</span><span class="n">events2</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_spectrum_function</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Get the frequency bins to be averaged in the final results.</span>
+        <span class="n">good</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_good_frequency_bins</span><span class="p">()</span>
+        <span class="n">n_ave_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">good</span><span class="p">)</span>
+
+        <span class="c1"># Get the frequency resolution of the final spectrum.</span>
+        <span class="n">delta_nu_after_mean</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta_nu</span> <span class="o">*</span> <span class="n">n_ave_bin</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">eint</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">show_progress</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_intervals</span><span class="p">)):</span>
+            <span class="c1"># Extract events from the subject band and calculate the count rate</span>
+            <span class="c1"># and Poisson noise level.</span>
+            <span class="n">sub_events</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_times_from_energy_range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">events1</span><span class="p">,</span> <span class="n">eint</span><span class="p">)</span>
+            <span class="n">countrate_sub</span> <span class="o">=</span> <span class="n">get_average_ctrate</span><span class="p">(</span><span class="n">sub_events</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">)</span>
+            <span class="n">sub_power_noise</span> <span class="o">=</span> <span class="n">poisson_level</span><span class="p">(</span><span class="n">norm</span><span class="o">=</span><span class="s2">&quot;abs&quot;</span><span class="p">,</span> <span class="n">meanrate</span><span class="o">=</span><span class="n">countrate_sub</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_phot_per_segment</span><span class="p">(</span><span class="n">countrate_sub</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">eint</span><span class="p">):</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># If we provided the `events2` array, calculate the rms from the</span>
+            <span class="c1"># cospectrum, otherwise from the PDS</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">same_events</span><span class="p">:</span>
+                <span class="c1"># Extract events from the subject band in the other array, and</span>
+                <span class="c1"># calculate the count rate and Poisson noise level.</span>
+                <span class="n">sub_events2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_times_from_energy_range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">events2</span><span class="p">,</span> <span class="n">eint</span><span class="p">)</span>
+                <span class="n">countrate_sub2</span> <span class="o">=</span> <span class="n">get_average_ctrate</span><span class="p">(</span><span class="n">sub_events2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">)</span>
+                <span class="n">sub2_power_noise</span> <span class="o">=</span> <span class="n">poisson_level</span><span class="p">(</span><span class="n">norm</span><span class="o">=</span><span class="s2">&quot;abs&quot;</span><span class="p">,</span> <span class="n">meanrate</span><span class="o">=</span><span class="n">countrate_sub2</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_phot_per_segment</span><span class="p">(</span><span class="n">countrate_sub2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">eint</span><span class="p">):</span>
+                    <span class="k">continue</span>
+
+                <span class="c1"># Calculate the cross spectrum</span>
+                <span class="n">results</span> <span class="o">=</span> <span class="n">avg_cs_from_timeseries</span><span class="p">(</span>
+                    <span class="n">sub_events</span><span class="p">,</span>
+                    <span class="n">sub_events2</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">bin_time</span><span class="p">,</span>
+                    <span class="n">silent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;abs&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">results</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">cross</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;power&quot;</span><span class="p">]</span>
+
+                <span class="n">m_ave</span><span class="p">,</span> <span class="n">mean</span> <span class="o">=</span> <span class="p">[</span><span class="n">results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;m&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">]]</span>
+                <span class="n">mean_power</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">cross</span><span class="p">[</span><span class="n">good</span><span class="p">])</span>
+                <span class="n">power_noise</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">rmsnoise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
+                    <span class="n">delta_nu_after_mean</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">sub_power_noise</span> <span class="o">*</span> <span class="n">sub2_power_noise</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">results</span> <span class="o">=</span> <span class="n">avg_pds_from_timeseries</span><span class="p">(</span>
+                    <span class="n">sub_events</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bin_time</span><span class="p">,</span> <span class="n">silent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;abs&quot;</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">results</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">sub_power</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;power&quot;</span><span class="p">]</span>
+                <span class="n">m_ave</span><span class="p">,</span> <span class="n">mean</span> <span class="o">=</span> <span class="p">[</span><span class="n">results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;m&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">]]</span>
+
+                <span class="n">mean_power</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">sub_power</span><span class="p">[</span><span class="n">good</span><span class="p">])</span>
+                <span class="n">power_noise</span> <span class="o">=</span> <span class="n">sub_power_noise</span>
+                <span class="n">rmsnoise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">delta_nu_after_mean</span> <span class="o">*</span> <span class="n">power_noise</span><span class="p">)</span>
+
+            <span class="n">meanrate</span> <span class="o">=</span> <span class="n">mean</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">bin_time</span>
+
+            <span class="n">rms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">mean_power</span> <span class="o">-</span> <span class="n">power_noise</span><span class="p">)</span> <span class="o">*</span> <span class="n">delta_nu_after_mean</span><span class="p">)</span>
+
+            <span class="c1"># Assume coherence 0, use Ingram+2019</span>
+            <span class="n">num</span> <span class="o">=</span> <span class="n">rms</span><span class="o">**</span><span class="mi">4</span> <span class="o">+</span> <span class="n">rmsnoise</span><span class="o">**</span><span class="mi">4</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">rms</span> <span class="o">*</span> <span class="n">rmsnoise</span>
+            <span class="n">den</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">m_ave</span> <span class="o">*</span> <span class="n">n_ave_bin</span> <span class="o">*</span> <span class="n">rms</span><span class="o">**</span><span class="mi">2</span>
+
+            <span class="n">rms_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">num</span> <span class="o">/</span> <span class="n">den</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm</span> <span class="o">==</span> <span class="s2">&quot;frac&quot;</span><span class="p">:</span>
+                <span class="n">rms</span><span class="p">,</span> <span class="n">rms_err</span> <span class="o">=</span> <span class="n">rms</span> <span class="o">/</span> <span class="n">meanrate</span><span class="p">,</span> <span class="n">rms_err</span> <span class="o">/</span> <span class="n">meanrate</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">rms</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spectrum_error</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">rms_err</span>
+
+
+<span class="n">RmsEnergySpectrum</span> <span class="o">=</span> <span class="n">RmsSpectrum</span>
+
+
+<div class="viewcode-block" id="ExcessVarianceSpectrum">
+<a class="viewcode-back" href="../../api.html#stingray.varenergyspectrum.ExcessVarianceSpectrum">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ExcessVarianceSpectrum</span><span class="p">(</span><span class="n">VarEnergySpectrum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the Excess Variance spectrum.</span>
+
+<span class="sd">    For each energy interval, calculate the excess variance in the specified</span>
+<span class="sd">    frequency range.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    events : :class:`stingray.events.EventList` object</span>
+<span class="sd">        event list</span>
+
+<span class="sd">    freq_interval : ``[f0, f1]``, list of float</span>
+<span class="sd">        the frequency range over which calculating the variability quantity</span>
+
+<span class="sd">    energy_spec : list or tuple ``(emin, emax, N, type)``</span>
+<span class="sd">        if a list is specified, this is interpreted as a list of bin edges;</span>
+<span class="sd">        if a tuple is provided, this will encode the minimum and maximum</span>
+<span class="sd">        energies, the number of intervals, and ``lin`` or ``log``.</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ref_band : ``[emin, emax]``, floats; default ``None``</span>
+<span class="sd">        minimum and maximum energy of the reference band. If ``None``, the</span>
+<span class="sd">        full band is used.</span>
+
+<span class="sd">    use_pi : bool, default ``False``</span>
+<span class="sd">        Use channel instead of energy</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    events1 : array-like</span>
+<span class="sd">        list of events used to produce the spectrum</span>
+
+<span class="sd">    freq_interval : array-like</span>
+<span class="sd">        interval of frequencies used to calculate the spectrum</span>
+
+<span class="sd">    energy_intervals : ``[[e00, e01], [e10, e11], ...]``</span>
+<span class="sd">        energy intervals used for the spectrum</span>
+
+<span class="sd">    spectrum : array-like</span>
+<span class="sd">        the spectral values, corresponding to each energy interval</span>
+
+<span class="sd">    spectrum_error : array-like</span>
+<span class="sd">        the errorbars corresponding to spectrum</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">events</span><span class="p">,</span>
+        <span class="n">freq_interval</span><span class="p">,</span>
+        <span class="n">energy_spec</span><span class="p">,</span>
+        <span class="n">bin_time</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">use_pi</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">normalization</span><span class="o">=</span><span class="s2">&quot;fvar&quot;</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">normalization</span> <span class="o">=</span> <span class="n">normalization</span>
+        <span class="n">accepted_normalizations</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;fvar&quot;</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">normalization</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">accepted_normalizations</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;The normalization of excess variance must be &quot;</span>
+                <span class="s2">&quot;one of </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">accepted_normalizations</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="n">VarEnergySpectrum</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">events</span><span class="p">,</span>
+            <span class="n">freq_interval</span><span class="p">,</span>
+            <span class="n">energy_spec</span><span class="p">,</span>
+            <span class="n">bin_time</span><span class="o">=</span><span class="n">bin_time</span><span class="p">,</span>
+            <span class="n">use_pi</span><span class="o">=</span><span class="n">use_pi</span><span class="p">,</span>
+            <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_spectrum_function</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_intervals</span><span class="p">))</span>
+        <span class="n">spec_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">eint</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_intervals</span><span class="p">):</span>
+            <span class="n">lc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_construct_lightcurves</span><span class="p">(</span><span class="n">eint</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">only_base</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="n">spec</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">spec_err</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">excess_variance</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">normalization</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">spec</span><span class="p">,</span> <span class="n">spec_err</span></div>
+
+
+
+<div class="viewcode-block" id="CountSpectrum">
+<a class="viewcode-back" href="../../api.html#stingray.varenergyspectrum.CountSpectrum">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CountSpectrum</span><span class="p">(</span><span class="n">VarEnergySpectrum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the energy spectrum.</span>
+
+<span class="sd">    For each energy interval, compute the counts.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    events : :class:`stingray.events.EventList` object</span>
+<span class="sd">        event list</span>
+
+<span class="sd">    energy_spec : list or tuple ``(emin, emax, N, type)``</span>
+<span class="sd">        if a ``list`` is specified, this is interpreted as a list of bin edges;</span>
+<span class="sd">        if a ``tuple`` is provided, this will encode the minimum and maximum</span>
+<span class="sd">        energies, the number of intervals, and ``lin`` or ``log``.</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    use_pi : bool, default ``False``</span>
+<span class="sd">        Use channel instead of energy</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    events1 : array-like</span>
+<span class="sd">        list of events used to produce the spectrum</span>
+
+<span class="sd">    energy_intervals : ``[[e00, e01], [e10, e11], ...]``</span>
+<span class="sd">        energy intervals used for the spectrum</span>
+
+<span class="sd">    spectrum : array-like</span>
+<span class="sd">        the spectral values, corresponding to each energy interval</span>
+
+<span class="sd">    spectrum_error : array-like</span>
+<span class="sd">        the errorbars corresponding to spectrum</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">events</span><span class="p">,</span> <span class="n">energy_spec</span><span class="p">,</span> <span class="n">use_pi</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">VarEnergySpectrum</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">events</span><span class="p">,</span>
+            <span class="kc">None</span><span class="p">,</span>
+            <span class="n">energy_spec</span><span class="p">,</span>
+            <span class="n">use_pi</span><span class="o">=</span><span class="n">use_pi</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_spectrum_function</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">events</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">events1</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">eint</span> <span class="ow">in</span> <span class="n">show_progress</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_intervals</span><span class="p">)):</span>
+            <span class="n">sub_events</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_times_from_energy_range</span><span class="p">(</span><span class="n">events</span><span class="p">,</span> <span class="n">eint</span><span class="p">,</span> <span class="n">use_pi</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">use_pi</span><span class="p">)</span>
+
+            <span class="n">sp</span> <span class="o">=</span> <span class="n">sub_events</span><span class="o">.</span><span class="n">size</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">sp</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spectrum_error</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">sp</span><span class="p">)</span></div>
+
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">LagSpectrum</span><span class="p">(</span><span class="n">VarEnergySpectrum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the lag-energy spectrum.</span>
+
+<span class="sd">    For each energy interval, calculate the lag between two bands.</span>
+<span class="sd">    If ``events2`` is specified, the energy bands are chosen from this second</span>
+<span class="sd">    event list, while the reference band from ``events``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    events : :class:`stingray.events.EventList` object</span>
+<span class="sd">        event list</span>
+
+<span class="sd">    freq_interval : ``[f0, f1]``, list of float</span>
+<span class="sd">        the frequency range over which calculating the variability quantity</span>
+
+<span class="sd">    energy_spec : list or tuple ``(emin, emax, N, type)``</span>
+<span class="sd">        if a ``list`` is specified, this is interpreted as a list of bin edges;</span>
+<span class="sd">        if a ``tuple`` is provided, this will encode the minimum and maximum</span>
+<span class="sd">        energies, the number of intervals, and ``lin`` or ``log``.</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ref_band : ``[emin, emax]``, float; default ``None``</span>
+<span class="sd">        minimum and maximum energy of the reference band. If ``None``, the</span>
+<span class="sd">        full band is used.</span>
+
+<span class="sd">    use_pi : bool, default ``False``</span>
+<span class="sd">        Use channel instead of energy</span>
+
+<span class="sd">    events2 : :class:`stingray.events.EventList` object</span>
+<span class="sd">        event list for the second channel, if not the same. Useful if the</span>
+<span class="sd">        reference band has to be taken from another detector.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    events1 : array-like</span>
+<span class="sd">        list of events used to produce the spectrum</span>
+
+<span class="sd">    events2 : array-like</span>
+<span class="sd">        if the spectrum requires it, second list of events</span>
+
+<span class="sd">    freq_interval : array-like</span>
+<span class="sd">        interval of frequencies used to calculate the spectrum</span>
+
+<span class="sd">    energy_intervals : ``[[e00, e01], [e10, e11], ...]``</span>
+<span class="sd">        energy intervals used for the spectrum</span>
+
+<span class="sd">    spectrum : array-like</span>
+<span class="sd">        the lag values, corresponding to each energy interval</span>
+
+<span class="sd">    spectrum_error : array-like</span>
+<span class="sd">        the errorbars corresponding to spectrum</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># events, freq_interval, energy_spec, ref_band = None</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">events</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">freq_interval</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">energy_spec</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">ref_band</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">bin_time</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">use_pi</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">events2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="n">VarEnergySpectrum</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">events</span><span class="p">,</span>
+            <span class="n">freq_interval</span><span class="p">,</span>
+            <span class="n">energy_spec</span><span class="o">=</span><span class="n">energy_spec</span><span class="p">,</span>
+            <span class="n">bin_time</span><span class="o">=</span><span class="n">bin_time</span><span class="p">,</span>
+            <span class="n">use_pi</span><span class="o">=</span><span class="n">use_pi</span><span class="p">,</span>
+            <span class="n">ref_band</span><span class="o">=</span><span class="n">ref_band</span><span class="p">,</span>
+            <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span>
+            <span class="n">events2</span><span class="o">=</span><span class="n">events2</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_spectrum_function</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Extract the photon arrival times from the reference band</span>
+        <span class="n">ref_events</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_times_from_energy_range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">events2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_band</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="c1"># Calculate the PDS in the reference band. Needed to calculate errors.</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">avg_pds_from_timeseries</span><span class="p">(</span>
+            <span class="n">ref_events</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bin_time</span><span class="p">,</span> <span class="n">silent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;none&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Nph per interval, so on average it&#39;s the total number of events divided by</span>
+        <span class="c1"># the number of intervals</span>
+        <span class="n">ref_power_noise</span> <span class="o">=</span> <span class="n">poisson_level</span><span class="p">(</span><span class="n">norm</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">n_ph</span><span class="o">=</span><span class="n">ref_events</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="n">results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;m&quot;</span><span class="p">])</span>
+        <span class="n">freq</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;freq&quot;</span><span class="p">]</span>
+        <span class="n">ref_power</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;power&quot;</span><span class="p">]</span>
+        <span class="n">m_ave</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;m&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Get the frequency bins to be averaged in the final results.</span>
+        <span class="n">good</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_good_frequency_bins</span><span class="p">(</span><span class="n">freq</span><span class="p">)</span>
+        <span class="n">mean_ref_power</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">ref_power</span><span class="p">[</span><span class="n">good</span><span class="p">])</span>
+        <span class="n">n_ave_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">good</span><span class="p">)</span>
+
+        <span class="n">m_tot</span> <span class="o">=</span> <span class="n">n_ave_bin</span> <span class="o">*</span> <span class="n">m_ave</span>
+
+        <span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">freq_interval</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_interval</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">eint</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">show_progress</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_intervals</span><span class="p">)):</span>
+            <span class="c1"># Extract the photon arrival times from the subject band</span>
+            <span class="n">sub_events</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_times_from_energy_range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">events1</span><span class="p">,</span> <span class="n">eint</span><span class="p">)</span>
+
+            <span class="n">results_cross</span> <span class="o">=</span> <span class="n">avg_cs_from_timeseries</span><span class="p">(</span>
+                <span class="n">sub_events</span><span class="p">,</span>
+                <span class="n">ref_events</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">bin_time</span><span class="p">,</span>
+                <span class="n">silent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="n">results_ps</span> <span class="o">=</span> <span class="n">avg_pds_from_timeseries</span><span class="p">(</span>
+                <span class="n">sub_events</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bin_time</span><span class="p">,</span> <span class="n">silent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;none&quot;</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">results_cross</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">results_ps</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Nph per interval, so on average it&#39;s the total number of events divided by</span>
+            <span class="c1"># the number of intervals</span>
+            <span class="n">sub_power_noise</span> <span class="o">=</span> <span class="n">poisson_level</span><span class="p">(</span>
+                <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">n_ph</span><span class="o">=</span><span class="n">sub_events</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="n">results_ps</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;m&quot;</span><span class="p">]</span>
+            <span class="p">)</span>
+
+            <span class="n">cross</span> <span class="o">=</span> <span class="n">results_cross</span><span class="p">[</span><span class="s2">&quot;power&quot;</span><span class="p">]</span>
+            <span class="n">sub_power</span> <span class="o">=</span> <span class="n">results_ps</span><span class="p">[</span><span class="s2">&quot;power&quot;</span><span class="p">]</span>
+
+            <span class="n">Cmean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">cross</span><span class="p">[</span><span class="n">good</span><span class="p">])</span>
+
+            <span class="n">mean_sub_power</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">sub_power</span><span class="p">[</span><span class="n">good</span><span class="p">])</span>
+
+            <span class="c1"># Is the subject band overlapping with the reference band?</span>
+            <span class="c1"># This will be used to correct the error bars, following</span>
+            <span class="c1"># Ingram 2019.</span>
+            <span class="n">common_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">same_events</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">cross_two_gtis</span><span class="p">([</span><span class="n">eint</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_band</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+            <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">phi_e</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">error_on_averaged_cross_spectrum</span><span class="p">(</span>
+                <span class="n">Cmean</span><span class="p">,</span>
+                <span class="n">mean_sub_power</span><span class="p">,</span>
+                <span class="n">mean_ref_power</span><span class="p">,</span>
+                <span class="n">m_tot</span><span class="p">,</span>
+                <span class="n">sub_power_noise</span><span class="p">,</span>
+                <span class="n">ref_power_noise</span><span class="p">,</span>
+                <span class="n">common_ref</span><span class="o">=</span><span class="n">common_ref</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="c1"># The frequency of these lags is measured from the *weighted* mean of the frequencies</span>
+            <span class="c1"># in the cross spectrum. The weight is just the absolute value of the CS</span>
+            <span class="n">csabs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">cross</span><span class="p">[</span><span class="n">good</span><span class="p">])</span>
+            <span class="n">fmean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">freq</span><span class="p">[</span><span class="n">good</span><span class="p">]</span> <span class="o">*</span> <span class="n">csabs</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">csabs</span><span class="p">)</span>
+            <span class="n">lag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">angle</span><span class="p">(</span><span class="n">Cmean</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">fmean</span><span class="p">)</span>
+
+            <span class="n">lag_e</span> <span class="o">=</span> <span class="n">phi_e</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">fmean</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">lag</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spectrum_error</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">lag_e</span>
+
+
+<span class="n">LagEnergySpectrum</span> <span class="o">=</span> <span class="n">LagSpectrum</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ComplexCovarianceSpectrum</span><span class="p">(</span><span class="n">VarEnergySpectrum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the complex covariance spectrum.</span>
+
+<span class="sd">    For each energy interval, calculate the covariance between two bands.</span>
+<span class="sd">    If ``events2`` is specified, the energy bands are chosen from this second</span>
+<span class="sd">    event list, while the reference band from ``events``.</span>
+
+<span class="sd">    Mastroserio et al. 2018, MNRAS, 475, 4027</span>
+
+<span class="sd">    We assume absolute r.m.s. normalization. To get the fractional r.m.s.</span>
+<span class="sd">    we just divide by the mean count rate.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    events : :class:`stingray.events.EventList` object</span>
+<span class="sd">        event list</span>
+
+<span class="sd">    freq_interval : ``[f0, f1]``, list of float</span>
+<span class="sd">        the frequency range over which calculating the variability quantity</span>
+
+<span class="sd">    energy_spec : list or tuple ``(emin, emax, N, type)``</span>
+<span class="sd">        if a ``list`` is specified, this is interpreted as a list of bin edges;</span>
+<span class="sd">        if a ``tuple`` is provided, this will encode the minimum and maximum</span>
+<span class="sd">        energies, the number of intervals, and ``lin`` or ``log``.</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ref_band : ``[emin, emax]``, float; default ``None``</span>
+<span class="sd">        minimum and maximum energy of the reference band. If ``None``, the</span>
+<span class="sd">        full band is used.</span>
+
+<span class="sd">    use_pi : bool, default ``False``</span>
+<span class="sd">        Use channel instead of energy</span>
+
+<span class="sd">    events2 : :class:`stingray.events.EventList` object</span>
+<span class="sd">        event list for the second channel, if not the same. Useful if the</span>
+<span class="sd">        reference band has to be taken from another detector.</span>
+
+<span class="sd">    norm : str, one of [&quot;abs&quot;, &quot;frac&quot;]</span>
+<span class="sd">        The normalization of the covariance, whether absolute or fractional.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    events1 : array-like</span>
+<span class="sd">        list of events used to produce the spectrum</span>
+
+<span class="sd">    events2 : array-like</span>
+<span class="sd">        if the spectrum requires it, second list of events</span>
+
+<span class="sd">    freq_interval : array-like</span>
+<span class="sd">        interval of frequencies used to calculate the spectrum</span>
+
+<span class="sd">    energy_intervals : ``[[e00, e01], [e10, e11], ...]``</span>
+<span class="sd">        energy intervals used for the spectrum</span>
+
+<span class="sd">    spectrum : array-like</span>
+<span class="sd">        the spectral values, corresponding to each energy interval</span>
+
+<span class="sd">    spectrum_error : array-like</span>
+<span class="sd">        the errorbars corresponding to spectrum</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">events</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">energy_spec</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">ref_band</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">freq_interval</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+        <span class="n">bin_time</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">use_pi</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">events2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;frac&quot;</span><span class="p">,</span>
+        <span class="n">return_complex</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">min_phot_per_segment</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">norm</span> <span class="o">=</span> <span class="n">norm</span>
+        <span class="n">VarEnergySpectrum</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">events</span><span class="p">,</span>
+            <span class="n">freq_interval</span><span class="o">=</span><span class="n">freq_interval</span><span class="p">,</span>
+            <span class="n">energy_spec</span><span class="o">=</span><span class="n">energy_spec</span><span class="p">,</span>
+            <span class="n">bin_time</span><span class="o">=</span><span class="n">bin_time</span><span class="p">,</span>
+            <span class="n">use_pi</span><span class="o">=</span><span class="n">use_pi</span><span class="p">,</span>
+            <span class="n">ref_band</span><span class="o">=</span><span class="n">ref_band</span><span class="p">,</span>
+            <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span>
+            <span class="n">events2</span><span class="o">=</span><span class="n">events2</span><span class="p">,</span>
+            <span class="n">return_complex</span><span class="o">=</span><span class="n">return_complex</span><span class="p">,</span>
+            <span class="n">min_phot_per_segment</span><span class="o">=</span><span class="n">min_phot_per_segment</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_spectrum_function</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Extract events from the reference band and calculate the PDS and</span>
+        <span class="c1"># the Poisson noise level.</span>
+        <span class="n">ref_events</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_times_from_energy_range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">events2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_band</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">countrate_ref</span> <span class="o">=</span> <span class="n">get_average_ctrate</span><span class="p">(</span><span class="n">ref_events</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">)</span>
+        <span class="n">ref_power_noise</span> <span class="o">=</span> <span class="n">poisson_level</span><span class="p">(</span><span class="n">norm</span><span class="o">=</span><span class="s2">&quot;abs&quot;</span><span class="p">,</span> <span class="n">meanrate</span><span class="o">=</span><span class="n">countrate_ref</span><span class="p">)</span>
+
+        <span class="n">results</span> <span class="o">=</span> <span class="n">avg_pds_from_timeseries</span><span class="p">(</span>
+            <span class="n">ref_events</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bin_time</span><span class="p">,</span> <span class="n">silent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;abs&quot;</span>
+        <span class="p">)</span>
+        <span class="n">freq</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;freq&quot;</span><span class="p">]</span>
+        <span class="n">ref_power</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;power&quot;</span><span class="p">]</span>
+        <span class="n">m_ave</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;m&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Select the frequency range to be averaged for the measurement.</span>
+        <span class="n">good</span> <span class="o">=</span> <span class="p">(</span><span class="n">freq</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_interval</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">freq</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_interval</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">n_ave_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">good</span><span class="p">)</span>
+        <span class="n">mean_ref_power</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">ref_power</span><span class="p">[</span><span class="n">good</span><span class="p">])</span>
+
+        <span class="n">m_tot</span> <span class="o">=</span> <span class="n">m_ave</span> <span class="o">*</span> <span class="n">n_ave_bin</span>
+        <span class="c1"># Frequency resolution</span>
+        <span class="n">delta_nu</span> <span class="o">=</span> <span class="n">n_ave_bin</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta_nu</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">eint</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">show_progress</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_intervals</span><span class="p">)):</span>
+            <span class="c1"># Extract events from the subject band</span>
+            <span class="n">sub_events</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_times_from_energy_range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">events1</span><span class="p">,</span> <span class="n">eint</span><span class="p">)</span>
+            <span class="n">countrate_sub</span> <span class="o">=</span> <span class="n">get_average_ctrate</span><span class="p">(</span><span class="n">sub_events</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">)</span>
+            <span class="n">phot_per_segment</span> <span class="o">=</span> <span class="n">countrate_sub</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_phot_per_segment</span><span class="p">(</span><span class="n">phot_per_segment</span><span class="p">,</span> <span class="n">eint</span><span class="p">):</span>
+                <span class="k">continue</span>
+
+            <span class="n">sub_power_noise</span> <span class="o">=</span> <span class="n">poisson_level</span><span class="p">(</span><span class="n">norm</span><span class="o">=</span><span class="s2">&quot;abs&quot;</span><span class="p">,</span> <span class="n">meanrate</span><span class="o">=</span><span class="n">countrate_sub</span><span class="p">)</span>
+
+            <span class="n">results_cross</span> <span class="o">=</span> <span class="n">avg_cs_from_timeseries</span><span class="p">(</span>
+                <span class="n">sub_events</span><span class="p">,</span>
+                <span class="n">ref_events</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">bin_time</span><span class="p">,</span>
+                <span class="n">silent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;abs&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="n">results_ps</span> <span class="o">=</span> <span class="n">avg_pds_from_timeseries</span><span class="p">(</span>
+                <span class="n">sub_events</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bin_time</span><span class="p">,</span> <span class="n">silent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;abs&quot;</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">results_cross</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">results_ps</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">cross</span> <span class="o">=</span> <span class="n">results_cross</span><span class="p">[</span><span class="s2">&quot;power&quot;</span><span class="p">]</span>
+            <span class="n">sub_power</span> <span class="o">=</span> <span class="n">results_ps</span><span class="p">[</span><span class="s2">&quot;power&quot;</span><span class="p">]</span>
+            <span class="n">mean</span> <span class="o">=</span> <span class="n">results_ps</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">]</span>
+
+            <span class="c1"># Is the subject band overlapping with the reference band?</span>
+            <span class="c1"># This will be used to correct the error bars, following</span>
+            <span class="c1"># Ingram 2019.</span>
+            <span class="n">common_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">same_events</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">cross_two_gtis</span><span class="p">([</span><span class="n">eint</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_band</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="n">Cmean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">cross</span><span class="p">[</span><span class="n">good</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">common_ref</span><span class="p">:</span>
+                <span class="c1"># Equation 6 from Ingram+2019</span>
+                <span class="n">Cmean</span> <span class="o">-=</span> <span class="n">sub_power_noise</span>
+
+            <span class="n">Cmean_real</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">Cmean</span><span class="p">)</span>
+
+            <span class="n">mean_sub_power</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">sub_power</span><span class="p">[</span><span class="n">good</span><span class="p">])</span>
+
+            <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">Ce</span> <span class="o">=</span> <span class="n">error_on_averaged_cross_spectrum</span><span class="p">(</span>
+                <span class="n">Cmean</span><span class="p">,</span>
+                <span class="n">mean_sub_power</span><span class="p">,</span>
+                <span class="n">mean_ref_power</span><span class="p">,</span>
+                <span class="n">m_tot</span><span class="p">,</span>
+                <span class="n">sub_power_noise</span><span class="p">,</span>
+                <span class="n">ref_power_noise</span><span class="p">,</span>
+                <span class="n">common_ref</span><span class="o">=</span><span class="n">common_ref</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">return_complex</span><span class="p">:</span>
+                <span class="n">Cmean</span> <span class="o">=</span> <span class="n">Cmean_real</span>
+
+            <span class="c1"># Convert the cross spectrum to a covariance.</span>
+            <span class="n">cov</span><span class="p">,</span> <span class="n">cov_e</span> <span class="o">=</span> <span class="n">cross_to_covariance</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">([</span><span class="n">Cmean</span><span class="p">,</span> <span class="n">Ce</span><span class="p">]),</span> <span class="n">mean_ref_power</span><span class="p">,</span> <span class="n">ref_power_noise</span><span class="p">,</span> <span class="n">delta_nu</span>
+            <span class="p">)</span>
+
+            <span class="n">meanrate</span> <span class="o">=</span> <span class="n">mean</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">bin_time</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm</span> <span class="o">==</span> <span class="s2">&quot;frac&quot;</span><span class="p">:</span>
+                <span class="n">cov</span><span class="p">,</span> <span class="n">cov_e</span> <span class="o">=</span> <span class="n">cov</span> <span class="o">/</span> <span class="n">meanrate</span><span class="p">,</span> <span class="n">cov_e</span> <span class="o">/</span> <span class="n">meanrate</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">cov</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spectrum_error</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">cov_e</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CovarianceSpectrum</span><span class="p">(</span><span class="n">ComplexCovarianceSpectrum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the covariance spectrum.</span>
+
+<span class="sd">    This is just the absolute value of the complex covariance</span>
+<span class="sd">    spectrum. Refer to that documentation for details.</span>
+
+<span class="sd">    For the original formulation of the covariance spectrum,</span>
+<span class="sd">    see:</span>
+<span class="sd">    Wilkinson &amp; Uttley 2009, MNRAS, 397, 666</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    events : :class:`stingray.events.EventList` object</span>
+<span class="sd">        event list</span>
+
+<span class="sd">    freq_interval : ``[f0, f1]``, list of float</span>
+<span class="sd">        the frequency range over which calculating the variability quantity</span>
+
+<span class="sd">    energy_spec : list or tuple ``(emin, emax, N, type)``</span>
+<span class="sd">        if a ``list`` is specified, this is interpreted as a list of bin edges;</span>
+<span class="sd">        if a ``tuple`` is provided, this will encode the minimum and maximum</span>
+<span class="sd">        energies, the number of intervals, and ``lin`` or ``log``.</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ref_band : ``[emin, emax]``, float; default ``None``</span>
+<span class="sd">        minimum and maximum energy of the reference band. If ``None``, the</span>
+<span class="sd">        full band is used.</span>
+
+<span class="sd">    use_pi : bool, default ``False``</span>
+<span class="sd">        Use channel instead of energy</span>
+
+<span class="sd">    events2 : :class:`stingray.events.EventList` object</span>
+<span class="sd">        event list for the second channel, if not the same. Useful if the</span>
+<span class="sd">        reference band has to be taken from another detector.</span>
+
+<span class="sd">    norm : str, one of [&quot;abs&quot;, &quot;frac&quot;]</span>
+<span class="sd">        The normalization of the covariance, whether absolute or fractional.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    events1 : array-like</span>
+<span class="sd">        list of events used to produce the spectrum</span>
+
+<span class="sd">    events2 : array-like</span>
+<span class="sd">        if the spectrum requires it, second list of events</span>
+
+<span class="sd">    freq_interval : array-like</span>
+<span class="sd">        interval of frequencies used to calculate the spectrum</span>
+
+<span class="sd">    energy_intervals : ``[[e00, e01], [e10, e11], ...]``</span>
+<span class="sd">        energy intervals used for the spectrum</span>
+
+<span class="sd">    spectrum : array-like</span>
+<span class="sd">        the spectral values, corresponding to each energy interval</span>
+
+<span class="sd">    spectrum_error : array-like</span>
+<span class="sd">        the errorbars corresponding to spectrum</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">events</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">energy_spec</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">ref_band</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">freq_interval</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+        <span class="n">bin_time</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">use_pi</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">events2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;abs&quot;</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="n">ComplexCovarianceSpectrum</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">events</span><span class="p">,</span>
+            <span class="n">freq_interval</span><span class="o">=</span><span class="n">freq_interval</span><span class="p">,</span>
+            <span class="n">energy_spec</span><span class="o">=</span><span class="n">energy_spec</span><span class="p">,</span>
+            <span class="n">bin_time</span><span class="o">=</span><span class="n">bin_time</span><span class="p">,</span>
+            <span class="n">use_pi</span><span class="o">=</span><span class="n">use_pi</span><span class="p">,</span>
+            <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+            <span class="n">ref_band</span><span class="o">=</span><span class="n">ref_band</span><span class="p">,</span>
+            <span class="n">return_complex</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span>
+            <span class="n">events2</span><span class="o">=</span><span class="n">events2</span><span class="p">,</span>
+        <span class="p">)</span>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

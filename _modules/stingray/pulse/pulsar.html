@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>stingray.pulse.pulsar &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script type="text/javascript" src="../../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for stingray.pulse.pulsar</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Basic pulsar-related functions and statistics.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.optimize</span><span class="w"> </span><span class="kn">import</span> <span class="n">minimize</span><span class="p">,</span> <span class="n">basinhopping</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.stats</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.fftfit</span><span class="w"> </span><span class="kn">import</span> <span class="n">fftfit</span> <span class="k">as</span> <span class="n">taylor_fftfit</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">simon</span><span class="p">,</span> <span class="n">jit</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">HAS_PINT</span><span class="p">,</span> <span class="n">get_model</span><span class="p">,</span> <span class="n">toa</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;pulse_phase&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;phase_exposure&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;fold_events&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ef_profile_stat&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pdm_profile_stat&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;z_n&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;fftfit&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;get_TOA&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;z_n_binned_events&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;z_n_gauss&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;z_n_events&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;htest&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;p_to_f&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;z_n_binned_events_all&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;z_n_gauss_all&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;z_n_events_all&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;get_orbital_correction_from_ephemeris_file&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_default_value_if_no_key</span><span class="p">(</span><span class="n">dictionary</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">dictionary</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">default</span>
+
+
+<div class="viewcode-block" id="p_to_f">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.p_to_f">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">p_to_f</span><span class="p">(</span><span class="o">*</span><span class="n">period_derivatives</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert periods into frequencies, and vice versa.</span>
+
+<span class="sd">    For now, limited to third derivative. Raises when a</span>
+<span class="sd">    fourth derivative is passed.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    p, pdot, pddot, ... : floats</span>
+<span class="sd">        period derivatives, starting from zeroth and in</span>
+<span class="sd">        increasing order</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; assert p_to_f() == []</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(p_to_f(1), [1])</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(p_to_f(1, 2), [1, -2])</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(p_to_f(1, 2, 3), [1, -2, 5])</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(p_to_f(1, 2, 3, 4), [1, -2, 5, -16])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">nder</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">period_derivatives</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">nder</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="n">fder</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">period_derivatives</span><span class="p">)</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">period_derivatives</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">fder</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">p</span>
+
+    <span class="k">if</span> <span class="n">nder</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">pd</span> <span class="o">=</span> <span class="n">period_derivatives</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">fder</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="o">/</span> <span class="n">p</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">pd</span>
+
+    <span class="k">if</span> <span class="n">nder</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">pdd</span> <span class="o">=</span> <span class="n">period_derivatives</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">fder</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">p</span><span class="o">**</span><span class="mi">3</span> <span class="o">*</span> <span class="n">pd</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">p</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">pdd</span>
+
+    <span class="k">if</span> <span class="n">nder</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">pddd</span> <span class="o">=</span> <span class="n">period_derivatives</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+        <span class="n">fder</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">6</span> <span class="o">/</span> <span class="n">p</span><span class="o">**</span><span class="mi">4</span> <span class="o">*</span> <span class="n">pd</span><span class="o">**</span><span class="mi">3</span> <span class="o">+</span> <span class="mi">6</span> <span class="o">/</span> <span class="n">p</span><span class="o">**</span><span class="mi">3</span> <span class="o">*</span> <span class="n">pd</span> <span class="o">*</span> <span class="n">pdd</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">p</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">pddd</span>
+    <span class="k">if</span> <span class="n">nder</span> <span class="o">&gt;</span> <span class="mi">4</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Derivatives above third are not supported&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">fder</span></div>
+
+
+
+<div class="viewcode-block" id="pulse_phase">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.pulse_phase">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pulse_phase</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="o">*</span><span class="n">frequency_derivatives</span><span class="p">,</span> <span class="o">**</span><span class="n">opts</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate pulse phase from the frequency and its derivatives.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    times : array of floats</span>
+<span class="sd">        The times at which the phase is calculated</span>
+<span class="sd">    *frequency_derivatives: floats</span>
+<span class="sd">        List of derivatives in increasing order, starting from zero.</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ph0 : float</span>
+<span class="sd">        The starting phase</span>
+<span class="sd">    to_1 : bool, default True</span>
+<span class="sd">        Only return the fractional part of the phase, normalized from 0 to 1</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    phases : array of floats</span>
+<span class="sd">        The absolute pulse phase</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">ph0</span> <span class="o">=</span> <span class="n">opts</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ph0&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">to_1</span> <span class="o">=</span> <span class="n">opts</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;to_1&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="n">ph</span> <span class="o">=</span> <span class="n">ph0</span>
+
+    <span class="k">for</span> <span class="n">i_f</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">frequency_derivatives</span><span class="p">):</span>
+        <span class="n">ph</span> <span class="o">+=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">factorial</span><span class="p">(</span><span class="n">i_f</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">times</span> <span class="o">**</span> <span class="p">(</span><span class="n">i_f</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">f</span>
+
+    <span class="k">if</span> <span class="n">to_1</span><span class="p">:</span>
+        <span class="n">ph</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">ph</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ph</span></div>
+
+
+
+<div class="viewcode-block" id="phase_exposure">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.phase_exposure">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">phase_exposure</span><span class="p">(</span><span class="n">start_time</span><span class="p">,</span> <span class="n">stop_time</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="n">nbin</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the exposure on each phase of a pulse profile.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    start_time, stop_time : float</span>
+<span class="sd">        Starting and stopping time (or phase if ``period==1``)</span>
+<span class="sd">    period : float</span>
+<span class="sd">        The pulse period (if 1, equivalent to phases)</span>
+
+<span class="sd">    Other parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    nbin : int, optional, default 16</span>
+<span class="sd">        The number of bins in the profile</span>
+<span class="sd">    gti : [[gti00, gti01], [gti10, gti11], ...], optional, default None</span>
+<span class="sd">        Good Time Intervals</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    expo : array of floats</span>
+<span class="sd">        The normalized exposure of each bin in the pulse profile (1 is the</span>
+<span class="sd">        highest exposure, 0 the lowest)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">gti</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">gti</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">start_time</span><span class="p">,</span> <span class="n">stop_time</span><span class="p">]])</span>
+
+    <span class="c1"># Use precise floating points -------------</span>
+    <span class="n">start_time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">longdouble</span><span class="p">(</span><span class="n">start_time</span><span class="p">)</span>
+    <span class="n">stop_time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">longdouble</span><span class="p">(</span><span class="n">stop_time</span><span class="p">)</span>
+    <span class="n">period</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">longdouble</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
+    <span class="n">gti</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">gti</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">longdouble</span><span class="p">)</span>
+    <span class="c1"># -----------------------------------------</span>
+
+    <span class="n">expo</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nbin</span><span class="p">)</span>
+    <span class="n">phs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nbin</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">phs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">phs</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">phs</span><span class="p">[</span><span class="mi">1</span><span class="p">:])))</span>
+
+    <span class="c1"># Discard gtis outside [start, stop]</span>
+    <span class="n">good</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">gti</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">stop_time</span><span class="p">,</span> <span class="n">gti</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">start_time</span><span class="p">)</span>
+    <span class="n">gti</span> <span class="o">=</span> <span class="n">gti</span><span class="p">[</span><span class="n">good</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">gti</span><span class="p">:</span>
+        <span class="n">g0</span> <span class="o">=</span> <span class="n">g</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">g1</span> <span class="o">=</span> <span class="n">g</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">g0</span> <span class="o">&lt;</span> <span class="n">start_time</span><span class="p">:</span>
+            <span class="c1"># If the start of the fold is inside a gti, start from there</span>
+            <span class="n">g0</span> <span class="o">=</span> <span class="n">start_time</span>
+        <span class="k">if</span> <span class="n">g1</span> <span class="o">&gt;</span> <span class="n">stop_time</span><span class="p">:</span>
+            <span class="c1"># If the end of the fold is inside a gti, end there</span>
+            <span class="n">g1</span> <span class="o">=</span> <span class="n">stop_time</span>
+        <span class="n">length</span> <span class="o">=</span> <span class="n">g1</span> <span class="o">-</span> <span class="n">g0</span>
+        <span class="c1"># How many periods inside this length?</span>
+        <span class="n">nraw</span> <span class="o">=</span> <span class="n">length</span> <span class="o">/</span> <span class="n">period</span>
+        <span class="c1"># How many integer periods?</span>
+        <span class="n">nper</span> <span class="o">=</span> <span class="n">nraw</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+        <span class="c1"># First raw exposure: the number of periods</span>
+        <span class="n">expo</span> <span class="o">+=</span> <span class="n">nper</span> <span class="o">/</span> <span class="n">nbin</span>
+
+        <span class="c1"># FRACTIONAL PART =================</span>
+        <span class="c1"># What remains is additional exposure for part of the profile.</span>
+        <span class="n">start_phase</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fmod</span><span class="p">(</span><span class="n">g0</span> <span class="o">/</span> <span class="n">period</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">end_phase</span> <span class="o">=</span> <span class="n">nraw</span> <span class="o">-</span> <span class="n">nper</span> <span class="o">+</span> <span class="n">start_phase</span>
+
+        <span class="n">limits</span> <span class="o">=</span> <span class="p">[[</span><span class="n">start_phase</span><span class="p">,</span> <span class="n">end_phase</span><span class="p">]]</span>
+        <span class="c1"># start_phase is always &lt; 1. end_phase not always. In this case...</span>
+        <span class="k">if</span> <span class="n">end_phase</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">limits</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="n">end_phase</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="n">start_phase</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]</span>
+
+        <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">limits</span><span class="p">:</span>
+            <span class="n">l0</span> <span class="o">=</span> <span class="n">l</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">l1</span> <span class="o">=</span> <span class="n">l</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="c1"># Discards bins untouched by these limits</span>
+            <span class="n">goodbins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">phs</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">l1</span><span class="p">,</span> <span class="n">phs</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">l0</span><span class="p">)</span>
+            <span class="n">idxs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">phs</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)[</span><span class="n">goodbins</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">idxs</span><span class="p">:</span>
+                <span class="n">start</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="n">phs</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">l0</span><span class="p">])</span>
+                <span class="n">stop</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">([</span><span class="n">phs</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">l1</span><span class="p">])</span>
+                <span class="n">w</span> <span class="o">=</span> <span class="n">stop</span> <span class="o">-</span> <span class="n">start</span>
+                <span class="n">expo</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">w</span>
+
+    <span class="k">return</span> <span class="n">expo</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">expo</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="fold_events">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.fold_events">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fold_events</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="o">*</span><span class="n">frequency_derivatives</span><span class="p">,</span> <span class="o">**</span><span class="n">opts</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Epoch folding with exposure correction.</span>
+
+<span class="sd">    By default, the keyword `times` accepts a list of</span>
+<span class="sd">    unbinned photon arrival times. If the input data is</span>
+<span class="sd">    a (binned) light curve, then `times` will contain the</span>
+<span class="sd">    time stamps of the observation, and `weights` should</span>
+<span class="sd">    be set to the corresponding fluxes or counts.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    times : array of floats</span>
+<span class="sd">        Photon arrival times, or, if `weights` is set,</span>
+<span class="sd">        time stamps of a light curve.</span>
+
+<span class="sd">    f, fdot, fddot... : float</span>
+<span class="sd">        The frequency and any number of derivatives.</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    nbin : int, optional, default 16</span>
+<span class="sd">        The number of bins in the pulse profile</span>
+
+<span class="sd">    weights : float or array of floats, optional</span>
+<span class="sd">        The weights of the data. It can either be specified as a single value</span>
+<span class="sd">        for all points, or an array with the same length as ``time``</span>
+
+<span class="sd">    gti : [[gti0_0, gti0_1], [gti1_0, gti1_1], ...], optional</span>
+<span class="sd">        Good time intervals</span>
+
+<span class="sd">    ref_time : float, optional, default 0</span>
+<span class="sd">        Reference time for the timing solution</span>
+
+<span class="sd">    expocorr : bool, default False</span>
+<span class="sd">        Correct each bin for exposure (use when the period of the pulsar is</span>
+<span class="sd">        comparable to that of GTIs)</span>
+
+<span class="sd">    mode : str, [&quot;ef&quot;, &quot;pdm&quot;], default &quot;ef&quot;</span>
+<span class="sd">        Whether to calculate the epoch folding or phase dispersion</span>
+<span class="sd">        minimization folded profile. For &quot;ef&quot;, it calculates the (weighted)</span>
+<span class="sd">        sum of the data points in each phase bin, for &quot;pdm&quot;, the variance</span>
+<span class="sd">        in each phase bin</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    phase_bins : array of floats</span>
+<span class="sd">        The phases corresponding to the pulse profile</span>
+
+<span class="sd">    profile : array of floats</span>
+<span class="sd">        The pulse profile</span>
+
+<span class="sd">    profile_err : array of floats</span>
+<span class="sd">        The uncertainties on the pulse profile</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">mode</span> <span class="o">=</span> <span class="n">opts</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;mode&quot;</span><span class="p">,</span> <span class="s2">&quot;ef&quot;</span><span class="p">)</span>
+    <span class="n">nbin</span> <span class="o">=</span> <span class="n">opts</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;nbin&quot;</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
+    <span class="n">weights</span> <span class="o">=</span> <span class="n">opts</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;weights&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># If no key is passed, *or gti is None*, defaults to the</span>
+    <span class="c1"># initial and final event</span>
+    <span class="n">gti</span> <span class="o">=</span> <span class="n">opts</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;gti&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">gti</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">gti</span> <span class="o">=</span> <span class="p">[[</span><span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]]</span>
+    <span class="c1"># Be safe if gtis are a list</span>
+    <span class="n">gti</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">(</span><span class="n">gti</span><span class="p">)</span>
+    <span class="n">ref_time</span> <span class="o">=</span> <span class="n">opts</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ref_time&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">expocorr</span> <span class="o">=</span> <span class="n">opts</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;expocorr&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">opts</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Unidentified keyword(s) to fold_events: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">k</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">k</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">opts</span><span class="o">.</span><span class="n">keys</span><span class="p">()])</span><span class="si">}</span><span class="s2"> </span><span class="se">\n</span><span class="s2"> Please refer to the description of the function for optional parameters.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">):</span>
+        <span class="n">weights</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">))</span>
+
+    <span class="n">gti</span> <span class="o">=</span> <span class="n">gti</span> <span class="o">-</span> <span class="n">ref_time</span>
+    <span class="n">times</span> <span class="o">=</span> <span class="n">times</span> <span class="o">-</span> <span class="n">ref_time</span>
+    <span class="c1"># This dt has not the same meaning as in the Lightcurve case.</span>
+    <span class="c1"># it&#39;s just to define stop_time as a meaningful value after</span>
+    <span class="c1"># the last event.</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">times</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">start_time</span> <span class="o">=</span> <span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">stop_time</span> <span class="o">=</span> <span class="n">times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">dt</span>
+
+    <span class="n">phases</span> <span class="o">=</span> <span class="n">pulse_phase</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="o">*</span><span class="n">frequency_derivatives</span><span class="p">,</span> <span class="n">to_1</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">gti_phases</span> <span class="o">=</span> <span class="n">pulse_phase</span><span class="p">(</span><span class="n">gti</span><span class="p">,</span> <span class="o">*</span><span class="n">frequency_derivatives</span><span class="p">,</span> <span class="n">to_1</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">start_phase</span><span class="p">,</span> <span class="n">stop_phase</span> <span class="o">=</span> <span class="n">pulse_phase</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">start_time</span><span class="p">,</span> <span class="n">stop_time</span><span class="p">]),</span> <span class="o">*</span><span class="n">frequency_derivatives</span><span class="p">,</span> <span class="n">to_1</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;ef&quot;</span><span class="p">:</span>
+        <span class="n">raw_profile</span><span class="p">,</span> <span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">phases</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nbin</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)</span>
+        <span class="c1"># TODO: this is wrong. Need to extend this to non-1 weights</span>
+        <span class="n">raw_profile_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">raw_profile</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">expocorr</span><span class="p">:</span>
+            <span class="n">expo_norm</span> <span class="o">=</span> <span class="n">phase_exposure</span><span class="p">(</span><span class="n">start_phase</span><span class="p">,</span> <span class="n">stop_phase</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nbin</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="n">gti_phases</span><span class="p">)</span>
+            <span class="n">simon</span><span class="p">(</span><span class="s2">&quot;For exposure != 1, the uncertainty might be incorrect&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">expo_norm</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="n">raw_profile</span> <span class="o">=</span> <span class="n">raw_profile</span> <span class="o">/</span> <span class="n">expo_norm</span>
+        <span class="n">raw_profile_err</span> <span class="o">=</span> <span class="n">raw_profile_err</span> <span class="o">/</span> <span class="n">expo_norm</span>
+
+    <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;pdm&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Can only calculate PDM for binned light curves!&quot;</span>
+                <span class="o">+</span> <span class="s2">&quot;`weights` attribute must be set to fluxes!&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">raw_profile</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">bin_idx</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">binned_statistic</span><span class="p">(</span>
+            <span class="n">phases</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">statistic</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">var</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nbin</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># I need the variance uncorrected for the number of data points in each</span>
+        <span class="c1"># bin, so I need to find that first, and then multiply</span>
+        <span class="c1"># bin_idx should be from the list [1, ..., nbin], although some might not appear</span>
+        <span class="c1"># histogram bin-edges set as [0.5, 1.5, ..., nbin - 0.5, nbin + 0.5]</span>
+        <span class="c1"># to include the bin_idx int values</span>
+        <span class="n">bincounts</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">bin_idx</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">nbin</span> <span class="o">+</span> <span class="mf">1.5</span><span class="p">))</span>
+        <span class="n">raw_profile</span> <span class="o">=</span> <span class="n">raw_profile</span> <span class="o">*</span> <span class="n">bincounts</span>
+
+        <span class="c1"># dummy array for the error, which we don&#39;t have for the variance</span>
+        <span class="n">raw_profile_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">raw_profile</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;mode can only be `ef` for Epoch Folding or &quot;</span>
+            <span class="o">+</span> <span class="s2">&quot;`pdm` for Phase Dispersion Minimization!&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">bins</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">raw_profile</span><span class="p">,</span> <span class="n">raw_profile_err</span></div>
+
+
+
+<div class="viewcode-block" id="ef_profile_stat">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.ef_profile_stat">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">ef_profile_stat</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the epoch folding statistics \&#39;a la Leahy et al. (1983).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    profile : array</span>
+<span class="sd">        The pulse profile</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    err : float or array</span>
+<span class="sd">        The uncertainties on the pulse profile</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    stat : float</span>
+<span class="sd">        The epoch folding statistics</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">err</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">mean</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">profile</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">err</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="pdm_profile_stat">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.pdm_profile_stat">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pdm_profile_stat</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="n">sample_var</span><span class="p">,</span> <span class="n">nsample</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the phase dispersion minimization</span>
+<span class="sd">    statistic following Stellingwerf (1978)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    profile : array</span>
+<span class="sd">        The PDM pulse profile (variance as a function</span>
+<span class="sd">        of phase)</span>
+
+<span class="sd">    sample_var : float</span>
+<span class="sd">        The total population variance of the sample</span>
+
+<span class="sd">    nsample : int</span>
+<span class="sd">        The number of time bins in the initial time</span>
+<span class="sd">        series.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    stat : float</span>
+<span class="sd">        The epoch folding statistics</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">nsample</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">profile</span><span class="p">))</span>
+    <span class="n">stat</span> <span class="o">=</span> <span class="n">s2</span> <span class="o">/</span> <span class="n">sample_var</span>
+    <span class="k">return</span> <span class="n">stat</span></div>
+
+
+
+<span class="nd">@functools</span><span class="o">.</span><span class="n">lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">128</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_cached_sin_harmonics</span><span class="p">(</span><span class="n">nbin</span><span class="p">,</span> <span class="n">z_n_n</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cached sine values corresponding to each of the nbin bins.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    nbin : int</span>
+<span class="sd">        Number of bins</span>
+<span class="sd">    z_n_n : int</span>
+<span class="sd">        The number of harmonics (n) in the Z^2_n search</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dph</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">nbin</span>
+    <span class="n">twopiphases</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">dph</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dph</span><span class="p">)</span>
+    <span class="n">cached_sin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">z_n_n</span> <span class="o">*</span> <span class="n">nbin</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">z_n_n</span><span class="p">):</span>
+        <span class="n">cached_sin</span><span class="p">[</span><span class="n">i</span> <span class="o">*</span> <span class="n">nbin</span> <span class="p">:</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">nbin</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">twopiphases</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cached_sin</span>
+
+
+<span class="nd">@functools</span><span class="o">.</span><span class="n">lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">128</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_cached_cos_harmonics</span><span class="p">(</span><span class="n">nbin</span><span class="p">,</span> <span class="n">z_n_n</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cached cosine values corresponding to each of the nbin bins.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    nbin : int</span>
+<span class="sd">        Number of bins</span>
+<span class="sd">    z_n_n : int</span>
+<span class="sd">        The number of harmonics (n) in the Z^2_n search</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dph</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">nbin</span>
+    <span class="n">twopiphases</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">dph</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dph</span><span class="p">)</span>
+    <span class="n">cached_cos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">z_n_n</span> <span class="o">*</span> <span class="n">nbin</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">z_n_n</span><span class="p">):</span>
+        <span class="n">cached_cos</span><span class="p">[</span><span class="n">i</span> <span class="o">*</span> <span class="n">nbin</span> <span class="p">:</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">nbin</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">twopiphases</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cached_cos</span>
+
+
+<span class="nd">@jit</span><span class="p">(</span><span class="n">nopython</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_z_n_fast_cached_sums_unnorm</span><span class="p">(</span><span class="n">prof</span><span class="p">,</span> <span class="n">ks</span><span class="p">,</span> <span class="n">cached_sin</span><span class="p">,</span> <span class="n">cached_cos</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the unnormalized Z^2_k, for (k=1,.. n), of a pulsed profile.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    prof : :class:`numpy.array`</span>
+<span class="sd">        The pulsed profile</span>
+<span class="sd">    ks : :class:`numpy.array` of int</span>
+<span class="sd">        The harmonic numbers, from 1 to n</span>
+<span class="sd">    cached_sin : :class:`numpy.array`</span>
+<span class="sd">        Cached sine values for each phase bin in the profile</span>
+<span class="sd">    cached_cos : :class:`numpy.array`</span>
+<span class="sd">        Cached cosine values for each phase bin in the profile</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">all_zs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">ks</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="n">prof</span><span class="o">.</span><span class="n">size</span>
+
+    <span class="n">total_sum</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">ks</span><span class="p">:</span>
+        <span class="n">local_z</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">cached_cos</span><span class="p">[:</span> <span class="n">N</span> <span class="o">*</span> <span class="n">k</span> <span class="p">:</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="n">prof</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">cached_sin</span><span class="p">[:</span> <span class="n">N</span> <span class="o">*</span> <span class="n">k</span> <span class="p">:</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="n">prof</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="p">)</span>
+        <span class="n">total_sum</span> <span class="o">+=</span> <span class="n">local_z</span>
+        <span class="n">all_zs</span><span class="p">[</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">total_sum</span>
+
+    <span class="k">return</span> <span class="n">all_zs</span>
+
+
+<div class="viewcode-block" id="z_n_binned_events_all">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.z_n_binned_events_all">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">z_n_binned_events_all</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="n">nmax</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Z^2_n statistic for multiple harmonics and binned events</span>
+
+<span class="sd">    See Bachetti+2021, arXiv:2012.11397</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    profile : array of floats</span>
+<span class="sd">        The folded pulse profile (containing the number of</span>
+<span class="sd">        photons falling in each pulse bin)</span>
+<span class="sd">    n : int</span>
+<span class="sd">        Number of harmonics, including the fundamental</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ks : list of ints</span>
+<span class="sd">        Harmonic numbers, from 1 to nmax (included)</span>
+<span class="sd">    z2_n : float</span>
+<span class="sd">        The value of the statistic for all ks</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cached_sin</span> <span class="o">=</span> <span class="n">_cached_sin_harmonics</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">nmax</span><span class="p">)</span>
+    <span class="n">cached_cos</span> <span class="o">=</span> <span class="n">_cached_cos_harmonics</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">nmax</span><span class="p">)</span>
+    <span class="n">ks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="n">total</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">total</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ks</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nmax</span><span class="p">)</span>
+    <span class="n">all_zs</span> <span class="o">=</span> <span class="n">_z_n_fast_cached_sums_unnorm</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="n">ks</span><span class="p">,</span> <span class="n">cached_sin</span><span class="p">,</span> <span class="n">cached_cos</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ks</span><span class="p">,</span> <span class="n">all_zs</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">total</span></div>
+
+
+
+<div class="viewcode-block" id="z_n_gauss_all">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.z_n_gauss_all">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">z_n_gauss_all</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="n">err</span><span class="p">,</span> <span class="n">nmax</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Z^2_n statistic for n harmonics and normally-distributed profiles</span>
+
+<span class="sd">    See Bachetti+2021, arXiv:2012.11397</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    profile : array of floats</span>
+<span class="sd">        The folded pulse profile</span>
+<span class="sd">    err : float</span>
+<span class="sd">        The (assumed constant) uncertainty on the flux in each bin.</span>
+<span class="sd">    nmax : int</span>
+<span class="sd">        Maximum number of harmonics, including the fundamental</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ks : list of ints</span>
+<span class="sd">        Harmonic numbers, from 1 to nmax (included)</span>
+<span class="sd">    z2_n : list of floats</span>
+<span class="sd">        The value of the statistic for all ks</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cached_sin</span> <span class="o">=</span> <span class="n">_cached_sin_harmonics</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">nmax</span><span class="p">)</span>
+    <span class="n">cached_cos</span> <span class="o">=</span> <span class="n">_cached_cos_harmonics</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">nmax</span><span class="p">)</span>
+    <span class="n">ks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="n">all_zs</span> <span class="o">=</span> <span class="n">_z_n_fast_cached_sums_unnorm</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="n">ks</span><span class="p">,</span> <span class="n">cached_sin</span><span class="p">,</span> <span class="n">cached_cos</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ks</span><span class="p">,</span> <span class="n">all_zs</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">/</span> <span class="n">profile</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="n">err</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="z_n_events_all">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.z_n_events_all">[docs]</a>
+<span class="nd">@jit</span><span class="p">(</span><span class="n">nopython</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">z_n_events_all</span><span class="p">(</span><span class="n">phase</span><span class="p">,</span> <span class="n">nmax</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Z^2_n statistics, a` la Buccheri+83, A&amp;A, 128, 245, eq. 2.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    phase : array of floats</span>
+<span class="sd">        The phases of the events</span>
+<span class="sd">    n : int, default 2</span>
+<span class="sd">        Number of harmonics, including the fundamental</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ks : list of ints</span>
+<span class="sd">        Harmonic numbers, from 1 to nmax (included)</span>
+<span class="sd">    z2_n : float</span>
+<span class="sd">        The Z^2_n statistic for all ks</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">all_zs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nmax</span><span class="p">)</span>
+    <span class="n">ks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">nphot</span> <span class="o">=</span> <span class="n">phase</span><span class="o">.</span><span class="n">size</span>
+
+    <span class="n">total_sum</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">phase</span> <span class="o">=</span> <span class="n">phase</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span>
+
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">ks</span><span class="p">:</span>
+        <span class="n">local_z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">k</span> <span class="o">*</span> <span class="n">phase</span><span class="p">))</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">k</span> <span class="o">*</span> <span class="n">phase</span><span class="p">))</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="n">total_sum</span> <span class="o">+=</span> <span class="n">local_z</span>
+        <span class="n">all_zs</span><span class="p">[</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">total_sum</span>
+
+    <span class="k">return</span> <span class="n">ks</span><span class="p">,</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">nphot</span> <span class="o">*</span> <span class="n">all_zs</span></div>
+
+
+
+<div class="viewcode-block" id="z_n_binned_events">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.z_n_binned_events">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">z_n_binned_events</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Z^2_n statistic for pulse profiles from binned events</span>
+
+<span class="sd">    See Bachetti+2021, arXiv:2012.11397</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    profile : array of floats</span>
+<span class="sd">        The folded pulse profile (containing the number of</span>
+<span class="sd">        photons falling in each pulse bin)</span>
+<span class="sd">    n : int</span>
+<span class="sd">        Number of harmonics, including the fundamental</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    z2_n : float</span>
+<span class="sd">        The value of the statistic</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">all_zs</span> <span class="o">=</span> <span class="n">z_n_binned_events_all</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="n">nmax</span><span class="o">=</span><span class="n">n</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">all_zs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="z_n_gauss">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.z_n_gauss">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">z_n_gauss</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="n">err</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Z^2_n statistic for normally-distributed profiles</span>
+
+<span class="sd">    See Bachetti+2021, arXiv:2012.11397</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    profile : array of floats</span>
+<span class="sd">        The folded pulse profile</span>
+<span class="sd">    err : float</span>
+<span class="sd">        The (assumed constant) uncertainty on the flux in each bin.</span>
+<span class="sd">    n : int</span>
+<span class="sd">        Number of harmonics, including the fundamental</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    z2_n : float</span>
+<span class="sd">        The value of the statistic</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">all_zs</span> <span class="o">=</span> <span class="n">z_n_gauss_all</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="n">err</span><span class="p">,</span> <span class="n">nmax</span><span class="o">=</span><span class="n">n</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">all_zs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="z_n_events">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.z_n_events">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">z_n_events</span><span class="p">(</span><span class="n">phase</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Z^2_n statistics, a` la Buccheri+83, A&amp;A, 128, 245, eq. 2.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    phase : array of floats</span>
+<span class="sd">        The phases of the events</span>
+<span class="sd">    n : int, default 2</span>
+<span class="sd">        Number of harmonics, including the fundamental</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    z2_n : float</span>
+<span class="sd">        The Z^2_n statistic</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ks</span><span class="p">,</span> <span class="n">all_zs</span> <span class="o">=</span> <span class="n">z_n_events_all</span><span class="p">(</span><span class="n">phase</span><span class="p">,</span> <span class="n">nmax</span><span class="o">=</span><span class="n">n</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">all_zs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="z_n">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.z_n">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">z_n</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;events&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Z^2_n statistics, a` la Buccheri+83, A&amp;A, 128, 245, eq. 2.</span>
+
+<span class="sd">    If datatype is &quot;binned&quot; or &quot;gauss&quot;, uses the formulation from</span>
+<span class="sd">    Bachetti+2021, ApJ, arxiv:2012.11397</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data : array of floats</span>
+<span class="sd">        Phase values or binned flux values</span>
+<span class="sd">    n : int, default 2</span>
+<span class="sd">        Number of harmonics, including the fundamental</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    datatype : str</span>
+<span class="sd">        The data type: &quot;events&quot; if phase values between 0 and 1,</span>
+<span class="sd">        &quot;binned&quot; if folded pulse profile from photons, &quot;gauss&quot; if</span>
+<span class="sd">        folded pulse profile with normally-distributed fluxes</span>
+<span class="sd">    err : float</span>
+<span class="sd">        The uncertainty on the pulse profile fluxes (required for</span>
+<span class="sd">        datatype=&quot;gauss&quot;, ignored otherwise)</span>
+<span class="sd">    norm : float</span>
+<span class="sd">        For backwards compatibility; if norm is not None, it is</span>
+<span class="sd">        substituted to ``data``, and data is ignored. This raises</span>
+<span class="sd">        a DeprecationWarning</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    z2_n : float</span>
+<span class="sd">        The Z^2_n statistics of the events.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">norm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;The use of ``z_n(phase, norm=profile)`` is deprecated. Use &quot;</span>
+            <span class="s2">&quot;``z_n(profile, datatype=&#39;binned&#39;)`` instead&quot;</span><span class="p">,</span>
+            <span class="ne">DeprecationWarning</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">norm</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">):</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">norm</span>
+            <span class="n">datatype</span> <span class="o">=</span> <span class="s2">&quot;binned&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">datatype</span> <span class="o">=</span> <span class="s2">&quot;events&quot;</span>
+
+    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="k">if</span> <span class="n">datatype</span> <span class="o">==</span> <span class="s2">&quot;binned&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">z_n_binned_events</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">datatype</span> <span class="o">==</span> <span class="s2">&quot;events&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">z_n_events</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">datatype</span> <span class="o">==</span> <span class="s2">&quot;gauss&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">err</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;If datatype=&#39;gauss&#39;, you need to specify an uncertainty (err)&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">z_n_gauss</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">err</span><span class="p">)</span>
+
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown datatype requested for Z_n (</span><span class="si">{</span><span class="n">datatype</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="htest">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.htest">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">htest</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">nmax</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;binned&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;htest-test statistic, a` la De Jager+89, A&amp;A, 221, 180D, eq. 2.</span>
+
+<span class="sd">    If datatype is &quot;binned&quot; or &quot;gauss&quot;, uses the formulation from</span>
+<span class="sd">    Bachetti+2021, ApJ, arxiv:2012.11397</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data : array of floats</span>
+<span class="sd">        Phase values or binned flux values</span>
+<span class="sd">    nmax : int, default 20</span>
+<span class="sd">        Maximum of harmonics for Z^2_n</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    datatype : str</span>
+<span class="sd">        The datatype of data: &quot;events&quot; if phase values between 0 and 1,</span>
+<span class="sd">        &quot;binned&quot; if folded pulse profile from photons, &quot;gauss&quot; if</span>
+<span class="sd">        folded pulse profile with normally-distributed fluxes</span>
+<span class="sd">    err : float</span>
+<span class="sd">        The uncertainty on the pulse profile fluxes (required for</span>
+<span class="sd">        datatype=&quot;gauss&quot;, ignored otherwise)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    M : int</span>
+<span class="sd">        The best number of harmonics that describe the signal.</span>
+<span class="sd">    htest : float</span>
+<span class="sd">        The htest statistics of the events.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">datatype</span> <span class="o">==</span> <span class="s2">&quot;binned&quot;</span><span class="p">:</span>
+        <span class="n">ks</span><span class="p">,</span> <span class="n">zs</span> <span class="o">=</span> <span class="n">z_n_binned_events_all</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">nmax</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">datatype</span> <span class="o">==</span> <span class="s2">&quot;events&quot;</span><span class="p">:</span>
+        <span class="n">ks</span><span class="p">,</span> <span class="n">zs</span> <span class="o">=</span> <span class="n">z_n_events_all</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">nmax</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">datatype</span> <span class="o">==</span> <span class="s2">&quot;gauss&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">err</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;If datatype=&#39;gauss&#39;, you need to specify an uncertainty (err)&quot;</span><span class="p">)</span>
+        <span class="n">ks</span><span class="p">,</span> <span class="n">zs</span> <span class="o">=</span> <span class="n">z_n_gauss_all</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">nmax</span><span class="o">=</span><span class="n">nmax</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">err</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown datatype requested for htest (</span><span class="si">{</span><span class="n">datatype</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+    <span class="n">Hs</span> <span class="o">=</span> <span class="n">zs</span> <span class="o">-</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">ks</span> <span class="o">+</span> <span class="mi">4</span>
+    <span class="n">bestidx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">Hs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ks</span><span class="p">[</span><span class="n">bestidx</span><span class="p">],</span> <span class="n">Hs</span><span class="p">[</span><span class="n">bestidx</span><span class="p">]</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">fftfit_fun</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="n">template</span><span class="p">,</span> <span class="n">amplitude</span><span class="p">,</span> <span class="n">phase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Function to be minimized for the FFTFIT method.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span>
+
+
+<div class="viewcode-block" id="fftfit">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.fftfit">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fftfit</span><span class="p">(</span><span class="n">prof</span><span class="p">,</span> <span class="n">template</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">quick</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_bootstrap</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">fftfit_kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Align a template to a pulse profile.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    prof : array</span>
+<span class="sd">        The pulse profile</span>
+<span class="sd">    template : array, default None</span>
+<span class="sd">        The template of the pulse used to perform the TOA calculation. If None,</span>
+<span class="sd">        a simple sinusoid is used</span>
+
+<span class="sd">    Other parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    sigma : array</span>
+<span class="sd">        error on profile bins (currently has no effect)</span>
+<span class="sd">    use_bootstrap : bool</span>
+<span class="sd">        Calculate errors using a bootstrap method, with `fftfit_error`</span>
+<span class="sd">    **fftfit_kwargs : additional arguments for `fftfit_error`</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    mean_amp, std_amp : floats</span>
+<span class="sd">        Mean and standard deviation of the amplitude</span>
+<span class="sd">    mean_phase, std_phase : floats</span>
+<span class="sd">        Mean and standard deviation of the phase</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">prof</span> <span class="o">=</span> <span class="n">prof</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">prof</span><span class="p">)</span>
+
+    <span class="n">template</span> <span class="o">=</span> <span class="n">template</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">template</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">taylor_fftfit</span><span class="p">(</span><span class="n">prof</span><span class="p">,</span> <span class="n">template</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_plot_TOA_fit</span><span class="p">(</span>
+    <span class="n">profile</span><span class="p">,</span> <span class="n">template</span><span class="p">,</span> <span class="n">toa</span><span class="p">,</span> <span class="n">mod</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">toaerr</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">additional_phase</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">1</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot diagnostic information on the TOA.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.interpolate</span><span class="w"> </span><span class="kn">import</span> <span class="n">interp1d</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+    <span class="n">phases</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">profile</span><span class="p">))</span>
+    <span class="n">profile</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">profile</span><span class="p">,</span> <span class="n">profile</span><span class="p">))</span>
+    <span class="n">template</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">template</span><span class="p">,</span> <span class="n">template</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">mod</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mod</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">phases</span><span class="p">,</span> <span class="n">template</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="s2">&quot;extrapolate&quot;</span><span class="p">)</span>
+
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">phases</span><span class="p">,</span> <span class="n">profile</span><span class="p">,</span> <span class="n">drawstyle</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">)</span>
+    <span class="n">fine_phases</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+    <span class="n">fine_phases_shifted</span> <span class="o">=</span> <span class="n">fine_phases</span> <span class="o">-</span> <span class="n">toa</span> <span class="o">/</span> <span class="n">period</span> <span class="o">+</span> <span class="n">additional_phase</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">mod</span><span class="p">(</span><span class="n">fine_phases_shifted</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">fine_phases_shifted</span><span class="p">))</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">model</span><span class="p">,</span> <span class="n">model</span><span class="p">))</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2000</span><span class="p">),</span> <span class="n">model</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">toaerr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">((</span><span class="n">toa</span> <span class="o">-</span> <span class="n">toaerr</span><span class="p">)</span> <span class="o">/</span> <span class="n">period</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">((</span><span class="n">toa</span> <span class="o">+</span> <span class="n">toaerr</span><span class="p">)</span> <span class="o">/</span> <span class="n">period</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">toa</span> <span class="o">/</span> <span class="n">period</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">profile</span><span class="p">),</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">toa</span> <span class="o">/</span> <span class="n">period</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">profile</span><span class="p">),</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">)</span>
+    <span class="n">timestamp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">.png&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">timestamp</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">show</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_TOA">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.get_TOA">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_TOA</span><span class="p">(</span>
+    <span class="n">prof</span><span class="p">,</span>
+    <span class="n">period</span><span class="p">,</span>
+    <span class="n">tstart</span><span class="p">,</span>
+    <span class="n">template</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">additional_phase</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">quick</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">debug</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">use_bootstrap</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">fftfit_kwargs</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the Time-Of-Arrival of a pulse.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    prof : array</span>
+<span class="sd">        The pulse profile</span>
+<span class="sd">    template : array, default None</span>
+<span class="sd">        The template of the pulse used to perform the TOA calculation, if any.</span>
+<span class="sd">        Otherwise use the default of fftfit</span>
+<span class="sd">    tstart : float</span>
+<span class="sd">        The time at the start of the pulse profile</span>
+
+<span class="sd">    Other parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    nstep : int, optional, default 100</span>
+<span class="sd">        Number of steps for the bootstrap method</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    toa, toastd : floats</span>
+<span class="sd">        Mean and standard deviation of the TOA</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">nbin</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">prof</span><span class="p">)</span>
+
+    <span class="n">ph</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">nbin</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">template</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">template</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">ph</span><span class="p">)</span>
+
+    <span class="n">mean_amp</span><span class="p">,</span> <span class="n">std_amp</span><span class="p">,</span> <span class="n">phase_res</span><span class="p">,</span> <span class="n">phase_res_err</span> <span class="o">=</span> <span class="n">fftfit</span><span class="p">(</span>
+        <span class="n">prof</span><span class="p">,</span> <span class="n">template</span><span class="o">=</span><span class="n">template</span><span class="p">,</span> <span class="n">quick</span><span class="o">=</span><span class="n">quick</span><span class="p">,</span> <span class="n">use_bootstrap</span><span class="o">=</span><span class="n">use_bootstrap</span><span class="p">,</span> <span class="o">**</span><span class="n">fftfit_kwargs</span>
+    <span class="p">)</span>
+    <span class="n">phase_res</span> <span class="o">=</span> <span class="n">phase_res</span> <span class="o">+</span> <span class="n">additional_phase</span>
+    <span class="n">phase_res</span> <span class="o">=</span> <span class="n">phase_res</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">phase_res</span><span class="p">)</span>
+
+    <span class="n">toa</span> <span class="o">=</span> <span class="n">tstart</span> <span class="o">+</span> <span class="n">phase_res</span> <span class="o">*</span> <span class="n">period</span>
+    <span class="n">toaerr</span> <span class="o">=</span> <span class="n">phase_res_err</span> <span class="o">*</span> <span class="n">period</span>
+
+    <span class="k">if</span> <span class="n">debug</span><span class="p">:</span>
+        <span class="n">_plot_TOA_fit</span><span class="p">(</span>
+            <span class="n">prof</span><span class="p">,</span>
+            <span class="n">template</span><span class="p">,</span>
+            <span class="n">toa</span> <span class="o">-</span> <span class="n">tstart</span><span class="p">,</span>
+            <span class="n">toaerr</span><span class="o">=</span><span class="n">toaerr</span><span class="p">,</span>
+            <span class="n">additional_phase</span><span class="o">=</span><span class="n">additional_phase</span><span class="p">,</span>
+            <span class="n">period</span><span class="o">=</span><span class="n">period</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">toa</span><span class="p">,</span> <span class="n">toaerr</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_and_prepare_TOAs</span><span class="p">(</span><span class="n">mjds</span><span class="p">,</span> <span class="n">ephem</span><span class="o">=</span><span class="s2">&quot;DE405&quot;</span><span class="p">):</span>
+    <span class="n">toalist</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">mjds</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">mjds</span><span class="p">):</span>
+        <span class="n">toalist</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">toa</span><span class="o">.</span><span class="n">TOA</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">obs</span><span class="o">=</span><span class="s2">&quot;Barycenter&quot;</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="s2">&quot;tdb&quot;</span><span class="p">)</span>
+
+    <span class="n">toalist</span> <span class="o">=</span> <span class="n">toa</span><span class="o">.</span><span class="n">TOAs</span><span class="p">(</span><span class="n">toalist</span><span class="o">=</span><span class="n">toalist</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">&quot;tdb&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">toalist</span><span class="o">.</span><span class="n">table</span><span class="o">.</span><span class="n">colnames</span><span class="p">:</span>
+        <span class="n">toalist</span><span class="o">.</span><span class="n">compute_TDBs</span><span class="p">(</span><span class="n">ephem</span><span class="o">=</span><span class="n">ephem</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">&quot;ssb_obs_pos&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">toalist</span><span class="o">.</span><span class="n">table</span><span class="o">.</span><span class="n">colnames</span><span class="p">:</span>
+        <span class="n">toalist</span><span class="o">.</span><span class="n">compute_posvels</span><span class="p">(</span><span class="n">ephem</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">toalist</span>
+
+
+<div class="viewcode-block" id="get_orbital_correction_from_ephemeris_file">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.get_orbital_correction_from_ephemeris_file">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_orbital_correction_from_ephemeris_file</span><span class="p">(</span>
+    <span class="n">mjdstart</span><span class="p">,</span> <span class="n">mjdstop</span><span class="p">,</span> <span class="n">parfile</span><span class="p">,</span> <span class="n">ntimes</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">ephem</span><span class="o">=</span><span class="s2">&quot;DE405&quot;</span><span class="p">,</span> <span class="n">return_pint_model</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get a correction for orbital motion from pulsar parameter file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mjdstart, mjdstop : float</span>
+<span class="sd">        Start and end of the time interval where we want the orbital solution</span>
+<span class="sd">    parfile : str</span>
+<span class="sd">        Any parameter file understood by PINT (Tempo or Tempo2 format)</span>
+
+<span class="sd">    Other parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ntimes : int</span>
+<span class="sd">        Number of time intervals to use for interpolation. Default 1000</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    correction_sec : function</span>
+<span class="sd">        Function that accepts in input an array of times in seconds and a</span>
+<span class="sd">        floating-point MJDref value, and returns the deorbited times</span>
+<span class="sd">    correction_mjd : function</span>
+<span class="sd">        Function that accepts times in MJDs and returns the deorbited times.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.interpolate</span><span class="w"> </span><span class="kn">import</span> <span class="n">interp1d</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">astropy</span><span class="w"> </span><span class="kn">import</span> <span class="n">units</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">HAS_PINT</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;You need the optional dependency PINT to use this &quot;</span>
+            <span class="s2">&quot;functionality: github.com/nanograv/pint&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">simon</span><span class="p">(</span><span class="s2">&quot;Assuming events are already referred to the solar system barycenter (timescale is TDB)&quot;</span><span class="p">)</span>
+
+    <span class="n">mjds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">mjdstart</span><span class="p">,</span> <span class="n">mjdstop</span><span class="p">,</span> <span class="n">ntimes</span><span class="p">)</span>
+    <span class="n">toalist</span> <span class="o">=</span> <span class="n">_load_and_prepare_TOAs</span><span class="p">(</span><span class="n">mjds</span><span class="p">,</span> <span class="n">ephem</span><span class="o">=</span><span class="n">ephem</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">get_model</span><span class="p">(</span><span class="n">parfile</span><span class="p">)</span>
+    <span class="n">delays</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">delay</span><span class="p">(</span><span class="n">toalist</span><span class="p">)</span>
+
+    <span class="n">correction_mjd_rough</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span>
+        <span class="n">mjds</span><span class="p">,</span>
+        <span class="p">(</span><span class="n">toalist</span><span class="o">.</span><span class="n">table</span><span class="p">[</span><span class="s2">&quot;tdbld&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">units</span><span class="o">.</span><span class="n">d</span> <span class="o">-</span> <span class="n">delays</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">units</span><span class="o">.</span><span class="n">d</span><span class="p">)</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+        <span class="n">fill_value</span><span class="o">=</span><span class="s2">&quot;extrapolate&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">correction_mjd</span><span class="p">(</span><span class="n">mjds</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the orbital correction.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        mjds : array-like</span>
+<span class="sd">            The input times in MJD</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        mjds: Corrected times in MJD</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">xvals</span> <span class="o">=</span> <span class="n">correction_mjd_rough</span><span class="o">.</span><span class="n">x</span>
+        <span class="c1"># Maybe this will be fixed if scipy/scipy#9602 is accepted</span>
+        <span class="n">bad</span> <span class="o">=</span> <span class="p">(</span><span class="n">mjds</span> <span class="o">&lt;</span> <span class="n">xvals</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">|</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">mjds</span> <span class="o">&gt;</span> <span class="n">xvals</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">bad</span><span class="p">):</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;Some points are outside the interpolation range:&quot;</span> <span class="s2">&quot; </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">mjds</span><span class="p">[</span><span class="n">bad</span><span class="p">])</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">correction_mjd_rough</span><span class="p">(</span><span class="n">mjds</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">correction_sec</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">mjdref</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the orbital correction.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        times : array-like</span>
+<span class="sd">            The input times in seconds of Mission Elapsed Time (MET)</span>
+<span class="sd">        mjdref : float</span>
+<span class="sd">            MJDREF, reference MJD for the mission</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        mets: array-like</span>
+<span class="sd">            Corrected times in MET seconds</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">deorb_mjds</span> <span class="o">=</span> <span class="n">correction_mjd</span><span class="p">(</span><span class="n">times</span> <span class="o">/</span> <span class="mi">86400</span> <span class="o">+</span> <span class="n">mjdref</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">deorb_mjds</span> <span class="o">-</span> <span class="n">mjdref</span><span class="p">)</span> <span class="o">*</span> <span class="mi">86400</span><span class="p">)</span>
+
+    <span class="n">retvals</span> <span class="o">=</span> <span class="p">[</span><span class="n">correction_sec</span><span class="p">,</span> <span class="n">correction_mjd</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">return_pint_model</span><span class="p">:</span>
+        <span class="n">retvals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">retvals</span></div>
+
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

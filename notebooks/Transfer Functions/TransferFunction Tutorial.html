@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Contents &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Window functions" href="../Window%20Functions/window_functions.html" />
+    <link rel="prev" title="Setting Up Data" href="Data%20Preparation.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="../Window%20Functions/window_functions.html" title="Window functions">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="Data%20Preparation.html" title="Setting Up Data">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../simulator.html" accesskey="U">Stingray Simulator (<code class="xref py py-obj docutils literal notranslate"><span class="pre">stingray.simulator</span></code>)</a> &#187;</li>
+      
+      <li>Contents</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="Contents">
+<h1>Contents<a class="headerlink" href="#Contents" title="Link to this heading">¶</a></h1>
+<p>This notebook covers the basics of creating TransferFunction object, obtaining time and energy resolved responses, plotting them and using IO methods available. Finally, artificial responses are introduced which provide a way for quick testing.</p>
+</section>
+<section id="Setup">
+<h1>Setup<a class="headerlink" href="#Setup" title="Link to this heading">¶</a></h1>
+<p>Set up some useful libraries.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="o">%</span><span class="k">matplotlib</span> inline
+</pre></div>
+</div>
+</div>
+<p>Import relevant stingray libraries.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.simulator.transfer</span><span class="w"> </span><span class="kn">import</span> <span class="n">TransferFunction</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.simulator.transfer</span><span class="w"> </span><span class="kn">import</span> <span class="n">simple_ir</span><span class="p">,</span> <span class="n">relativistic_ir</span>
+</pre></div>
+</div>
+</div>
+<section id="Creating-TransferFunction">
+<h2>Creating TransferFunction<a class="headerlink" href="#Creating-TransferFunction" title="Link to this heading">¶</a></h2>
+<p>A transfer function can be initialized by passing a 2-d array containing time across the first dimension and energy across the second. For example, if the 2-d array is defined by <code class="docutils literal notranslate"><span class="pre">arr</span></code>, then <code class="docutils literal notranslate"><span class="pre">arr[1][5]</span></code> defines a time of 5 units and energy of 1 unit.</p>
+<p>For the purpose of this tutorial, we have stored a 2-d array in a text file named <code class="docutils literal notranslate"><span class="pre">intensity.txt</span></code>. The script to generate this file is explained in <code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">Preparation</span></code> notebook.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">response</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="s1">&#39;intensity.txt&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Initialize transfer function by passing the array defined above.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">transfer</span> <span class="o">=</span> <span class="n">TransferFunction</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+<span class="n">transfer</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(524, 744)
+</pre></div></div>
+</div>
+<p>By default, time and energy spacing across both axes are set to 1. However, they can be changed by supplying additional parameters <code class="docutils literal notranslate"><span class="pre">dt</span></code> and <code class="docutils literal notranslate"><span class="pre">de</span></code>.</p>
+</section>
+<section id="Obtaining-Time-Resolved-Response">
+<h2>Obtaining Time-Resolved Response<a class="headerlink" href="#Obtaining-Time-Resolved-Response" title="Link to this heading">¶</a></h2>
+<p>The 2-d transfer function can be converted into a time-resolved/energy-averaged response.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">transfer</span><span class="o">.</span><span class="n">time_response</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<p>This sets <code class="docutils literal notranslate"><span class="pre">time</span></code> parameter which can be accessed by <code class="docutils literal notranslate"><span class="pre">transfer.time</span></code></p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">transfer</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">10</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([0., 0., 0., 0., 0., 0., 0., 0., 0.])
+</pre></div></div>
+</div>
+<p>Additionally, energy interval over which to average, can be specified by specifying <code class="docutils literal notranslate"><span class="pre">e0</span></code> and <code class="docutils literal notranslate"><span class="pre">e1</span></code> parameters.</p>
+</section>
+<section id="Obtaining-Energy-Resolved-Response">
+<h2>Obtaining Energy-Resolved Response<a class="headerlink" href="#Obtaining-Energy-Resolved-Response" title="Link to this heading">¶</a></h2>
+<p>Energy-resolved/time-averaged response can be also be formed from 2-d transfer function.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">transfer</span><span class="o">.</span><span class="n">energy_response</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<p>This sets <code class="docutils literal notranslate"><span class="pre">energy</span></code> parameter which can be accessed by <code class="docutils literal notranslate"><span class="pre">transfer.energy</span></code></p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">transfer</span><span class="o">.</span><span class="n">energy</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">10</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([0., 0., 0., 0., 0., 0., 0., 0., 0.])
+</pre></div></div>
+</div>
+</section>
+<section id="Plotting-Responses">
+<h2>Plotting Responses<a class="headerlink" href="#Plotting-Responses" title="Link to this heading">¶</a></h2>
+<p>TransferFunction() creates plots of <code class="docutils literal notranslate"><span class="pre">time-resolved</span></code>, <code class="docutils literal notranslate"><span class="pre">energy-resolved</span></code> and <code class="docutils literal notranslate"><span class="pre">2-d</span> <span class="pre">responses</span></code>. These plots can be saved by setting <code class="docutils literal notranslate"><span class="pre">save</span></code> parameter.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">transfer</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">response</span><span class="o">=</span><span class="s1">&#39;2d&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">transfer</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">response</span><span class="o">=</span><span class="s1">&#39;time&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">transfer</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">response</span><span class="o">=</span><span class="s1">&#39;energy&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>By enabling <code class="docutils literal notranslate"><span class="pre">save=True</span></code> parameter, the plots can be also saved.</p>
+</section>
+<section id="IO">
+<h2>IO<a class="headerlink" href="#IO" title="Link to this heading">¶</a></h2>
+<p>TransferFunction can be saved in pickle format and retrieved later.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">transfer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;transfer.pickle&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Saved files can be read using static <code class="docutils literal notranslate"><span class="pre">read()</span></code> method.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">transfer_new</span> <span class="o">=</span> <span class="n">TransferFunction</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;transfer.pickle&#39;</span><span class="p">)</span>
+<span class="n">transfer_new</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">10</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([0., 0., 0., 0., 0., 0., 0., 0., 0.])
+</pre></div></div>
+</div>
+</section>
+<section id="Artificial-Responses">
+<h2>Artificial Responses<a class="headerlink" href="#Artificial-Responses" title="Link to this heading">¶</a></h2>
+<p>For quick testing, two helper impulse response models are provided.</p>
+<section id="1--Simple-IR">
+<h3>1- Simple IR<a class="headerlink" href="#1--Simple-IR" title="Link to this heading">¶</a></h3>
+<p>simple_ir() allows to define an impulse response of constant height. It takes in time resolution starting time, width and intensity as arguments.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">s_ir</span> <span class="o">=</span> <span class="n">simple_ir</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="mf">0.125</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">intensity</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">s_ir</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[&lt;matplotlib.lines.Line2D at 0x2a22c0a90&gt;]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Transfer_Functions_TransferFunction_Tutorial_39_1.png" src="../../_images/notebooks_Transfer_Functions_TransferFunction_Tutorial_39_1.png" />
+</div>
+</div>
+</section>
+<section id="2--Relativistic-IR">
+<h3>2- Relativistic IR<a class="headerlink" href="#2--Relativistic-IR" title="Link to this heading">¶</a></h3>
+<p>A more realistic impulse response mimicking black hole dynamics can be created using relativistic_ir(). Its arguments are: time_resolution, primary peak time, secondary peak time, end time, primary peak value, secondary peak value, rise slope and decay slope. These paramaters are set to appropriate values by default.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">r_ir</span> <span class="o">=</span> <span class="n">relativistic_ir</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="mf">0.125</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">r_ir</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[&lt;matplotlib.lines.Line2D at 0x2a288ec20&gt;]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Transfer_Functions_TransferFunction_Tutorial_42_1.png" src="../../_images/notebooks_Transfer_Functions_TransferFunction_Tutorial_42_1.png" />
+</div>
+</div>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Contents</a></li>
+<li><a class="reference internal" href="#Setup">Setup</a><ul>
+<li><a class="reference internal" href="#Creating-TransferFunction">Creating TransferFunction</a></li>
+<li><a class="reference internal" href="#Obtaining-Time-Resolved-Response">Obtaining Time-Resolved Response</a></li>
+<li><a class="reference internal" href="#Obtaining-Energy-Resolved-Response">Obtaining Energy-Resolved Response</a></li>
+<li><a class="reference internal" href="#Plotting-Responses">Plotting Responses</a></li>
+<li><a class="reference internal" href="#IO">IO</a></li>
+<li><a class="reference internal" href="#Artificial-Responses">Artificial Responses</a><ul>
+<li><a class="reference internal" href="#1--Simple-IR">1- Simple IR</a></li>
+<li><a class="reference internal" href="#2--Relativistic-IR">2- Relativistic IR</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/Transfer Functions/TransferFunction Tutorial.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

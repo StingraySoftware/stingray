@@ -1,0 +1,1806 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Contents &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Creating a light curve" href="../Lightcurve/Lightcurve%20tutorial.html" />
+    <link rel="prev" title="Core Stingray Functionality" href="../../core.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="../Lightcurve/Lightcurve%20tutorial.html" title="Creating a light curve">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="../../core.html" title="Core Stingray Functionality">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../core.html" accesskey="U">Core Stingray Functionality</a> &#187;</li>
+      
+      <li>Contents</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="Contents">
+<h1>Contents<a class="headerlink" href="#Contents" title="Link to this heading">¶</a></h1>
+<p>This notebook covers the basics of creating an event list object and carrying out various operations such as simulating time and energies, joining, storing and retrieving event lists.</p>
+</section>
+<section id="Setup">
+<h1>Setup<a class="headerlink" href="#Setup" title="Link to this heading">¶</a></h1>
+<p>Import some useful libraries.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="o">%</span><span class="k">matplotlib</span> inline
+</pre></div>
+</div>
+</div>
+<p>Import some relevant stingray classes.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventList</span><span class="p">,</span> <span class="n">Lightcurve</span>
+</pre></div>
+</div>
+</div>
+<section id="Creating-EventList-from-Photon-Arrival-Times">
+<h2>Creating EventList from Photon Arrival Times<a class="headerlink" href="#Creating-EventList-from-Photon-Arrival-Times" title="Link to this heading">¶</a></h2>
+<p>Given photon arrival times, an eventlist object can be created. Times are assumed to be seconds from a reference MJD, that can optionally be specified with the <code class="docutils literal notranslate"><span class="pre">mjdref</span></code> keyword and attribute.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">times</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.1</span><span class="p">,</span> <span class="mf">2.2</span><span class="p">,</span> <span class="mf">3.7</span><span class="p">]</span>
+<span class="n">mjdref</span><span class="o">=</span><span class="mf">58000.</span>
+</pre></div>
+</div>
+</div>
+<p>Create event list object by passing arrival times as argument.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">mjdref</span><span class="o">=</span><span class="n">mjdref</span><span class="p">)</span>
+<span class="n">ev</span><span class="o">.</span><span class="n">time</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([0.5, 1.1, 2.2, 3.7])
+</pre></div></div>
+</div>
+<p>One can add all sorts of data to the <code class="docutils literal notranslate"><span class="pre">EventList</span></code> object, it is very flexible. In general, we suggest to stick with easily interpretable attributes, like <code class="docutils literal notranslate"><span class="pre">energy</span></code> or <code class="docutils literal notranslate"><span class="pre">pi</span></code>.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>ev.energy = [0., 3., 4., 20.]
+</pre></div>
+</div>
+<p>is the same as</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">energy</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">3.</span><span class="p">,</span> <span class="mf">4.</span><span class="p">,</span> <span class="mf">20.</span><span class="p">]</span>
+<span class="n">ev</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">energy</span><span class="o">=</span><span class="n">energy</span><span class="p">,</span> <span class="n">mjdref</span><span class="o">=</span><span class="n">mjdref</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>It is always recommended to specify the good time intervals (GTIs) of the event list, as the time intervals where the instrument was fully operational. If not specified, GTIs are defined automatically as the first and the last event time.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">gti</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">]]</span>
+<span class="n">ev</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="n">gti</span><span class="p">,</span> <span class="n">energy</span><span class="o">=</span><span class="n">energy</span><span class="p">,</span> <span class="n">mjdref</span><span class="o">=</span><span class="n">mjdref</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+<section id="Roundtrip-to-Astropy-compatible-formats">
+<h1>Roundtrip to Astropy-compatible formats<a class="headerlink" href="#Roundtrip-to-Astropy-compatible-formats" title="Link to this heading">¶</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">EventList</span></code> has the following methods that allow an easy roundtrip to Astropy objects: <code class="docutils literal notranslate"><span class="pre">to_astropy_table</span></code>, <code class="docutils literal notranslate"><span class="pre">to_astropy_timeseries</span></code>, <code class="docutils literal notranslate"><span class="pre">from_astropy_table</span></code>, <code class="docutils literal notranslate"><span class="pre">from_astropy_timeseries</span></code></p>
+<p>This allows a better interoperability with the Astropy ecosystem.</p>
+<p>In this roundtrip, a <code class="docutils literal notranslate"><span class="pre">Table</span></code> or <code class="docutils literal notranslate"><span class="pre">Timeseries</span></code> object is created, having as columns <code class="docutils literal notranslate"><span class="pre">time</span></code> and all other attributes of the same size (e.g. <code class="docutils literal notranslate"><span class="pre">pi</span></code>, <code class="docutils literal notranslate"><span class="pre">energy</span></code>), and the rest of the attributes (e.g. <code class="docutils literal notranslate"><span class="pre">gti</span></code>, <code class="docutils literal notranslate"><span class="pre">mjdref</span></code>) in the table’s metadata.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">table</span> <span class="o">=</span> <span class="n">ev</span><span class="o">.</span><span class="n">to_astropy_table</span><span class="p">()</span>
+<span class="n">table</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div><i>Table length=4</i>
+<table id="table140353174047808" class="table-striped table-bordered table-condensed">
+<thead><tr><th>energy</th><th>time</th></tr></thead>
+<thead><tr><th>float64</th><th>float64</th></tr></thead>
+<tr><td>0.0</td><td>0.5</td></tr>
+<tr><td>3.0</td><td>1.1</td></tr>
+<tr><td>4.0</td><td>2.2</td></tr>
+<tr><td>20.0</td><td>3.7</td></tr>
+</table></div></div>
+</div>
+<p>When converting to <code class="docutils literal notranslate"><span class="pre">Timeseries</span></code>, times are transformed into <code class="docutils literal notranslate"><span class="pre">astropy.time.TimeDelta</span></code> objects.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">timeseries</span> <span class="o">=</span> <span class="n">ev</span><span class="o">.</span><span class="n">to_astropy_timeseries</span><span class="p">()</span>
+<span class="n">timeseries</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div><i>TimeSeries length=4</i>
+<table id="table140353071164624" class="table-striped table-bordered table-condensed">
+<thead><tr><th>time</th><th>energy</th></tr></thead>
+<thead><tr><th>object</th><th>float64</th></tr></thead>
+<tr><td>5.787037037037037e-06</td><td>0.0</td></tr>
+<tr><td>1.2731481481481482e-05</td><td>3.0</td></tr>
+<tr><td>2.5462962962962965e-05</td><td>4.0</td></tr>
+<tr><td>4.282407407407408e-05</td><td>20.0</td></tr>
+</table></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">table</span><span class="o">.</span><span class="n">meta</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+OrderedDict([(&#39;dt&#39;, 0),
+             (&#39;gti&#39;, array([[0, 4]])),
+             (&#39;mjdref&#39;, 58000.0),
+             (&#39;ncounts&#39;, 4),
+             (&#39;notes&#39;, &#39;&#39;)])
+</pre></div></div>
+</div>
+<p>Of course, these objects can be converted back to event lists. The user should be careful in defining the proper column names and metadata so that the final object is a valid <code class="docutils literal notranslate"><span class="pre">EventList</span></code></p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">table_ev</span> <span class="o">=</span> <span class="n">EventList</span><span class="o">.</span><span class="n">from_astropy_table</span><span class="p">(</span><span class="n">table</span><span class="p">)</span>
+<span class="n">table_ts</span> <span class="o">=</span> <span class="n">EventList</span><span class="o">.</span><span class="n">from_astropy_timeseries</span><span class="p">(</span><span class="n">timeseries</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">table_ev</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">table_ts</span><span class="o">.</span><span class="n">time</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(array([0.5, 1.1, 2.2, 3.7]), array([0.5, 1.1, 2.2, 3.7]))
+</pre></div></div>
+</div>
+<section id="Loading-and-writing-EventList-objects">
+<h2>Loading and writing EventList objects<a class="headerlink" href="#Loading-and-writing-EventList-objects" title="Link to this heading">¶</a></h2>
+<p>We made it possible to save and load data in a number of different formats.</p>
+<p>The general syntax is</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>ev = EventList.read(filename, format)
+
+ev.write(filename, format)
+</pre></div>
+</div>
+<p>There are three main blocks of formats that might be useful:</p>
+<ol class="arabic simple">
+<li><p>(read-only) HEASoft-compatible formats -&gt; read event data from HEASOFT-supported missions</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pickle</span></code>: reading and saving EventLists from/to Python pickle objects</p></li>
+<li><p>Any format compatible with <code class="docutils literal notranslate"><span class="pre">astropy.table.Table</span></code> objects.</p></li>
+</ol>
+</section>
+</section>
+<section id="Loading-an-EventList-from-an-X-ray-observation-in-HEASoft-compatible-format">
+<h1>Loading an EventList from an X-ray observation in HEASoft-compatible format<a class="headerlink" href="#Loading-an-EventList-from-an-X-ray-observation-in-HEASoft-compatible-format" title="Link to this heading">¶</a></h1>
+<p>Loading event data from HEASoft-supported missions in FITS format is easy. It’s sufficient to use the <code class="docutils literal notranslate"><span class="pre">read</span></code> method with <code class="docutils literal notranslate"><span class="pre">hea</span></code> or, equivalently, <code class="docutils literal notranslate"><span class="pre">ogip</span></code>, as format.</p>
+<p>Beware: please use <code class="docutils literal notranslate"><span class="pre">hea</span></code> or <code class="docutils literal notranslate"><span class="pre">ogip</span></code>, not <code class="docutils literal notranslate"><span class="pre">fits</span></code>! It would make the roundrip to Astropy tables more complicated, as Astropy supports a generic FITS writer which is not necessarily compatible with HEASoft.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev</span> <span class="o">=</span> <span class="n">EventList</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;events.fits&#39;</span><span class="p">,</span> <span class="s1">&#39;ogip&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Times are saved to the <code class="docutils literal notranslate"><span class="pre">time</span></code> attribute, GTIs to the <code class="docutils literal notranslate"><span class="pre">gti</span></code> attribute, MJDREF to the <code class="docutils literal notranslate"><span class="pre">mjdref</span></code> attribute, etc.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev</span><span class="o">.</span><span class="n">time</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([80000000.23635569, 80000001.47479323, 80000001.78458866,
+       80000002.78943624, 80000003.42859936, 80000004.07943003,
+       80000006.09310323, 80000007.18041813, 80000008.17602143,
+       80000008.20403489], dtype=float128)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev</span><span class="o">.</span><span class="n">mjdref</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+55197.00076601852
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev</span><span class="o">.</span><span class="n">gti</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([[80000000., 80001025.]], dtype=float128)
+</pre></div></div>
+</div>
+</section>
+<section id="Roundtrip-to-pickle-objects">
+<h1>Roundtrip to pickle objects<a class="headerlink" href="#Roundtrip-to-pickle-objects" title="Link to this heading">¶</a></h1>
+<p>It is possible to save and load eventlist objects using <code class="docutils literal notranslate"><span class="pre">pickle</span></code>.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;events.p&quot;</span><span class="p">,</span> <span class="s2">&quot;pickle&quot;</span><span class="p">)</span>
+<span class="n">ev2</span> <span class="o">=</span> <span class="n">EventList</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s2">&quot;events.p&quot;</span><span class="p">,</span> <span class="s2">&quot;pickle&quot;</span><span class="p">)</span>
+
+<span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">ev2</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">ev</span><span class="o">.</span><span class="n">time</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">ev2</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="n">ev</span><span class="o">.</span><span class="n">gti</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(True, True)
+</pre></div></div>
+</div>
+</section>
+<section id="id1">
+<h1>Roundtrip to Astropy-compatible formats<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h1>
+<p>If the <code class="docutils literal notranslate"><span class="pre">read</span></code> and <code class="docutils literal notranslate"><span class="pre">write</span></code> methods receive a format which is not <code class="docutils literal notranslate"><span class="pre">hea</span></code>, <code class="docutils literal notranslate"><span class="pre">ogip</span></code>, or <code class="docutils literal notranslate"><span class="pre">pickle</span></code>, the event list is transformed into an <code class="docutils literal notranslate"><span class="pre">Astropy</span></code> <code class="docutils literal notranslate"><span class="pre">Table</span></code> object with the methods described above, and the readers and writers from the <code class="docutils literal notranslate"><span class="pre">Table</span></code> class are used instead. This allows to extend the save/load operations to a large number of formats, including <code class="docutils literal notranslate"><span class="pre">hdf5</span></code> and enhanced CSV (<code class="docutils literal notranslate"><span class="pre">ascii.ecsv</span></code>).</p>
+<p>Note that columns coming from the <code class="docutils literal notranslate"><span class="pre">EVENTS</span></code> (or equivalent) fits extension, those having the same length as <code class="docutils literal notranslate"><span class="pre">time</span></code>, when converting to <code class="docutils literal notranslate"><span class="pre">astropy</span></code> tables they become columns of the table. All the others, including <code class="docutils literal notranslate"><span class="pre">gti</span></code>, are treated as metadata.</p>
+<p>Care should be used in selecting formats that preserve metadata. For example, simple CSV format loses all metadata, including MJDREF, GTIs etc.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;events.hdf5&quot;</span><span class="p">,</span> <span class="s2">&quot;hdf5&quot;</span><span class="p">)</span>
+<span class="n">ev3</span> <span class="o">=</span> <span class="n">EventList</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s2">&quot;events.hdf5&quot;</span><span class="p">,</span> <span class="s2">&quot;hdf5&quot;</span><span class="p">)</span>
+<span class="n">ev3</span><span class="o">.</span><span class="n">time</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([80000000.23635569, 80000001.47479323, 80000001.78458866,
+       80000002.78943624, 80000003.42859936, 80000004.07943003,
+       80000006.09310323, 80000007.18041813, 80000008.17602143,
+       80000008.20403489], dtype=float128)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Try the round trip again to verify that everything works</span>
+
+<span class="n">ev</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;events.ecsv&quot;</span><span class="p">,</span> <span class="s2">&quot;ascii.ecsv&quot;</span><span class="p">)</span>
+<span class="n">ev4</span> <span class="o">=</span> <span class="n">EventList</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s2">&quot;events.ecsv&quot;</span><span class="p">,</span> <span class="s2">&quot;ascii.ecsv&quot;</span><span class="p">)</span>
+<span class="o">!</span>cat<span class="w"> </span>events.ecsv
+<span class="n">ev4</span><span class="o">.</span><span class="n">time</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: energy, datatype: float32}
+# - {name: pi, datatype: float32}
+# - {name: time, datatype: float128}
+# meta: !!omap
+# - {dt: 0}
+# - gti: !numpy.ndarray
+#     buffer: !!binary |
+#       QUFBQUFBQ0FscGdaUURHRnBuOEFBQUFBQUFBZ0FKZVlHVUF4aGFaL0FBQT0=
+#     dtype: float128
+#     order: C
+#     shape: !!python/tuple [1, 2]
+# - {header: &#39;XTENSION= &#39;&#39;BINTABLE&#39;&#39;           / binary table extension                         BITPIX  =                    8 / array
+#     data type                                NAXIS   =                    2 / number of array dimensions                     NAXIS1  =                   12
+#     / length of dimension 1                          NAXIS2  =                 1000 / length of dimension 2                          PCOUNT  =                    0
+#     / number of group parameters                     GCOUNT  =                    1 / number of groups                               TFIELDS
+#     =                    2 / number of table fields                         TTYPE1  = &#39;&#39;TIME    &#39;&#39;                                                            TFORM1  =
+#     &#39;&#39;1D      &#39;&#39;                                                            TTYPE2  = &#39;&#39;PI      &#39;&#39;                                                            TFORM2  =
+#     &#39;&#39;1J      &#39;&#39;                                                            EXTNAME = &#39;&#39;EVENTS  &#39;&#39;           / extension name                                 OBSERVER=
+#     &#39;&#39;Edwige Bubble&#39;&#39;                                                       TELESCOP= &#39;&#39;NuSTAR  &#39;&#39;           / Telescope (mission) name                       INSTRUME=
+#     &#39;&#39;FPMA    &#39;&#39;           / Instrument name                                OBS_ID  = &#39;&#39;00000000001&#39;&#39;        / Observation ID                                 TARG_ID
+#     =                    0 / Target ID                                      OBJECT  = &#39;&#39;Fake X-1&#39;&#39;           / Name of observed object                        RA_OBJ  =                  0.0
+#     / [deg] R.A. Object                              DEC_OBJ =                  0.0 / [deg] Dec Object                               RA_NOM  =                  0.0
+#     / Right Ascension used for barycenter correctionsDEC_NOM =                  0.0 / Declination used for barycenter corrections    RA_PNT  =                  0.0
+#     / [deg] RA pointing                              DEC_PNT =                  0.0 / [deg] Dec pointing                             PA_PNT  =                  0.0
+#     / [deg] Position angle (roll)                    EQUINOX =               2000.0 / Equinox of celestial coord system              RADECSYS=
+#     &#39;&#39;FK5     &#39;&#39;           / Coordinate Reference System                    TASSIGN = &#39;&#39;SATELLITE&#39;&#39;          / Time assigned by onboard
+#     clock                 TIMESYS = &#39;&#39;TDB     &#39;&#39;           / All times in this file are TDB                 MJDREFI =                55197
+#     / TDB time reference; Modified Julian Day (int)  MJDREFF =        0.00076601852 / TDB time reference; Modified Julian Day (frac)
+#     TIMEREF = &#39;&#39;SOLARSYSTEM&#39;&#39;        / Times are pathlength-corrected to barycenter   CLOCKAPP=                    F / TRUE if timestamps
+#     corrected by gnd sware      TIMEUNIT= &#39;&#39;s       &#39;&#39;           / unit for time keywords                         TSTART  =           80000000.0
+#     / Elapsed seconds since MJDREF at start of file  TSTOP   =           80001025.0 / Elapsed seconds since MJDREF at end of file    LIVETIME=               1025.0
+#     / On-source time                                 TIMEZERO=                  0.0 / Time Zero                                      COMMENT
+#     FITS (Flexible Image Transport System) format is defined in &#39;&#39;Astronomy aCOMMENT nd Astrophysics&#39;&#39;, volume 376, page 359; bibcode:
+#     2001A&amp;A...376..359H    COMMENT MJDREFI+MJDREFF = epoch of Jan 1, 2010, in TT time system.              HISTORY File modified by
+#     user &#39;&#39;meo&#39;&#39; with fv  on 2015-08-17T14:10:02             HISTORY File modified by user &#39;&#39;meo&#39;&#39; with fv  on 2015-08-17T14:48:52             END                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             &#39;}
+# - {instr: fpma}
+# - {mission: nustar}
+# - {mjdref: 55197.00076601852}
+# - {ncounts: 1000}
+# - {notes: &#39;&#39;}
+# - {timeref: solarsystem}
+# - {timesys: tdb}
+# schema: astropy-2.0
+energy pi time
+8.56 174.0 80000000.23635569215
+33.039997 786.0 80000001.47479322553
+7.9999995 160.0 80000001.78458866477
+27.84 656.0 80000002.789436236024
+8.84 181.0 80000003.428599357605
+13.92 308.0 80000004.079430028796
+37.839996 906.0 80000006.09310323
+40.559998 974.0 80000007.180418133736
+5.8799996 107.0 80000008.176021426916
+41.239998 991.0 80000008.204034894705
+33.64 801.0 80000009.69214613736
+8.72 178.0 80000010.36281684041
+17.32 393.0 80000010.78324916959
+6.56 124.0 80000011.8733625412
+21.28 492.0 80000013.92633379996
+10.24 216.0 80000014.204483643174
+10.68 227.0 80000014.26073910296
+26.68 627.0 80000015.256171390414
+3.96 59.0 80000018.08373501897
+13.96 309.0 80000018.83911728859
+28.32 668.0 80000019.98157013953
+38.319996 918.0 80000020.76013682783
+17.76 404.0 80000021.14855520427
+12.64 276.0 80000022.02460347116
+29.76 704.0 80000023.50157275796
+24.08 562.0 80000023.61806283891
+10.400001 220.0 80000024.97833034396
+41.519997 998.0 80000025.95996727049
+4.24 66.0 80000026.16019311547
+23.32 543.0 80000027.089139238
+41.399998 995.0 80000028.596908301115
+19.72 453.0 80000031.065731182694
+36.559998 874.0 80000031.10555113852
+38.399998 920.0 80000032.516511276364
+24.28 567.0 80000032.808356150985
+29.48 697.0 80000033.18797942996
+36.76 879.0 80000033.85146795213
+10.6 225.0 80000034.861510172486
+20.0 460.0 80000038.22435864806
+3.3600001 44.0 80000038.39090189338
+15.08 337.0 80000042.41919325292
+22.48 522.0 80000043.69195660949
+4.24 66.0 80000045.52997684479
+21.88 507.0 80000052.78282105923
+39.6 950.0 80000052.919592529535
+3.24 41.0 80000054.28180256486
+14.32 318.0 80000056.48970986903
+7.4399996 146.0 80000057.49698485434
+7.9599996 159.0 80000058.55781446397
+21.36 494.0 80000059.284333616495
+35.159996 839.0 80000060.359298199415
+21.64 501.0 80000063.666031733155
+36.44 871.0 80000064.78927731514
+35.319996 843.0 80000067.341705307364
+26.08 612.0 80000068.267971634865
+12.12 263.0 80000070.24889309704
+11.400001 245.0 80000072.99266758561
+35.839996 856.0 80000073.4422865361
+6.68 127.0 80000073.81521306932
+28.4 670.0 80000074.7710172981
+22.08 512.0 80000076.15446573496
+29.64 701.0 80000076.61943152547
+34.319996 818.0 80000078.37191092968
+9.04 186.0 80000079.364117503166
+42.399998 1020.0 80000080.12182110548
+14.08 312.0 80000080.4114151746
+12.64 276.0 80000083.704568862915
+26.16 614.0 80000084.38392549753
+21.12 488.0 80000084.49645087123
+7.7599998 154.0 80000084.73323458433
+5.64 101.0 80000085.518022567034
+4.2799997 67.0 80000086.06328216195
+39.039997 936.0 80000087.00356020033
+14.88 332.0 80000087.108956605196
+11.24 241.0 80000087.3983823657
+42.199997 1015.0 80000088.44739763439
+28.16 664.0 80000088.72279639542
+2.48 22.0 80000089.15565529466
+42.28 1017.0 80000090.20357654989
+5.32 93.0 80000090.7642698288
+14.28 317.0 80000090.80305439234
+40.319996 968.0 80000091.500082850456
+18.44 421.0 80000092.158643990755
+32.239998 766.0 80000092.89413803816
+4.4 70.0 80000094.805209457874
+38.879997 932.0 80000095.04941494763
+32.199997 765.0 80000096.56686630845
+30.4 720.0 80000096.91533789039
+35.719997 853.0 80000098.67825654149
+29.32 693.0 80000098.92884159088
+17.199999 390.0 80000099.199268594384
+37.92 908.0 80000100.14995288849
+1.96 9.0 80000100.935947969556
+13.12 288.0 80000102.76762147248
+30.6 725.0 80000103.05724072456
+34.239998 816.0 80000104.193173110485
+8.88 182.0 80000107.33343601227
+29.6 700.0 80000107.40127386153
+8.24 166.0 80000107.56737007201
+39.76 954.0 80000109.40503971279
+41.399998 995.0 80000109.51361806691
+32.399998 770.0 80000111.27798360586
+20.2 465.0 80000112.93057106435
+22.36 519.0 80000113.545409321785
+41.559998 999.0 80000113.71510283649
+36.64 876.0 80000115.363516911864
+5.12 88.0 80000116.62624913454
+24.32 568.0 80000117.5390470773
+11.4800005 247.0 80000118.313546299934
+10.0 210.0 80000118.64352825284
+13.36 294.0 80000119.64161340892
+4.48 72.0 80000119.70217871666
+5.68 102.0 80000119.87085522711
+25.76 604.0 80000120.67677563429
+1.9200001 8.0 80000121.80093438923
+2.92 33.0 80000122.09129279852
+5.12 88.0 80000122.545517489314
+33.32 793.0 80000122.93073017895
+13.76 304.0 80000123.276563555
+37.159996 889.0 80000125.506356075406
+30.56 724.0 80000125.6568851918
+37.079998 887.0 80000127.336458325386
+6.4399996 121.0 80000127.45361994207
+11.96 259.0 80000128.36573840678
+14.08 312.0 80000129.43040788174
+14.36 319.0 80000130.30537183583
+34.239998 816.0 80000131.993975520134
+29.92 708.0 80000132.51598034799
+21.8 505.0 80000132.877141192555
+10.84 231.0 80000134.958766937256
+15.72 353.0 80000136.26415735483
+9.32 193.0 80000136.271308645606
+38.44 921.0 80000136.491618439555
+34.559998 824.0 80000136.59682570398
+29.64 701.0 80000136.81391918659
+13.6 300.0 80000137.111403808
+15.0 335.0 80000137.99286413193
+8.2 165.0 80000140.02283409238
+31.0 735.0 80000141.585879951715
+18.12 413.0 80000141.88128243387
+27.64 651.0 80000142.301297202706
+29.44 696.0 80000144.258596763015
+4.32 68.0 80000146.35952179134
+9.92 208.0 80000146.431891173124
+26.6 625.0 80000146.93531550467
+32.719997 778.0 80000147.86272408068
+4.4 70.0 80000148.20213320851
+14.04 311.0 80000148.998638793826
+10.76 229.0 80000150.13331639767
+8.12 163.0 80000150.40001221001
+31.96 759.0 80000150.51030369103
+41.6 1000.0 80000158.27798460424
+2.96 34.0 80000158.565826013684
+19.76 454.0 80000160.18738743663
+14.440001 321.0 80000162.67192919552
+11.72 253.0 80000163.52692268789
+37.44 896.0 80000164.03886182606
+32.84 781.0 80000164.495729878545
+17.24 391.0 80000165.17495532334
+3.44 46.0 80000166.38718263805
+25.76 604.0 80000168.38902553916
+25.44 596.0 80000169.68685694039
+23.56 549.0 80000169.713349059224
+19.08 437.0 80000170.805011570454
+41.039997 986.0 80000172.42077590525
+2.16 14.0 80000172.43760578334
+2.16 14.0 80000174.10814335942
+37.28 892.0 80000174.15144339204
+30.76 729.0 80000174.80246704817
+28.24 666.0 80000174.83830589056
+23.52 548.0 80000176.110384613276
+33.399998 795.0 80000176.43801294267
+7.08 137.0 80000177.71353569627
+39.12 938.0 80000178.329968214035
+9.44 196.0 80000180.91684667766
+6.56 124.0 80000181.358734831214
+24.96 584.0 80000182.17984089255
+14.08 312.0 80000182.2385392189
+29.92 708.0 80000183.21093174815
+8.52 173.0 80000183.68284714222
+23.92 558.0 80000184.32184153795
+33.96 809.0 80000187.16848820448
+13.0 285.0 80000188.89809964597
+2.56 24.0 80000189.59268042445
+8.52 173.0 80000190.39239893854
+29.6 700.0 80000190.987773641944
+8.04 161.0 80000191.39765946567
+9.84 206.0 80000191.63218219578
+37.399998 895.0 80000191.7998701334
+37.48 897.0 80000194.591946706176
+2.44 21.0 80000195.17524069548
+
+33.039997 786.0 80000195.60482543707
+15.4 345.0 80000197.01553657651
+20.56 474.0 80000198.18857589364
+12.8 280.0 80000199.30817961693
+20.16 464.0 80000200.066078454256
+1.6800001 2.0 80000201.68090777099
+12.04 261.0 80000202.814891934395
+18.32 418.0 80000203.25650832057
+40.359997 969.0 80000203.48255087435
+34.28 817.0 80000204.7061804533
+34.64 826.0 80000207.248482748866
+30.4 720.0 80000208.40996426344
+28.76 679.0 80000208.54558329284
+3.6 50.0 80000212.2733836025
+39.399998 945.0 80000213.37501113117
+23.64 551.0 80000214.05003093183
+10.24 216.0 80000214.76189556718
+15.440001 346.0 80000214.94751133025
+33.839996 806.0 80000215.30322690308
+2.88 32.0 80000215.606552898884
+17.56 399.0 80000216.67295819521
+17.199999 390.0 80000216.721879810095
+22.0 510.0 80000217.02722400427
+7.3199997 143.0 80000218.21801964939
+6.3199997 118.0 80000223.690936505795
+40.519997 973.0 80000224.71057784557
+10.6 225.0 80000224.88408643007
+31.08 737.0 80000225.81306296587
+21.0 485.0 80000228.288003221154
+15.64 351.0 80000229.47965101898
+34.719997 828.0 80000229.982017084956
+25.88 607.0 80000230.13939705491
+16.52 373.0 80000230.207446575165
+1.8 5.0 80000233.628895014524
+33.0 785.0 80000233.858214601874
+36.879997 882.0 80000235.58721217513
+1.76 4.0 80000236.03008031845
+42.239998 1016.0 80000239.206377997994
+31.119999 738.0 80000240.66440632939
+34.159996 814.0 80000241.05537928641
+13.56 299.0 80000242.91226673126
+18.92 433.0 80000243.34091578424
+22.44 521.0 80000246.23444570601
+40.8 980.0 80000246.39591316879
+21.28 492.0 80000248.63243843615
+24.28 567.0 80000249.259784281254
+9.56 199.0 80000249.85402186215
+5.04 86.0 80000250.17666938901
+3.0 35.0 80000251.49163559079
+25.44 596.0 80000251.50295473635
+24.4 570.0 80000252.06601053476
+30.56 724.0 80000252.272911697626
+38.12 913.0 80000252.985514968634
+38.8 930.0 80000253.836741268635
+30.76 729.0 80000255.06581965089
+41.719997 1003.0 80000255.60727831721
+41.64 1001.0 80000256.902037888765
+19.8 455.0 80000258.60432396829
+42.359997 1019.0 80000260.50080451369
+25.6 600.0 80000260.75552198291
+11.56 249.0 80000260.88460493088
+33.839996 806.0 80000261.36898006499
+37.48 897.0 80000262.92271217704
+18.2 415.0 80000262.99845524132
+23.36 544.0 80000263.33590015769
+40.96 984.0 80000264.96524555981
+9.28 192.0 80000265.84508921206
+10.84 231.0 80000266.91673760116
+4.44 71.0 80000268.235334053636
+22.76 529.0 80000271.489329367876
+23.96 559.0 80000271.64101035893
+35.879997 857.0 80000271.98798702657
+11.16 239.0 80000273.71523039043
+36.199997 865.0 80000275.30799421668
+32.76 779.0 80000275.81958813965
+27.32 643.0 80000276.46777294576
+27.0 635.0 80000277.24329108
+11.360001 244.0 80000277.80254943669
+3.08 37.0 80000278.42643971741
+18.68 427.0 80000278.52543953061
+5.8399997 106.0 80000278.78952820599
+25.24 591.0 80000279.13904826343
+11.400001 245.0 80000279.32166413963
+6.72 128.0 80000279.47431126237
+34.6 825.0 80000281.05502511561
+14.2 315.0 80000281.66787202656
+18.08 412.0 80000281.735276550055
+14.16 314.0 80000283.60641156137
+12.4800005 272.0 80000284.68940325081
+22.72 528.0 80000284.771769434214
+7.2 140.0 80000285.59601339698
+37.519997 898.0 80000287.934347867966
+37.559998 899.0 80000288.457227408886
+25.36 594.0 80000288.84559759498
+37.039997 886.0 80000289.283936053514
+32.48 772.0 80000289.74665103853
+21.36 494.0 80000290.772457659245
+1.64 1.0 80000290.879882499576
+19.32 443.0 80000291.225027650595
+21.84 506.0 80000291.23198154569
+2.8 30.0 80000293.356203347445
+31.92 758.0 80000296.29710520804
+32.52 773.0 80000297.10793355107
+37.159996 889.0 80000298.52665117383
+12.64 276.0 80000298.93143287301
+7.4399996 146.0 80000299.927507817745
+17.199999 390.0 80000300.818491622806
+2.52 23.0 80000302.07161732018
+2.56 24.0 80000302.72473844886
+36.319996 868.0 80000305.32900521159
+4.52 73.0 80000305.93047915399
+3.24 41.0 80000306.89711469412
+16.64 376.0 80000309.568026304245
+4.4 70.0 80000310.67230030894
+18.36 419.0 80000311.17736788094
+8.24 166.0 80000311.37703952193
+20.12 463.0 80000313.92710117996
+36.76 879.0 80000316.52630840242
+3.6399999 51.0 80000316.576121881604
+2.56 24.0 80000316.61531569064
+4.68 77.0 80000316.991498693824
+30.92 733.0 80000318.496204048395
+4.44 71.0 80000318.759574487805
+25.72 603.0 80000318.99812464416
+24.16 564.0 80000323.19316992164
+39.64 951.0 80000323.76615965366
+2.6799998 27.0 80000324.23196092248
+30.8 730.0 80000325.30946139991
+13.68 302.0 80000325.49627235532
+40.64 976.0 80000325.76096495986
+9.04 186.0 80000326.018922537565
+23.56 549.0 80000328.51117782295
+32.12 763.0 80000330.33366891742
+21.16 489.0 80000331.37347571552
+38.8 930.0 80000332.161390304565
+6.2 115.0 80000332.54631538689
+37.319996 893.0 80000333.515790537
+2.6799998 27.0 80000335.46171656251
+27.8 655.0 80000336.63410934806
+38.92 933.0 80000339.03143580258
+5.7599998 104.0 80000339.16872346401
+18.32 418.0 80000340.030776798725
+5.8399997 106.0 80000340.41478018463
+17.48 397.0 80000340.533760264516
+33.32 793.0 80000341.72407652438
+11.360001 244.0 80000344.206543818116
+24.88 582.0 80000344.78012427688
+32.96 784.0 80000345.00482337177
+2.52 23.0 80000345.26880034804
+13.2 290.0 80000345.654379203916
+34.359997 819.0 80000345.975308820605
+42.359997 1019.0 80000346.41354955733
+7.8799996 157.0 80000346.86677853763
+39.6 950.0 80000347.32460169494
+9.32 193.0 80000347.35750260949
+16.0 360.0 80000349.31582227349
+37.879997 907.0 80000351.124539494514
+19.44 446.0 80000352.37143753469
+36.76 879.0 80000353.196565657854
+2.24 16.0 80000354.17744512856
+30.88 732.0 80000355.20202793181
+39.8 955.0 80000355.60426925123
+40.12 963.0 80000355.82318587601
+16.4 370.0 80000356.5162641108
+10.360001 219.0 80000357.642409190536
+4.12 63.0 80000359.16175606847
+7.68 152.0 80000359.8546615839
+4.12 63.0 80000362.5537327677
+20.8 480.0 80000362.92154058814
+17.199999 390.0 80000363.773983463645
+39.999996 960.0 80000365.48620200157
+36.319996 868.0 80000368.489620789886
+19.6 450.0 80000369.631684705615
+41.679996 1002.0 80000370.6534255296
+39.159996 939.0 80000371.82940942049
+34.399998 820.0 80000373.43823419511
+29.28 692.0 80000373.8585408777
+39.039997 936.0 80000374.209455892444
+34.44 821.0 80000374.64683301747
+2.96 34.0 80000375.620239943266
+32.36 769.0 80000378.87894229591
+35.999996 860.0 80000378.97707155347
+14.28 317.0 80000379.42757484317
+37.839996 906.0 80000379.917373120785
+8.92 183.0 80000381.10625052452
+37.239998 891.0 80000382.077453806996
+31.039999 736.0 80000382.17598539591
+34.079998 812.0 80000382.22633959353
+25.84 606.0 80000382.22792515159
+27.6 650.0 80000382.55412106216
+2.8 30.0 80000383.94620233774
+37.12 888.0 80000384.37110866606
+28.16 664.0 80000387.30780394375
+20.44 471.0 80000387.87746040523
+25.119999 588.0 80000388.37795352936
+2.6799998 27.0 80000389.268874913454
+37.199997 890.0 80000392.62231977284
+28.16 664.0 80000393.17818275094
+11.52 248.0 80000393.43643279374
+2.6 25.0 80000395.12563699484
+15.6 350.0 80000395.77989049256
+6.48 122.0 80000396.31284117699
+32.039997 761.0 80000399.1847140342
+37.92 908.0 80000399.54459910095
+16.84 381.0 80000400.72491231561
+20.64 476.0 80000403.17735889554
+8.88 182.0 80000403.54358610511
+20.72 478.0 80000404.22769507766
+5.4 95.0 80000404.47602318227
+42.479996 1022.0 80000404.67004515231
+16.64 376.0 80000408.95574080944
+7.16 139.0 80000410.03962627053
+16.72 378.0 80000410.75551979244
+8.52 173.0 80000412.09823872149
+31.8 755.0 80000412.219870209694
+1.9200001 8.0 80000412.81054663658
+21.96 509.0 80000414.8682410419
+24.44 571.0 80000415.37962676585
+27.92 658.0 80000416.70795631409
+24.56 574.0 80000417.1444568038
+37.039997 886.0 80000418.38563929498
+1.96 9.0 80000420.47344271839
+8.88 182.0 80000420.53409618139
+26.48 622.0 80000420.80564555526
+41.719997 1003.0 80000420.863403081894
+5.96 109.0 80000420.942480519414
+35.8 855.0 80000422.02582614124
+8.44 171.0 80000422.79813404381
+12.76 279.0 80000424.42955330014
+7.8399997 156.0 80000424.81564453244
+7.4799995 147.0 80000425.28199738264
+40.319996 968.0 80000425.867245197296
+33.719997 803.0 80000426.62731541693
+40.12 963.0 80000427.133511930704
+14.52 323.0 80000427.36044855416
+7.0 135.0 80000428.54412809014
+15.56 349.0 80000428.88726851344
+30.6 725.0 80000429.38063727319
+19.6 450.0 80000432.95051422715
+3.08 37.0 80000434.64868846536
+2.4 20.0 80000435.51728320122
+39.76 954.0 80000436.24377171695
+23.64 551.0 80000437.577606111765
+9.48 197.0 80000438.05216662586
+34.039997 811.0 80000438.70308248699
+2.3600001 19.0 80000442.052734196186
+27.36 644.0 80000442.764658123255
+14.4800005 322.0 80000443.238895997405
+12.76 279.0 80000445.098355308175
+14.6 325.0 80000446.023702159524
+32.879997 782.0 80000446.16962249577
+10.92 233.0 80000448.83636845648
+7.7999997 155.0 80000450.061449572444
+9.12 188.0 80000450.52947856486
+32.079998 762.0 80000450.55909974873
+28.32 668.0 80000451.879113674164
+22.28 517.0 80000452.064453706145
+10.08 212.0 80000452.13652163744
+26.32 618.0 80000452.9472001791
+35.399998 845.0 80000453.03071194887
+9.48 197.0 80000454.07206726074
+3.32 43.0 80000456.48143340647
+34.399998 820.0 80000458.18602730334
+11.56 249.0 80000459.0324331224
+4.2799997 67.0 80000459.4572635144
+32.36 769.0 80000459.920432657
+41.239998 991.0 80000464.06256014109
+10.76 229.0 80000464.33307418227
+34.079998 812.0 80000466.34134361148
+26.84 631.0 80000467.24169912934
+16.119999 363.0 80000467.884447038174
+40.319996 968.0 80000468.7550342083
+10.72 228.0 80000469.84887549281
+22.52 523.0 80000469.8745007813
+39.92 958.0 80000472.20344258845
+27.4 645.0 80000472.30986727774
+31.84 756.0 80000473.21885484457
+15.440001 346.0 80000473.694500654936
+17.24 391.0 80000476.0327218622
+32.84 781.0 80000476.96122226119
+39.28 942.0 80000480.92292739451
+35.319996 843.0 80000481.06054444611
+4.4 70.0 80000481.37218731642
+24.36 569.0 80000481.933602169156
+26.16 614.0 80000481.98567260802
+40.879997 982.0 80000482.9210729748
+40.479996 972.0 80000483.857440814376
+4.64 76.0 80000484.32165810466
+39.8 955.0 80000484.80663745105
+29.16 689.0 80000486.771085351706
+11.84 256.0 80000487.217004179955
+14.16 314.0 80000487.990593642
+28.92 683.0 80000491.276099190116
+37.999996 910.0 80000491.747016862035
+6.4399996 121.0 80000493.35879443586
+25.2 590.0 80000494.31928488612
+12.16 264.0 80000495.14925374091
+14.6 325.0 80000495.4605127275
+20.64 476.0 80000496.37845928967
+5.16 89.0 80000496.85824956
+19.88 457.0 80000497.20662690699
+35.92 858.0 80000502.43506611884
+25.8 605.0 80000502.71769653261
+17.119999 388.0 80000502.80815401673
+36.159996 864.0 80000504.42526854575
+21.4 495.0 80000505.48890078068
+12.4800005 272.0 80000506.024649724364
+21.92 508.0 80000506.17142087221
+4.56 74.0 80000508.07841642201
+4.72 78.0 80000508.71263246238
+31.56 749.0 80000509.140583753586
+28.119999 663.0 80000509.95569059253
+27.28 642.0 80000510.86728909612
+12.04 261.0 80000512.479585409164
+30.199999 715.0 80000516.56570722163
+33.36 794.0 80000516.99862577021
+5.16 89.0 80000517.344923987985
+11.12 238.0 80000519.38823206723
+11.32 243.0 80000519.57560668886
+5.0 85.0 80000519.58020955324
+33.239998 791.0 80000520.51779472828
+6.3999996 120.0 80000520.546872377396
+9.72 203.0 80000521.153368234634
+30.64 726.0 80000521.42145887017
+21.96 509.0 80000521.63308496773
+12.6 275.0 80000523.057834371924
+8.36 169.0 80000525.05073848367
+10.56 224.0 80000527.819232299924
+29.24 691.0 80000531.12523216009
+24.6 575.0 80000532.10568276048
+40.8 980.0 80000533.20108996332
+17.0 385.0 80000534.29738210142
+23.48 547.0 80000534.340845018625
+18.28 417.0 80000534.83431440592
+2.08 12.0 80000534.87653042376
+41.92 1008.0 80000534.895185917616
+8.52 173.0 80000535.94042633474
+19.84 456.0 80000537.48509004712
+10.400001 220.0 80000538.26394830644
+23.92 558.0 80000540.002261936665
+37.719997 903.0 80000540.1134250015
+13.84 306.0 80000546.718622386456
+4.32 68.0 80000546.84028501809
+18.56 424.0 80000547.30754908919
+3.08 37.0 80000549.5327937603
+27.88 657.0 80000550.56298401952
+29.0 685.0 80000550.60222132504
+35.159996 839.0 80000552.734096348286
+38.519997 923.0 80000553.922179594636
+5.52 98.0 80000555.44246518612
+18.56 424.0 80000558.82404534519
+39.319996 943.0 80000558.947059229016
+32.399998 770.0 80000559.282619684935
+33.0 785.0 80000560.58969677985
+29.72 703.0 80000560.70387540758
+10.24 216.0 80000561.323437169194
+17.88 407.0 80000562.679025664926
+27.44 646.0 80000563.71705073118
+14.4800005 322.0 80000563.95132599771
+25.24 591.0 80000564.861919119954
+23.24 541.0 80000565.76752875745
+37.92 908.0 80000565.78528097272
+24.92 583.0 80000566.29958720505
+31.88 757.0 80000567.06900238991
+42.359997 1019.0 80000569.15245625377
+11.68 252.0 80000570.583770141006
+11.56 249.0 80000571.260604158044
+22.48 522.0 80000572.77767854929
+24.64 576.0 80000574.140301436186
+28.119999 663.0 80000574.51526069641
+3.28 42.0 80000577.082364201546
+35.559998 849.0 80000578.60487310588
+5.72 103.0 80000579.25371134281
+3.4 45.0 80000579.63681046665
+6.3199997 118.0 80000581.21821717918
+6.3199997 118.0 80000582.04014620185
+22.12 513.0 80000583.46193483472
+9.5199995 198.0 80000586.03360375762
+3.48 47.0 80000589.798507750034
+31.72 753.0 80000591.46542161703
+2.88 32.0 80000591.97941620648
+10.8 230.0 80000593.13316428661
+15.84 356.0 80000594.042805209756
+15.56 349.0 80000594.91821274161
+37.159996 889.0 80000595.397889867425
+28.16 664.0 80000595.763835296035
+6.8399997 131.0 80000596.830532982945
+37.559998 899.0 80000598.901824980974
+31.16 739.0 80000599.64194495976
+28.88 682.0 80000600.793473765254
+31.56 749.0 80000602.10744164884
+7.8399997 156.0 80000602.55246156454
+17.24 391.0 80000603.4955958724
+7.12 138.0 80000606.650620505214
+2.16 14.0 80000608.090855017304
+37.879997 907.0 80000609.993093535304
+4.7999997 80.0 80000610.186307400465
+15.56 349.0 80000611.37006236613
+30.48 722.0 80000611.83906060457
+19.96 459.0 80000611.8572294265
+34.64 826.0 80000611.95349282026
+41.839996 1006.0 80000613.84575891495
+23.2 540.0 80000617.17802332342
+17.56 399.0 80000617.24794691801
+34.559998 824.0 80000617.35718101263
+28.16 664.0 80000617.732587218285
+20.64 476.0 80000618.9578525275
+28.84 681.0 80000619.30346444249
+39.239998 941.0 80000621.2265856415
+18.16 414.0 80000621.38765838742
+7.9999995 160.0 80000621.735619053245
+33.079998 787.0 80000623.792137786746
+37.64 901.0 80000623.85770910978
+2.6 25.0 80000626.21549396217
+31.039999 736.0 80000627.16449086368
+33.12 788.0 80000628.88948699832
+39.319996 943.0 80000630.68285809457
+11.32 243.0 80000630.789920687675
+30.48 722.0 80000632.821838498116
+27.199999 640.0 80000632.881889894605
+24.84 581.0 80000634.78217072785
+20.28 467.0 80000635.002951964736
+33.679996 802.0 80000635.41563603282
+36.199997 865.0 80000635.88681785762
+8.56 174.0 80000637.371477141976
+35.519997 848.0 80000642.38429802656
+30.4 720.0 80000643.78843893111
+25.44 596.0 80000644.600917607546
+11.68 252.0 80000644.882760211825
+10.28 217.0 80000645.594902947545
+9.2 190.0 80000645.93502403796
+16.439999 371.0 80000646.383003011346
+2.6399999 26.0 80000646.53795617819
+34.64 826.0 80000647.63100332022
+22.84 531.0 80000648.47574129701
+5.12 88.0 80000649.00771085918
+42.079998 1012.0 80000649.114930674434
+24.92 583.0 80000650.1061706841
+22.88 532.0 80000655.68533721566
+24.68 577.0 80000657.16480255127
+26.68 627.0 80000657.258827999234
+19.8 455.0 80000657.33367057145
+35.64 851.0 80000658.74945259094
+2.08 12.0 80000660.18671748042
+17.439999 396.0 80000660.63745248318
+33.999996 810.0 80000661.82945792377
+6.48 122.0 80000661.90170559287
+17.16 389.0 80000662.26141363382
+33.32 793.0 80000662.64840815961
+41.64 1001.0 80000663.12676268816
+14.56 324.0 80000663.227578774095
+24.44 571.0 80000664.475006356835
+3.3600001 44.0 80000664.552283763885
+17.24 391.0 80000665.17621576786
+27.4 645.0 80000666.08528217673
+39.079998 937.0 80000670.71755500138
+7.72 153.0 80000671.198174357414
+6.8799996 132.0 80000673.345912232995
+34.199997 815.0 80000674.87888632715
+35.28 842.0 80000676.18293096125
+11.64 251.0 80000676.64919489622
+40.359997 969.0 80000676.80372226238
+31.44 746.0 80000678.275382354856
+11.8 255.0 80000680.48982979357
+
+26.24 616.0 80000684.38221885264
+2.8 30.0 80000685.43452076614
+22.0 510.0 80000686.74407067895
+31.199999 740.0 80000686.81872756779
+30.84 731.0 80000688.30932036042
+42.319996 1018.0 80000688.81981065869
+20.16 464.0 80000691.197261437774
+16.4 370.0 80000692.15807239711
+27.92 658.0 80000693.03427194059
+10.360001 219.0 80000694.3066085726
+36.8 880.0 80000694.962600558996
+40.44 971.0 80000697.02309130132
+38.48 922.0 80000698.11148573458
+21.56 499.0 80000698.516439035535
+40.28 967.0 80000699.06620439887
+42.44 1021.0 80000701.39014860988
+27.76 654.0 80000701.87561401725
+11.8 255.0 80000702.62369687855
+27.88 657.0 80000702.988359063864
+39.159996 939.0 80000705.296378955245
+23.96 559.0 80000705.433091163635
+11.440001 246.0 80000705.599841311574
+2.8400002 31.0 80000709.3684746474
+12.2 265.0 80000709.77955941856
+3.7199998 53.0 80000709.794584959745
+11.2 240.0 80000709.846471622586
+27.0 635.0 80000711.9785169363
+19.4 445.0 80000712.899810910225
+1.9200001 8.0 80000713.0795609951
+21.96 509.0 80000713.76596863568
+36.48 872.0 80000716.780457377434
+22.039999 511.0 80000717.29924210906
+17.32 393.0 80000720.5562723279
+12.68 277.0 80000720.58715964854
+41.239998 991.0 80000722.03180555999
+29.32 693.0 80000722.03699606657
+7.9599996 159.0 80000722.478862181306
+29.96 709.0 80000723.87889204919
+5.52 98.0 80000724.7961999625
+37.44 896.0 80000726.34677195549
+40.28 967.0 80000727.47035036981
+26.84 631.0 80000728.90236452222
+41.92 1008.0 80000729.3514444083
+26.16 614.0 80000730.33039654791
+4.2 65.0 80000730.81428743899
+4.4 70.0 80000731.42920610309
+16.359999 369.0 80000732.61377693713
+14.04 311.0 80000733.754086226225
+17.08 387.0 80000733.79874679446
+3.52 48.0 80000733.991308033466
+38.28 917.0 80000734.417156770825
+1.96 9.0 80000738.45621095598
+11.08 237.0 80000739.78259626031
+39.319996 943.0 80000739.904296547174
+29.36 694.0 80000742.26487219334
+20.8 480.0 80000742.58448088169
+18.0 410.0 80000743.84713715315
+7.0 135.0 80000745.445721656084
+33.32 793.0 80000745.704266637564
+4.96 84.0 80000746.49740232527
+2.88 32.0 80000748.3739194572
+40.76 979.0 80000749.18420062959
+39.559998 949.0 80000749.238480210304
+40.8 980.0 80000749.36030867696
+15.36 344.0 80000751.06558699906
+35.64 851.0 80000751.55830208957
+39.479996 947.0 80000752.70824530721
+9.12 188.0 80000752.72337460518
+20.64 476.0 80000752.881983697414
+29.52 698.0 80000753.15865902603
+35.28 842.0 80000753.76198838651
+27.92 658.0 80000754.23456764221
+18.08 412.0 80000754.3275937736
+35.76 854.0 80000755.37613813579
+26.56 624.0 80000756.66476659477
+6.7599998 129.0 80000758.372802481055
+23.48 547.0 80000759.07206888497
+29.16 689.0 80000759.892510056496
+36.48 872.0 80000761.603752076626
+17.16 389.0 80000762.42036630213
+11.0 235.0 80000765.06811144948
+31.76 754.0 80000765.382397055626
+35.44 846.0 80000765.4667224288
+41.28 992.0 80000765.93857854605
+37.039997 886.0 80000767.26963350177
+25.72 603.0 80000767.7786257714
+20.28 467.0 80000770.32975102961
+7.3999996 145.0 80000771.69804634154
+3.32 43.0 80000773.945546999574
+37.399998 895.0 80000774.221253693104
+10.92 233.0 80000775.89942243695
+24.6 575.0 80000777.312041819096
+12.4800005 272.0 80000777.77507701516
+31.72 753.0 80000777.79259891808
+12.360001 269.0 80000779.33480271697
+22.64 526.0 80000779.554390221834
+36.999996 885.0 80000780.81437155604
+29.28 692.0 80000780.933462917805
+35.159996 839.0 80000781.15924490988
+24.64 576.0 80000781.26206161082
+25.119999 588.0 80000781.72611118853
+4.7599998 79.0 80000782.172751545906
+20.28 467.0 80000783.125701248646
+38.64 926.0 80000785.342386975884
+4.92 83.0 80000785.36341136694
+34.6 825.0 80000785.92007930577
+20.56 474.0 80000786.1086602211
+17.279999 392.0 80000786.253573834896
+33.6 800.0 80000787.553292140365
+32.32 768.0 80000787.658161982894
+4.68 77.0 80000790.072870031
+24.64 576.0 80000792.274298503995
+9.44 196.0 80000792.443054273725
+17.52 398.0 80000792.46565423906
+14.4800005 322.0 80000792.808876529336
+33.879997 807.0 80000795.87703709304
+32.719997 778.0 80000795.91278010607
+5.44 96.0 80000797.14426906407
+11.04 236.0 80000797.26987493038
+34.719997 828.0 80000798.51847578585
+2.2 15.0 80000799.48481544852
+31.72 753.0 80000799.881970733404
+31.039999 736.0 80000803.51909430325
+18.52 423.0 80000803.731096595526
+32.16 764.0 80000803.883781552315
+40.92 983.0 80000805.29773187637
+18.0 410.0 80000805.306009307504
+17.32 393.0 80000807.21232941747
+11.88 257.0 80000808.28512185812
+21.36 494.0 80000808.454649567604
+2.48 22.0 80000808.523783952
+41.76 1004.0 80000809.73774009943
+39.92 958.0 80000810.001270249486
+13.12 288.0 80000810.86777666211
+41.319996 993.0 80000811.438306853175
+6.16 114.0 80000812.21489995718
+28.199999 665.0 80000815.07969661057
+29.56 699.0 80000815.974775359035
+19.44 446.0 80000816.16485761106
+3.32 43.0 80000816.704811513424
+33.679996 802.0 80000816.80518731475
+6.68 127.0 80000816.81600318849
+3.1599998 39.0 80000819.00975045562
+19.32 443.0 80000819.48453132808
+34.079998 812.0 80000821.329228281975
+8.8 180.0 80000821.52698163688
+36.319996 868.0 80000822.00912617147
+34.199997 815.0 80000824.46000294387
+10.52 223.0 80000824.66023361683
+11.28 242.0 80000825.05113039911
+25.0 585.0 80000827.12451052666
+3.96 59.0 80000827.4073446542
+24.68 577.0 80000828.5048404783
+38.159996 914.0 80000828.622610628605
+31.88 757.0 80000828.63124883175
+24.0 560.0 80000829.2215629518
+20.6 475.0 80000829.66059269011
+5.32 93.0 80000830.33870181441
+13.76 304.0 80000831.20006233454
+11.88 257.0 80000831.21613633633
+15.16 339.0 80000832.059845909476
+21.84 506.0 80000832.423598602414
+13.6 300.0 80000833.69929590821
+34.999996 835.0 80000834.46965831518
+41.159996 989.0 80000836.12533031404
+8.12 163.0 80000836.71061439812
+28.4 670.0 80000836.78514607251
+19.56 449.0 80000837.03853216767
+12.88 282.0 80000839.699784219265
+5.2799997 92.0 80000841.037233412266
+31.76 754.0 80000843.41804847121
+35.48 847.0 80000844.98050430417
+31.199999 740.0 80000845.57550364733
+28.76 679.0 80000850.37028862536
+24.039999 561.0 80000850.423752725124
+41.839996 1006.0 80000851.28334981203
+36.76 879.0 80000851.615449771285
+17.4 395.0 80000851.654990166426
+38.999996 935.0 80000851.67317868769
+12.32 268.0 80000852.59776712954
+11.2 240.0 80000854.87065626681
+7.4399996 146.0 80000855.74864292145
+14.76 329.0 80000855.829678565264
+7.2799997 142.0 80000856.83493223786
+21.36 494.0 80000858.589912459254
+26.28 617.0 80000859.1553748399
+37.44 896.0 80000859.18091611564
+5.56 99.0 80000859.44560496509
+21.44 496.0 80000859.509354412556
+25.28 592.0 80000860.59416265786
+24.96 584.0 80000861.303189352155
+19.4 445.0 80000861.96652762592
+10.92 233.0 80000863.23499922454
+20.24 466.0 80000864.197188302875
+7.04 136.0 80000865.590956673026
+42.319996 1018.0 80000865.72700405121
+33.6 800.0 80000866.084478631616
+31.8 755.0 80000866.50517678261
+32.8 780.0 80000866.850857138634
+41.239998 991.0 80000867.7263391763
+22.0 510.0 80000868.06848114729
+14.4800005 322.0 80000869.2763479501
+34.44 821.0 80000870.65760450065
+19.72 453.0 80000871.05340576172
+23.28 542.0 80000873.14886234701
+38.239998 916.0 80000874.297571882606
+36.039997 861.0 80000874.73376466334
+22.28 517.0 80000879.41517931223
+33.999996 810.0 80000881.185400635004
+15.6 350.0 80000882.22257082164
+21.56 499.0 80000884.97935457528
+27.84 656.0 80000885.29664757848
+11.72 253.0 80000886.4507638216
+37.8 905.0 80000888.94126729667
+23.28 542.0 80000889.59991361201
+33.079998 787.0 80000890.74508482218
+32.719997 778.0 80000893.32567283511
+13.32 293.0 80000893.43082770705
+35.48 847.0 80000893.56059738994
+4.68 77.0 80000894.35489681363
+39.64 951.0 80000897.77023650706
+23.039999 536.0 80000899.03790041804
+14.4 320.0 80000899.37754881382
+18.4 420.0 80000900.8128515929
+10.84 231.0 80000901.414481043816
+20.32 468.0 80000901.48123975098
+42.359997 1019.0 80000901.93236474693
+25.2 590.0 80000901.972453475
+23.64 551.0 80000902.81782488525
+38.399998 920.0 80000903.59163464606
+30.199999 715.0 80000903.92151616514
+13.4800005 297.0 80000904.27971172333
+11.76 254.0 80000904.998699590564
+16.76 379.0 80000905.63441582024
+13.2 290.0 80000905.648124307394
+2.04 11.0 80000906.234885290265
+12.64 276.0 80000907.07798694074
+9.16 189.0 80000908.87027671933
+25.52 598.0 80000909.368400886655
+4.56 74.0 80000909.811767444015
+27.24 641.0 80000910.33445057273
+17.199999 390.0 80000910.60975474119
+2.16 14.0 80000911.29370170832
+34.519997 823.0 80000913.69095006585
+12.2 265.0 80000914.1802495867
+26.88 632.0 80000914.66017211974
+28.199999 665.0 80000916.50571863353
+42.399998 1020.0 80000916.718121901155
+37.44 896.0 80000919.645673155785
+27.6 650.0 80000920.63476088643
+18.88 432.0 80000922.45012420416
+8.48 172.0 80000925.23763982952
+12.28 267.0 80000926.283655911684
+28.32 668.0 80000926.6409278512
+30.96 734.0 80000928.05741724372
+32.079998 762.0 80000933.627166330814
+39.44 946.0 80000933.76277536154
+30.24 716.0 80000934.16055440903
+6.7599998 129.0 80000935.81169986725
+24.48 572.0 80000936.16736589372
+14.6 325.0 80000936.44196587801
+25.68 602.0 80000936.549025550485
+11.4800005 247.0 80000938.685712620616
+6.2 115.0 80000939.08911083639
+36.239998 866.0 80000940.29467050731
+27.28 642.0 80000941.77238176763
+4.2799997 67.0 80000942.128024578094
+12.92 283.0 80000942.38229085505
+20.96 484.0 80000944.63000917435
+9.64 201.0 80000945.404179006815
+14.32 318.0 80000945.718157589436
+8.32 168.0 80000945.91892364621
+42.28 1017.0 80000948.791864678264
+29.32 693.0 80000948.85667587817
+2.32 18.0 80000949.93122699857
+2.6399999 26.0 80000950.1588781476
+8.44 171.0 80000950.502268999815
+39.8 955.0 80000951.22832208872
+21.08 487.0 80000951.838016077876
+20.32 468.0 80000952.52954874933
+33.96 809.0 80000952.626723498106
+21.68 502.0 80000956.18126910925
+33.079998 787.0 80000956.38345962763
+23.76 554.0 80000957.466738790274
+8.32 168.0 80000959.38979135454
+14.28 317.0 80000960.34404800832
+29.92 708.0 80000962.452562466264
+11.64 251.0 80000964.24332383275
+25.6 600.0 80000966.99032564461
+28.36 669.0 80000967.36089865863
+15.4 345.0 80000968.338882282376
+25.48 597.0 80000968.875151097775
+16.72 378.0 80000969.143758147955
+14.76 329.0 80000971.409240707755
+19.6 450.0 80000974.77004908025
+28.76 679.0 80000974.80595380068
+38.359997 919.0 80000975.64050154388
+40.6 975.0 80000975.95903091133
+4.2 65.0 80000980.43536031246
+3.1599998 39.0 80000980.572394132614
+41.679996 1002.0 80000981.61112074554
+17.439999 396.0 80000981.74807231128
+40.239998 966.0 80000983.25735516846
+36.359997 869.0 80000985.01507012546
+18.12 413.0 80000985.20637777448
+38.28 917.0 80000986.77888666093
+40.479996 972.0 80000988.17710210383
+29.72 703.0 80000988.92275629938
+16.96 384.0 80000990.097374781966
+30.8 730.0 80000990.79127365351
+21.72 503.0 80000991.06344228983
+42.28 1017.0 80000991.80377283692
+28.24 666.0 80000993.049590453506
+7.04 136.0 80000994.441833391786
+36.28 867.0 80000994.527631640434
+24.4 570.0 80000995.25695282221
+21.76 504.0 80000995.29652753472
+11.52 248.0 80000995.99297225475
+41.319996 993.0 80000996.40901064873
+35.239998 841.0 80000996.557712092996
+10.52 223.0 80000997.22821688652
+33.96 809.0 80000997.405183792114
+11.96 259.0 80000997.93263950944
+15.440001 346.0 80000998.813208565116
+30.92 733.0 80000999.3882278502
+3.96 59.0 80000999.59336720407
+18.36 419.0 80001000.09518702328
+32.039997 761.0 80001001.49414373934
+28.48 672.0 80001002.54425382614
+39.8 955.0 80001003.1178855896
+18.72 428.0 80001003.56476637721
+7.52 148.0 80001005.884933292866
+9.68 202.0 80001007.618157073855
+3.6799998 52.0 80001009.596397176385
+13.56 299.0 80001015.068401411176
+40.519997 973.0 80001015.44013249874
+24.0 560.0 80001017.39824913442
+34.12 813.0 80001017.49642172456
+25.88 607.0 80001017.91779854894
+7.3199997 143.0 80001017.95813263953
+12.84 281.0 80001018.01935687661
+6.56 124.0 80001023.587887212634
+30.64 726.0 80001023.69297429919
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([80000000.23635569, 80000001.47479323, 80000001.78458866,
+       80000002.78943624, 80000003.42859936, 80000004.07943003,
+       80000006.09310323, 80000007.18041813, 80000008.17602143,
+       80000008.20403489], dtype=float128)
+</pre></div></div>
+</div>
+<section id="Transforming-a-Lightcurve-into-an-EventList.">
+<h2>Transforming a Lightcurve into an EventList.<a class="headerlink" href="#Transforming-a-Lightcurve-into-an-EventList." title="Link to this heading">¶</a></h2>
+<p>Event lists can be obtained from light curves, where the standard followed is as follows: as many events are created as the counts in the lightcurve at the time specified by time bins.</p>
+<p>To demonstrate this, let us define a light curve.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">1.</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">lc</span><span class="o">.</span><span class="n">counts</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(array([0, 1, 2]), array([1., 4., 3.]))
+</pre></div></div>
+</div>
+<p>Now, eventlist can be loaded by calling static <code class="docutils literal notranslate"><span class="pre">from_lc()</span></code> method.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev</span> <span class="o">=</span> <span class="n">EventList</span><span class="o">.</span><span class="n">from_lc</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span>
+<span class="n">ev</span><span class="o">.</span><span class="n">time</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([0, 1, 1, 1, 1, 2, 2, 2])
+</pre></div></div>
+</div>
+</section>
+<section id="Simulating-EventList-from-Lightcurve">
+<h2>Simulating EventList from Lightcurve<a class="headerlink" href="#Simulating-EventList-from-Lightcurve" title="Link to this heading">¶</a></h2>
+<p>An arguably better way is having proper random events, reproducing the initial light curve within the errors. Stingray does this by using the inverse CDF method, using the light curve as a binned probability distribution. Please note that in this case we will have to create the EventList object before (in technical terms, <code class="docutils literal notranslate"><span class="pre">simulate_times</span></code> is not a static method.). See simulation tutorial for more details.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">()</span>
+<span class="n">ev</span><span class="o">.</span><span class="n">simulate_times</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span>
+<span class="n">ev</span><span class="o">.</span><span class="n">time</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([0.60459939, 0.8644437 , 1.47100837, 1.54281243, 1.80725171,
+       2.47032653])
+</pre></div></div>
+</div>
+</section>
+<section id="Creating-a-light-curve-from-an-EventList-object">
+<h2>Creating a light curve from an EventList object<a class="headerlink" href="#Creating-a-light-curve-from-an-EventList-object" title="Link to this heading">¶</a></h2>
+<p>After simulating event list, the original light curve can be recovered. Let’s demonstrate by creating a light curve.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dt</span> <span class="o">=</span> <span class="mf">1.</span>
+<span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="o">*</span><span class="mi">50000</span><span class="p">)</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">1.</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Simulate an event list.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">()</span>
+<span class="n">ev</span> <span class="o">=</span> <span class="n">ev</span><span class="o">.</span><span class="n">from_lc</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev</span><span class="o">.</span><span class="n">gti</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([[-0.5, 49.5]])
+</pre></div></div>
+</div>
+<p>Recover original light curve curve using <code class="docutils literal notranslate"><span class="pre">to_lc()</span></code> method. Here, <code class="docutils literal notranslate"><span class="pre">dt</span></code> defines time resolution, <code class="docutils literal notranslate"><span class="pre">tstart</span></code> the starting time, and <code class="docutils literal notranslate"><span class="pre">tseg</span></code> the total time duration.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[26]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_new</span> <span class="o">=</span> <span class="n">ev</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Let us verify that this has worked properly, by comparing the input and output light curves</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[27]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span><span class="s1">&#39;r-&#39;</span><span class="p">,</span> <span class="n">lc_new</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="s1">&#39;g-&#39;</span><span class="p">,</span> <span class="n">drawstyle</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Times&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Counts&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[27]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0, 0.5, &#39;Counts&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_EventList_EventList_Tutorial_54_1.png" src="../../_images/notebooks_EventList_EventList_Tutorial_54_1.png" />
+</div>
+</div>
+<p>… and their difference</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[28]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">lc</span><span class="o">.</span><span class="n">counts</span> <span class="o">-</span> <span class="n">lc_new</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="s1">&#39;g-&#39;</span><span class="p">,</span> <span class="n">drawstyle</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Times&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Counts&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[28]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0, 0.5, &#39;Counts&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_EventList_EventList_Tutorial_56_1.png" src="../../_images/notebooks_EventList_EventList_Tutorial_56_1.png" />
+</div>
+</div>
+<p>As can be seen from the figure above, the recovered light curve is aligned with the original light curve.</p>
+</section>
+<section id="Simulating-Energies">
+<h2>Simulating Energies<a class="headerlink" href="#Simulating-Energies" title="Link to this heading">¶</a></h2>
+<p>In order to simulate photon energies, a spectral distribution needs to be passed. The <code class="docutils literal notranslate"><span class="pre">spectrum</span></code> input is a two-dimensional array, with the energies in keV in the first dimension and the number of counts in the second. The count array will be normalized before the simulation: the raw counts do not matter, but only the ratio of the counts in each bin to the total. Again, the energies are simulated using an inverse CDF method.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[29]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">spectrum</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">],[</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">2040</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="mi">3000</span><span class="p">,</span> <span class="mi">4020</span><span class="p">,</span> <span class="mi">2070</span><span class="p">]]</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="mi">12</span><span class="p">)))</span>
+<span class="n">ev</span><span class="o">.</span><span class="n">simulate_energies</span><span class="p">(</span><span class="n">spectrum</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[31]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev</span><span class="o">.</span><span class="n">energy</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[31]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([4.84164641, 3.62741142, 3.68169619, 4.70867585, 4.92065534,
+       4.93644725, 2.26749277, 5.45959615, 3.01137686, 4.86366818,
+       0.63048041, 6.26300006])
+</pre></div></div>
+</div>
+</section>
+<section id="Joining-EventLists">
+<h2>Joining EventLists<a class="headerlink" href="#Joining-EventLists" title="Link to this heading">¶</a></h2>
+<p>Two event lists can also be joined together. If the GTI do not overlap, the event times and GTIs are appended. Otherwise, the GTIs are crossed (i.e., only the overlapping parts are saved) and the events merged together.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[32]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev1</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">],</span> <span class="n">gti</span><span class="o">=</span><span class="p">[[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">]])</span>
+<span class="n">ev2</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">],</span> <span class="n">gti</span><span class="o">=</span><span class="p">[[</span><span class="mf">3.5</span><span class="p">,</span> <span class="mf">5.5</span><span class="p">]])</span>
+<span class="n">ev</span> <span class="o">=</span> <span class="n">ev1</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ev2</span><span class="p">)</span>
+<span class="n">ev</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">ev</span><span class="o">.</span><span class="n">gti</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[32]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(array([1, 2, 3, 4, 5]), array([[0.5, 5.5]]))
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[33]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev1</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">],</span> <span class="n">gti</span><span class="o">=</span><span class="p">[[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">]])</span>
+<span class="n">ev2</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="p">[</span><span class="mf">1.2</span><span class="p">,</span> <span class="mf">3.3</span><span class="p">,</span> <span class="mf">5.6</span><span class="p">],</span> <span class="n">gti</span><span class="o">=</span><span class="p">[[</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">7.8</span><span class="p">]])</span>
+<span class="n">ev</span> <span class="o">=</span> <span class="n">ev1</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ev2</span><span class="p">)</span>
+<span class="n">ev</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">ev</span><span class="o">.</span><span class="n">gti</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[33]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(array([1. , 1.2, 2. , 3. , 3.3, 5.6]), array([[0.6, 3.5]]))
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Contents</a></li>
+<li><a class="reference internal" href="#Setup">Setup</a><ul>
+<li><a class="reference internal" href="#Creating-EventList-from-Photon-Arrival-Times">Creating EventList from Photon Arrival Times</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Roundtrip-to-Astropy-compatible-formats">Roundtrip to Astropy-compatible formats</a><ul>
+<li><a class="reference internal" href="#Loading-and-writing-EventList-objects">Loading and writing EventList objects</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Loading-an-EventList-from-an-X-ray-observation-in-HEASoft-compatible-format">Loading an EventList from an X-ray observation in HEASoft-compatible format</a></li>
+<li><a class="reference internal" href="#Roundtrip-to-pickle-objects">Roundtrip to pickle objects</a></li>
+<li><a class="reference internal" href="#id1">Roundtrip to Astropy-compatible formats</a><ul>
+<li><a class="reference internal" href="#Transforming-a-Lightcurve-into-an-EventList.">Transforming a Lightcurve into an EventList.</a></li>
+<li><a class="reference internal" href="#Simulating-EventList-from-Lightcurve">Simulating EventList from Lightcurve</a></li>
+<li><a class="reference internal" href="#Creating-a-light-curve-from-an-EventList-object">Creating a light curve from an EventList object</a></li>
+<li><a class="reference internal" href="#Simulating-Energies">Simulating Energies</a></li>
+<li><a class="reference internal" href="#Joining-EventLists">Joining EventLists</a></li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/EventList/EventList Tutorial.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

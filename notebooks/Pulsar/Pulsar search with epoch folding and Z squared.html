@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Simulate a dataset &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Phase Dispersion Minimization in Stingray" href="Phase%20Dispersion%20Minimization.html" />
+    <link rel="prev" title="Analysing Pulsar Data" href="../../pulsar.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="Phase%20Dispersion%20Minimization.html" title="Phase Dispersion Minimization in Stingray">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="../../pulsar.html" title="Analysing Pulsar Data">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../pulsar.html" accesskey="U">Analysing Pulsar Data</a> &#187;</li>
+      
+      <li>Simulate a dataset</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># %load_ext autoreload</span>
+<span class="c1"># %autoreload 2</span>
+<span class="c1"># %matplotlib notebook</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.pulse.search</span><span class="w"> </span><span class="kn">import</span> <span class="n">epoch_folding_search</span><span class="p">,</span> <span class="n">z_n_search</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">seaborn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sb</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mpl</span>
+<span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;figure.figsize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+
+</pre></div></div>
+</div>
+<section id="Simulate-a-dataset">
+<h1>Simulate a dataset<a class="headerlink" href="#Simulate-a-dataset" title="Link to this heading">¶</a></h1>
+<p>Let us simulate a pulsar: we create a sinusoidal light curve and use Stingray’s event simulator (in <code class="docutils literal notranslate"><span class="pre">Eventlist.simulate_times</span></code>) to simulate an event list with that light curve.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">sinusoid</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">amplitude</span><span class="p">,</span> <span class="n">phase</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">baseline</span> <span class="o">+</span> <span class="n">amplitude</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="p">(</span><span class="n">frequency</span> <span class="o">*</span> <span class="n">times</span> <span class="o">+</span> <span class="n">phase</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span>
+
+<span class="n">period</span> <span class="o">=</span> <span class="mf">1.203501</span>
+<span class="n">mean_countrate</span> <span class="o">=</span> <span class="mi">50</span>
+<span class="n">pulsed_fraction</span> <span class="o">=</span> <span class="mf">0.2</span>
+<span class="n">bin_time</span> <span class="o">=</span> <span class="mf">0.01</span>
+<span class="n">obs_length</span> <span class="o">=</span> <span class="mi">3000</span>
+
+<span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">obs_length</span><span class="p">,</span> <span class="n">bin_time</span><span class="p">)</span>
+
+<span class="c1"># The continuous light curve</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">sinusoid</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">period</span><span class="p">,</span> <span class="n">mean_countrate</span><span class="p">,</span>
+                  <span class="mf">0.5</span> <span class="o">*</span> <span class="n">mean_countrate</span> <span class="o">*</span> <span class="n">pulsed_fraction</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="n">bin_time</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="n">bin_time</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">obs_length</span> <span class="o">+</span> <span class="n">bin_time</span> <span class="o">/</span> <span class="mi">2</span><span class="p">]],</span>
+                <span class="n">dt</span><span class="o">=</span><span class="n">bin_time</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.events</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventList</span>
+
+<span class="c1"># use the light curve above to simulate an event list for this pulsar.</span>
+<span class="n">events</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">()</span>
+<span class="n">events</span><span class="o">.</span><span class="n">simulate_times</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Pulsation-search-with-epoch-folding.">
+<h1>Pulsation search with epoch folding.<a class="headerlink" href="#Pulsation-search-with-epoch-folding." title="Link to this heading">¶</a></h1>
+<p>Let us assume we have already an estimate of the pulse period, for example because we found a candidate in the power density spectrum with a period of ~1.2. We search around that period with the epoch folding.</p>
+<p>Epoch folding consists of cutting the light curve at every pulse period and summing up all the intervals obtained in this way. We get an average pulse profile. In this example, where the pulse was plotted twice for visual clarity. If the candidate pulse frequency was even slightly incorrect, we would have obtained a much shallower pulse profile, or no pulse profile at all.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.pulse.pulsar</span><span class="w"> </span><span class="kn">import</span> <span class="n">fold_events</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.pulse.search</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_profile</span>
+<span class="n">nbin</span> <span class="o">=</span> <span class="mi">32</span>
+
+<span class="n">ph</span><span class="p">,</span> <span class="n">profile</span><span class="p">,</span> <span class="n">profile_err</span> <span class="o">=</span> <span class="n">fold_events</span><span class="p">(</span><span class="n">events</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="n">period</span><span class="p">,</span> <span class="n">nbin</span><span class="o">=</span><span class="n">nbin</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">plot_profile</span><span class="p">(</span><span class="n">ph</span><span class="p">,</span> <span class="n">profile</span><span class="p">)</span>
+
+<span class="n">ph</span><span class="p">,</span> <span class="n">profile</span><span class="p">,</span> <span class="n">profile_err</span> <span class="o">=</span> <span class="n">fold_events</span><span class="p">(</span><span class="n">events</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="mf">1.1</span><span class="p">,</span> <span class="n">nbin</span><span class="o">=</span><span class="n">nbin</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">plot_profile</span><span class="p">(</span><span class="n">ph</span><span class="p">,</span> <span class="n">profile</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_6_0.png" src="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_6_0.png" />
+</div>
+</div>
+<p>Therefore, typically we try a number of frequencies around the candidate we found with the power spectrum or other means, and search for the frequency that gives the “best” pulsed profile. How do we evaluate this best frequency? We use the chi squared statistics.</p>
+<p>We use a flat pulsed profile (no pulsation) as model, and we calculate the chi square of the actual pulsed profile with respect to this flat model:</p>
+<div class="math notranslate nohighlight">
+\[S = \sum_i\frac{(P_i - \overline{P})^2}{\sigma^2}\]</div>
+<p>If there is no pulsation, the chi squared will assume a random value distributed around the number of degrees of freedom <span class="math notranslate nohighlight">\(n - 1\)</span> (where <span class="math notranslate nohighlight">\(n\)</span> is the number of bins in the profile) with a well defined statistical distribution (<span class="math notranslate nohighlight">\(\chi^2_{n - 1}\)</span>). If there is pulsation, the value will be much larger. Stingray has a function that does this: <code class="docutils literal notranslate"><span class="pre">stingray.pulse.search.epoch_folding_search</span></code>.</p>
+<p>For the frequency resolution of the periodogram, one usually chooses <em>at least</em> the same frequency resolution of the FFT, i. e., <span class="math notranslate nohighlight">\(df_{\rm min}=1/(t_1 - t_0)\)</span>. In most cases, a certain degree of oversampling is used.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># We will search for pulsations over a range of frequencies around the known pulsation period.</span>
+<span class="n">df_min</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="n">obs_length</span>
+<span class="n">oversampling</span><span class="o">=</span><span class="mi">15</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">df_min</span> <span class="o">/</span> <span class="n">oversampling</span>
+<span class="n">frequencies</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">period</span> <span class="o">-</span> <span class="mi">200</span> <span class="o">*</span> <span class="n">df</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="n">period</span> <span class="o">+</span> <span class="mi">200</span> <span class="o">*</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
+
+<span class="n">freq</span><span class="p">,</span> <span class="n">efstat</span> <span class="o">=</span> <span class="n">epoch_folding_search</span><span class="p">(</span><span class="n">events</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">frequencies</span><span class="p">,</span> <span class="n">nbin</span><span class="o">=</span><span class="n">nbin</span><span class="p">)</span>
+
+<span class="c1"># ---- PLOTTING --------</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">efstat</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;EF statistics&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">nbin</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;n - 1&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">period</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Correct frequency&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (Hz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;EF Statistics&#39;</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_8_0.png" src="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_8_0.png" />
+</div>
+</div>
+<p>A peak is definitely there. Far from the peak, the periodogram follows approximately a <strong>:math:`chi^2` distribution with :math:`n - 1` degrees of freedom</strong>, where <span class="math notranslate nohighlight">\(n\)</span> is the number of bins in the pulse profile used to calculate the statistics. In fact, its mean is <span class="math notranslate nohighlight">\(n-1\)</span> as shown in the figure.</p>
+<p>But close to the correct frequency, as described in Leahy et al. 1983, 1987 the peak in the epoch folding periodogram has the shape of a <strong>sinc squared function</strong> (whose secondary lobes are in this case barely visible above noise).</p>
+</section>
+<section id="Z-squared-search">
+<h1>Z-squared search<a class="headerlink" href="#Z-squared-search" title="Link to this heading">¶</a></h1>
+<p>The epoch folding statistics has no information on the actual shape of the profile.</p>
+<p>A better method is the <strong>:math:`Z^2` statistics</strong> (Buccheri et al. 1983), which is conceptually similar to the Epoch folding but has high values when the signal is well described by a small number of <strong>sinusoidal harmonics</strong>.</p>
+<p><span class="math notranslate nohighlight">\(Z^2_n = \dfrac{2}{N} \sum_{k=1}^n \left[{\left(\sum_{j=1}^N \cos k \phi_j\right)}^2 + {\left(\sum_{j=1}^N \sin k \phi_j\right)}^2\right]\)</span></p>
+<p>Where <span class="math notranslate nohighlight">\(N\)</span> is the number of photons, <span class="math notranslate nohighlight">\(n\)</span> is the number of harmonics, <span class="math notranslate nohighlight">\(\phi_j\)</span> are the phases corresponding to the event arrival times <span class="math notranslate nohighlight">\(t_j\)</span> (<span class="math notranslate nohighlight">\(\phi_j = \nu t_j\)</span>, where <span class="math notranslate nohighlight">\(\nu\)</span> is the pulse frequency).</p>
+<p>The <span class="math notranslate nohighlight">\(Z_n^2\)</span> statistics defined in this way, far from the pulsed profile, follows a <span class="math notranslate nohighlight">\(\chi^2_n\)</span> distribution, where <span class="math notranslate nohighlight">\(n\)</span> is the number of harmonics this time.</p>
+<p>Stingray implements the <span class="math notranslate nohighlight">\(Z\)</span> search in <code class="docutils literal notranslate"><span class="pre">stingray.pulse.search.z_n_search</span></code>. The standard <span class="math notranslate nohighlight">\(Z^2\)</span> search calculates the phase of each photon and calculates the sinusoidal functions above for each photon. This is very computationally expensive if the number of photons is high. Therefore, in Stingray, the search is performed by binning the pulse profile first and using the phases of the folded profile in the formula above, multiplying the squared sinusoids of the phases of the pulse
+profile by a weight corresponding to the number of photons at each phase.</p>
+<p><span class="math notranslate nohighlight">\(Z^2_n = \dfrac{2}{\sum_j{w_j}} \sum_{k=1}^n \left[{\left(\sum_{j=1}^m w_j \cos k \phi_j\right)}^2 + {\left(\sum_{j=1}^m w_j \sin k \phi_j\right)}^2\right]\)</span></p>
+<p>Since the sinusoids are only executed on a small number of bins, while the epoch folding procedure just consists of a very fast histogram-like operation, the speedup of this new formula is obvious. Care must be put into the choice of the number of bins, in order to maintain a good approximation even when the number of harmonics is high. As a rule of thumb, use <em>a number of bins at least 10 times larger than the number of harmonics</em>.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># We will search for pulsations over a range of frequencies around the known pulsation period.</span>
+<span class="n">nharm</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">freq</span><span class="p">,</span> <span class="n">zstat</span> <span class="o">=</span> <span class="n">z_n_search</span><span class="p">(</span><span class="n">events</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">frequencies</span><span class="p">,</span> <span class="n">nbin</span><span class="o">=</span><span class="n">nbin</span><span class="p">,</span> <span class="n">nharm</span><span class="o">=</span><span class="n">nharm</span><span class="p">)</span>
+
+<span class="c1"># ---- PLOTTING --------</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="p">(</span><span class="n">zstat</span> <span class="o">-</span> <span class="n">nharm</span><span class="p">),</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;$Z_2$ statistics&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">efstat</span> <span class="o">-</span> <span class="n">nbin</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;EF statistics&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">period</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Correct frequency&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">([</span><span class="n">frequencies</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">frequencies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (Hz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Statistics - d.o.f.&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="p">(</span><span class="n">zstat</span> <span class="o">-</span> <span class="n">nharm</span><span class="p">),</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;$Z_2$ statistics&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">efstat</span> <span class="o">-</span> <span class="n">nbin</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;EF statistics&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">period</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Correct frequency&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (Hz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Statistics - d.o.f. (Zoom)&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">([</span><span class="o">-</span><span class="mi">15</span><span class="p">,</span> <span class="mi">15</span><span class="p">])</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">([</span><span class="n">frequencies</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">frequencies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_11_0.png" src="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_11_0.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_11_1.png" src="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_11_1.png" />
+</div>
+</div>
+</section>
+<section id="Thresholding">
+<h1>Thresholding<a class="headerlink" href="#Thresholding" title="Link to this heading">¶</a></h1>
+<p>When can a peak in the EF or <span class="math notranslate nohighlight">\(Z_n^2\)</span> periodogram be considered a pulsation?</p>
+<p>Since both the EF and <span class="math notranslate nohighlight">\(Z_n^2\)</span> of noise follow precise statistical distributions (<span class="math notranslate nohighlight">\(\chi^2_{\rm nbin}\)</span> in one case, <span class="math notranslate nohighlight">\(\chi^2_n\)</span> in the other), we can use the inverse survival functions of these statistical distributions to find the peaks that are not expected by noise.</p>
+<p>In Stingray, the thresholds are defined in <code class="docutils literal notranslate"><span class="pre">stingray.stats.fold_detection_level</span></code> and <code class="docutils literal notranslate"><span class="pre">stingray.stats.z2_n_detection_level</span></code> respectively.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">ntrial</span></code> parameter should be set to an estimate of the statistically independent frequencies in the periodogram. A good estimate can be</p>
+<div class="math notranslate nohighlight">
+\[N_{\rm trial} \sim (f_{\rm max} - f_{\rm min}) / df_{\rm min} =(f_{\rm max} - f_{\rm min}) (t_1 - t_0)\]</div>
+<p>, where <span class="math notranslate nohighlight">\(f_{\rm min}\)</span> and <span class="math notranslate nohighlight">\(f_{\rm max}\)</span> are the maximum and minimum frequencies of the periodogram, <span class="math notranslate nohighlight">\(df_{\rm min}\)</span> was defined above and <span class="math notranslate nohighlight">\(t_0\)</span> ans <span class="math notranslate nohighlight">\(t_1\)</span> the start and end of the observation.</p>
+<p>Moreover, the <code class="docutils literal notranslate"><span class="pre">stingray.pulse.search.search_best_peaks</span></code> helps finding the best value for nearby candidates.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.pulse.search</span><span class="w"> </span><span class="kn">import</span> <span class="n">search_best_peaks</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">fold_detection_level</span><span class="p">,</span> <span class="n">z2_n_detection_level</span>
+
+<span class="n">ntrial</span> <span class="o">=</span> <span class="p">(</span><span class="n">frequencies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">frequencies</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="n">df_min</span>
+<span class="n">z_detlev</span> <span class="o">=</span> <span class="n">z2_n_detection_level</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="n">ntrial</span><span class="p">)</span>
+<span class="n">ef_detlev</span> <span class="o">=</span> <span class="n">fold_detection_level</span><span class="p">(</span><span class="n">nbin</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="n">ntrial</span><span class="p">)</span>
+
+<span class="n">cand_freqs_ef</span><span class="p">,</span> <span class="n">cand_stat_ef</span> <span class="o">=</span> <span class="n">search_best_peaks</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">efstat</span><span class="p">,</span> <span class="n">ef_detlev</span><span class="p">)</span>
+<span class="n">cand_freqs_z</span><span class="p">,</span> <span class="n">cand_stat_z</span> <span class="o">=</span> <span class="n">search_best_peaks</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">zstat</span><span class="p">,</span> <span class="n">z_detlev</span><span class="p">)</span>
+
+<span class="c1"># ---- PLOTTING --------</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">z_detlev</span> <span class="o">-</span> <span class="n">nharm</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;$Z^2_1$ det. lev.&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">ef_detlev</span> <span class="o">-</span> <span class="n">nbin</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;EF det. lev.&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="p">(</span><span class="n">zstat</span> <span class="o">-</span> <span class="n">nharm</span><span class="p">),</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;$Z^2_1$ statistics&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">efstat</span> <span class="o">-</span> <span class="n">nbin</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;EF statistics&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cand_freqs_ef</span><span class="p">:</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">&#39;-.&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;EF Candidate&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cand_freqs_z</span><span class="p">:</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;$Z^2_1$ Candidate&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">period</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Correct frequency&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">([</span><span class="n">frequencies</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">frequencies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (Hz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Statistics - d.o.f.&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="p">(</span><span class="n">zstat</span> <span class="o">-</span> <span class="n">nharm</span><span class="p">),</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;$Z_2$ statistics&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">efstat</span> <span class="o">-</span> <span class="n">nbin</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;EF statistics&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">period</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Correct frequency&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">z_detlev</span> <span class="o">-</span> <span class="n">nharm</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;$Z^2_1$ det. lev.&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">ef_detlev</span> <span class="o">-</span> <span class="n">nbin</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;EF det. lev.&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cand_freqs_ef</span><span class="p">:</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">&#39;-.&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;EF Candidate&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cand_freqs_z</span><span class="p">:</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;$Z^2_1$ Candidate&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (Hz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Statistics - d.o.f. (Zoom)&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">([</span><span class="o">-</span><span class="mi">15</span><span class="p">,</span> <span class="n">ef_detlev</span> <span class="o">-</span> <span class="n">nbin</span> <span class="o">+</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">([</span><span class="n">frequencies</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">frequencies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_13_0.png" src="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_13_0.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_13_1.png" src="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_13_1.png" />
+</div>
+</div>
+<p>Note that the side lobes of the sinc squared-like shape are producing spurious candidates here. For now, we do not have a method to eliminate these fairly obvious patterns, but it will be implemented in future releases</p>
+</section>
+<section id="Fit-peak-with-Sinc-squared-and-Gaussian-functions">
+<h1>Fit peak with Sinc-squared and Gaussian functions<a class="headerlink" href="#Fit-peak-with-Sinc-squared-and-Gaussian-functions" title="Link to this heading">¶</a></h1>
+<div class="line-block">
+<div class="line">As we saw earlier, if the pulse frequency is stable during the observation, the peak shape is a <strong>Sinc squared function</strong>. Therefore we fit it to the peak with the function <code class="docutils literal notranslate"><span class="pre">stingray.pulse.modeling.fit_sinc</span></code>.</div>
+<div class="line">We have two possibilities:</div>
+</div>
+<ul class="simple">
+<li><p>if <code class="docutils literal notranslate"><span class="pre">obs_length</span></code> is the length of the observation. If it is defined, it fixes width to <span class="math notranslate nohighlight">\(1/(\pi*obs length)\)</span>, as expected from epoch folding periodograms. The other two free parameters are <code class="docutils literal notranslate"><span class="pre">amplitude</span></code> and <code class="docutils literal notranslate"><span class="pre">mean</span></code>.</p></li>
+<li><p>if it is not defined, the <code class="docutils literal notranslate"><span class="pre">width</span></code> parameter can be used.</p></li>
+</ul>
+<p>On the other hand, if the pulse frequency varies slightly, the peak oscillate and the integrated profile is a bell-shaped function. We can fit it with a <strong>Gaussian function</strong> (<code class="docutils literal notranslate"><span class="pre">stingray.pulse.modeling.fit_gaussian</span></code>) with the standard parameters: <code class="docutils literal notranslate"><span class="pre">amplitude</span></code>, <code class="docutils literal notranslate"><span class="pre">mean</span></code>, <code class="docutils literal notranslate"><span class="pre">stddev</span></code>.</p>
+<p>We also provide the user with the constrains <code class="docutils literal notranslate"><span class="pre">fixed</span></code>, <code class="docutils literal notranslate"><span class="pre">tied</span></code>, <code class="docutils literal notranslate"><span class="pre">bounds</span></code>, in order to fix, link and/or constrain parameters.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.pulse.modeling</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_sinc</span>
+
+<span class="n">fs</span><span class="o">=</span><span class="n">fit_sinc</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">efstat</span><span class="o">-</span><span class="p">(</span><span class="n">nbin</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span><span class="n">amp</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="n">efstat</span><span class="o">-</span><span class="p">(</span><span class="n">nbin</span><span class="o">-</span><span class="mi">1</span><span class="p">)),</span> <span class="n">mean</span><span class="o">=</span><span class="n">cand_freqs_ef</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">obs_length</span><span class="o">=</span><span class="n">obs_length</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ---- PLOTTING --------</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">efstat</span><span class="o">-</span><span class="p">(</span><span class="n">nbin</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;EF statistics&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">fs</span><span class="p">(</span><span class="n">freq</span><span class="p">),</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Best fit&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">period</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Correct frequency&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">fs</span><span class="o">.</span><span class="n">mean</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Fit frequency&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (Hz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;EF Statistics&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">efstat</span><span class="o">-</span><span class="p">(</span><span class="n">nbin</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">-</span><span class="n">fs</span><span class="p">(</span><span class="n">freq</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (Hz)&#39;</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Residuals&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_17_0.png" src="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_17_0.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_17_1.png" src="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_17_1.png" />
+</div>
+</div>
+<p>On the other hand, if we want to fit with a Gaussian:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.pulse.modeling</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_gaussian</span>
+
+<span class="n">fg</span><span class="o">=</span><span class="n">fit_gaussian</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">efstat</span><span class="o">-</span><span class="p">(</span><span class="n">nbin</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span><span class="n">amplitude</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="n">efstat</span><span class="o">-</span><span class="p">(</span><span class="n">nbin</span><span class="o">-</span><span class="mi">1</span><span class="p">)),</span>
+                <span class="n">mean</span><span class="o">=</span><span class="n">cand_freqs_ef</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">stddev</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">obs_length</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ---- PLOTTING --------</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">efstat</span><span class="o">-</span><span class="p">(</span><span class="n">nbin</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;EF statistics&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">fg</span><span class="p">(</span><span class="n">freq</span><span class="p">),</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Best fit&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">period</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Correct frequency&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">fg</span><span class="o">.</span><span class="n">mean</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Fit frequency&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (Hz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;EF Statistics&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">efstat</span><span class="o">-</span><span class="p">(</span><span class="n">nbin</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">-</span><span class="n">fg</span><span class="p">(</span><span class="n">freq</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (Hz)&#39;</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Residuals&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_20_0.png" src="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_20_0.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_20_1.png" src="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_20_1.png" />
+</div>
+</div>
+</section>
+<section id="Phaseogram">
+<h1>Phaseogram<a class="headerlink" href="#Phaseogram" title="Link to this heading">¶</a></h1>
+<p>Let us now calculate the phaseogram and plot it with the pulse profile. We do that with the functions <code class="docutils literal notranslate"><span class="pre">phaseogram</span></code>, <code class="docutils literal notranslate"><span class="pre">plot_profile</span></code> and <code class="docutils literal notranslate"><span class="pre">plot_phaseogram</span></code> from <code class="docutils literal notranslate"><span class="pre">stingray.pulse.search</span></code></p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.pulse.search</span><span class="w"> </span><span class="kn">import</span> <span class="n">phaseogram</span><span class="p">,</span> <span class="n">plot_phaseogram</span><span class="p">,</span> <span class="n">plot_profile</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.gridspec</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridSpec</span>
+
+<span class="c1"># Calculate the phaseogram</span>
+<span class="n">phaseogr</span><span class="p">,</span> <span class="n">phases</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">additional_info</span> <span class="o">=</span> \
+            <span class="n">phaseogram</span><span class="p">(</span><span class="n">events</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">cand_freqs_ef</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">return_plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nph</span><span class="o">=</span><span class="n">nbin</span><span class="p">,</span> <span class="n">nt</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
+
+<span class="c1"># ---- PLOTTING --------</span>
+
+<span class="c1"># Plot on a grid</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">15</span><span class="p">))</span>
+<span class="n">gs</span> <span class="o">=</span> <span class="n">GridSpec</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">height_ratios</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+<span class="n">ax0</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="n">gs</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">ax1</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="n">gs</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">sharex</span><span class="o">=</span><span class="n">ax0</span><span class="p">)</span>
+
+<span class="n">mean_phases</span> <span class="o">=</span> <span class="p">(</span><span class="n">phases</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">phases</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">/</span> <span class="mi">2</span>
+<span class="n">plot_profile</span><span class="p">(</span><span class="n">mean_phases</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">phaseogr</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax0</span><span class="p">)</span>
+<span class="c1"># Note that we can pass arguments to plt.pcolormesh, in this case vmin</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">plot_phaseogram</span><span class="p">(</span><span class="n">phaseogr</span><span class="p">,</span> <span class="n">phases</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax1</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">phaseogr</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_22_0.png" src="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_22_0.png" />
+</div>
+</div>
+<section id="Examples-of-interactive-phaseograms">
+<h2>Examples of interactive phaseograms<a class="headerlink" href="#Examples-of-interactive-phaseograms" title="Link to this heading">¶</a></h2>
+<section id="First:-shift-the-rows-of-the-phaseogram-interactively">
+<h3>First: shift the rows of the phaseogram interactively<a class="headerlink" href="#First:-shift-the-rows-of-the-phaseogram-interactively" title="Link to this heading">¶</a></h3>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">shift_phaseogram</span><span class="p">(</span><span class="n">phaseogr</span><span class="p">,</span> <span class="n">tseg</span><span class="p">,</span> <span class="n">delay_fun</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Shift the phaseogram rows according to an input delay function.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    phaseogr : 2-d array</span>
+<span class="sd">        The phaseogram, as returned by ``phaseogram``</span>
+<span class="sd">    freq : float</span>
+<span class="sd">        The pulse frequency</span>
+<span class="sd">    tseg : float</span>
+<span class="sd">        The integration time for each row of the phaseogram</span>
+<span class="sd">    delay_fun : function</span>
+<span class="sd">        Function that gives the delay (in seconds) for each row of the</span>
+<span class="sd">        phaseogram</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    phaseogram_new : 2-d array</span>
+<span class="sd">        The shifted phaseogram</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Assume that the phaseogram is repeated twice in phase</span>
+    <span class="n">nbin</span> <span class="o">=</span> <span class="n">phaseogr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="n">ntimes</span> <span class="o">=</span> <span class="n">phaseogr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">tseg</span> <span class="o">*</span> <span class="n">ntimes</span><span class="p">,</span> <span class="n">tseg</span><span class="p">)</span>
+    <span class="n">phase_delays</span> <span class="o">=</span> <span class="n">delay_fun</span><span class="p">(</span><span class="n">times</span><span class="p">)</span>  <span class="c1"># This gives the delay in units of time!</span>
+
+    <span class="n">delayed_bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">rint</span><span class="p">(</span><span class="n">phase_delays</span> <span class="o">*</span> <span class="n">nbin</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">phaseogram_new</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">phaseogr</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ntimes</span><span class="p">):</span>
+        <span class="n">phaseogram_new</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">phaseogram_new</span><span class="p">[:,</span> <span class="n">i</span><span class="p">],</span>
+                                       <span class="n">delayed_bins</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">phaseogram_new</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">interactive_phaseogram</span><span class="p">(</span><span class="n">phas</span><span class="p">,</span> <span class="n">binx</span><span class="p">,</span> <span class="n">biny</span><span class="p">,</span> <span class="n">df</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">dfdot</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.widgets</span><span class="w"> </span><span class="kn">import</span> <span class="n">Slider</span><span class="p">,</span> <span class="n">Button</span><span class="p">,</span> <span class="n">RadioButtons</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="mf">0.30</span><span class="p">)</span>
+    <span class="n">tseg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">biny</span><span class="p">))</span>
+    <span class="n">tobs</span> <span class="o">=</span> <span class="n">tseg</span> <span class="o">*</span> <span class="n">phas</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">delta_df_start</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">tobs</span>
+    <span class="n">df_order_of_mag</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">delta_df_start</span><span class="p">))</span>
+    <span class="n">delta_df</span> <span class="o">=</span> <span class="n">delta_df_start</span> <span class="o">/</span> <span class="mi">10</span> <span class="o">**</span> <span class="n">df_order_of_mag</span>
+
+    <span class="n">delta_dfdot_start</span> <span class="o">=</span> <span class="mi">8</span> <span class="o">/</span> <span class="n">tobs</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="n">dfdot_order_of_mag</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">delta_dfdot_start</span><span class="p">))</span>
+    <span class="n">delta_dfdot</span> <span class="o">=</span> <span class="n">delta_dfdot_start</span> <span class="o">/</span> <span class="mi">10</span> <span class="o">**</span> <span class="n">dfdot_order_of_mag</span>
+
+    <span class="n">pcolor</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">pcolormesh</span><span class="p">(</span><span class="n">binx</span><span class="p">,</span> <span class="n">biny</span><span class="p">,</span> <span class="n">phas</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;magma&#39;</span><span class="p">)</span>
+    <span class="n">l</span><span class="p">,</span>  <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">biny</span><span class="p">),</span> <span class="n">biny</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Phase&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Times&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+
+    <span class="n">axcolor</span> <span class="o">=</span> <span class="s1">&#39;lightgoldenrodyellow&#39;</span>
+    <span class="n">axfreq</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">axes</span><span class="p">([</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">],</span> <span class="n">facecolor</span><span class="o">=</span><span class="n">axcolor</span><span class="p">)</span>
+    <span class="n">axfdot</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">axes</span><span class="p">([</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">],</span> <span class="n">facecolor</span><span class="o">=</span><span class="n">axcolor</span><span class="p">)</span>
+    <span class="n">axpepoch</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">axes</span><span class="p">([</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">],</span> <span class="n">facecolor</span><span class="o">=</span><span class="n">axcolor</span><span class="p">)</span>
+
+    <span class="n">sfreq</span> <span class="o">=</span> <span class="n">Slider</span><span class="p">(</span><span class="n">axfreq</span><span class="p">,</span> <span class="s1">&#39;Delta freq x$10^</span><span class="si">{}</span><span class="s1">$&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">df_order_of_mag</span><span class="p">),</span>
+                   <span class="o">-</span><span class="n">delta_df</span><span class="p">,</span> <span class="n">delta_df</span><span class="p">,</span> <span class="n">valinit</span><span class="o">=</span><span class="n">df</span><span class="p">)</span>
+    <span class="n">sfdot</span> <span class="o">=</span> <span class="n">Slider</span><span class="p">(</span><span class="n">axfdot</span><span class="p">,</span> <span class="s1">&#39;Delta fdot x$10^</span><span class="si">{}</span><span class="s1">$&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dfdot_order_of_mag</span><span class="p">),</span>
+                   <span class="o">-</span><span class="n">delta_dfdot</span><span class="p">,</span> <span class="n">delta_dfdot</span><span class="p">,</span> <span class="n">valinit</span><span class="o">=</span><span class="n">dfdot</span><span class="p">)</span>
+    <span class="n">spepoch</span> <span class="o">=</span> <span class="n">Slider</span><span class="p">(</span><span class="n">axpepoch</span><span class="p">,</span> <span class="s1">&#39;Delta pepoch&#39;</span><span class="p">,</span>
+                     <span class="mi">0</span><span class="p">,</span> <span class="n">biny</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">biny</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">valinit</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+        <span class="n">fdot</span> <span class="o">=</span> <span class="n">sfdot</span><span class="o">.</span><span class="n">val</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">**</span> <span class="n">dfdot_order_of_mag</span>
+        <span class="n">freq</span> <span class="o">=</span> <span class="n">sfreq</span><span class="o">.</span><span class="n">val</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">**</span> <span class="n">df_order_of_mag</span>
+        <span class="n">pepoch</span> <span class="o">=</span> <span class="n">spepoch</span><span class="o">.</span><span class="n">val</span>
+        <span class="n">delay_fun</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">times</span><span class="p">:</span> <span class="p">(</span><span class="n">times</span> <span class="o">-</span> <span class="n">pepoch</span><span class="p">)</span> <span class="o">*</span> <span class="n">freq</span> <span class="o">+</span> \
+                                   <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">times</span> <span class="o">-</span> <span class="n">pepoch</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">fdot</span>
+        <span class="n">new_phaseogram</span> <span class="o">=</span> <span class="n">shift_phaseogram</span><span class="p">(</span><span class="n">phas</span><span class="p">,</span> <span class="n">tseg</span><span class="p">,</span> <span class="n">delay_fun</span><span class="p">)</span>
+        <span class="n">pcolor</span><span class="o">.</span><span class="n">set_array</span><span class="p">(</span><span class="n">new_phaseogram</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+        <span class="n">l</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">delay_fun</span><span class="p">(</span><span class="n">biny</span> <span class="o">-</span> <span class="n">biny</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw_idle</span><span class="p">()</span>
+
+    <span class="n">resetax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">axes</span><span class="p">([</span><span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.020</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.04</span><span class="p">])</span>
+    <span class="n">button</span> <span class="o">=</span> <span class="n">Button</span><span class="p">(</span><span class="n">resetax</span><span class="p">,</span> <span class="s1">&#39;Reset&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">axcolor</span><span class="p">,</span> <span class="n">hovercolor</span><span class="o">=</span><span class="s1">&#39;0.975&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="n">event</span><span class="p">):</span>
+        <span class="n">sfreq</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="n">sfdot</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="n">spepoch</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="n">pcolor</span><span class="o">.</span><span class="n">set_array</span><span class="p">(</span><span class="n">phas</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+        <span class="n">l</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">button</span><span class="o">.</span><span class="n">on_clicked</span><span class="p">(</span><span class="n">reset</span><span class="p">)</span>
+
+    <span class="n">sfreq</span><span class="o">.</span><span class="n">on_changed</span><span class="p">(</span><span class="n">update</span><span class="p">)</span>
+    <span class="n">sfdot</span><span class="o">.</span><span class="n">on_changed</span><span class="p">(</span><span class="n">update</span><span class="p">)</span>
+    <span class="n">spepoch</span><span class="o">.</span><span class="n">on_changed</span><span class="p">(</span><span class="n">update</span><span class="p">)</span>
+
+    <span class="n">spepoch</span><span class="o">.</span><span class="n">_dummy_reset_button_ref</span> <span class="o">=</span> <span class="n">button</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="k">return</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># f0 = 0.0001</span>
+<span class="c1"># fdot = 0</span>
+<span class="c1"># delay_fun = lambda times: times * f0 + 0.5 * times ** 2 * fdot</span>
+
+<span class="c1"># new_phaseogr = shift_phaseogram(phaseogr, times[1] - times[0], delay_fun)</span>
+<span class="c1"># _ = plot_phaseogram(new_phaseogr, phases, times, vmin=np.median(phaseogr))</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">interactive_phaseogram</span><span class="p">(</span><span class="n">phaseogr</span><span class="p">,</span> <span class="n">phases</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">df</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">dfdot</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_26_0.png" src="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_26_0.png" />
+</div>
+</div>
+</section>
+<section id="Second:-overplot-a-line-with-a-pulse-frequency-solution,-then-update-the-full-phaseogram">
+<h3>Second: overplot a line with a pulse frequency solution, then update the full phaseogram<a class="headerlink" href="#Second:-overplot-a-line-with-a-pulse-frequency-solution,-then-update-the-full-phaseogram" title="Link to this heading">¶</a></h3>
+<p>This interactive phaseogram is implemented in <code class="docutils literal notranslate"><span class="pre">HENDRICS</span></code>, in the script <code class="docutils literal notranslate"><span class="pre">HENphaseogram</span></code></p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">InteractivePhaseogram</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ev_times</span><span class="p">,</span> <span class="n">freq</span><span class="p">,</span> <span class="n">nph</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">nt</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">fdot</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">fddot</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.widgets</span><span class="w"> </span><span class="kn">import</span> <span class="n">Slider</span><span class="p">,</span> <span class="n">Button</span><span class="p">,</span> <span class="n">RadioButtons</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="o">=</span><span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dfdot</span><span class="o">=</span><span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">freq</span> <span class="o">=</span> <span class="n">freq</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fdot</span> <span class="o">=</span> <span class="n">fdot</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nt</span> <span class="o">=</span> <span class="n">nt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nph</span> <span class="o">=</span> <span class="n">nph</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ev_times</span> <span class="o">=</span> <span class="n">ev_times</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">phaseogr</span><span class="p">,</span> <span class="n">phases</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">additional_info</span> <span class="o">=</span> \
+                <span class="n">phaseogram</span><span class="p">(</span><span class="n">ev_times</span><span class="p">,</span> <span class="n">freq</span><span class="p">,</span> <span class="n">return_plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nph</span><span class="o">=</span><span class="n">nph</span><span class="p">,</span> <span class="n">nt</span><span class="o">=</span><span class="n">nt</span><span class="p">,</span>
+                           <span class="n">fdot</span><span class="o">=</span><span class="n">fdot</span><span class="p">,</span> <span class="n">fddot</span><span class="o">=</span><span class="n">fddot</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">phases</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span> <span class="o">=</span> <span class="n">phases</span><span class="p">,</span> <span class="n">times</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="mf">0.30</span><span class="p">)</span>
+        <span class="n">tseg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">times</span><span class="p">))</span>
+        <span class="n">tobs</span> <span class="o">=</span> <span class="n">tseg</span> <span class="o">*</span> <span class="n">nt</span>
+        <span class="n">delta_df_start</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">tobs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">df_order_of_mag</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">delta_df_start</span><span class="p">))</span>
+        <span class="n">delta_df</span> <span class="o">=</span> <span class="n">delta_df_start</span> <span class="o">/</span> <span class="mi">10</span> <span class="o">**</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_order_of_mag</span>
+
+        <span class="n">delta_dfdot_start</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">tobs</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dfdot_order_of_mag</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">delta_dfdot_start</span><span class="p">))</span>
+        <span class="n">delta_dfdot</span> <span class="o">=</span> <span class="n">delta_dfdot_start</span> <span class="o">/</span> <span class="mi">10</span> <span class="o">**</span> <span class="bp">self</span><span class="o">.</span><span class="n">dfdot_order_of_mag</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">pcolor</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">pcolormesh</span><span class="p">(</span><span class="n">phases</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">phaseogr</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;magma&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l1</span><span class="p">,</span>  <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">times</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l2</span><span class="p">,</span>  <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">times</span><span class="p">),</span> <span class="n">times</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l3</span><span class="p">,</span>  <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">times</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Phase&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Time&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+
+        <span class="n">axcolor</span> <span class="o">=</span> <span class="s1">&#39;lightgoldenrodyellow&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axfreq</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">axes</span><span class="p">([</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">],</span> <span class="n">facecolor</span><span class="o">=</span><span class="n">axcolor</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axfdot</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">axes</span><span class="p">([</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">],</span> <span class="n">facecolor</span><span class="o">=</span><span class="n">axcolor</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axpepoch</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">axes</span><span class="p">([</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">],</span> <span class="n">facecolor</span><span class="o">=</span><span class="n">axcolor</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">sfreq</span> <span class="o">=</span> <span class="n">Slider</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">axfreq</span><span class="p">,</span> <span class="s1">&#39;Delta freq x$10^</span><span class="si">{}</span><span class="s1">$&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_order_of_mag</span><span class="p">),</span>
+                       <span class="o">-</span><span class="n">delta_df</span><span class="p">,</span> <span class="n">delta_df</span><span class="p">,</span> <span class="n">valinit</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sfdot</span> <span class="o">=</span> <span class="n">Slider</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">axfdot</span><span class="p">,</span> <span class="s1">&#39;Delta fdot x$10^</span><span class="si">{}</span><span class="s1">$&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dfdot_order_of_mag</span><span class="p">),</span>
+                       <span class="o">-</span><span class="n">delta_dfdot</span><span class="p">,</span> <span class="n">delta_dfdot</span><span class="p">,</span> <span class="n">valinit</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dfdot</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spepoch</span> <span class="o">=</span> <span class="n">Slider</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">axpepoch</span><span class="p">,</span> <span class="s1">&#39;Delta pepoch&#39;</span><span class="p">,</span>
+                         <span class="mi">0</span><span class="p">,</span> <span class="n">times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">valinit</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">sfreq</span><span class="o">.</span><span class="n">on_changed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sfdot</span><span class="o">.</span><span class="n">on_changed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spepoch</span><span class="o">.</span><span class="n">on_changed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">resetax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">axes</span><span class="p">([</span><span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.020</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.04</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">button</span> <span class="o">=</span> <span class="n">Button</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resetax</span><span class="p">,</span> <span class="s1">&#39;Reset&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">axcolor</span><span class="p">,</span> <span class="n">hovercolor</span><span class="o">=</span><span class="s1">&#39;0.975&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">recalcax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">axes</span><span class="p">([</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.020</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.04</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">button_recalc</span> <span class="o">=</span> <span class="n">Button</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recalcax</span><span class="p">,</span> <span class="s1">&#39;Recalculate&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">axcolor</span><span class="p">,</span> <span class="n">hovercolor</span><span class="o">=</span><span class="s1">&#39;0.975&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">button</span><span class="o">.</span><span class="n">on_clicked</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">button_recalc</span><span class="o">.</span><span class="n">on_clicked</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recalculate</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="n">fdot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sfdot</span><span class="o">.</span><span class="n">val</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">**</span> <span class="bp">self</span><span class="o">.</span><span class="n">dfdot_order_of_mag</span>
+        <span class="n">freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sfreq</span><span class="o">.</span><span class="n">val</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">**</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_order_of_mag</span>
+        <span class="n">pepoch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spepoch</span><span class="o">.</span><span class="n">val</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">delay_fun</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">times</span><span class="p">:</span> <span class="p">(</span><span class="n">times</span> <span class="o">-</span> <span class="n">pepoch</span><span class="p">)</span> <span class="o">*</span> <span class="n">freq</span> <span class="o">+</span> \
+                                   <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">times</span> <span class="o">-</span> <span class="n">pepoch</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">fdot</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l1</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">+</span> <span class="n">delay_fun</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">times</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l2</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">delay_fun</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">times</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l3</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="mf">1.5</span> <span class="o">+</span> <span class="n">delay_fun</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">times</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw_idle</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">recalculate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="n">dfdot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sfdot</span><span class="o">.</span><span class="n">val</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">**</span> <span class="bp">self</span><span class="o">.</span><span class="n">dfdot_order_of_mag</span>
+        <span class="n">dfreq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sfreq</span><span class="o">.</span><span class="n">val</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">**</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_order_of_mag</span>
+        <span class="n">pepoch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spepoch</span><span class="o">.</span><span class="n">val</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fdot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fdot</span> <span class="o">-</span> <span class="n">dfdot</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq</span> <span class="o">-</span> <span class="n">dfreq</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">phaseogr</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> \
+                <span class="n">phaseogram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ev_times</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">fdot</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fdot</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                           <span class="n">nph</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nph</span><span class="p">,</span> <span class="n">nt</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nt</span><span class="p">,</span> <span class="n">pepoch</span><span class="o">=</span><span class="n">pepoch</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">l1</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l2</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l3</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="mf">1.5</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">sfreq</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sfdot</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spepoch</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">pcolor</span><span class="o">.</span><span class="n">set_array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">phaseogr</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sfreq</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sfdot</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spepoch</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pcolor</span><span class="o">.</span><span class="n">set_array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">phaseogr</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l1</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l2</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l3</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="mf">1.5</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fdot</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">times_delayed</span> <span class="o">=</span> <span class="n">events</span><span class="o">.</span><span class="n">time</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">events</span><span class="o">.</span><span class="n">time</span> <span class="o">-</span> <span class="n">events</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">*</span> <span class="mf">3e-8</span> <span class="o">/</span> <span class="n">cand_freqs_ef</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">ip</span> <span class="o">=</span> <span class="n">InteractivePhaseogram</span><span class="p">(</span><span class="n">times_delayed</span><span class="p">,</span> <span class="n">cand_freqs_ef</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">nt</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_29_0.png" src="../../_images/notebooks_Pulsar_Pulsar_search_with_epoch_folding_and_Z_squared_29_0.png" />
+</div>
+</div>
+<p>An evolved implementation of this interactive phaseogram is implemented in <a class="reference external" href="https://github.com/stingraysoftware/hendrics">HENDRICS</a> (command line tool <code class="docutils literal notranslate"><span class="pre">HENphaseogram</span></code>)</p>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Simulate a dataset</a></li>
+<li><a class="reference internal" href="#Pulsation-search-with-epoch-folding.">Pulsation search with epoch folding.</a></li>
+<li><a class="reference internal" href="#Z-squared-search">Z-squared search</a></li>
+<li><a class="reference internal" href="#Thresholding">Thresholding</a></li>
+<li><a class="reference internal" href="#Fit-peak-with-Sinc-squared-and-Gaussian-functions">Fit peak with Sinc-squared and Gaussian functions</a></li>
+<li><a class="reference internal" href="#Phaseogram">Phaseogram</a><ul>
+<li><a class="reference internal" href="#Examples-of-interactive-phaseograms">Examples of interactive phaseograms</a><ul>
+<li><a class="reference internal" href="#First:-shift-the-rows-of-the-phaseogram-interactively">First: shift the rows of the phaseogram interactively</a></li>
+<li><a class="reference internal" href="#Second:-overplot-a-line-with-a-pulse-frequency-solution,-then-update-the-full-phaseogram">Second: overplot a line with a pulse frequency solution, then update the full phaseogram</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/Pulsar/Pulsar search with epoch folding and Z squared.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

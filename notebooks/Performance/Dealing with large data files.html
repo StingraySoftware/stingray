@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Data preparation &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Stingray API" href="../../api.html" />
+    <link rel="prev" title="Working with large data sets" href="../../largedata.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="../../api.html" title="Stingray API">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="../../largedata.html" title="Working with large data sets">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../largedata.html" accesskey="U">Working with large data sets</a> &#187;</li>
+      
+      <li>Data preparation</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <p>In this tutorial, we approach the case of a very large event file, larger than the memory of our computer. Will we be able to analyze it?</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">load_ext</span> autoreload
+<span class="o">%</span><span class="k">autoreload</span> 2
+<span class="o">%</span><span class="k">load_ext</span> memory_profiler
+<span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventList</span><span class="p">,</span> <span class="n">AveragedPowerspectrum</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pid</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()</span>
+<span class="n">python_process</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Process</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span>
+<span class="n">memory_use</span> <span class="o">=</span> <span class="n">python_process</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="mf">2.</span><span class="o">**</span><span class="mi">20</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Current memory use (</span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">memory_use</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Current memory use (29237): 91.16 MB
+</pre></div></div>
+</div>
+<section id="Data-preparation">
+<h1>Data preparation<a class="headerlink" href="#Data-preparation" title="Link to this heading">¶</a></h1>
+<p>Now we simulate and load a full dataset. Let’s simulate a large observation, about 2GB. We use HENDRICS, you can install it with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">hendrics</span></code></p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;events_large.evt&quot;</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>HENfake<span class="w"> </span>-c<span class="w"> </span><span class="m">20000</span><span class="w"> </span>--tstart<span class="w"> </span><span class="m">0</span><span class="w"> </span>--tstop<span class="w"> </span><span class="m">10000</span><span class="w"> </span>--mjdref<span class="w"> </span><span class="m">56000</span><span class="w"> </span>-o<span class="w"> </span>events_large.evt
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+/Users/meo/devel/StingraySoftware/hendrics/hendrics/io.py:38: UserWarning: Warning! NetCDF is not available. Using pickle format.
+  warnings.warn(msg)
+/Users/meo/devel/StingraySoftware/hendrics/hendrics/fold.py:38: UserWarning: PINT is not installed. Some pulsar functionality will not be available
+  warnings.warn(
+
+</pre></div></div>
+</div>
+</section>
+<section id="Naive-procedure:-create-light-curve,-then-calculate-PDS">
+<h1>Naive procedure: create light curve, then calculate PDS<a class="headerlink" href="#Naive-procedure:-create-light-curve,-then-calculate-PDS" title="Link to this heading">¶</a></h1>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">memit</span> events = EventList.read(fname, fmt=&quot;ogip&quot;)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+peak memory: 5645.70 MiB, increment: 5347.78 MiB
+</pre></div></div>
+</div>
+<p>Loading the observation into memory takes about 5 GB. Now, we want a power spectrum with very high frequencies. Let us do the traditional way, creating first a light curve, then analyzing it with AveragedPowerspectrum</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fine_sample_time</span> <span class="o">=</span> <span class="mf">0.00001</span>
+<span class="n">segment_size</span> <span class="o">=</span> <span class="mi">128</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">memit</span> lc = events.to_lc(dt=fine_sample_time)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+peak memory: 15315.70 MiB, increment: 9670.00 MiB
+</pre></div></div>
+</div>
+<p>This very finely sampled light curve will take a <em>lot</em> of memory: 10000 s, sampled at 10 <span class="math notranslate nohighlight">\(\mu\)</span>s, will give ~1B float objects, or 8 GB, for the time array and the same for the counts array. Here, the value that comes out is slightly smaller because the operating system is using swap! Some of the swapped data will come back in the main memory when calculating the power spectrum.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">memit</span> ps = AveragedPowerspectrum.from_lightcurve(lc, segment_size=segment_size)
+<span class="n">ps</span><span class="o">.</span><span class="n">power</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+78it [00:28,  2.69it/s]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+peak memory: 14324.80 MiB, increment: 2063.22 MiB
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([1.02539377e-04, 1.03036920e-04, 9.54479649e-05, ...,
+       1.10340774e-04, 1.07141777e-04, 9.10072280e-05])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">del</span> <span class="n">events</span><span class="p">,</span> <span class="n">lc</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">ps</span>
+<span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+0
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">memory_use</span> <span class="o">=</span> <span class="n">python_process</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="mf">2.</span><span class="o">**</span><span class="mi">20</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Current memory use (</span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">memory_use</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Current memory use (29237): 1876.75 MB
+</pre></div></div>
+</div>
+<p>So, if we want to take the maximum memory usage for the full procedure, we can profile the three steps done until now:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">legacy_pds_procedure</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">sample_time</span><span class="p">,</span> <span class="n">segment_size</span><span class="p">):</span>
+    <span class="n">events</span> <span class="o">=</span> <span class="n">EventList</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;ogip&quot;</span><span class="p">)</span>
+    <span class="n">lc</span> <span class="o">=</span> <span class="n">events</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="n">fine_sample_time</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_lightcurve</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">)</span>
+
+
+<span class="o">%</span><span class="k">memit</span> ps = legacy_pds_procedure(fname, fine_sample_time, segment_size)
+<span class="n">ps</span><span class="o">.</span><span class="n">power</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+78it [00:28,  2.70it/s]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+peak memory: 16715.56 MiB, increment: 14837.95 MiB
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([1.02539377e-04, 1.03036920e-04, 9.54479649e-05, ...,
+       1.10340774e-04, 1.07141777e-04, 9.10072280e-05])
+</pre></div></div>
+</div>
+<p>Let’s clean up the memory a little bit.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">del</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">ps</span>
+<span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+<span class="n">python_process</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="mf">2.</span><span class="o">**</span><span class="mi">20</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Current memory use (</span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">memory_use</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Current memory use (29237): 1876.75 MB
+</pre></div></div>
+</div>
+</section>
+<section id="Slightly-better:-PDS-from-events">
+<h1>Slightly better: PDS from events<a class="headerlink" href="#Slightly-better:-PDS-from-events" title="Link to this heading">¶</a></h1>
+<p>What if we get the power spectrum directly from the events, without previous binning of the full light curve? In this case, the binning will happen only on a segment-by-segment basis, freeing memory.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">pds_from_events</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">sample_time</span><span class="p">,</span> <span class="n">segment_size</span><span class="p">):</span>
+    <span class="n">events</span> <span class="o">=</span> <span class="n">EventList</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;ogip&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">events</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">sample_time</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">)</span>
+
+<span class="o">%</span><span class="k">memit</span> ps = pds_from_events(fname, fine_sample_time, segment_size)
+<span class="n">ps</span><span class="o">.</span><span class="n">power</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+78it [00:28,  2.71it/s]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+peak memory: 7543.30 MiB, increment: 5701.02 MiB
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([1.02539377e-04, 1.03036920e-04, 9.54479649e-05, ...,
+       1.10349785e-04, 1.07137039e-04, 9.09968704e-05])
+</pre></div></div>
+</div>
+<p>Much better! The memory increment is now dominated by the loading of events, so just about 5.7 GB. Let’s clean up the memory a little bit again</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">del</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">ps</span>
+<span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+<span class="n">memory_use</span> <span class="o">=</span> <span class="n">python_process</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="mf">2.</span><span class="o">**</span><span class="mi">20</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Current memory use (</span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">memory_use</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Current memory use (29237): 2245.31 MB
+</pre></div></div>
+</div>
+</section>
+<section id="Let's-be-%22lazy%22:-lazy-loading-with-FITSTimeseriesReader">
+<h1>Let’s be “lazy”: lazy loading with FITSTimeseriesReader<a class="headerlink" href="#Let's-be-%22lazy%22:-lazy-loading-with-FITSTimeseriesReader" title="Link to this heading">¶</a></h1>
+<p>Now, let’s try not to even pre-load the events. What will happen? First of all, we use the new class <code class="docutils literal notranslate"><span class="pre">FITSTimeseriesReader</span></code> to lazy-load the data, meaning that the data remain in the FITS file until we try to access them. This occupies very little memory.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">FITSTimeseriesReader</span>
+<span class="o">%</span><span class="k">memit</span> fitsreader = FITSTimeseriesReader(fname, data_kind=&quot;times&quot;)
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+peak memory: 2245.34 MiB, increment: 0.00 MiB
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.gti</span><span class="w"> </span><span class="kn">import</span> <span class="n">time_intervals_from_gtis</span>
+<span class="n">start</span><span class="p">,</span> <span class="n">stop</span> <span class="o">=</span> <span class="n">time_intervals_from_gtis</span><span class="p">(</span><span class="n">fitsreader</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="n">segment_size</span><span class="p">)</span>
+<span class="o">%</span><span class="k">memit</span> interval_times = np.array(list(zip(start, stop)))
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+peak memory: 2245.36 MiB, increment: 0.00 MiB
+</pre></div></div>
+</div>
+<p>Let’s create an iterable that uses the FITSTimeseriesReader to send AveragedPowerspectrum the pre-binned light curves for each segment. Events will be read in chunks from the FITS file, and streamed as light curve segments on the fly.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">histogram</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">fits_times_iterable</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">segment_size</span><span class="p">,</span> <span class="n">sample_time</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create light curve iterables to be analyzed by AveragedPowerspectrum.from_lc_iterable.&quot;&quot;&quot;</span>
+    <span class="n">fitsreader</span> <span class="o">=</span> <span class="n">FITSTimeseriesReader</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">data_kind</span><span class="o">=</span><span class="s2">&quot;times&quot;</span><span class="p">)</span>
+    <span class="n">start</span><span class="p">,</span> <span class="n">stop</span> <span class="o">=</span> <span class="n">time_intervals_from_gtis</span><span class="p">(</span><span class="n">fitsreader</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="n">segment_size</span><span class="p">)</span>
+    <span class="n">intvs</span> <span class="o">=</span> <span class="p">[[</span><span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">start</span><span class="p">,</span><span class="n">stop</span><span class="p">)]</span>
+    <span class="n">times</span> <span class="o">=</span> <span class="n">fitsreader</span><span class="o">.</span><span class="n">filter_at_time_intervals</span><span class="p">(</span><span class="n">intvs</span><span class="p">,</span> <span class="n">check_gtis</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">ts</span><span class="p">,</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">intvs</span><span class="p">):</span>
+        <span class="n">lc</span> <span class="o">=</span> <span class="n">histogram</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">rint</span><span class="p">((</span><span class="n">e</span> <span class="o">-</span> <span class="n">s</span><span class="p">)</span><span class="o">/</span><span class="n">sample_time</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span> <span class="nb">range</span><span class="o">=</span><span class="p">[</span><span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">])</span>
+        <span class="k">yield</span> <span class="n">lc</span>
+
+
+<span class="o">%</span><span class="k">memit</span> ps_it = AveragedPowerspectrum.from_lc_iterable(fits_times_iterable(fname, segment_size, fine_sample_time), segment_size=segment_size, dt=fine_sample_time)
+<span class="n">ps_it</span><span class="o">.</span><span class="n">power</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+78it [00:32,  2.43it/s]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+peak memory: 4531.69 MiB, increment: 2286.30 MiB
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([1.02539377e-04, 1.03036920e-04, 9.54479649e-05, 1.13488540e-04,
+       1.10641888e-04, 1.11452625e-04, 1.15657206e-04, 1.04863608e-04,
+       9.25844488e-05, 9.50754514e-05], dtype=float64)
+</pre></div></div>
+</div>
+<p>Hurray! We managed to keep the memory increment to ~2GB, comparable with the sole AveragedPowerspectrum operation!</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Data preparation</a></li>
+<li><a class="reference internal" href="#Naive-procedure:-create-light-curve,-then-calculate-PDS">Naive procedure: create light curve, then calculate PDS</a></li>
+<li><a class="reference internal" href="#Slightly-better:-PDS-from-events">Slightly better: PDS from events</a></li>
+<li><a class="reference internal" href="#Let's-be-%22lazy%22:-lazy-loading-with-FITSTimeseriesReader">Let’s be “lazy”: lazy loading with FITSTimeseriesReader</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/Performance/Dealing with large data files.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

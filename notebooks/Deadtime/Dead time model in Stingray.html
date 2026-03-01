@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Stingray’s dead time models &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Fourier Amplitude Difference correction in Stingray" href="FAD%20correction%20in%20Stingray.html" />
+    <link rel="prev" title="Dealing with dead time" href="../../deadtime.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="FAD%20correction%20in%20Stingray.html" title="Fourier Amplitude Difference correction in Stingray">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="../../deadtime.html" title="Dealing with dead time">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../deadtime.html" accesskey="U">Dealing with dead time</a> &#187;</li>
+      
+      <li>Stingray’s dead time models</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="Stingray's-dead-time-models">
+<h1>Stingray’s dead time models<a class="headerlink" href="#Stingray's-dead-time-models" title="Link to this heading">¶</a></h1>
+<p>Here we verify that the algorithm used for dead time filtering is behaving as expected.</p>
+<p>We also compare the results with the algorithm for paralyzable dead time, for reference.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">load_ext</span> autoreload
+<span class="o">%</span><span class="k">autoreload</span> 2
+<span class="o">%</span><span class="k">matplotlib</span> inline
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">seaborn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sns</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.gridspec</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridSpec</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mpl</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventList</span><span class="p">,</span> <span class="n">AveragedPowerspectrum</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tqdm</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">stingray.deadtime.model</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dz</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.deadtime.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">A</span><span class="p">,</span> <span class="n">check_A</span><span class="p">,</span> <span class="n">check_B</span>
+
+<span class="n">sns</span><span class="o">.</span><span class="n">set_context</span><span class="p">(</span><span class="s1">&#39;talk&#39;</span><span class="p">)</span>
+<span class="n">sns</span><span class="o">.</span><span class="n">set_style</span><span class="p">(</span><span class="s2">&quot;whitegrid&quot;</span><span class="p">)</span>
+<span class="n">sns</span><span class="o">.</span><span class="n">set_palette</span><span class="p">(</span><span class="s2">&quot;colorblind&quot;</span><span class="p">)</span>
+
+<span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;figure.dpi&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">150</span>
+<span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;figure.figsize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+<span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;font.size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">18.0</span>
+<span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;xtick.labelsize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">18.0</span>
+<span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;ytick.labelsize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">18.0</span>
+<span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;axes.labelsize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">18.0</span>
+<span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;axes.labelsize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">18.0</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.filters</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_for_deadtime</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1209432</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<section id="Non-paralyzable-dead-time">
+<h2>Non-paralyzable dead time<a class="headerlink" href="#Non-paralyzable-dead-time" title="Link to this heading">¶</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">simulate_events</span><span class="p">(</span><span class="n">rate</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">deadtime</span><span class="o">=</span><span class="mf">2.5e-3</span><span class="p">,</span> <span class="o">**</span><span class="n">filter_kwargs</span><span class="p">):</span>
+    <span class="n">events</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">rate</span> <span class="o">*</span> <span class="n">length</span><span class="p">))</span>
+    <span class="n">events</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">events</span><span class="p">)</span>
+    <span class="n">events_dt</span> <span class="o">=</span> <span class="n">filter_for_deadtime</span><span class="p">(</span><span class="n">events</span><span class="p">,</span> <span class="n">deadtime</span><span class="p">,</span> <span class="o">**</span><span class="n">filter_kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">events</span><span class="p">,</span> <span class="n">events_dt</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rate</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="n">length</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="n">events</span><span class="p">,</span> <span class="n">events_dt</span> <span class="o">=</span> <span class="n">simulate_events</span><span class="p">(</span><span class="n">rate</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span>
+<span class="n">diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">events</span><span class="p">)</span>
+<span class="n">diff_dt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">events_dt</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dt</span> <span class="o">=</span> <span class="mf">2.5e-3</span><span class="o">/</span><span class="mi">20</span>  <span class="c1"># an exact fraction of deadtime</span>
+<span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">diff</span><span class="p">),</span> <span class="n">dt</span><span class="p">)</span>
+<span class="n">hist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">diff</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span> <span class="n">density</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">hist_dt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">diff_dt</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span> <span class="n">density</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="n">bins_mean</span> <span class="o">=</span> <span class="n">bins</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">dt</span><span class="o">/</span><span class="mi">2</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Non-Paralyzable dead time&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">bins_mean</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">hist</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;No dead time&#39;</span><span class="p">);</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">bins_mean</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">hist_dt</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;With dead time&#39;</span><span class="p">);</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">]);</span>
+<span class="c1"># plt.ylim([0, 100]);</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mf">2.5e-3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;Time between subsequent photons $T_{i+1} - T_</span><span class="si">{i}</span><span class="s1">$&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Probability density&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_5_0.png" src="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_5_0.png" />
+</div>
+</div>
+<p>Exactly as expected, the output distribution of the distance between the events follows an exponential distribution cut at 2.5 ms.</p>
+<p>The measured rate is expected to go as</p>
+<div class="math notranslate nohighlight">
+\[r_{det} = \frac{r_{in}}{1 + r_{in}\tau_d}\]</div>
+<p>(Zhang+95, eq. 29). Let’s check it.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Non-Paralyzable dead time - input rate </span><span class="si">{}</span><span class="s1"> ct/s&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">rate</span><span class="p">))</span>
+
+<span class="n">deadtimes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.015</span><span class="p">,</span> <span class="mf">0.0005</span><span class="p">)</span>
+<span class="n">deadtimes_plot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.015</span><span class="p">,</span> <span class="mf">0.0001</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">deadtimes</span><span class="p">:</span>
+    <span class="n">events_dt</span> <span class="o">=</span> <span class="n">filter_for_deadtime</span><span class="p">(</span><span class="n">events</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+    <span class="n">new_rate</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">events_dt</span><span class="p">)</span> <span class="o">/</span> <span class="n">length</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">new_rate</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;b&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">deadtimes_plot</span><span class="p">,</span> <span class="n">rate</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">rate</span> <span class="o">*</span> <span class="n">deadtimes_plot</span><span class="p">),</span>
+         <span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s1">&#39;$\frac{r_</span><span class="si">{in}</span><span class="s1">}{1 + r_</span><span class="si">{in}</span><span class="s1">\tau_d}$&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Dead time&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Output rate&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">semilogy</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_7_0.png" src="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_7_0.png" />
+</div>
+</div>
+</section>
+<section id="Paralyzable-dead-time">
+<h2>Paralyzable dead time<a class="headerlink" href="#Paralyzable-dead-time" title="Link to this heading">¶</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rate</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="n">length</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="n">events</span><span class="p">,</span> <span class="n">events_dt</span> <span class="o">=</span> <span class="n">simulate_events</span><span class="p">(</span><span class="n">rate</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">paralyzable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">events</span><span class="p">)</span>
+<span class="n">diff_dt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">events_dt</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dt</span> <span class="o">=</span> <span class="mf">2.5e-3</span><span class="o">/</span><span class="mi">20</span>  <span class="c1"># an exact fraction of deadtime</span>
+<span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">diff_dt</span><span class="p">),</span> <span class="n">dt</span><span class="p">)</span>
+<span class="n">hist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">diff</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span> <span class="n">density</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">hist_dt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">diff_dt</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span> <span class="n">density</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="n">bins_mean</span> <span class="o">=</span> <span class="n">bins</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">dt</span><span class="o">/</span><span class="mi">2</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Paralyzable dead time&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">bins_mean</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">hist</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;No dead time&#39;</span><span class="p">);</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">bins_mean</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">hist_dt</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;With dead time&#39;</span><span class="p">);</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">]);</span>
+<span class="c1"># plt.ylim([0, 100]);</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mf">2.5e-3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;Time between subsequent photons $T_{i+1} - T_</span><span class="si">{i}</span><span class="s1">$&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Probability density&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_10_0.png" src="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_10_0.png" />
+</div>
+</div>
+<p>Non-paralyzable dead time has a distribution for the time between consecutive counts that plateaus between <span class="math notranslate nohighlight">\(\tau_d\)</span> and <span class="math notranslate nohighlight">\(2\tau_d\)</span>, then decreases. The exact form is complicated (e.g. )</p>
+<p>The measured rate is expected to go as</p>
+<div class="math notranslate nohighlight">
+\[r_{det} = r_{in}e^{-r_{in}\tau_d}\]</div>
+<p>(Zhang+95, eq. 16). Let’s check it.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Paralyzable dead time - input rate </span><span class="si">{}</span><span class="s1"> ct/s&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">rate</span><span class="p">))</span>
+
+<span class="n">deadtimes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.008</span><span class="p">,</span> <span class="mf">0.0005</span><span class="p">)</span>
+<span class="n">deadtimes_plot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.008</span><span class="p">,</span> <span class="mf">0.0001</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">deadtimes</span><span class="p">:</span>
+    <span class="n">events_dt</span> <span class="o">=</span> <span class="n">filter_for_deadtime</span><span class="p">(</span><span class="n">events</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">paralyzable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">new_rate</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">events_dt</span><span class="p">)</span> <span class="o">/</span> <span class="n">length</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">new_rate</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;b&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">deadtimes_plot</span><span class="p">,</span> <span class="n">rate</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">rate</span> <span class="o">*</span> <span class="n">deadtimes_plot</span><span class="p">),</span>
+         <span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s1">&#39;$r_</span><span class="si">{in}</span><span class="s1">e^{-r_</span><span class="si">{in}</span><span class="s1">\tau_d}$&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Dead time&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Output rate&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">semilogy</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_12_0.png" src="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_12_0.png" />
+</div>
+</div>
+<p>Perfect.</p>
+</section>
+<section id="Periodogram---non-paralyzable">
+<h2>Periodogram - non-paralyzable<a class="headerlink" href="#Periodogram---non-paralyzable" title="Link to this heading">¶</a></h2>
+<p>Let’s see how the periodogram behaves at different intensities. Will it follow the Zhang+95 model?</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">nevents</span> <span class="o">=</span> <span class="mi">200000</span>
+
+<span class="n">rates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="mi">3000</span><span class="p">),</span> <span class="mi">6</span><span class="p">)</span>
+<span class="n">bintime</span> <span class="o">=</span> <span class="mf">0.001</span>
+<span class="n">deadtime</span> <span class="o">=</span> <span class="mf">2.5e-3</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;bin time = 1 ms; dead time = 2.5 ms&#39;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="o">.</span><span class="n">tqdm</span><span class="p">(</span><span class="n">rates</span><span class="p">):</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">r</span><span class="si">}</span><span class="s1"> ct/s&#39;</span>
+    <span class="n">length</span> <span class="o">=</span> <span class="n">nevents</span> <span class="o">/</span> <span class="n">r</span>
+
+    <span class="n">events</span><span class="p">,</span> <span class="n">events_dt</span> <span class="o">=</span> <span class="n">simulate_events</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span>
+    <span class="n">events_dt</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">events_dt</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="n">length</span><span class="p">]])</span>
+<span class="c1">#     lc = Lightcurve.make_lightcurve(events, 1/4096, tstart=0, tseg=length)</span>
+<span class="c1">#     lc_dt = Lightcurve.make_lightcurve(events_dt, bintime, tstart=0, tseg=length)</span>
+<span class="c1">#     pds = AveragedPowerspectrum.from_lightcurve(lc_dt, 2, norm=&#39;leahy&#39;)</span>
+    <span class="n">pds</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">events_dt</span><span class="p">,</span> <span class="n">bintime</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s1">&#39;leahy&#39;</span><span class="p">,</span> <span class="n">silent</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
+
+    <span class="n">zh_f</span><span class="p">,</span> <span class="n">zh_p</span> <span class="o">=</span> <span class="n">dz</span><span class="o">.</span><span class="n">pds_model_zhang</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">deadtime</span><span class="p">,</span> <span class="n">bintime</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zh_f</span><span class="p">,</span> <span class="n">zh_p</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;b&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zh_f</span><span class="p">,</span> <span class="n">zh_p</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Zhang+95 prediction&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (Hz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Power (Leahy)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+  0%|                                                            | 0/6 [00:00&lt;?, ?it/s]OMP: Info #276: omp_set_nested routine deprecated, please use omp_set_max_active_levels instead.
+100%|████████████████████████████████████████████████████| 6/6 [00:02&lt;00:00,  2.72it/s]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_15_1.png" src="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_15_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.lightcurve</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.powerspectrum</span><span class="w"> </span><span class="kn">import</span> <span class="n">AveragedPowerspectrum</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tqdm</span>
+
+<span class="n">nevents</span> <span class="o">=</span> <span class="mi">200000</span>
+
+<span class="n">rates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+<span class="n">deadtime</span> <span class="o">=</span> <span class="mf">2.5e-3</span>
+<span class="n">bintime</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">deadtime</span>
+
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;bin time = 5 ms; dead time = 2.5 ms&#39;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="o">.</span><span class="n">tqdm</span><span class="p">(</span><span class="n">rates</span><span class="p">):</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">r</span><span class="si">}</span><span class="s1"> ct/s&#39;</span>
+    <span class="n">length</span> <span class="o">=</span> <span class="n">nevents</span> <span class="o">/</span> <span class="n">r</span>
+
+    <span class="n">events</span><span class="p">,</span> <span class="n">events_dt</span> <span class="o">=</span> <span class="n">simulate_events</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span>
+    <span class="n">events_dt</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">events_dt</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="n">length</span><span class="p">]])</span>
+<span class="c1">#     lc = Lightcurve.make_lightcurve(events, 1/4096, tstart=0, tseg=length)</span>
+<span class="c1">#     lc_dt = Lightcurve.make_lightcurve(events_dt, bintime, tstart=0, tseg=length)</span>
+<span class="c1">#     pds = AveragedPowerspectrum.from_lc(lc_dt, 2, norm=&#39;leahy&#39;, silent=True)</span>
+    <span class="n">pds</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">events_dt</span><span class="p">,</span> <span class="n">bintime</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s1">&#39;leahy&#39;</span><span class="p">,</span> <span class="n">silent</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
+
+    <span class="n">zh_f</span><span class="p">,</span> <span class="n">zh_p</span> <span class="o">=</span> <span class="n">dz</span><span class="o">.</span><span class="n">pds_model_zhang</span><span class="p">(</span><span class="mi">2000</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">deadtime</span><span class="p">,</span> <span class="n">bintime</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zh_f</span><span class="p">,</span> <span class="n">zh_p</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;b&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zh_f</span><span class="p">,</span> <span class="n">zh_p</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Zhang+95 prediction&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (Hz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Power (Leahy)&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100%|████████████████████████████████████████████████████| 5/5 [00:04&lt;00:00,  1.07it/s]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_16_1.png" src="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_16_1.png" />
+</div>
+</div>
+<p>It will.</p>
+</section>
+<section id="Reproduce-Zhang+95-power-spectrum?-(extra-check)">
+<h2>Reproduce Zhang+95 power spectrum? (extra check)<a class="headerlink" href="#Reproduce-Zhang+95-power-spectrum?-(extra-check)" title="Link to this heading">¶</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.lightcurve</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.powerspectrum</span><span class="w"> </span><span class="kn">import</span> <span class="n">AveragedPowerspectrum</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tqdm</span>
+
+<span class="n">bintime</span> <span class="o">=</span> <span class="mf">1e-6</span>
+<span class="n">deadtime</span> <span class="o">=</span> <span class="mf">1e-5</span>
+<span class="n">length</span> <span class="o">=</span> <span class="mi">40</span>
+<span class="n">fftlen</span> <span class="o">=</span> <span class="mf">0.01</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;bin time = 1 us; dead time = 10 us&#39;</span><span class="p">)</span>
+
+<span class="n">r</span> <span class="o">=</span> <span class="mi">20000</span>
+<span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">r</span><span class="si">}</span><span class="s1"> ct/s&#39;</span>
+
+<span class="n">events</span><span class="p">,</span> <span class="n">events_dt</span> <span class="o">=</span> <span class="n">simulate_events</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">deadtime</span><span class="o">=</span><span class="n">deadtime</span><span class="p">)</span>
+<span class="n">events_dt</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">events_dt</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="n">length</span><span class="p">]])</span>
+<span class="c1">#     lc = Lightcurve.make_lightcurve(events, 1/4096, tstart=0, tseg=length)</span>
+<span class="c1"># lc_dt = Lightcurve.make_lightcurve(events_dt, bintime, tstart=0, tseg=length)</span>
+<span class="c1"># pds = AveragedPowerspectrum.from_lightcurve(lc_dt, fftlen, norm=&#39;leahy&#39;)</span>
+<span class="n">pds</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">events_dt</span><span class="p">,</span> <span class="n">bintime</span><span class="p">,</span> <span class="n">fftlen</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s1">&#39;leahy&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds</span><span class="o">.</span><span class="n">freq</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">pds</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span> <span class="n">drawstyle</span><span class="o">=</span><span class="s1">&#39;steps-mid&#39;</span><span class="p">)</span>
+
+<span class="n">zh_f</span><span class="p">,</span> <span class="n">zh_p</span> <span class="o">=</span> <span class="n">dz</span><span class="o">.</span><span class="n">pds_model_zhang</span><span class="p">(</span><span class="mi">2000</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">deadtime</span><span class="p">,</span> <span class="n">bintime</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zh_f</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">zh_p</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Zhang+95 prediction&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (kHz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Power (Leahy)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+4000it [00:00, 6396.64it/s]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_18_1.png" src="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_18_1.png" />
+</div>
+</div>
+<p>Ok.</p>
+<p>An additional note on the Zhang model: it is a numerical model, with multiple nested summations that are prone to numerical errors. The assumptions made in the Zhang paper (along the line of “in practice the number of terms needed is very small…”) are assuming the case of RXTE, where 1/dead time was low with respect to the incident rate. This is true in the simulation in figure 4 of Zhang+95: 20,000 ct/s incident rate, 1/dead time = 100,000. However, this is not true in NuSTAR, depicted in our
+simulation below where the incident rate (2,000) is much larger than 1/dead time (400). A thorough estimate of the needed level of detail (that implies increasing the number of summed terms) versus increase of numerical errors has to be done. This is a quite long procedure, and I did not go into so much detail. This is the reason of the “wiggles” that can be seen in the model in red in the plot below.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bintime</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="mi">4096</span>
+<span class="n">deadtime</span> <span class="o">=</span> <span class="mf">2.5e-3</span>
+<span class="n">length</span> <span class="o">=</span> <span class="mi">8000</span>
+<span class="n">fftlen</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">r</span> <span class="o">=</span> <span class="mi">2000</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;bin time = </span><span class="si">{</span><span class="n">bintime</span><span class="si">}</span><span class="s1"> s; dead time = </span><span class="si">{</span><span class="n">deadtime</span><span class="si">}</span><span class="s1"> s&#39;</span><span class="p">)</span>
+
+<span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">r</span><span class="si">}</span><span class="s1"> ct/s&#39;</span>
+
+<span class="n">events</span><span class="p">,</span> <span class="n">events_dt</span> <span class="o">=</span> <span class="n">simulate_events</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">deadtime</span><span class="o">=</span><span class="n">deadtime</span><span class="p">)</span>
+<span class="n">events_dt</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">events_dt</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="n">length</span><span class="p">]])</span>
+<span class="c1">#     lc = Lightcurve.make_lightcurve(events, 1/4096, tstart=0, tseg=length)</span>
+<span class="c1"># lc_dt = Lightcurve.make_lightcurve(events_dt, bintime, tstart=0, tseg=length)</span>
+<span class="c1"># pds = AveragedPowerspectrum.from_lightcurve(lc_dt, fftlen, norm=&#39;leahy&#39;, silent=True)</span>
+<span class="n">pds</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">events_dt</span><span class="p">,</span> <span class="n">bintime</span><span class="p">,</span> <span class="n">fftlen</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s1">&#39;leahy&#39;</span><span class="p">,</span> <span class="n">silent</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds</span><span class="o">.</span><span class="n">freq</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">pds</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span> <span class="n">drawstyle</span><span class="o">=</span><span class="s1">&#39;steps-mid&#39;</span><span class="p">)</span>
+
+<span class="n">zh_f</span><span class="p">,</span> <span class="n">zh_p</span> <span class="o">=</span> <span class="n">dz</span><span class="o">.</span><span class="n">pds_model_zhang</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">deadtime</span><span class="p">,</span> <span class="n">bintime</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zh_f</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">zh_p</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Zhang+95 prediction&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (kHz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Power (Leahy)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_21_0.png" src="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_21_0.png" />
+</div>
+</div>
+<p>The script <code class="docutils literal notranslate"><span class="pre">check_A</span></code> checks visually the number of <code class="docutils literal notranslate"><span class="pre">k</span></code>s to calculate before going to the approximate value <code class="docutils literal notranslate"><span class="pre">r0**2*tb**2</span></code>. The default is 60, but in this case the presence of additional modulation for k=60 tells us that we need to increase the limit of calculated <code class="docutils literal notranslate"><span class="pre">A_k</span></code> to at least 150. The script <code class="docutils literal notranslate"><span class="pre">check_B</span></code> does this for another important quantity in the model.</p>
+<p>Somewhat counter-intuitively, there might be cases where too <em>high</em> values of k could produce numerical errors. Always run <code class="docutils literal notranslate"><span class="pre">check_A</span></code> and <code class="docutils literal notranslate"><span class="pre">check_B</span></code> to test it.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">safe_A</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">r0</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">60</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">k</span> <span class="o">&gt;</span> <span class="n">limit</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r0</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">tb</span><span class="o">**</span><span class="mi">2</span>
+    <span class="k">return</span> <span class="n">A</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">r0</span><span class="p">,</span> <span class="n">td</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">tau</span><span class="p">)</span>
+
+
+<span class="n">check_A</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">deadtime</span><span class="p">,</span> <span class="n">bintime</span><span class="p">,</span> <span class="n">max_k</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">linthresh</span><span class="o">=</span><span class="mf">1e-16</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_23_0.png" src="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_23_0.png" />
+</div>
+</div>
+<p>So, we had better repeat the procedure by using <code class="docutils literal notranslate"><span class="pre">limit_k=500</span></code> this time.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">check_B</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">deadtime</span><span class="p">,</span> <span class="n">bintime</span><span class="p">,</span> <span class="n">max_k</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">linthresh</span><span class="o">=</span><span class="mf">1e-16</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_25_0.png" src="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_25_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bintime</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="mi">4096</span>
+<span class="n">deadtime</span> <span class="o">=</span> <span class="mf">2.5e-3</span>
+<span class="n">length</span> <span class="o">=</span> <span class="mi">8000</span>
+<span class="n">fftlen</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">r</span> <span class="o">=</span> <span class="mi">2000</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;bin time = </span><span class="si">{</span><span class="n">bintime</span><span class="si">}</span><span class="s1"> s; dead time = </span><span class="si">{</span><span class="n">deadtime</span><span class="si">}</span><span class="s1"> s&#39;</span><span class="p">)</span>
+
+<span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">r</span><span class="si">}</span><span class="s1"> ct/s&#39;</span>
+
+<span class="n">events</span><span class="p">,</span> <span class="n">events_dt</span> <span class="o">=</span> <span class="n">simulate_events</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">deadtime</span><span class="o">=</span><span class="n">deadtime</span><span class="p">)</span>
+<span class="n">events_dt</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">events_dt</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="n">length</span><span class="p">]])</span>
+<span class="c1">#     lc = Lightcurve.make_lightcurve(events, 1/4096, tstart=0, tseg=length)</span>
+<span class="c1"># lc_dt = Lightcurve.make_lightcurve(events_dt, bintime, tstart=0, tseg=length)</span>
+<span class="c1"># pds = AveragedPowerspectrum(lc_dt, fftlen, norm=&#39;leahy&#39;)</span>
+<span class="c1"># lc_dt = Lightcurve.make_lightcurve(events_dt, bintime, tstart=0, tseg=length)</span>
+<span class="n">pds</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">events_dt</span><span class="p">,</span> <span class="n">bintime</span><span class="p">,</span> <span class="n">fftlen</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s1">&#39;leahy&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds</span><span class="o">.</span><span class="n">freq</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">pds</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span> <span class="n">drawstyle</span><span class="o">=</span><span class="s1">&#39;steps-mid&#39;</span><span class="p">)</span>
+
+<span class="n">zh_f</span><span class="p">,</span> <span class="n">zh_p</span> <span class="o">=</span> <span class="n">dz</span><span class="o">.</span><span class="n">pds_model_zhang</span><span class="p">(</span><span class="mi">2000</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">deadtime</span><span class="p">,</span> <span class="n">bintime</span><span class="p">,</span> <span class="n">limit_k</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zh_f</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">zh_p</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Zhang+95 prediction&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (kHz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Power (Leahy)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+1600it [00:00, 3036.28it/s]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_26_1.png" src="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_26_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">scipy.interpolate</span><span class="w"> </span><span class="kn">import</span> <span class="n">interp1d</span>
+
+<span class="n">deadtime_fun</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">zh_f</span><span class="p">,</span> <span class="n">zh_p</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="n">fill_value</span><span class="o">=</span><span class="s2">&quot;extrapolate&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds</span><span class="o">.</span><span class="n">power</span> <span class="o">/</span> <span class="n">deadtime_fun</span><span class="p">(</span><span class="n">pds</span><span class="o">.</span><span class="n">freq</span><span class="p">),</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[&lt;matplotlib.lines.Line2D at 0x17564cf10&gt;]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_27_1.png" src="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_27_1.png" />
+</div>
+</div>
+<p>Still imperfect, but this is a <em>very</em> high count rate case. In more typical cases, the correction is more than adequate:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bintime</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="mi">4096</span>
+<span class="n">deadtime</span> <span class="o">=</span> <span class="mf">2.5e-3</span>
+<span class="n">length</span> <span class="o">=</span> <span class="mi">8000</span>
+<span class="n">fftlen</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">r</span> <span class="o">=</span> <span class="mi">300</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;bin time = </span><span class="si">{</span><span class="n">bintime</span><span class="si">}</span><span class="s1"> s; dead time = </span><span class="si">{</span><span class="n">deadtime</span><span class="si">}</span><span class="s1"> s&#39;</span><span class="p">)</span>
+
+<span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">r</span><span class="si">}</span><span class="s1"> ct/s&#39;</span>
+
+<span class="n">events</span><span class="p">,</span> <span class="n">events_dt</span> <span class="o">=</span> <span class="n">simulate_events</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">deadtime</span><span class="o">=</span><span class="n">deadtime</span><span class="p">)</span>
+<span class="n">events_dt</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">events_dt</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="n">length</span><span class="p">]])</span>
+<span class="c1">#     lc = Lightcurve.make_lightcurve(events, 1/4096, tstart=0, tseg=length)</span>
+<span class="c1"># lc_dt = Lightcurve.make_lightcurve(events_dt, bintime, tstart=0, tseg=length)</span>
+<span class="c1"># pds = AveragedPowerspectrum(lc_dt, fftlen, norm=&#39;leahy&#39;)</span>
+<span class="n">pds</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">events_dt</span><span class="p">,</span> <span class="n">bintime</span><span class="p">,</span> <span class="n">fftlen</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s1">&#39;leahy&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds</span><span class="o">.</span><span class="n">freq</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">pds</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span> <span class="n">drawstyle</span><span class="o">=</span><span class="s1">&#39;steps-mid&#39;</span><span class="p">)</span>
+
+<span class="n">zh_f</span><span class="p">,</span> <span class="n">zh_p</span> <span class="o">=</span> <span class="n">dz</span><span class="o">.</span><span class="n">pds_model_zhang</span><span class="p">(</span><span class="mi">2000</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">deadtime</span><span class="p">,</span> <span class="n">bintime</span><span class="p">,</span> <span class="n">limit_k</span><span class="o">=</span><span class="mi">250</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zh_f</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">zh_p</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Zhang+95 prediction&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (kHz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Power (Leahy)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+1600it [00:00, 2957.61it/s]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_29_1.png" src="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_29_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">deadtime_fun</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">zh_f</span><span class="p">,</span> <span class="n">zh_p</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="n">fill_value</span><span class="o">=</span><span class="s2">&quot;extrapolate&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds</span><span class="o">.</span><span class="n">power</span> <span class="o">/</span> <span class="n">deadtime_fun</span><span class="p">(</span><span class="n">pds</span><span class="o">.</span><span class="n">freq</span><span class="p">),</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[&lt;matplotlib.lines.Line2D at 0x317604a10&gt;]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_30_1.png" src="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_30_1.png" />
+</div>
+</div>
+</section>
+<section id="New-dead-time-model-function">
+<h2>New dead time model function<a class="headerlink" href="#New-dead-time-model-function" title="Link to this heading">¶</a></h2>
+<p>Stingray versions &gt;2.0 introduce a new formulation of the dead time modeling, which includes:</p>
+<ol class="arabic simple">
+<li><p>Using detected rates, not incident (which means, the rates that the user can actually measure!)</p></li>
+<li><p>Allowing for background rates (e.g. the events which produce dead time but get filtered away during source selection or other filtering processes)</p></li>
+</ol>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.deadtime.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">non_paralyzable_dead_time_model</span>
+non_paralyzable_dead_time_model<span class="o">?</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">Signature:</span>
+non_paralyzable_dead_time_model<span class="ansi-blue-fg">(</span>
+    freqs<span class="ansi-blue-fg">,</span>
+    dead_time<span class="ansi-blue-fg">,</span>
+    rate<span class="ansi-blue-fg">,</span>
+    bin_time<span class="ansi-blue-fg">=</span><span class="ansi-green-fg">None</span><span class="ansi-blue-fg">,</span>
+    limit_k<span class="ansi-blue-fg">=</span><span class="ansi-cyan-fg">200</span><span class="ansi-blue-fg">,</span>
+    background_rate<span class="ansi-blue-fg">=</span><span class="ansi-cyan-fg">0.0</span><span class="ansi-blue-fg">,</span>
+    n_approx<span class="ansi-blue-fg">=</span><span class="ansi-green-fg">None</span><span class="ansi-blue-fg">,</span>
+<span class="ansi-blue-fg">)</span>
+<span class="ansi-red-fg">Docstring:</span>
+Calculate the dead-time-modified power spectrum.
+
+Parameters
+----------
+freqs : array of floats
+    Frequency array
+dead_time : float
+    Dead time
+rate : float
+    Detected source count rate
+
+Other Parameters
+----------------
+bin_time : float
+    Bin time of the light curve
+limit_k : int, default 200
+    Limit to this value the number of terms in the inner loops of
+    calculations. Check the plots returned by  the `check_B` and
+    `check_A` functions to test that this number is adequate.
+background_rate : float, default 0
+    Detected background count rate. This is important to estimate when deadtime is given by the
+    combination of the source counts and background counts (e.g. in an imaging X-ray detector).
+n_approx : int, default None
+    Number of bins to calculate the model power spectrum. If None, it will use the size of
+    the input frequency array. Relatively simple models (e.g., low count rates compared to
+    dead time) can use a smaller number of bins to speed up the calculation, and the final
+    power values will be interpolated.
+
+Returns
+-------
+power : array of floats
+    Power spectrum
+<span class="ansi-red-fg">File:</span>      ~/devel/StingraySoftware/stingray/stingray/deadtime/model.py
+<span class="ansi-red-fg">Type:</span>      function
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rate</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="n">tmax</span> <span class="o">=</span> <span class="mi">10000</span>
+<span class="n">deadtime</span> <span class="o">=</span> <span class="mf">2.5e-3</span>
+<span class="n">dt</span> <span class="o">=</span> <span class="mf">0.0005</span>
+<span class="n">segment_size</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+<span class="n">source_fraction</span> <span class="o">=</span> <span class="mf">0.65</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">split_between_source_and_background</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">source_fraction</span><span class="p">):</span>
+    <span class="n">times_shuf</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">times</span><span class="p">)</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">times_shuf</span><span class="p">)</span>
+    <span class="n">times_source</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">times_shuf</span><span class="p">[:</span> <span class="nb">int</span><span class="p">(</span><span class="n">source_fraction</span> <span class="o">*</span> <span class="n">times</span><span class="o">.</span><span class="n">size</span><span class="p">)])</span>
+    <span class="n">times_bkg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">times_shuf</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">source_fraction</span> <span class="o">*</span> <span class="n">times</span><span class="o">.</span><span class="n">size</span><span class="p">):</span> <span class="p">])</span>
+    <span class="k">return</span> <span class="n">times_source</span><span class="p">,</span> <span class="n">times_bkg</span>
+
+
+<span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">tmax</span><span class="p">,</span> <span class="n">rate</span> <span class="o">*</span> <span class="n">tmax</span><span class="p">))</span>
+<span class="n">times_dt</span> <span class="o">=</span> <span class="n">filter_for_deadtime</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">deadtime</span><span class="p">)</span>
+
+<span class="n">times_source_dt</span><span class="p">,</span> <span class="n">times_bkg_dt</span> <span class="o">=</span> <span class="n">split_between_source_and_background</span><span class="p">(</span><span class="n">times_dt</span><span class="p">,</span> <span class="n">source_fraction</span><span class="p">)</span>
+
+<span class="n">source_rate</span> <span class="o">=</span> <span class="n">source_fraction</span> <span class="o">*</span> <span class="n">rate</span>
+
+<span class="n">pds_source_dt</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_time_array</span><span class="p">(</span><span class="n">times_source_dt</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="n">tmax</span><span class="p">]],</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;leahy&quot;</span><span class="p">)</span>
+
+<span class="n">model_source_nobkg</span> <span class="o">=</span> <span class="n">non_paralyzable_dead_time_model</span><span class="p">(</span>
+    <span class="n">pds_source_dt</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span>
+    <span class="n">dead_time</span><span class="o">=</span><span class="n">deadtime</span><span class="p">,</span>
+    <span class="n">rate</span><span class="o">=</span><span class="n">times_source_dt</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="n">tmax</span><span class="p">,</span>
+    <span class="n">bin_time</span><span class="o">=</span><span class="n">dt</span>
+<span class="p">)</span>
+
+<span class="n">model_source_corr</span> <span class="o">=</span> <span class="n">non_paralyzable_dead_time_model</span><span class="p">(</span>
+    <span class="n">pds_source_dt</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span>
+    <span class="n">dead_time</span><span class="o">=</span><span class="n">deadtime</span><span class="p">,</span>
+    <span class="n">rate</span><span class="o">=</span><span class="n">times_source_dt</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="n">tmax</span><span class="p">,</span>
+    <span class="n">bin_time</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+    <span class="n">background_rate</span><span class="o">=</span><span class="n">times_bkg_dt</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="n">tmax</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds_source_dt</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds_source_dt</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;PDS of source events&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds_source_dt</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">model_source_nobkg</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;model of Source&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds_source_dt</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">model_source_corr</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;model of Source+Back&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds_source_dt</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds_source_dt</span><span class="o">.</span><span class="n">power</span> <span class="o">/</span> <span class="n">model_source_corr</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;ratio&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">&quot;upper right&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+10000it [00:00, 25078.61it/s]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.legend.Legend at 0x17571e290&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_33_2.png" src="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_33_2.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds_source_dt</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds_source_dt</span><span class="o">.</span><span class="n">power</span> <span class="o">/</span> <span class="n">model_source_corr</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;ratio&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;PDS / model&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0, 0.5, &#39;PDS / model&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_34_1.png" src="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_34_1.png" />
+</div>
+</div>
+<p>The function is also used internally in some timing products, to easily correct the spectrum, through the method <code class="docutils literal notranslate"><span class="pre">deadtime_correct</span></code>. Please note that the example below works a little too well because, in our simulation, dead time is constant. In general, this correction is appropriate for relatively low values of <em>constant</em> deadtime, while we recommend using the FAD correction from <code class="docutils literal notranslate"><span class="pre">stingray.deadtime.fad</span></code> for variable dead time and high count rates.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pds_source_corrected</span> <span class="o">=</span> <span class="n">pds_source_dt</span><span class="o">.</span><span class="n">deadtime_correct</span><span class="p">(</span><span class="n">dead_time</span><span class="o">=</span><span class="n">deadtime</span><span class="p">,</span>
+    <span class="n">rate</span><span class="o">=</span><span class="n">times_source_dt</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="n">tmax</span><span class="p">,</span>
+    <span class="n">background_rate</span><span class="o">=</span><span class="n">times_bkg_dt</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="n">tmax</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds_source_dt</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds_source_dt</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;PDS of source events&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds_source_corrected</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds_source_corrected</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Corrected&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">&quot;upper right&quot;</span><span class="p">);</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_36_0.png" src="../../_images/notebooks_Deadtime_Dead_time_model_in_Stingray_36_0.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Stingray’s dead time models</a><ul>
+<li><a class="reference internal" href="#Non-paralyzable-dead-time">Non-paralyzable dead time</a></li>
+<li><a class="reference internal" href="#Paralyzable-dead-time">Paralyzable dead time</a></li>
+<li><a class="reference internal" href="#Periodogram---non-paralyzable">Periodogram - non-paralyzable</a></li>
+<li><a class="reference internal" href="#Reproduce-Zhang+95-power-spectrum?-(extra-check)">Reproduce Zhang+95 power spectrum? (extra check)</a></li>
+<li><a class="reference internal" href="#New-dead-time-model-function">New dead time model function</a></li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/Deadtime/Dead time model in Stingray.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

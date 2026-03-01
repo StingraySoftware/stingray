@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>stingray.covariancespectrum &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for stingray.covariancespectrum</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.events</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventList</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">stingray.utils</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">utils</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Covariancespectrum&quot;</span><span class="p">,</span> <span class="s2">&quot;AveragedCovariancespectrum&quot;</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="Covariancespectrum">
+<a class="viewcode-back" href="../../api.html#stingray.Covariancespectrum">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Covariancespectrum</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">          Compute a covariance spectrum for the data. The input data can be</span>
+<span class="sd">          either in event data or pre-made light curves. Event data can either</span>
+<span class="sd">          be in the form of a ``numpy.ndarray`` with ``(time stamp, energy)`` pairs or</span>
+<span class="sd">          a :class:`stingray.events.EventList` object. If light curves are formed ahead</span>
+<span class="sd">          of time, then a list of :class:`stingray.Lightcurve` objects should be passed to the</span>
+<span class="sd">          object, ideally one light curve for each band of interest.</span>
+
+<span class="sd">          For the case where the data is input as a list of :class:`stingray.Lightcurve` objects,</span>
+<span class="sd">          the reference band(s) should either be</span>
+
+<span class="sd">          1. a single :class:`stingray.Lightcurve` object,</span>
+<span class="sd">          2. a list of :class:`stingray.Lightcurve` objects with the reference band for each band</span>
+<span class="sd">             of interest pre-made, or</span>
+<span class="sd">          3. ``None``, in which case reference bands will</span>
+<span class="sd">             formed by combining all light curves *except* for the band of interest.</span>
+
+<span class="sd">          In the case of event data, ``band_interest`` and ``ref_band_interest`` can</span>
+<span class="sd">          be (multiple) pairs of energies, and the light curves for the bands of</span>
+<span class="sd">          interest and reference bands will be produced dynamically.</span>
+
+
+<span class="sd">          Parameters</span>
+<span class="sd">          ----------</span>
+<span class="sd">          data : {``numpy.ndarray`` | :class:`stingray.events.EventList` object | list of :class:`stingray.Lightcurve` objects}</span>
+<span class="sd">              ``data`` contains the time series data, either in the form of a</span>
+<span class="sd">              2-D array of ``(time stamp, energy)`` pairs for event data, or as a</span>
+<span class="sd">              list of light curves.</span>
+<span class="sd">              Note : The event list must be in sorted order with respect to the</span>
+<span class="sd">              times of arrivals.</span>
+
+<span class="sd">          dt : float</span>
+<span class="sd">              The time resolution of the :class:`stingray.Lightcurve` formed from the energy bin.</span>
+<span class="sd">              Only used if ``data`` is an event list.</span>
+
+<span class="sd">          band_interest : {``None``, iterable of tuples}</span>
+<span class="sd">              If ``None``, all possible energy values will be assumed to be of</span>
+<span class="sd">              interest, and a covariance spectrum in the highest resolution</span>
+<span class="sd">              will be produced.</span>
+<span class="sd">              Note: if the input is a list of :class:`stingray.Lightcurve` objects, then the user may</span>
+<span class="sd">              supply their energy values here, for construction of a</span>
+<span class="sd">              reference band.</span>
+
+<span class="sd">          ref_band_interest : {``None``, tuple, :class:`stingray.Lightcurve`, list of :class:`stingray.Lightcurve` objects}</span>
+<span class="sd">              Defines the reference band to be used for comparison with the</span>
+<span class="sd">              bands of interest. If ``None``, all bands *except* the band of</span>
+<span class="sd">              interest will be used for each band of interest, respectively.</span>
+<span class="sd">              Alternatively, a tuple can be given for event list data, which will</span>
+<span class="sd">              extract the reference band (always excluding the band of interest),</span>
+<span class="sd">              or one may put in a single :class:`stingray.Lightcurve` object to be used (the same</span>
+<span class="sd">              for each band of interest) or a list of :class:`stingray.Lightcurve` objects, one for</span>
+<span class="sd">              each band of interest.</span>
+
+<span class="sd">          std : float or np.array or list of numbers</span>
+<span class="sd">              The term ``std`` is used to calculate the excess variance of a band.</span>
+<span class="sd">              If ``std`` is set to ``None``, default Poisson case is taken and the</span>
+<span class="sd">              std is calculated as ``mean(lc)**0.5``. In the case of a single</span>
+<span class="sd">              float as input, the same is used as the standard deviation which</span>
+<span class="sd">              is also used as the std. And if the std is an iterable of</span>
+<span class="sd">              numbers, their mean is used for the same purpose.</span>
+
+<span class="sd">          Attributes</span>
+<span class="sd">          ----------</span>
+<span class="sd">          unnorm_covar : np.ndarray</span>
+<span class="sd">              An array of arrays with mid point ``band_interest`` and their</span>
+<span class="sd">              covariance. It is the array-form of the dictionary ``energy_covar``.</span>
+<span class="sd">              The covariance values are unnormalized.</span>
+
+<span class="sd">          covar : np.ndarray</span>
+<span class="sd">              Normalized covariance spectrum.</span>
+
+<span class="sd">          covar_error : np.ndarray</span>
+<span class="sd">              Errors of the normalized covariance spectrum.</span>
+
+<span class="sd">          References</span>
+<span class="sd">          ----------</span>
+<span class="sd">          [1] Wilkinson, T. and Uttley, P. (2009), Accretion disc variability\</span>
+<span class="sd">              in the hard state of black hole X-ray binaries. Monthly Notices\</span>
+<span class="sd">              of the Royal Astronomical Society, 397: 666–676.\</span>
+<span class="sd">              doi: 10.1111/j.1365-2966.2009.15008.x</span>
+
+<span class="sd">          Examples</span>
+<span class="sd">          --------</span>
+<span class="sd">          See the `notebooks repository &lt;https://github.com/StingraySoftware/notebooks&gt;`_ for</span>
+<span class="sd">          detailed notebooks on the code.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">band_interest</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ref_band_interest</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="n">dt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">std</span> <span class="o">=</span> <span class="n">std</span>
+
+        <span class="c1"># check whether data is an EventList object:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">EventList</span><span class="p">):</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">data</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">energy</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
+
+        <span class="c1"># check whether the data contains a list of Lightcurve objects</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">Lightcurve</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">use_lc</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lcs</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">use_lc</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># if band_interest is None, extract the energy bins and make an array</span>
+        <span class="c1"># with the lower and upper bounds of the energy bins</span>
+        <span class="k">if</span> <span class="n">band_interest</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_lc</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_create_band_interest</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">band_interest</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">band_interest</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;band_interest must contain at least 2 values &quot;</span>
+                    <span class="s2">&quot;(minimum and maximum values for each band) &quot;</span>
+                    <span class="s2">&quot;and be a 2D array!&quot;</span>
+                <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">band_interest</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">band_interest</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_lc</span> <span class="ow">is</span> <span class="kc">False</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">dt</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;If the input data is event data, the dt keyword &quot;</span>
+                <span class="s2">&quot;must be set and supply a time resolution for &quot;</span>
+                <span class="s2">&quot;creating light curves!&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># if we don&#39;t have light curves already, make them:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_lc</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="n">utils</span><span class="o">.</span><span class="n">simon</span><span class="p">(</span><span class="s2">&quot;The event list must be sorted with respect to &quot;</span> <span class="s2">&quot;times of arrivals.&quot;</span><span class="p">)</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">argsort</span><span class="p">()]</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">lcs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_lightcurves</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="c1"># check whether band of interest contains a Lightcurve object:</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">ref_band_interest</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ref_band_interest</span><span class="p">,</span> <span class="n">Lightcurve</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ref_band_interest</span><span class="p">,</span> <span class="n">Lightcurve</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ref_band_lcs</span> <span class="o">=</span> <span class="n">ref_band_interest</span>
+            <span class="c1"># ref_band_interest must either be a Lightcurve, or must have</span>
+            <span class="c1"># multiple entries</span>
+
+            <span class="k">elif</span> <span class="n">ref_band_interest</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_lc</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">ref_band_lcs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_reference_bands_from_lightcurves</span><span class="p">(</span>
+                        <span class="n">ref_band_interest</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">ref_band_lcs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_reference_bands_from_event_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;ref_band_interest must contain either &quot;</span>
+                    <span class="s2">&quot;a Lightcurve object, a list of Lightcurve &quot;</span>
+                    <span class="s2">&quot;objects or a tuple of length 2.&quot;</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># check whether ref_band_interest is a list of light curves</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ref_band_interest</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">Lightcurve</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ref_band_lcs</span> <span class="o">=</span> <span class="n">ref_band_interest</span>
+                <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">ref_band_interest</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lcs</span><span class="p">),</span> <span class="p">(</span>
+                    <span class="s2">&quot;The list of &quot;</span>
+                    <span class="s2">&quot;reference light &quot;</span>
+                    <span class="s2">&quot;curves must have &quot;</span>
+                    <span class="s2">&quot;the same length as &quot;</span>
+                    <span class="s2">&quot;the list of light curves&quot;</span>
+                    <span class="s2">&quot;of interest.&quot;</span>
+                <span class="p">)</span>
+            <span class="c1"># if not, it must be a tuple, so we&#39;re going to make a list of light</span>
+            <span class="c1"># curves</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_lc</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">ref_band_lcs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_reference_bands_from_lightcurves</span><span class="p">(</span>
+                        <span class="n">bounds</span><span class="o">=</span><span class="n">ref_band_interest</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">ref_band_lcs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_reference_bands_from_event_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_construct_covar</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_make_reference_bands_from_event_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Helper method constructing reference bands for each band of interest, and constructing</span>
+<span class="sd">        light curves from these reference bands. This operates only if the data given to</span>
+<span class="sd">        :class:`Covariancespectrum` is event list data (i.e. photon arrival times and energies).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        data : numpy.ndarray</span>
+<span class="sd">            Array of shape ``(N, 2)``, where N is the number of photons. First column contains the</span>
+<span class="sd">            times of arrivals, second column the corresponding photon energies.</span>
+
+<span class="sd">        bounds : iterable</span>
+<span class="sd">            The energy bounds to use for the reference band. Must be of type ``(elow, ehigh)``.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        lc_all: list of :class:`stingray.Lightcurve` objects.</span>
+<span class="sd">            The list of `:class:`stingray.Lightcurve` objects containing all reference</span>
+<span class="sd">            bands, between the values given in ``bounds``.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">bounds</span><span class="p">:</span>
+            <span class="n">bounds</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])]</span>
+
+        <span class="k">if</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">band_interest</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span> <span class="ow">or</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">band_interest</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="p">):</span>
+            <span class="n">elow</span> <span class="o">=</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">ehigh</span> <span class="o">=</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+            <span class="n">toa</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">elow</span><span class="p">,</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">ehigh</span><span class="p">)]</span>
+
+            <span class="n">lc_all</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="o">.</span><span class="n">make_lightcurve</span><span class="p">(</span><span class="n">toa</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span> <span class="n">tstart</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tstart</span><span class="p">,</span> <span class="n">tseg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tseg</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lc_all</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">band_interest</span><span class="p">):</span>
+                <span class="n">elow</span> <span class="o">=</span> <span class="n">b</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">ehigh</span> <span class="o">=</span> <span class="n">b</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+                <span class="n">emask1</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">elow</span><span class="p">,</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">])]</span>
+
+                <span class="n">emask2</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">ehigh</span><span class="p">)]</span>
+
+                <span class="n">toa</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">emask1</span><span class="p">,</span> <span class="n">emask2</span><span class="p">])</span>
+                <span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="o">.</span><span class="n">make_lightcurve</span><span class="p">(</span><span class="n">toa</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span> <span class="n">tstart</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tstart</span><span class="p">,</span> <span class="n">tseg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tseg</span><span class="p">)</span>
+                <span class="n">lc_all</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">lc_all</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_make_reference_bands_from_lightcurves</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Helper class to construct reference bands for all light curves in ``band_interest``, assuming the</span>
+<span class="sd">        data is given to the class :class:`Covariancespectrum` as a (set of) lightcurve(s). Generally</span>
+<span class="sd">        sums up all other light curves within ``bounds`` that are *not* the band of interest.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        bounds : iterable</span>
+<span class="sd">            The energy bounds to use for the reference band. Must be of type ``(elow, ehigh)``.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        lc_all: list of :class:`stingray.Lightcurve` objects.</span>
+<span class="sd">            The list of :class:`stingray.Lightcurve` objects containing all reference bands,</span>
+<span class="sd">            between the values given in ``bounds``.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">bounds</span><span class="p">:</span>
+            <span class="n">bounds_idx</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">band_interest</span><span class="p">)]</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">low_bound</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_interest</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">high_bound</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">band_interest</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+            <span class="n">bounds_idx</span> <span class="o">=</span> <span class="p">[</span><span class="n">low_bound</span><span class="p">,</span> <span class="n">high_bound</span><span class="p">]</span>
+
+        <span class="n">lc_all</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">band_interest</span><span class="p">):</span>
+            <span class="c1"># initialize empty counts array</span>
+            <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lcs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">counts</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">bounds_idx</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">bounds_idx</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="n">j</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">counts</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lcs</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">counts</span>
+
+            <span class="c1"># make a combined light curve</span>
+            <span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lcs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="c1"># add to list of reference light curves</span>
+            <span class="n">lc_all</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">lc_all</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_construct_covar</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Helper method to construct the covariance attribute and fill it with values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">avg_covar</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">covar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lcs</span><span class="p">))</span>
+        <span class="n">covar_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lcs</span><span class="p">))</span>
+        <span class="n">xs_var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lcs</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lcs</span><span class="p">)):</span>
+            <span class="n">lc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lcs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ref_band_lcs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ref_band_lcs</span><span class="p">,</span> <span class="n">Lightcurve</span><span class="p">):</span>
+                <span class="n">lc_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_band_lcs</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">lc_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_band_lcs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+            <span class="n">cv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_covariance</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">lc_ref</span><span class="p">)</span>
+            <span class="n">cv_err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_covariance_error</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">lc_ref</span><span class="p">)</span>
+
+            <span class="n">covar</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">cv</span>
+            <span class="n">covar_err</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">cv_err</span>
+
+            <span class="n">xs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_excess_variance</span><span class="p">(</span><span class="n">lc_ref</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">xs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">utils</span><span class="o">.</span><span class="n">simon</span><span class="p">(</span>
+                    <span class="s2">&quot;The excess variance in the reference band is &quot;</span>
+                    <span class="s2">&quot;negative. This implies that the reference &quot;</span>
+                    <span class="s2">&quot;band was badly chosen. Beware that the &quot;</span>
+                    <span class="s2">&quot;covariance spectra will have NaNs!&quot;</span>
+                <span class="p">)</span>
+
+            <span class="n">xs_var</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">xs</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">unnorm_covar</span> <span class="o">=</span> <span class="n">covar</span>
+        <span class="n">energy_covar</span> <span class="o">=</span> <span class="n">covar</span> <span class="o">/</span> <span class="n">xs_var</span><span class="o">**</span><span class="mf">0.5</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">covar</span> <span class="o">=</span> <span class="n">energy_covar</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">covar_error</span> <span class="o">=</span> <span class="n">covar_err</span>
+
+        <span class="k">return</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_make_lightcurves</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create light curves for all bands of interest from ``data``. Takes the information the</span>
+<span class="sd">        ``band_interest`` attribute and event data in ``data``, and produces a list of</span>
+<span class="sd">        :class:`stingray.Lightcurve` objects.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        data : numpy.ndarray</span>
+<span class="sd">            Array of shape ``(N, 2)``, where ``N`` is the number of photons. First column contains the</span>
+<span class="sd">            times of arrivals, second column the corresponding photon energies.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        lc_all : iterable of :class:`stingray.Lightcurve` objects</span>
+<span class="sd">            A list of :class:`stingray.Lightcurve` objects of all bands of interest.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">tstart</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tend</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">tseg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tend</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">tstart</span>
+
+        <span class="n">lc_all</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">band_interest</span><span class="p">):</span>
+            <span class="n">elow</span> <span class="o">=</span> <span class="n">b</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">ehigh</span> <span class="o">=</span> <span class="n">b</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+            <span class="n">toa</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">elow</span><span class="p">,</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">ehigh</span><span class="p">)]</span>
+
+            <span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="o">.</span><span class="n">make_lightcurve</span><span class="p">(</span><span class="n">toa</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span> <span class="n">tstart</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tstart</span><span class="p">,</span> <span class="n">tseg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tseg</span><span class="p">)</span>
+            <span class="n">lc_all</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">lc_all</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_band_interest</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        If no bands of interest are given, but event data is, create bands of interest for each</span>
+<span class="sd">        discrete energy value in the second column of ``data``.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        data : numpy.ndarray</span>
+<span class="sd">            Array of shape (N, 2), where N is the number of photons. First column contains the</span>
+<span class="sd">            times of arrivals, second column the corresponding photon energies.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">unique_energy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">energ_diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">unique_energy</span><span class="p">)</span>
+
+        <span class="n">energy_low</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">unique_energy</span><span class="p">)</span>
+        <span class="n">energy_high</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">unique_energy</span><span class="p">)</span>
+
+        <span class="n">energy_low</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">unique_energy</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">energ_diff</span>
+        <span class="n">energy_high</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">unique_energy</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">energ_diff</span>
+
+        <span class="n">energy_low</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">unique_energy</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">energ_diff</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">energy_high</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">unique_energy</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">energ_diff</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">energy_list</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">energy_low</span><span class="p">,</span> <span class="n">energy_high</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">band_interest</span> <span class="o">=</span> <span class="n">energy_list</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_excess_variance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lc</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate excess variance in a band with the standard deviation.&quot;&quot;&quot;</span>
+        <span class="n">std</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_std</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span> <span class="o">-</span> <span class="n">std</span><span class="o">**</span><span class="mi">2</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_std</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lc</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return std calculated for the possible types of `std`&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">std</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">std</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">):</span>
+            <span class="n">std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">std</span><span class="p">)</span>  <span class="c1"># Iterable of numbers</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># Single float number</span>
+            <span class="n">std</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">std</span>
+
+        <span class="k">return</span> <span class="n">std</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_covariance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lc1</span><span class="p">,</span> <span class="n">lc2</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate and return the covariance between two time series.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">cov</span><span class="p">(</span><span class="n">lc1</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">lc2</span><span class="o">.</span><span class="n">counts</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_covariance_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lc_x</span><span class="p">,</span> <span class="n">lc_y</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate the error of the normalized covariance spectrum.&quot;&quot;&quot;</span>
+        <span class="c1"># Excess Variance of reference band</span>
+        <span class="n">xs_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_excess_variance</span><span class="p">(</span><span class="n">lc_x</span><span class="p">)</span>
+        <span class="c1"># Standard deviation of light curve</span>
+        <span class="n">err_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_std</span><span class="p">(</span><span class="n">lc_y</span><span class="p">)</span>
+        <span class="c1"># Excess Variance of reference band</span>
+        <span class="n">xs_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_excess_variance</span><span class="p">(</span><span class="n">lc_y</span><span class="p">)</span>
+        <span class="c1"># Standard deviation of light curve</span>
+        <span class="n">err_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_std</span><span class="p">(</span><span class="n">lc_x</span><span class="p">)</span>
+        <span class="c1"># Number of time bins in lightcurve</span>
+        <span class="n">nn</span> <span class="o">=</span> <span class="n">lc_x</span><span class="o">.</span><span class="n">n</span>
+        <span class="c1"># Number of segments averaged</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">avg_covar</span><span class="p">:</span>
+            <span class="n">mm</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbins</span>
+
+        <span class="n">num</span> <span class="o">=</span> <span class="n">xs_x</span> <span class="o">*</span> <span class="n">err_y</span> <span class="o">+</span> <span class="n">xs_y</span> <span class="o">*</span> <span class="n">err_x</span> <span class="o">+</span> <span class="n">err_x</span> <span class="o">*</span> <span class="n">err_y</span>
+        <span class="n">denom</span> <span class="o">=</span> <span class="n">nn</span> <span class="o">*</span> <span class="n">mm</span> <span class="o">*</span> <span class="n">xs_y</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="n">num</span> <span class="o">/</span> <span class="n">denom</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span></div>
+
+
+
+<div class="viewcode-block" id="AveragedCovariancespectrum">
+<a class="viewcode-back" href="../../api.html#stingray.AveragedCovariancespectrum">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AveragedCovariancespectrum</span><span class="p">(</span><span class="n">Covariancespectrum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute a covariance spectrum for the data, defined in [covar spectrum]_ Equation 15.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data : {numpy.ndarray | list of :class:`stingray.Lightcurve` objects}</span>
+<span class="sd">        ``data`` contains the time series data, either in the form of a</span>
+<span class="sd">        2-D array of ``(time stamp, energy)`` pairs for event data, or as a</span>
+<span class="sd">        list of :class:`stingray.Lightcurve` objects.</span>
+<span class="sd">        Note : The event list must be in sorted order with respect to the</span>
+<span class="sd">        times of arrivals.</span>
+
+<span class="sd">    segment_size : float</span>
+<span class="sd">        The length of each segment in the averaged covariance spectrum.</span>
+<span class="sd">        The number of segments will be calculated automatically using the</span>
+<span class="sd">        total length of the data set and the segment_size defined here.</span>
+
+<span class="sd">    dt : float</span>
+<span class="sd">        The time resolution of the :class:`stingray.Lightcurve` formed</span>
+<span class="sd">        from the energy bin. Only used if `data` is an event list.</span>
+
+<span class="sd">    band_interest : {``None``, iterable of tuples}</span>
+<span class="sd">        If ``None``, all possible energy values will be assumed to be of</span>
+<span class="sd">        interest, and a covariance spectrum in the highest resolution</span>
+<span class="sd">        will be produced.</span>
+<span class="sd">        Note: if the input is a list of :class:`stingray.Lightcurve` objects,</span>
+<span class="sd">        then the user may supply their energy values here, for construction of a</span>
+<span class="sd">        reference band.</span>
+
+<span class="sd">    ref_band_interest : {None, tuple, :class:`stingray.Lightcurve`, list of :class:`stingray.Lightcurve` objects}</span>
+<span class="sd">        Defines the reference band to be used for comparison with the</span>
+<span class="sd">        bands of interest. If None, all bands *except* the band of</span>
+<span class="sd">        interest will be used for each band of interest, respectively.</span>
+<span class="sd">        Alternatively, a tuple can be given for event list data, which will</span>
+<span class="sd">        extract the reference band (always excluding the band of interest),</span>
+<span class="sd">        or one may put in a single :class:`stingray.Lightcurve` object to be used (the same</span>
+<span class="sd">        for each band of interest) or a list of :class:`stingray.Lightcurve` objects, one for</span>
+<span class="sd">        each band of interest.</span>
+
+<span class="sd">    std : float or np.array or list of numbers</span>
+<span class="sd">        The term ``std`` is used to calculate the excess variance of a band.</span>
+<span class="sd">        If ``std`` is set to ``None``, default Poisson case is taken and the</span>
+<span class="sd">        ``std`` is calculated as ``mean(lc)**0.5``. In the case of a single</span>
+<span class="sd">        float as input, the same is used as the standard deviation which</span>
+<span class="sd">        is also used as the std. And if the std is an iterable of</span>
+<span class="sd">        numbers, their mean is used for the same purpose.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    unnorm_covar : np.ndarray</span>
+<span class="sd">        An array of arrays with mid point band_interest and their</span>
+<span class="sd">        covariance. It is the array-form of the dictionary ``energy_covar``.</span>
+<span class="sd">        The covariance values are unnormalized.</span>
+
+<span class="sd">    covar : np.ndarray</span>
+<span class="sd">        Normalized covariance spectrum.</span>
+
+<span class="sd">    covar_error : np.ndarray</span>
+<span class="sd">        Errors of the normalized covariance spectrum.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [covar spectrum] http://arxiv.org/pdf/1405.6575v2.pdf</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">segment_size</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">band_interest</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ref_band_interest</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span> <span class="o">=</span> <span class="n">segment_size</span>
+
+        <span class="n">Covariancespectrum</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">data</span><span class="p">,</span>
+            <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+            <span class="n">band_interest</span><span class="o">=</span><span class="n">band_interest</span><span class="p">,</span>
+            <span class="n">ref_band_interest</span><span class="o">=</span><span class="n">ref_band_interest</span><span class="p">,</span>
+            <span class="n">std</span><span class="o">=</span><span class="n">std</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_construct_covar</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Helper method to construct the covariance attribute and fill it with values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">avg_covar</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="n">start_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lcs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">covar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lcs</span><span class="p">))</span>
+        <span class="n">covar_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lcs</span><span class="p">))</span>
+        <span class="n">xs_var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lcs</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lcs</span><span class="p">)):</span>
+            <span class="n">lc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lcs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ref_band_lcs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">lc_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_band_lcs</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">lc_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ref_band_lcs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+            <span class="n">tstart</span> <span class="o">=</span> <span class="n">start_time</span>
+            <span class="n">tend</span> <span class="o">=</span> <span class="n">start_time</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span>
+            <span class="n">cv</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="n">cv_err</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="n">xs</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">nbins</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">tend</span> <span class="o">-</span> <span class="n">tstart</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbins</span><span class="p">):</span>
+                <span class="n">start_ind</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">tstart</span><span class="p">)</span>
+                <span class="n">end_ind</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">tend</span><span class="p">)</span>
+
+                <span class="n">lc_seg</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">truncate</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">start_ind</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">end_ind</span><span class="p">)</span>
+                <span class="n">lc_ref_seg</span> <span class="o">=</span> <span class="n">lc_ref</span><span class="o">.</span><span class="n">truncate</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">start_ind</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">end_ind</span><span class="p">)</span>
+
+                <span class="n">cv</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_covariance</span><span class="p">(</span><span class="n">lc_seg</span><span class="p">,</span> <span class="n">lc_ref_seg</span><span class="p">)</span>
+                <span class="n">cv_err</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_covariance_error</span><span class="p">(</span><span class="n">lc_seg</span><span class="p">,</span> <span class="n">lc_ref_seg</span><span class="p">)</span>
+                <span class="n">xs</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_excess_variance</span><span class="p">(</span><span class="n">lc_ref_seg</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">xs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">utils</span><span class="o">.</span><span class="n">simon</span><span class="p">(</span>
+                        <span class="s2">&quot;The excess variance in the reference band is &quot;</span>
+                        <span class="s2">&quot;negative. This implies that the reference &quot;</span>
+                        <span class="s2">&quot;band was badly chosen. Beware that the &quot;</span>
+                        <span class="s2">&quot;covariance spectra will have NaNs!&quot;</span>
+                    <span class="p">)</span>
+
+                <span class="n">tstart</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span>
+                <span class="n">tend</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span>
+
+            <span class="n">covar</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">cv</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbins</span>
+            <span class="n">covar_err</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">cv_err</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbins</span>
+            <span class="n">xs_var</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">xs</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbins</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">unnorm_covar</span> <span class="o">=</span> <span class="n">covar</span>
+        <span class="n">energy_covar</span> <span class="o">=</span> <span class="n">covar</span> <span class="o">/</span> <span class="n">xs_var</span><span class="o">**</span><span class="mf">0.5</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">covar</span> <span class="o">=</span> <span class="n">energy_covar</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">covar_error</span> <span class="o">=</span> <span class="n">covar_err</span>
+
+        <span class="k">return</span></div>
+
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

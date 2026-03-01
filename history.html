@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>History &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=17ab1725" />
+    
+    <script src="_static/jquery.js?v=5d32c60e"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script type="text/javascript" src="_static/sidebar.js"></script>
+    <script type="text/javascript" src="_static/copybutton.js"></script>
+    <link rel="icon" href="_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Get Help, Report Bugs or Contribute" href="contributing.html" />
+    <link rel="prev" title="Stingray API" href="api.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="genindex.html">Index</a></li>
+    <li><a title="Module Index" href="py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="contributing.html" title="Get Help, Report Bugs or Contribute">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="api.html" title="Stingray API">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      
+      <li>History</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="history">
+<h1>History<a class="headerlink" href="#history" title="Link to this heading">¶</a></h1>
+<p>For a brief overview of the history and state-of-the-art in spectral timing, and for more information about the design and capabilities of Stingray, please refer to <a class="reference external" href="https://ui.adsabs.harvard.edu/abs/2019ApJ...881...39H/abstract">Huppenkothen et al. (2019)</a>.</p>
+<p>Stingray originated during the 2016 workshop <a class="reference external" href="http://www.lorentzcenter.nl/lc/web/2016/720/info.php3?wsid=720&amp;venue=Oort/">The X-ray Spectral-Timing Revolution</a>: a group of X-ray astronomers and developers decided to agree on a common platform to develop a new software package.
+At that time, there were a number of official software packages for X-ray spectral fitting (XSPEC, ISIS, Sherpa, …), but
+such a widely used and standard software package did not exist for X-ray timing, that was mostly the domain of custom, proprietary software.
+Our goals were to merge existing efforts towards a timing package in Python, following the best guidelines for modern open-source programming, thereby providing the basis for developing spectral-timing analysis tools.
+We needed to provide an easily accessible scripting interface, a GUI, and an API for experienced coders.
+Stingray’s ultimate goal is to provide the community with a package that eases the learning curve for advanced spectral-timing techniques, with a correct statistical framework.</p>
+<p>Further spectral-timing functionality, in particularly command line scripts based on the API defined within Stingray, is available in the package <a class="reference external" href="https://github.com/StingraySoftware/HENDRICS">HENDRICS</a>.
+A graphical user interface is under development as part of the project <a class="reference external" href="https://github.com/StingraySoftware/dave">DAVE</a>.</p>
+<section id="previous-projects-merged-to-stingray">
+<h2>Previous projects merged to Stingray<a class="headerlink" href="#previous-projects-merged-to-stingray" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Daniela Huppenkothen’s original Stingray</p></li>
+<li><p>Matteo Bachetti’s <a class="reference external" href="https://github.com/matteobachetti/MaLTPyNT">MaLTPyNT</a></p></li>
+<li><p>Abigail Stevens’ RXTE power spectra code and phase-resolved spectroscopy code</p></li>
+<li><p>Simone Migliari’s and Paul Balm’s X-ray data exploration GUI commissioned by ESA</p></li>
+</ul>
+</section>
+<section id="changelog">
+<h2>Changelog<a class="headerlink" href="#changelog" title="Link to this heading">¶</a></h2>
+<section id="v2-3-2026-02-27">
+<h3>v2.3 (2026-02-27)<a class="headerlink" href="#v2-3-2026-02-27" title="Link to this heading">¶</a></h3>
+<section id="new-features">
+<h4>New Features<a class="headerlink" href="#new-features" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">summed_flag</span></code> to <code class="docutils literal notranslate"><span class="pre">power_confidence_limits</span></code>, to make it work with averaged powers too. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/952">#952</a>)</p></li>
+<li><p>Add function to save spectra in Xspec-compatible format (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/957">#957</a>)</p></li>
+<li><p>Add possibility to save to Xspec format for covariance/variability spectra (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/963">#963</a>)</p></li>
+<li><p>Improve treatment of coherence (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/965">#965</a>)</p></li>
+</ul>
+</section>
+<section id="bug-fixes">
+<h4>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Fixed EventList.read to properly pass <code class="docutils literal notranslate"><span class="pre">**kwargs.</span></code> (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/950">#950</a>)</p></li>
+<li><p>Fixed an error in <code class="docutils literal notranslate"><span class="pre">power_confidence_limits</span></code> that led to systematically narrower confidence intervals. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/951">#951</a>)</p></li>
+<li><p>Fixed uncertainty propogation error in <code class="docutils literal notranslate"><span class="pre">Lightcurve.rebin()</span></code> (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/953">#953</a>)</p></li>
+<li><p>Fixed convergence issues in <code class="docutils literal notranslate"><span class="pre">power_upper_limit</span></code> for summed powers and low count rates by replacing <code class="docutils literal notranslate"><span class="pre">minimize</span></code> with <code class="docutils literal notranslate"><span class="pre">brentq</span></code>. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/954">#954</a>)</p></li>
+<li><p>Fix initialization of <code class="docutils literal notranslate"><span class="pre">countrate_err</span></code> if errors are Poisson (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/958">#958</a>)</p></li>
+<li><p>Fix array_attrs property of <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/959">#959</a>)</p></li>
+<li><p>Speedup and improve robustness of <code class="docutils literal notranslate"><span class="pre">fill_bad_time_intervals</span></code> (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/968">#968</a>)</p></li>
+</ul>
+</section>
+</section>
+<section id="v2-2-10-2025-10-24">
+<h3>v2.2.10 (2025-10-24)<a class="headerlink" href="#v2-2-10-2025-10-24" title="Link to this heading">¶</a></h3>
+<section id="id1">
+<h4>New Features<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Update database of missions from NASA (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/939">#939</a>)</p></li>
+<li><p>use the power of fits.open to load remote datasets (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/940">#940</a>)</p></li>
+<li><p>Added a flag to switch between summed and averaged power to determine the upper limit. The default is still summed power to keep backward compatibility</p></li>
+</ul>
+</section>
+<section id="id2">
+<h4>Bug Fixes<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Fix issue with float128 in recent Numba versions (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/947">#947</a>)</p></li>
+<li><p>Fixed a bug in the <a class="reference internal" href="api.html#stingray.stats.power_upper_limit" title="stingray.stats.power_upper_limit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stingray.stats.power_upper_limit</span></code></a> function where the current minimizing method did not lead to convergence in some cases.</p></li>
+</ul>
+</section>
+</section>
+<section id="v2-2-9-2025-08-18">
+<h3>v2.2.9 (2025-08-18)<a class="headerlink" href="#v2-2-9-2025-08-18" title="Link to this heading">¶</a></h3>
+<section id="deprecations">
+<h4>Deprecations<a class="headerlink" href="#deprecations" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>The use of <code class="docutils literal notranslate"><span class="pre">astropy.tests.runner.TestRunner</span></code>  is now deprecated. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/888">#888</a>)</p></li>
+</ul>
+</section>
+<section id="id3">
+<h4>New Features<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Better support for Chandra event files (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/877">#877</a>)</p></li>
+<li><p>Added functionality to read LAXPC observations. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/929">#929</a>)</p></li>
+<li><p>GtiCorrPowerspectrum is a new class to calculate long-term power spectra from gappy data (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/933">#933</a>)</p></li>
+</ul>
+</section>
+<section id="id4">
+<h4>Bug Fixes<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Fixed issue with counting <code class="docutils literal notranslate"><span class="pre">0</span></code> bin occupancy in <code class="docutils literal notranslate"><span class="pre">fold_events</span></code> with <code class="docutils literal notranslate"><span class="pre">mode='pdm'</span></code> (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/872">#872</a>)</p></li>
+<li><p>Fixed power upper limit in <code class="docutils literal notranslate"><span class="pre">stingray.stats</span></code> for n =/= 1 (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/922">#922</a>)</p></li>
+<li><p>Account for the TIMEPIXR and TIMEDEL keywords when calculating times (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/937">#937</a>)</p></li>
+</ul>
+</section>
+<section id="documentation">
+<h4>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Sidebar in documentation now scrolls independently of the main content and wraps long text to next line instead of cropping it. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/918">#918</a>)</p></li>
+<li><p>Added <a class="reference internal" href="api.html#stingray.varenergyspectrum.CountSpectrum" title="stingray.varenergyspectrum.CountSpectrum"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stingray.varenergyspectrum.CountSpectrum</span></code></a> to docs. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/884">#884</a>)</p></li>
+</ul>
+</section>
+<section id="internal-changes">
+<h4>Internal Changes<a class="headerlink" href="#internal-changes" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Bump jinja2 version to 3.1.5 (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/878">#878</a>)</p></li>
+<li><p>Added a test to check <code class="docutils literal notranslate"><span class="pre">profile</span></code>, when <code class="docutils literal notranslate"><span class="pre">fold_events</span></code> method called with <code class="docutils literal notranslate"><span class="pre">mode=</span> <span class="pre">&quot;pdm&quot;</span></code> after the bug fix #872. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/880">#880</a>)</p></li>
+<li><p>Suppressed deprecation warnings related to <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.core.einsumfunc</span></code> as it is causing test failure described in (<a class="reference external" href="https://github.com/StingraySoftware/stingray/issues/882">https://github.com/StingraySoftware/stingray/issues/882</a>) (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/886">#886</a>)</p></li>
+</ul>
+</section>
+</section>
+<section id="v2-2-7-2025-04-08">
+<h3>v2.2.7 (2025-04-08)<a class="headerlink" href="#v2-2-7-2025-04-08" title="Link to this heading">¶</a></h3>
+<section id="id5">
+<h4>New Features<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Read the OBS_ID keyword from the FITS file if present (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/863">#863</a>)</p></li>
+<li><p>Use the formulas from Ingram+2019 consistently when calculating cross spectral errors, including lags (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/865">#865</a>)</p></li>
+<li><p>Implement filter by time interval in stingraytimeseries objects (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/866">#866</a>)</p></li>
+</ul>
+</section>
+<section id="id6">
+<h4>Bug Fixes<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Fix issue with FITS headers, especially for RXTE data (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/853">#853</a>)</p></li>
+<li><p>Fix issue when passing a single GTI to FitsTimeseriesReader.apply_gti_lists() (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/858">#858</a>)</p></li>
+<li><p>Fix scipy futurewarning about the inputs to the Toeplitz matrix in bispectrum (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/861">#861</a>)</p></li>
+<li><p>Fix problem with data types fed to scipy special functions (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/870">#870</a>)</p></li>
+<li><p>Set a lower limit to the number of photons in a segment of data used for certain <code class="docutils literal notranslate"><span class="pre">VarEnergySpectrum</span></code> subclasses. This avoids, e.g., spurious high covariance measurements in low-count data sets. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/874">#874</a>)</p></li>
+</ul>
+</section>
+<section id="docs">
+<h4>Docs<a class="headerlink" href="#docs" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Add newly-accepted JOSS paper to docs, update citation information, and fresh new badges (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/829">#829</a>)</p></li>
+</ul>
+</section>
+</section>
+<section id="v2-2-2024-10-22">
+<h3>v2.2 (2024-10-22)<a class="headerlink" href="#v2-2-2024-10-22" title="Link to this heading">¶</a></h3>
+<section id="id7">
+<h4>New Features<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Add a compute_rms function to LombScarglePowerspectrum (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/828">#828</a>)</p></li>
+<li><p>Introduced FITSReader class for lazy-loading of event lists (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/834">#834</a>)</p></li>
+<li><p>implementation of the shift-and-add technique for QPOs and other varying power spectral features (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/849">#849</a>)</p></li>
+</ul>
+</section>
+<section id="id8">
+<h4>Bug Fixes<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">fold_events</span></code> function now checks if the keyword arguments (<code class="xref py py-obj docutils literal notranslate"><span class="pre">kwargs</span></code>) are in the list of optional parameters.
+If any unidentified keys are present, it raises a <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ValueError</span></code></a>.
+This fix ensures that the function only accepts valid optional parameters and provides a clear error message for unsupported keys. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/837">#837</a>)</p></li>
+</ul>
+</section>
+<section id="id9">
+<h4>Internal Changes<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Eliminated runtime dependency on setuptools (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/852">#852</a>)</p></li>
+<li><p>Moved configuration to pyproject.toml as recommended by PEP 621 (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/842">#842</a>)</p></li>
+<li><p>Added pre-commit hooks in <code class="docutils literal notranslate"><span class="pre">pre-commit-config.yaml</span></code> (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/847">#847</a>)</p></li>
+<li><p>Improved main page of the documentation (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/748">#748</a>)</p></li>
+</ul>
+</section>
+</section>
+<section id="v2-1-2024-05-29">
+<h3>v2.1 (2024-05-29)<a class="headerlink" href="#v2-1-2024-05-29" title="Link to this heading">¶</a></h3>
+<section id="id10">
+<h4>New Features<a class="headerlink" href="#id10" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Add function to calibrate event lists based on RMF file (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/804">#804</a>)</p></li>
+<li><p>Speed up computation of pds for large arrays (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/808">#808</a>)</p></li>
+<li><p>Add support for XTE science event data (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/816">#816</a>)</p></li>
+<li><p>A friendlier API for the non-paralyzable dead time model model (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/800">#800</a>)</p></li>
+</ul>
+</section>
+<section id="id11">
+<h4>Bug Fixes<a class="headerlink" href="#id11" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Fix issue when setting a property from a FITS file read (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/814">#814</a>)</p></li>
+<li><p>Fix case when analyze_segments has an invalid segment (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/822">#822</a>)</p></li>
+<li><p>Substitute np.asarray with np.asanyarray everywhere, to avoid copying memory maps into memory if possible (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/824">#824</a>)</p></li>
+</ul>
+</section>
+<section id="id12">
+<h4>Internal Changes<a class="headerlink" href="#id12" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Dead time model fixes: more stable computations, better plotting of check_A and check_B (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/800">#800</a>)</p></li>
+<li><p>Bumped jinja version to 3.1.4 (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/825">#825</a>)</p></li>
+</ul>
+</section>
+</section>
+<section id="v2-0-2024-03-13">
+<h3>v2.0 (2024-03-13)<a class="headerlink" href="#v2-0-2024-03-13" title="Link to this heading">¶</a></h3>
+<section id="id13">
+<h4>New Features<a class="headerlink" href="#id13" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Power colors à la Heil et al. 2015 (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/780">#780</a>)</p></li>
+<li><p>Calculate colors and intensities on a segment-by-segment basis in event lists (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/781">#781</a>)</p></li>
+<li><p>A function to randomize data in small bad time intervals (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/782">#782</a>)</p></li>
+<li><p>The Lomb Scargle Fourier Transform (fast and slow versions) and the corresponding <code class="xref py py-class docutils literal notranslate"><span class="pre">LombScargleCrossspectrum</span></code> and <code class="xref py py-class docutils literal notranslate"><span class="pre">LombScarglePowerspectrum</span></code> (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/737">#737</a>)</p></li>
+<li><p>A JAX implementation of the Gaussian Process tool by <a class="reference external" href="https://arxiv.org/abs/2205.12716">Hubener et al</a>
+for QPO detection and parameter analysis. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/739">#739</a>)</p></li>
+<li><p>Extend join operation for events to arbitrary array attributes, not just pi and energy (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/742">#742</a>)</p></li>
+<li><p>Allow the creation of empty light curves. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/745">#745</a>)</p></li>
+<li><p>Make StingrayTimeseries into a generalized light curve, with a less strict naming but implementing much of the underlying computing useful for Lightcurve as well. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/754">#754</a>)</p></li>
+<li><p>Our fast implementation of histograms is now safer (failing safely to the equivalent numpy histogram functions), more consistent (ranges moved to range, for consistency with numpy), and accept complex weights as well! (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/764">#764</a>)</p></li>
+</ul>
+</section>
+<section id="id14">
+<h4>Bug Fixes<a class="headerlink" href="#id14" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>When rms is low, the calculation in compute_rms often gave <code class="xref py py-obj docutils literal notranslate"><span class="pre">NaN</span></code>. We now check for this situation and give 0 with an uncertainty as a result. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/736">#736</a>)</p></li>
+<li><p>Eliminates deprecated call to <code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_deprecations_as_warnings</span></code>, and contextually, changes the code to be much more robust in catching harmful warnings. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/738">#738</a>)</p></li>
+<li><p>Changes Crossspectrum.plot() function to plot the actual real and imaginary parts instead of their absolute values. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/747">#747</a>)</p></li>
+<li><p>Make commits marked as [docs only] skip all CI but the docs build (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/749">#749</a>)</p></li>
+<li><p>Update tstart and tseg when using Lightcurve.truncate() (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/753">#753</a>)</p></li>
+<li><p>Changed list comprehension to generator expression to reduce memory usage. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/756">#756</a>)</p></li>
+<li><p>Fix a bug with segment sizes not exact multiples of dt when dealing with light curves (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/760">#760</a>)</p></li>
+<li><p>Fix a bug when light curve segments contain complex values (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/760">#760</a>)</p></li>
+<li><p>Crossspectrum had “real” as default value. This meant that, for example, lags could not be calculated. Now the default value is “all”, as it should be. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/762">#762</a>)</p></li>
+<li><p>Fix plotting of spectra, avoiding the plot of imaginary parts of real numbers (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/763">#763</a>)</p></li>
+<li><p>Various bugfixes in <code class="xref py py-obj docutils literal notranslate"><span class="pre">gti.py</span></code>, and a new function to interpret the mix of multiple GTIs. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/774">#774</a>)</p></li>
+<li><p>Fixed subcs duplication by adding a check in the for loop that copies the attributes from table’s meta items. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/776">#776</a>)</p></li>
+<li><p>Various bug fixes in DynamicalPowerspectrum, on event loading and time rebinning (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/779">#779</a>)</p></li>
+<li><p>Fix issue with the Poisson noise calculation in lag spectra, that produced NaN errors under some conditions (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/789">#789</a>)</p></li>
+<li><p>Fix rms computation and error bars (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/792">#792</a>)</p></li>
+<li><p>Fix issue with <code class="docutils literal notranslate"><span class="pre">Powerspectrum</span></code> of a single light curve (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/663">#663</a>)</p></li>
+<li><p>Fix nphots estimate in accelsearch, that lead to an underestimation of the power of candidates (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/807">#807</a>)</p></li>
+</ul>
+</section>
+<section id="breaking-changes">
+<h4>Breaking Changes<a class="headerlink" href="#breaking-changes" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Eliminate deprecated <code class="docutils literal notranslate"><span class="pre">format_</span></code> keyword from read and write methods. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/729">#729</a>)</p></li>
+<li><p>Remove legacy interface and obsolete large data machinery. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/755">#755</a>)</p></li>
+<li><p>Eliminate deprecated <code class="docutils literal notranslate"><span class="pre">white_noise_level</span></code> keyword from <code class="docutils literal notranslate"><span class="pre">compute_rms</span></code>. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/792">#792</a>)</p></li>
+</ul>
+</section>
+<section id="id15">
+<h4>Internal Changes<a class="headerlink" href="#id15" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Speedup creation of events in <code class="docutils literal notranslate"><span class="pre">EventList.from_lc</span></code> (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/757">#757</a>)</p></li>
+<li><p>Separate slow tests from quick ones (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/758">#758</a>)</p></li>
+<li><p>Use Readthedocs for documentation building (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/769">#769</a>)</p></li>
+<li><p>More informative GTI messages (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/787">#787</a>)</p></li>
+<li><p>Eliminated the usage of astropy logging (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/799">#799</a>)</p></li>
+</ul>
+</section>
+</section>
+<section id="v1-1-2-2023-05-25">
+<h3>v1.1.2 (2023-05-25)<a class="headerlink" href="#v1-1-2-2023-05-25" title="Link to this heading">¶</a></h3>
+<section id="id16">
+<h4>New Features<a class="headerlink" href="#id16" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Phase Dispersion Minimization as a method to search for periodic signals
+in data is now implemented in the <code class="docutils literal notranslate"><span class="pre">stingray.pulse</span></code> submodule. To use it,
+you can use the <code class="docutils literal notranslate"><span class="pre">phase_dispersion_search</span></code> function in
+<code class="docutils literal notranslate"><span class="pre">stingray.pulse.search</span></code>. The accompanying statistical tests are located
+in the <code class="docutils literal notranslate"><span class="pre">stingray.stats</span></code> module, under <code class="docutils literal notranslate"><span class="pre">phase_dispersion_probability</span></code>,
+<code class="docutils literal notranslate"><span class="pre">phase_dispersion_logprobability</span></code> and <code class="docutils literal notranslate"><span class="pre">phase_dispersion_detection_level</span></code>. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/716">#716</a>)</p></li>
+<li><p>Add is_sorted function, to test if an array is sorted. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/723">#723</a>)</p></li>
+<li><p>Check if invalid data are inside GTIs, and warn or raise exception accordingly (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/730">#730</a>)</p></li>
+</ul>
+</section>
+<section id="id17">
+<h4>Bug Fixes<a class="headerlink" href="#id17" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>The method apply_gtis of the class Lightcurve is applied to all the attributes of the class Lightcurve.
+This works for both inplace=True and inplace=False (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/712">#712</a>)</p></li>
+<li><p>Avoid allocation of an unneeded square matrix to improve memory management in <code class="docutils literal notranslate"><span class="pre">_als</span></code> (fix Issue 724) (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/725">#725</a>)</p></li>
+<li><p>Fix Issue #726 – Loading events without fmt keyword crashes (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/727">#727</a>)</p></li>
+</ul>
+</section>
+<section id="id18">
+<h4>Documentation<a class="headerlink" href="#id18" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Reordered information about contributions with new <code class="docutils literal notranslate"><span class="pre">black</span></code> and <code class="docutils literal notranslate"><span class="pre">towncrier</span></code> procedures (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/721">#721</a>)</p></li>
+</ul>
+</section>
+<section id="id19">
+<h4>Internal Changes<a class="headerlink" href="#id19" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Using <a class="reference external" href="https://github.com/hawkowl/towncrier">towncrier</a> to generate the changelogs. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/697">#697</a>)</p></li>
+<li><p>Added stingray’s logo in the documentation’s favicon and top bar. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/707">#707</a>)</p></li>
+<li><p>Improved contributing workflow by appending <code class="docutils literal notranslate"><span class="pre">black</span></code> codestyle configuration to <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code> and ignoring PEP-8 non-compliant <code class="docutils literal notranslate"><span class="pre">E203</span></code>, <code class="docutils literal notranslate"><span class="pre">W503</span></code> in <code class="docutils literal notranslate"><span class="pre">flake8</span></code>. (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/715">#715</a>)</p></li>
+<li><p>Added a scrollbar to sidebarwrapper (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/718">#718</a>)</p></li>
+<li><p>Simplify numba mocking code, and possibly improve code coverage estimate (<a class="reference external" href="https://github.com/StingraySoftware/stingray/pull/731">#731</a>)</p></li>
+</ul>
+</section>
+</section>
+<section id="v1-1-1-2022-10-10">
+<h3>v1.1.1 (2022-10-10)<a class="headerlink" href="#v1-1-1-2022-10-10" title="Link to this heading">¶</a></h3>
+<section id="id20">
+<h4>Bug fixes<a class="headerlink" href="#id20" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Fixed <code class="docutils literal notranslate"><span class="pre">white_noise_offset</span></code> in <code class="docutils literal notranslate"><span class="pre">compute_rms</span></code> to 2.0, as it should be</p></li>
+<li><p>Fixed a bug that produced a crash when calculating the rms in spectra corrected through the FAD technique</p></li>
+<li><p>Fixed a bug that eliminated the imaginary part from cross spectra corrected with the FAD</p></li>
+<li><p>Fixed a bug that considered contiguous GTIs as non-continuous (due to very small differences between stop and start of the next GTI) by allowing a small tolerance</p></li>
+</ul>
+<p><a class="reference external" href="https://github.com/StingraySoftware/stingray/compare/v1.1...v1.1.1">Full list of changes</a></p>
+</section>
+</section>
+<section id="v1-1-2022-10-02">
+<h3>v1.1 (2022-10-02)<a class="headerlink" href="#v1-1-2022-10-02" title="Link to this heading">¶</a></h3>
+<section id="id22">
+<h4>Bug fixes<a class="headerlink" href="#id22" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>IMPORTANT: Fixed sign of time lags, which were calculated using the interest band as the reference.</p></li>
+<li><p>Fixed an issue when the fractional exposure in FITS light curves is slightly &gt;1 (as sometimes happens in NICER data)</p></li>
+</ul>
+</section>
+<section id="new">
+<h4>New<a class="headerlink" href="#new" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Implemented the <code class="docutils literal notranslate"><span class="pre">bexvar</span></code> variability estimation method for light curves.</p></li>
+</ul>
+</section>
+<section id="improvements">
+<h4>Improvements<a class="headerlink" href="#improvements" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>A less confusing default value of segment_size in Z searches</p></li>
+</ul>
+<p><a class="reference external" href="https://github.com/StingraySoftware/stingray/compare/v1.0...v1.1">Full list of changes</a></p>
+</section>
+</section>
+<section id="v1-0-2022-03-29">
+<h3>v1.0 (2022-03-29)<a class="headerlink" href="#v1-0-2022-03-29" title="Link to this heading">¶</a></h3>
+<p>TL,DR: these things will break your code with v1.0:</p>
+<ul class="simple">
+<li><p>Python version &lt; 3.8</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">gtis</span></code> keyword in <code class="xref py py-obj docutils literal notranslate"><span class="pre">pulse/pulsar.py</span></code> (it is now <code class="docutils literal notranslate"><span class="pre">gti</span></code>, without the ‘s’)</p></li>
+</ul>
+<section id="id24">
+<h4>New<a class="headerlink" href="#id24" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Dropped support to Python &lt; 3.8</p></li>
+<li><p>Multi-taper periodogram, including a Lomb-Scargle implementation for non-uniformly sampled data</p></li>
+<li><p>Create count-rate spectrum when calculating spectral-timing products</p></li>
+<li><p>Make modlation upper limit in <code class="docutils literal notranslate"><span class="pre">(Averaged)Powerspectrum</span></code> work with any normalization (internally converts to Leahy for the calculation)</p></li>
+<li><p>Implement Gardner-Done normalization (1 for perfect correlation, -1 for perfect anticorrelation) for <code class="docutils literal notranslate"><span class="pre">Auto/Crosscorrelation</span></code></p></li>
+<li><p>New infrastructure for converting <code class="docutils literal notranslate"><span class="pre">EventList</span></code> and <code class="docutils literal notranslate"><span class="pre">LightCurve</span></code> objects into Astropy <code class="docutils literal notranslate"><span class="pre">TimeSeries</span></code></p></li>
+<li><p>New infrastructure for converting most Stingray classes into Astropy <code class="docutils literal notranslate"><span class="pre">Table</span></code> objects, Xarray and Pandas data frames.</p></li>
+<li><p>Save and load of most Stingray classes to/from many different file formats (<code class="docutils literal notranslate"><span class="pre">pickle</span></code>, <code class="docutils literal notranslate"><span class="pre">ECSV</span></code>, <code class="docutils literal notranslate"><span class="pre">HDF5</span></code>, <code class="docutils literal notranslate"><span class="pre">FITS</span></code>, and all formats compatible with Astropy Table)</p></li>
+<li><p>Accept input <code class="docutils literal notranslate"><span class="pre">EventList</span></code> in <code class="docutils literal notranslate"><span class="pre">DynamicalPowerSpectrum</span></code></p></li>
+<li><p>New <code class="docutils literal notranslate"><span class="pre">stingray.fourier</span></code> module containing the basic timing products, usable on <code class="docutils literal notranslate"><span class="pre">numpy</span></code> arrays, and centralizes fft import</p></li>
+<li><p>New methods in <code class="docutils literal notranslate"><span class="pre">Crossspectrum</span></code> and <code class="docutils literal notranslate"><span class="pre">Powerspectrum</span></code> to load data from specific inputs: <code class="docutils literal notranslate"><span class="pre">from_events</span></code>, <code class="docutils literal notranslate"><span class="pre">from_lightcurve</span></code>, <code class="docutils literal notranslate"><span class="pre">from_time_array</span></code>, <code class="docutils literal notranslate"><span class="pre">from_lc_list</span></code> (<code class="docutils literal notranslate"><span class="pre">from_time_array</span></code> was also tested using memory-mapped event lists as inputs: useful in very large datasets)</p></li>
+<li><p>New and improved spectral timing methods: <code class="docutils literal notranslate"><span class="pre">ComplexCovarianceSpectrum</span></code>, <code class="docutils literal notranslate"><span class="pre">CovarianceSpectrum</span></code>, <code class="docutils literal notranslate"><span class="pre">LagSpectrum</span></code>, <code class="docutils literal notranslate"><span class="pre">RmsSpectrum</span></code></p></li>
+<li><p>Some deprecated features are now removed</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PSDLogLikelihood</span></code> now also works with a log-rebinned PDS</p></li>
+</ul>
+</section>
+<section id="id25">
+<h4>Improvements<a class="headerlink" href="#id25" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Performance on large data sets is VASTLY improved</p></li>
+<li><p>Lots of performance improvements in the <code class="docutils literal notranslate"><span class="pre">AveragedCrossspectrum</span></code> and <code class="docutils literal notranslate"><span class="pre">AveragedPowerspectrum</span></code> classes</p></li>
+<li><p>Standardized use of new fast psd/cs algorithm, with <code class="docutils literal notranslate"><span class="pre">legacy</span></code> still available as an alternative option to specify</p></li>
+<li><p>Reading calibrated photon energy from event files by default</p></li>
+<li><p>In <code class="docutils literal notranslate"><span class="pre">pulse/pulsar.py</span></code>, methods use the keyword <code class="docutils literal notranslate"><span class="pre">gti</span></code> instead of <code class="docutils literal notranslate"><span class="pre">gtis</span></code> (for consistency with the rest of Stingray)</p></li>
+<li><p>Moved <code class="docutils literal notranslate"><span class="pre">CovarianceSpectrum`</span> <span class="pre">to</span> <span class="pre">``VarEnergySpectrum</span></code> and reuse part of the machinery</p></li>
+<li><p>Improved error bars on cross-spectral and spectral timing methods</p></li>
+<li><p>Measure absolute rms in <code class="docutils literal notranslate"><span class="pre">RmsEnergySpectrum</span></code></p></li>
+<li><p>Friendlier <code class="docutils literal notranslate"><span class="pre">pyfftw</span></code> warnings</p></li>
+<li><p>Streamline PDS/CrossSp production, adding <code class="docutils literal notranslate"><span class="pre">from_events</span></code>, <code class="docutils literal notranslate"><span class="pre">from_lc</span></code>, <code class="docutils literal notranslate"><span class="pre">from_lc_iterable</span></code>, and <code class="docutils literal notranslate"><span class="pre">from_time_array</span></code> (to input a numpy array) methods</p></li>
+<li><p>PDS/CrossSp initially store the unnormalized power, and convert it on the fly when requested, to any normalization</p></li>
+</ul>
+</section>
+<section id="id26">
+<h4>Bug fixes<a class="headerlink" href="#id26" title="Link to this heading">¶</a></h4>
+<ul class="simple">
+<li><p>Fixed error bars and <code class="docutils literal notranslate"><span class="pre">err_dist</span></code> for sliced (iterated) light curves and power spectra</p></li>
+<li><p>Fixed a bug in how the start time when applying GTIs (now using the minimum value of the GTI array, instead of half a time bin below the minimum value)</p></li>
+<li><p>Fixed a bug in which all simulator errors were incorrectly non-zero</p></li>
+<li><p>Fixed coherence uncertainty</p></li>
+<li><p>Documented a Windows-specific issue when large count rate light curves are defined as integer arrays (Windows users should use <code class="docutils literal notranslate"><span class="pre">float</span></code> or specify <code class="docutils literal notranslate"><span class="pre">int-64</span></code>)</p></li>
+<li><p>If the variance of the lightcurve is zero, the code will fail to implement Leahy normalization</p></li>
+<li><p>The value of the <code class="docutils literal notranslate"><span class="pre">PLEPHEM</span></code> header keyword is forced to be a string, in the rare cases that it’s a number</p></li>
+<li><p>and more!</p></li>
+</ul>
+<p><a class="reference external" href="https://github.com/StingraySoftware/stingray/compare/v0.3...v1.0">Full list of changes</a></p>
+<p>v1.0beta was released on 2022-02-25.</p>
+</section>
+</section>
+<section id="v0-3-2021-05-31">
+<h3>v0.3 (2021-05-31)<a class="headerlink" href="#v0-3-2021-05-31" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Lots of performance improvements</p></li>
+<li><p>Faster simulations</p></li>
+<li><p>Averaged Power spectra and Cross spectra now handle Gaussian light curves correctly</p></li>
+<li><p>Fixes in rebin functions</p></li>
+<li><p>New statistical functions for signal detection in power spectra and pulsar search periodograms</p></li>
+<li><p>Much improved FTOOL-compatible mission support</p></li>
+<li><p>New implementation of the FFTFIT method to calculate pulsar times of arrival</p></li>
+<li><p>H-test for pulsar searches</p></li>
+<li><p>Z^2_n search adapted to binned and normally distribute pulse profiles</p></li>
+<li><p>Large data processing (e.g. from NICER) allowed</p></li>
+<li><p>Rebinning function now accepts unevenly sampled data</p></li>
+<li><p>New saving and loading from/to Astropy Tables and Timeseries</p></li>
+<li><p>Improved I/O to ascii, hdf5 and other formats</p></li>
+<li><p>Rehaul of documentation</p></li>
+</ul>
+<p><a class="reference external" href="https://github.com/StingraySoftware/stingray/compare/v0.2...v0.3">Full list of changes</a></p>
+</section>
+<section id="v0-2-2020-06-17">
+<h3>v0.2 (2020-06-17)<a class="headerlink" href="#v0-2-2020-06-17" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Added Citation info</p></li>
+<li><p>Fixed various normalization bugs in Powerspectrum</p></li>
+<li><p>Speedup of lightcurve creation and handling</p></li>
+<li><p>Made code compatible with Python 3.6, and dropped support to Python 2.7</p></li>
+<li><p>Test speedups</p></li>
+<li><p>Dead time models and Fourier Amplitude Difference correction</p></li>
+<li><p>Roundtrip of LightCurve to lightkurve objects</p></li>
+<li><p>Fourier-domain accelerated search for pulsars</p></li>
+<li><p>Adapt package to APE-17</p></li>
+<li><p>Periodograms now also accept event lists (instead of just light curves)</p></li>
+<li><p>Allow transparent MJDREF change in event lists and light curves</p></li>
+</ul>
+<p><a class="reference external" href="https://github.com/StingraySoftware/stingray/compare/v0.1.3...v0.2">Full list of changes</a></p>
+</section>
+<section id="v0-1-3-2019-06-11">
+<h3>v0.1.3 (2019-06-11)<a class="headerlink" href="#v0-1-3-2019-06-11" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Bug fixes</p></li>
+</ul>
+</section>
+<section id="v0-1-2">
+<h3>v0.1.2<a class="headerlink" href="#v0-1-2" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Bug fixes</p></li>
+</ul>
+</section>
+<section id="v0-1-1">
+<h3>v0.1.1<a class="headerlink" href="#v0-1-1" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Bug fixes</p></li>
+</ul>
+</section>
+<section id="v0-1-2019-05-29">
+<h3>v0.1 (2019-05-29)<a class="headerlink" href="#v0-1-2019-05-29" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Initial release.</p></li>
+</ul>
+</section>
+</section>
+<section id="presentations">
+<h2>Presentations<a class="headerlink" href="#presentations" title="Link to this heading">¶</a></h2>
+<p>Members of the Stingray team have given a number of presentations which introduce Stingray.
+These include:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/abigailStev/timeseries-tutorial">2nd Severo Ochoa School on Statistics, Data Mining, and Machine Learning (2021)</a></p></li>
+<li><p><a class="reference external" href="https://speakerdeck.com/abigailstev/time-series-exploration-with-stingray">9th Microquasar Workshop (2021)</a></p></li>
+<li><p><a class="reference external" href="http://ascl.net/wordpress/2018/05/24/software-in-astronomy-symposium-presentations-part-3/">European Week of Astronomy and Space Science (2018)</a></p></li>
+<li><p><a class="reference external" href="https://ui.adsabs.harvard.edu/abs/2020ASPC..522..521M/abstract">ADASS (Astronomical Data Analysis Software and Systems; meeting 2017, proceedings 2020)</a></p></li>
+<li><p><a class="reference external" href="https://speakerdeck.com/abigailstev/stingray-open-source-spectral-timing-software">AAS 16th High-Energy Astrophysics Division meeting (2017)</a></p></li>
+<li><p><a class="reference external" href="http://ascl.net/wordpress/2017/07/23/special-session-on-and-about-software-at-ewass-2017/">European Week of Astronomy and Space Science 2017</a></p></li>
+<li><p><a class="reference external" href="https://speakerdeck.com/abigailstev/stingray-pyastro16">Python in Astronomy (2016)</a></p></li>
+</ul>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">History</a><ul>
+<li><a class="reference internal" href="#previous-projects-merged-to-stingray">Previous projects merged to Stingray</a></li>
+<li><a class="reference internal" href="#changelog">Changelog</a><ul>
+<li><a class="reference internal" href="#v2-3-2026-02-27">v2.3 (2026-02-27)</a><ul>
+<li><a class="reference internal" href="#new-features">New Features</a></li>
+<li><a class="reference internal" href="#bug-fixes">Bug Fixes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v2-2-10-2025-10-24">v2.2.10 (2025-10-24)</a><ul>
+<li><a class="reference internal" href="#id1">New Features</a></li>
+<li><a class="reference internal" href="#id2">Bug Fixes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v2-2-9-2025-08-18">v2.2.9 (2025-08-18)</a><ul>
+<li><a class="reference internal" href="#deprecations">Deprecations</a></li>
+<li><a class="reference internal" href="#id3">New Features</a></li>
+<li><a class="reference internal" href="#id4">Bug Fixes</a></li>
+<li><a class="reference internal" href="#documentation">Documentation</a></li>
+<li><a class="reference internal" href="#internal-changes">Internal Changes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v2-2-7-2025-04-08">v2.2.7 (2025-04-08)</a><ul>
+<li><a class="reference internal" href="#id5">New Features</a></li>
+<li><a class="reference internal" href="#id6">Bug Fixes</a></li>
+<li><a class="reference internal" href="#docs">Docs</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v2-2-2024-10-22">v2.2 (2024-10-22)</a><ul>
+<li><a class="reference internal" href="#id7">New Features</a></li>
+<li><a class="reference internal" href="#id8">Bug Fixes</a></li>
+<li><a class="reference internal" href="#id9">Internal Changes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v2-1-2024-05-29">v2.1 (2024-05-29)</a><ul>
+<li><a class="reference internal" href="#id10">New Features</a></li>
+<li><a class="reference internal" href="#id11">Bug Fixes</a></li>
+<li><a class="reference internal" href="#id12">Internal Changes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v2-0-2024-03-13">v2.0 (2024-03-13)</a><ul>
+<li><a class="reference internal" href="#id13">New Features</a></li>
+<li><a class="reference internal" href="#id14">Bug Fixes</a></li>
+<li><a class="reference internal" href="#breaking-changes">Breaking Changes</a></li>
+<li><a class="reference internal" href="#id15">Internal Changes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v1-1-2-2023-05-25">v1.1.2 (2023-05-25)</a><ul>
+<li><a class="reference internal" href="#id16">New Features</a></li>
+<li><a class="reference internal" href="#id17">Bug Fixes</a></li>
+<li><a class="reference internal" href="#id18">Documentation</a></li>
+<li><a class="reference internal" href="#id19">Internal Changes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v1-1-1-2022-10-10">v1.1.1 (2022-10-10)</a><ul>
+<li><a class="reference internal" href="#id20">Bug fixes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v1-1-2022-10-02">v1.1 (2022-10-02)</a><ul>
+<li><a class="reference internal" href="#id22">Bug fixes</a></li>
+<li><a class="reference internal" href="#new">New</a></li>
+<li><a class="reference internal" href="#improvements">Improvements</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v1-0-2022-03-29">v1.0 (2022-03-29)</a><ul>
+<li><a class="reference internal" href="#id24">New</a></li>
+<li><a class="reference internal" href="#id25">Improvements</a></li>
+<li><a class="reference internal" href="#id26">Bug fixes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v0-3-2021-05-31">v0.3 (2021-05-31)</a></li>
+<li><a class="reference internal" href="#v0-2-2020-06-17">v0.2 (2020-06-17)</a></li>
+<li><a class="reference internal" href="#v0-1-3-2019-06-11">v0.1.3 (2019-06-11)</a></li>
+<li><a class="reference internal" href="#v0-1-2">v0.1.2</a></li>
+<li><a class="reference internal" href="#v0-1-1">v0.1.1</a></li>
+<li><a class="reference internal" href="#v0-1-2019-05-29">v0.1 (2019-05-29)</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#presentations">Presentations</a></li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="_sources/history.rst.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

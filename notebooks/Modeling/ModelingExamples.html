@@ -1,0 +1,1961 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>The Stingray Modeling API Explained &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Stingray Simulator (stingray.simulator)" href="../../simulator.html" />
+    <link rel="prev" title="The Stingray Modelling Interface" href="../../modeling.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="../../simulator.html" title="Stingray Simulator (stingray.simulator)">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="../../modeling.html" title="The Stingray Modelling Interface">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../modeling.html" accesskey="U">The Stingray Modelling Interface</a> &#187;</li>
+      
+      <li>The Stingray Modeling API Explained</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="The-Stingray-Modeling-API-Explained">
+<h1>The Stingray Modeling API Explained<a class="headerlink" href="#The-Stingray-Modeling-API-Explained" title="Link to this heading">¶</a></h1>
+<p>Some more in-depth explanations of how the Stingray modeling API works.</p>
+<p>Who should be using this API? Basically, anyone who wants to model power spectral products with parametric functions. The purpose of this API is two-fold:</p>
+<ol class="arabic simple">
+<li><p>provide convenient methods and classes in order to model a large range of typical data representations implemented in Stingray</p></li>
+<li><p>provide a more general framework for users to build their own models</p></li>
+</ol>
+<p>A note on terminology: in this tutorial, we largely use <em>model</em> to denote both the parametric model describing the underlying process that generated the data, and the statistical model used to account for uncertainties in the measurement process.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">modeling</span></code> subpackage defines a wider range of classes for typical statistical models than most standard modelling packages in X-ray astronomy, including likelihoods for Gaussian-distributed uncertainties (what astronomers call the <span class="math notranslate nohighlight">\(\chi^2\)</span> likelihood), Poisson-distributed data (e.g. light curves) and <span class="math notranslate nohighlight">\(\chi^2\)</span>-distributed data (confusingly, <em>not</em> what astronomers call the <span class="math notranslate nohighlight">\(\chi^2\)</span> likelihood, but the likelihood of data with <span class="math notranslate nohighlight">\(\chi^2\)</span>-distributed uncertainties
+appropriate for power spectra). It also defines a superclass <code class="docutils literal notranslate"><span class="pre">LogLikelihood</span></code> that make extending the framework to other types of data uncertainties straightforward. It supports Bayesian modelling via the <code class="docutils literal notranslate"><span class="pre">Posterior</span></code> class and its subclasses (for different types of data, equivalent to the likelihood classes) and provides support for defining priors.</p>
+<p>The class <code class="docutils literal notranslate"><span class="pre">ParameterEstimation</span></code> and its data type-specific subclasses implement a range of operations usually done with power spectra and other products, including optimization (fitting), sampling (via Markov-Chain Monte Carlo), calibrating models comparison metrics (particularly likelihood ratio tests) and outlier statistics (for finding periodic signal candidates).</p>
+<p>Overall, it is designed to be as modular as possible and extensible to new data types and problems in many places, though we do explicitly <em>not</em> aim to provide a fully general modelling framework (for example, at the moment, we have given no thought to modeling multi-variate data, though this may change in the future).</p>
+<section id="Some-background">
+<h2>Some background<a class="headerlink" href="#Some-background" title="Link to this heading">¶</a></h2>
+<p>Modeling power spectra and light curves with parametric models is a fairly standard task. Stingray aims to make solving these problems as easy as possible.</p>
+<p>We aim to integrate our existing code with <code class="docutils literal notranslate"><span class="pre">astropy.modeling</span></code> for for maximum compatibility. Please note, however, that we are only using the models, not the fitting interface, which is too constrained for our purposes.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">load_ext</span> autoreload
+<span class="o">%</span><span class="k">autoreload</span> 2
+<span class="c1"># ignore warnings to make notebook easier to see online</span>
+<span class="c1"># COMMENT OUT THESE LINES FOR ACTUAL ANALYSIS</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">matplotlib</span> inline
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">seaborn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sns</span>
+    <span class="n">sns</span><span class="o">.</span><span class="n">set_palette</span><span class="p">(</span><span class="s2">&quot;colorblind&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Install seaborn. It help you make prettier figures!&quot;</span><span class="p">)</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.modeling</span><span class="w"> </span><span class="kn">import</span> <span class="n">models</span>
+</pre></div>
+</div>
+</div>
+<p>The models and API of <code class="docutils literal notranslate"><span class="pre">astropy.modeling.models</span></code> is explained in the <a class="reference external" href="http://docs.astropy.org/en/stable/modeling/">astropy documentation</a> in more detail.</p>
+<p>Here’s how you instantiate a simple 1-D Gaussian:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Gaussian1D</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Generate fake data</span>
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mf">5.</span><span class="p">,</span> <span class="mf">5.</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="mf">1.3</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="mf">0.8</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="n">yerr</span> <span class="o">=</span> <span class="mf">0.2</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">5</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">yerr</span><span class="o">=</span><span class="n">yerr</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;ko&#39;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;ErrorbarContainer object of 3 artists&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Modeling_ModelingExamples_5_1.png" src="../../_images/notebooks_Modeling_ModelingExamples_5_1.png" />
+</div>
+</div>
+</section>
+<section id="Likelihoods-and-Posteriors">
+<h2>Likelihoods and Posteriors<a class="headerlink" href="#Likelihoods-and-Posteriors" title="Link to this heading">¶</a></h2>
+<p>In general, model fitting will happen either in a frequentist (Maximum Likelihood) or Bayesian framework. Stingray’s strategy is to let the user define a posterior in both cases, but ignore the prior in the former case.</p>
+<p>Let’s first make some fake data:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># define power law component</span>
+<span class="n">pl</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">PowerLaw1D</span><span class="p">()</span>
+
+<span class="c1"># fix x_0 of power law component</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">x_0</span><span class="o">.</span><span class="n">fixed</span> <span class="o">=</span> <span class="kc">True</span>
+
+<span class="c1"># define constant</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Const1D</span><span class="p">()</span>
+
+<span class="c1"># make compound model</span>
+<span class="n">plc</span> <span class="o">=</span> <span class="n">pl</span> <span class="o">+</span> <span class="n">c</span>
+</pre></div>
+</div>
+</div>
+<p>We’re going to pick some fairly standard parameters for our data:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># parameters for fake data.</span>
+<span class="n">alpha</span> <span class="o">=</span> <span class="mf">2.0</span>
+<span class="n">amplitude</span> <span class="o">=</span> <span class="mf">5.0</span>
+<span class="n">white_noise</span> <span class="o">=</span> <span class="mf">2.0</span>
+</pre></div>
+</div>
+</div>
+<p>And now a frequency array:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">freq</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="mf">10.0</span><span class="o">/</span><span class="mf">0.01</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<p>Now we can set the parameters in the model:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">astropy.modeling.fitting</span><span class="w"> </span><span class="kn">import</span> <span class="n">fitter_to_model_params</span>
+
+<span class="n">fitter_to_model_params</span><span class="p">(</span><span class="n">plc</span><span class="p">,</span> <span class="p">[</span><span class="n">amplitude</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">white_noise</span><span class="p">])</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">psd_shape</span> <span class="o">=</span> <span class="n">plc</span><span class="p">(</span><span class="n">freq</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>As a last step, we need to add noise by picking from a chi-square distribution with 2 degrees of freedom:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">powers</span> <span class="o">=</span> <span class="n">psd_shape</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">chisquare</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">psd_shape</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">/</span><span class="mf">2.0</span>
+</pre></div>
+</div>
+</div>
+<p>Let’s plot the result:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">7</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">powers</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;periodogram realization&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">psd_shape</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;power spectrum&quot;</span><span class="p">)</span>
+
+
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.legend.Legend at 0x12b34d630&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Modeling_ModelingExamples_18_1.png" src="../../_images/notebooks_Modeling_ModelingExamples_18_1.png" />
+</div>
+</div>
+</section>
+<section id="Maximum-Likelihood-Fitting">
+<h2>Maximum Likelihood Fitting<a class="headerlink" href="#Maximum-Likelihood-Fitting" title="Link to this heading">¶</a></h2>
+<p>Let’s assume we’ve observed this periodogram from our source. We would now like to estimate the parameters. This requires the definition of <em>likelihood</em>, which describes the probability of observing the data plotted above given some underlying model with a specific set of parameters. To say it differently, the likelihood encodes what we know about the underlying model (here a power law and a constant) and the statistical properties of the data (power spectra generally follow a chi-square
+distribution) and then allows us to compare data and model for various parameters under the assumption of the statistical uncertainties.</p>
+<p>In order to find the best parameter set, one generally maximizes the likelihood function using an optimization algorithm. Because optimization algorithms generally <em>minimize</em> functions, they effectively minimize the log-likelihood, which comes out to be the same as maximizing the likelihood itself.</p>
+<p>Below is an implementation of the <span class="math notranslate nohighlight">\(\chi^2\)</span> likelihood as appropriate for power spectral analysis, with comments for easier understanding. The same is also implemented in <code class="docutils literal notranslate"><span class="pre">posterior.py</span></code> in Stingray:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">logmin</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1e16</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PSDLogLikelihood</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">freq</span><span class="p">,</span> <span class="n">power</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A Chi-square likelihood as appropriate for power spectral analysis.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        freq : iterable</span>
+<span class="sd">            x-coordinate of the data</span>
+
+<span class="sd">        power : iterable</span>
+<span class="sd">            y-coordinte of the data</span>
+
+<span class="sd">        model: an Astropy Model instance</span>
+<span class="sd">            The model to use in the likelihood.</span>
+
+<span class="sd">        m : int</span>
+<span class="sd">            1/2 of the degrees of freedom, i.e. the number of powers</span>
+<span class="sd">            that were averaged to obtain the power spectrum input into</span>
+<span class="sd">            this routine.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">ps</span><span class="o">.</span><span class="n">freq</span> <span class="c1"># the x-coordinate of the data (frequency array)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span> <span class="c1"># the y-coordinate of the data (powers)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span> <span class="c1"># an astropy.models instance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">m</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">l</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fixed</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">l</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">npar</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">)</span> <span class="c1"># number of free parameters</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pars</span><span class="p">,</span> <span class="n">neg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate the log-likelihood.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        pars : iterable</span>
+<span class="sd">            The list of parameters for which to evaluate the model.</span>
+
+<span class="sd">        neg : bool, default False</span>
+<span class="sd">            If True, compute the *negative* log-likelihood, otherwise</span>
+<span class="sd">            compute the *positive* log-likelihood.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        loglike : float</span>
+<span class="sd">            The log-likelihood of the model</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># raise an error if the length of the parameter array input into</span>
+        <span class="c1"># this method doesn&#39;t match the number of free parameters in the model</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">pars</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">npar</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Input parameters must&quot;</span> <span class="o">+</span>
+                            <span class="s2">&quot; match model parameters!&quot;</span><span class="p">)</span>
+
+        <span class="c1"># set parameters in self.model to the parameter set to be used for</span>
+        <span class="c1"># evaluation</span>
+        <span class="n">fitter_to_model_params</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">pars</span><span class="p">)</span>
+
+        <span class="c1"># compute the values of the model at the positions self.x</span>
+        <span class="n">mean_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="c1"># if the power spectrum isn&#39;t averaged, compute simple exponential</span>
+        <span class="c1"># likelihood (chi-square likelihood for 2 degrees of freedom)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">loglike</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">mean_model</span><span class="p">))</span> <span class="o">-</span> \
+                      <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="o">/</span><span class="n">mean_model</span><span class="p">)</span>
+        <span class="c1"># otherwise use chi-square distribution to compute likelihood</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">loglike</span> <span class="o">=</span> <span class="o">-</span><span class="mf">2.0</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="o">*</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">mean_model</span><span class="p">))</span> <span class="o">+</span>
+                               <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="o">/</span><span class="n">mean_model</span><span class="p">)</span> <span class="o">+</span>
+                               <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="mf">2.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">*</span>
+                                      <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)))</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">loglike</span><span class="p">):</span>
+            <span class="n">loglike</span> <span class="o">=</span> <span class="n">logmin</span>
+
+        <span class="k">if</span> <span class="n">neg</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="n">loglike</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">loglike</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">neg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">neg</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<p>Let’s make an object and see what it calculates if we put in different parameter sets. First, we have to make our sample PSD into an actual <code class="docutils literal notranslate"><span class="pre">Powerspectrum</span></code> object:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">Powerspectrum</span>
+
+<span class="n">ps</span> <span class="o">=</span> <span class="n">Powerspectrum</span><span class="p">()</span>
+<span class="n">ps</span><span class="o">.</span><span class="n">freq</span> <span class="o">=</span> <span class="n">freq</span>
+<span class="n">ps</span><span class="o">.</span><span class="n">power</span> <span class="o">=</span> <span class="n">powers</span>
+<span class="n">ps</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">ps</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">loglike</span> <span class="o">=</span> <span class="n">PSDLogLikelihood</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">plc</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">test_pars</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">100</span><span class="p">]</span>
+<span class="n">loglike</span><span class="p">(</span><span class="n">test_pars</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+-4835.88214847462
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">test_pars</span> <span class="o">=</span> <span class="p">[</span><span class="mf">4.0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">]</span>
+<span class="n">loglike</span><span class="p">(</span><span class="n">test_pars</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+-2869.5582486265116
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">test_pars</span> <span class="o">=</span> <span class="p">[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">]</span>
+<span class="n">loglike</span><span class="p">(</span><span class="n">test_pars</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+-2375.704120812954
+</pre></div></div>
+</div>
+<p>Something close to the parameters we put in should yield the largest log-likelihood. Feel free to play around with the test parameters to verify that this is true.</p>
+<p>You can similarly import the <code class="docutils literal notranslate"><span class="pre">PSDLogLikelihood</span></code> class from <code class="docutils literal notranslate"><span class="pre">stingray.modeling</span></code> and do the same:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.modeling</span><span class="w"> </span><span class="kn">import</span> <span class="n">PSDLogLikelihood</span>
+
+<span class="n">loglike</span> <span class="o">=</span> <span class="n">PSDLogLikelihood</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">plc</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+<span class="n">loglike</span><span class="p">(</span><span class="n">test_pars</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+-2375.704120812954
+</pre></div></div>
+</div>
+<p>To estimate the parameters, we can use an optimization routine, such as those implemented in <code class="docutils literal notranslate"><span class="pre">scipy.optimize.minimize</span></code>. We have wrapped some code around that, to make your lives easier. We will not reproduce the full code here, just demonstrate its functionality.</p>
+<p>Now we can instantiate the <code class="docutils literal notranslate"><span class="pre">PSDParEst</span></code> (for PSD Parameter Estimation) object. This can do more than simply optimize a single model, but we’ll get to that later.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">PSDParEst</span></code> object allows one to specify the fit method to use (however, this must be one of the optimizers in <code class="docutils literal notranslate"><span class="pre">scipy.optimize</span></code>). The parameter <code class="docutils literal notranslate"><span class="pre">max_post</span></code> allows for doing maximum-a-posteriori fits on the Bayesian posterior rather than maximum likelihood fits (see below for more details). We’ll set it to <code class="docutils literal notranslate"><span class="pre">False</span></code> for now, since we haven’t defined any priors:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.modeling</span><span class="w"> </span><span class="kn">import</span> <span class="n">PSDParEst</span>
+
+<span class="n">parest</span> <span class="o">=</span> <span class="n">PSDParEst</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">fitmethod</span><span class="o">=</span><span class="s2">&quot;L-BFGS-B&quot;</span><span class="p">,</span> <span class="n">max_post</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>In order to fit a model, make an instance of the appropriate <code class="docutils literal notranslate"><span class="pre">LogLikelihood</span></code> or <code class="docutils literal notranslate"><span class="pre">Posterior</span></code> subclass, andsimply call the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method with that instance and starting parameters you would like to fit.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">loglike</span> <span class="o">=</span> <span class="n">PSDLogLikelihood</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">plc</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">loglike</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([2., 1., 5., 2.])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">loglike</span><span class="o">.</span><span class="n">npar</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+3
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">starting_pars</span> <span class="o">=</span> <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.4</span><span class="p">]</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">parest</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">loglike</span><span class="p">,</span> <span class="n">starting_pars</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>The result is an <code class="docutils literal notranslate"><span class="pre">OptimizationResults</span></code> object, which computes various summaries and useful quantities.</p>
+<p>For example, here’s the value of the likelihood function at the maximum the optimizer found:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">res</span><span class="o">.</span><span class="n">result</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+2183.7896770356615
+</pre></div></div>
+</div>
+<p><strong>Note</strong>: Optimizers routinely get stuck in <em>local</em> minima (corresponding to local maxima of the likelihood function). It is usually useful to run an optimizer several times with different starting parameters in order to get close to the global maximum.</p>
+<p>Most useful are the estimates of the parameters at the maximum likelihood and their uncertainties:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">p_opt</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">err</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[4.72915772 2.09193133 2.10372299]
+[3.8037075  0.73336812 0.55239425]
+</pre></div></div>
+</div>
+<p><strong>Note</strong>: uncertainties are estimated here via the covariance matrix between parameters, i.e. the inverse of the Hessian at the maximum. This only represents the true uncertainties for specific assumptions about the likelihood function (Gaussianity), so use with care!</p>
+<p>It also computes Akaike Information Criterion (AIC) and the Bayesian Information Criterion (BIC) for model comparison purposes:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[26]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;AIC: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">aic</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;BIC: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">bic</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+AIC: 2189.7896770356615
+BIC: 2204.5129428726077
+</pre></div></div>
+</div>
+<p>Finally, it also produces the values of the mean function for the parameters at the maximum. Let’s plot that and compare with the power spectrum we put in:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[27]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">8</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">psd_shape</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;true power spectrum&quot;</span><span class="p">,</span><span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;simulated data&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">mfit</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;best fit&quot;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[27]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.legend.Legend at 0x28d068eb0&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Modeling_ModelingExamples_43_1.png" src="../../_images/notebooks_Modeling_ModelingExamples_43_1.png" />
+</div>
+</div>
+<p>That looks pretty good!</p>
+<p>You can print a summary of the fitting results by calling <code class="docutils literal notranslate"><span class="pre">print_summary</span></code>:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[28]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">res</span><span class="o">.</span><span class="n">print_summary</span><span class="p">(</span><span class="n">loglike</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+The best-fit model parameters plus errors are:
+  0) Parameter amplitude_0         :
+4.72916              +/- 3.80371
+[      None       None]
+  1) Parameter x_0_0               :
+1.00000              (Fixed)
+  2) Parameter alpha_0             :
+2.09193              +/- 0.73337
+[      None       None]
+  3) Parameter amplitude_1         :
+2.10372              +/- 0.55239
+[      None       None]
+
+
+Fitting statistics:
+ -- number of data points: 1000
+ -- Deviance [-2 log L] D = 4367.579354.3
+ -- The Akaike Information Criterion of the model is: 2189.7896770356615.
+ -- The Bayesian Information Criterion of the model is: 2204.5129428726077.
+ -- The figure-of-merit function for this model  is: 1079.683266.5f and the fit for 997 dof is 1.082932.3f
+ -- Summed Residuals S = 69266.959968.5f
+ -- Expected S ~ 6000.000000.5 +/- 109.544512.5
+</pre></div></div>
+</div>
+<section id="Likelihood-Ratios">
+<h3>Likelihood Ratios<a class="headerlink" href="#Likelihood-Ratios" title="Link to this heading">¶</a></h3>
+<p>The parameter estimation code has more functionality than act as a simple wrapper around <code class="docutils literal notranslate"><span class="pre">scipy.optimize</span></code>. For example, it allows for easy computation of likelihood ratios. Likelihood ratios are a standard way to perform comparisons between two models (though they are not always statistically meaningful, and should be used with caution!).</p>
+<p>To demonstrate that, let’s make a broken power law model</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[29]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># broken power law model</span>
+<span class="n">bpl</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">BrokenPowerLaw1D</span><span class="p">()</span>
+
+<span class="c1"># add constant</span>
+<span class="n">bplc</span> <span class="o">=</span> <span class="n">bpl</span> <span class="o">+</span> <span class="n">c</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bplc</span><span class="o">.</span><span class="n">param_names</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&#39;amplitude_0&#39;, &#39;x_break_0&#39;, &#39;alpha_1_0&#39;, &#39;alpha_2_0&#39;, &#39;amplitude_1&#39;)
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[31]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># define starting parameters</span>
+<span class="n">bplc_start_pars</span> <span class="o">=</span> <span class="p">[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[32]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">loglike_bplc</span> <span class="o">=</span> <span class="n">PSDLogLikelihood</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">bplc</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[33]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pval</span><span class="p">,</span> <span class="n">plc_opt</span><span class="p">,</span> <span class="n">bplc_opt</span> <span class="o">=</span> <span class="n">parest</span><span class="o">.</span><span class="n">compute_lrt</span><span class="p">(</span><span class="n">loglike</span><span class="p">,</span> <span class="n">starting_pars</span><span class="p">,</span> <span class="n">loglike_bplc</span><span class="p">,</span> <span class="n">bplc_start_pars</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[34]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Likelihood Ratio: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">pval</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Likelihood Ratio: 0.36080561093513097
+</pre></div></div>
+</div>
+</section>
+</section>
+<section id="Bayesian-Parameter-Estimation">
+<h2>Bayesian Parameter Estimation<a class="headerlink" href="#Bayesian-Parameter-Estimation" title="Link to this heading">¶</a></h2>
+<p>For Bayesian parameter estimation, we require a prior along with the likelihood defined above. Together, they form the <em>posterior</em>, the probability of the parameters given the data, which is what we generally want to compute in science.</p>
+<p>Since there are no universally accepted priors for a model (they depend on the problem at hand and your physical knowledge about the system), they cannot be easily hard-coded in stingray. Consequently, setting priors is slightly more complex.</p>
+<p>Analogously to the <code class="docutils literal notranslate"><span class="pre">LogLikelihood</span></code> above, we can also define a <code class="docutils literal notranslate"><span class="pre">Posterior</span></code> object. Each posterior object has three methods: <code class="docutils literal notranslate"><span class="pre">logprior</span></code>, <code class="docutils literal notranslate"><span class="pre">loglikelihood</span></code> and <code class="docutils literal notranslate"><span class="pre">logposterior</span></code>.</p>
+<p>We have pre-defined some <code class="docutils literal notranslate"><span class="pre">Posterior</span></code> objects in <code class="docutils literal notranslate"><span class="pre">posterior.py</span></code> for common problems, including power spectral analysis. We start by making a <code class="docutils literal notranslate"><span class="pre">PSDPosterior</span></code> object:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[35]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.modeling</span><span class="w"> </span><span class="kn">import</span> <span class="n">PSDPosterior</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[36]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lpost</span> <span class="o">=</span> <span class="n">PSDPosterior</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">plc</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>The priors are set as a dictionary of functions:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[37]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">scipy.stats</span>
+
+<span class="c1"># flat prior for the power law index</span>
+<span class="n">p_alpha</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">alpha</span><span class="p">:</span> <span class="p">((</span><span class="o">-</span><span class="mf">1.</span> <span class="o">&lt;=</span> <span class="n">alpha</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">alpha</span> <span class="o">&lt;=</span> <span class="mf">5.</span><span class="p">))</span>
+
+<span class="c1"># flat prior for the power law amplitude</span>
+<span class="n">p_amplitude</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">amplitude</span><span class="p">:</span> <span class="p">((</span><span class="mf">0.01</span> <span class="o">&lt;=</span> <span class="n">amplitude</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">amplitude</span> <span class="o">&lt;=</span> <span class="mf">10.0</span><span class="p">))</span>
+
+<span class="c1"># normal prior for the white noise parameter</span>
+<span class="n">p_whitenoise</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">white_noise</span><span class="p">:</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span><span class="o">.</span><span class="n">pdf</span><span class="p">(</span><span class="n">white_noise</span><span class="p">)</span>
+
+<span class="n">priors</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">priors</span><span class="p">[</span><span class="s2">&quot;alpha_0&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">p_alpha</span>
+<span class="n">priors</span><span class="p">[</span><span class="s2">&quot;amplitude_0&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">p_amplitude</span>
+<span class="n">priors</span><span class="p">[</span><span class="s2">&quot;amplitude_1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">p_whitenoise</span>
+<br/></pre></div>
+</div>
+</div>
+<p>There’s a function <code class="docutils literal notranslate"><span class="pre">set_logprior</span></code> in <code class="docutils literal notranslate"><span class="pre">stingray.modeling</span></code> that sets the prior correctly:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[38]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.modeling</span><span class="w"> </span><span class="kn">import</span> <span class="n">set_logprior</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[39]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lpost</span><span class="o">.</span><span class="n">logprior</span> <span class="o">=</span> <span class="n">set_logprior</span><span class="p">(</span><span class="n">lpost</span><span class="p">,</span> <span class="n">priors</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>You can also set the priors when you instantiate the posterior object:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[40]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lpost</span> <span class="o">=</span> <span class="n">PSDPosterior</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">plc</span><span class="p">,</span> <span class="n">priors</span><span class="o">=</span><span class="n">priors</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Much like before with the log-likelihood, we can now also compute the log-posterior for various test parameter sets:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[41]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">test_pars</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;log-prior: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lpost</span><span class="o">.</span><span class="n">logprior</span><span class="p">(</span><span class="n">test_pars</span><span class="p">)))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;log-likelihood: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lpost</span><span class="o">.</span><span class="n">loglikelihood</span><span class="p">(</span><span class="n">test_pars</span><span class="p">)))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;log-posterior: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lpost</span><span class="p">(</span><span class="n">test_pars</span><span class="p">)))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+log-prior: -198.61635344021062
+log-likelihood: -2412.2493594640564
+log-posterior: -2610.865712904267
+</pre></div></div>
+</div>
+<p>When the prior is zero (so the log-prior is -infinity), it automatically gets set to a very small value in order to avoid problems when doing the optimization:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[42]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">test_pars</span> <span class="o">=</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;log-prior: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lpost</span><span class="o">.</span><span class="n">logprior</span><span class="p">(</span><span class="n">test_pars</span><span class="p">)))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;log-likelihood: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lpost</span><span class="o">.</span><span class="n">loglikelihood</span><span class="p">(</span><span class="n">test_pars</span><span class="p">)))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;log-posterior: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lpost</span><span class="p">(</span><span class="n">test_pars</span><span class="p">)))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+log-prior: -1e+16
+log-likelihood: -2534.0567826161864
+log-posterior: -1e+16
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[43]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">test_pars</span> <span class="o">=</span> <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;log-prior: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lpost</span><span class="o">.</span><span class="n">logprior</span><span class="p">(</span><span class="n">test_pars</span><span class="p">)))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;log-likelihood: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lpost</span><span class="o">.</span><span class="n">loglikelihood</span><span class="p">(</span><span class="n">test_pars</span><span class="p">)))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;log-posterior: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lpost</span><span class="p">(</span><span class="n">test_pars</span><span class="p">)))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+log-prior: 1.383646559789373
+log-likelihood: -2184.6739536386162
+log-posterior: -2183.290307078827
+</pre></div></div>
+</div>
+<p>We can do the same parameter estimation as above, except now it’s called maximum-a-posteriori instead of maximum likelihood and includes the prior (notice we set <code class="docutils literal notranslate"><span class="pre">max_post=True</span></code>):</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[44]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">parest</span> <span class="o">=</span> <span class="n">PSDParEst</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">fitmethod</span><span class="o">=</span><span class="s1">&#39;BFGS&#39;</span><span class="p">,</span> <span class="n">max_post</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">parest</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">lpost</span><span class="p">,</span> <span class="n">starting_pars</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[45]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;best-fit parameters:&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">p</span><span class="p">,</span><span class="n">e</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">p_opt</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">err</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.4f</span><span class="s2"> +/- </span><span class="si">%.4f</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="n">e</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+best-fit parameters:
+4.8949 +/- 0.4941
+2.0690 +/- 0.0811
+2.0547 +/- 0.0680
+</pre></div></div>
+</div>
+<p>The same outputs exist as for the Maximum Likelihood case:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[46]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">res</span><span class="o">.</span><span class="n">print_summary</span><span class="p">(</span><span class="n">lpost</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+The best-fit model parameters plus errors are:
+  0) Parameter amplitude_0         :
+4.89492              +/- 0.49409
+[      None       None]
+  1) Parameter x_0_0               :
+1.00000              (Fixed)
+  2) Parameter alpha_0             :
+2.06898              +/- 0.08112
+[      None       None]
+  3) Parameter amplitude_1         :
+2.05471              +/- 0.06803
+[      None       None]
+
+
+Fitting statistics:
+ -- number of data points: 1000
+ -- Deviance [-2 log L] D = 4367.845868.3
+ -- The Akaike Information Criterion of the model is: 2188.6889410986737.
+ -- The Bayesian Information Criterion of the model is: 2203.41220693562.
+ -- The figure-of-merit function for this model  is: 1104.686609.5f and the fit for 997 dof is 1.108011.3f
+ -- Summed Residuals S = 75870.967955.5f
+ -- Expected S ~ 6000.000000.5 +/- 109.544512.5
+</pre></div></div>
+</div>
+<p>Unlike in the maximum likelihood case, we can also <em>sample</em> from the posterior probability distribution. The method <code class="docutils literal notranslate"><span class="pre">sample</span></code> uses the <a class="reference external" href="http://emcee.readthedocs.io/">emcee</a> package to do MCMC.</p>
+<p><strong>Important</strong>: Do <em>not</em> sample from the likelihood function. This is formally incorrect and can lead to incorrect inferences about the problem, because there is no guarantee that a posterior with improper (flat, infinite) priors will be bounded!</p>
+<p><strong>Important</strong>: emcee has had a major upgrade to version 3, which came with a number of API changes. To ensure compatibility with stingray, please update emcee to the latest version, if you haven’t already.</p>
+<p>Much like the optimizer, the sampling method requires a model and a set of starting parameters <code class="docutils literal notranslate"><span class="pre">t0</span></code>. Optionally, it can be useful to also input a covariance matrix, for example from the output of the optimizer.</p>
+<p>Finally, the user should specify the number of walkers as well as the number of steps to use for both burn-in and sampling:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[47]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">sample</span> <span class="o">=</span> <span class="n">parest</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">lpost</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">p_opt</span><span class="p">,</span> <span class="n">cov</span><span class="o">=</span><span class="n">res</span><span class="o">.</span><span class="n">cov</span><span class="p">,</span> <span class="n">nwalkers</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span>
+             <span class="n">niter</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">burnin</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">namestr</span><span class="o">=</span><span class="s2">&quot;psd_modeling_test&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+Chains too short to compute autocorrelation lengths.
+-- The acceptance fraction is: 0.642375.5
+R_hat for the parameters is: [0.32313683 0.00732082 0.00479484]
+-- Posterior Summary of Parameters:
+
+parameter        mean            sd              5%              95%
+
+---------------------------------------------
+
+theta[0]         4.942652228740678      0.5691486161504021      4.035143030111889       5.915733521435971
+
+theta[1]         2.0754546626425574     0.0856675712513585      1.9374392067380983      2.21960029522001
+
+theta[2]         2.052820542793331      0.06933048478134216     1.9394014208215005      2.167009901378628
+
+</pre></div></div>
+</div>
+<p>The sampling method returns an object with various attributes that are useful for further analysis, for example the acceptance fraction:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[48]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">sample</span><span class="o">.</span><span class="n">acceptance</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[48]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+0.6423749999999999
+</pre></div></div>
+</div>
+<p>Or the mean and confidence intervals of the parameters:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[49]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">sample</span><span class="o">.</span><span class="n">mean</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[49]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([4.94265223, 2.07545466, 2.05282054])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[50]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">sample</span><span class="o">.</span><span class="n">ci</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[50]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([[4.03514303, 1.93743921, 1.93940142],
+       [5.91573352, 2.2196003 , 2.1670099 ]])
+</pre></div></div>
+</div>
+<p>The method <code class="docutils literal notranslate"><span class="pre">print_results</span></code> prints the results:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[51]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">sample</span><span class="o">.</span><span class="n">print_results</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+-- The acceptance fraction is: 0.642375.5
+R_hat for the parameters is: [0.32313683 0.00732082 0.00479484]
+-- Posterior Summary of Parameters:
+
+parameter        mean            sd              5%              95%
+
+---------------------------------------------
+
+theta[0]         4.942652228740678      0.5691486161504021      4.035143030111889       5.915733521435971
+
+theta[1]         2.0754546626425574     0.0856675712513585      1.9374392067380983      2.21960029522001
+
+theta[2]         2.052820542793331      0.06933048478134216     1.9394014208215005      2.167009901378628
+
+</pre></div></div>
+</div>
+<p>Similarly, the method <code class="docutils literal notranslate"><span class="pre">plot_results</span></code> produces a bunch of plots:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[52]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span> <span class="o">=</span> <span class="n">sample</span><span class="o">.</span><span class="n">plot_results</span><span class="p">(</span><span class="n">nsamples</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">fig</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">save_plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">filename</span><span class="o">=</span><span class="s2">&quot;modeling_tutorial_mcmc_corner.pdf&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Modeling_ModelingExamples_83_0.png" src="../../_images/notebooks_Modeling_ModelingExamples_83_0.png" />
+</div>
+</div>
+</section>
+<section id="Calibrating-Likelihood-Ratio-Tests">
+<h2>Calibrating Likelihood Ratio Tests<a class="headerlink" href="#Calibrating-Likelihood-Ratio-Tests" title="Link to this heading">¶</a></h2>
+<p>In order to use likelihood ratio tests for model comparison, one must compute the p-value of obtaining a likelihood ratio at least as high as that observed given that the null hypothesis (the simpler model) is true. The distribution of likelihood ratios under that assumption will only follow an analytical distribution if</p>
+<ul class="simple">
+<li><p>the models are nested, i.e. the simpler model is a special case of the more complex model <em>and</em></p></li>
+<li><p>the parameter values that transform the complex model into the simple one do not lie on the boundary of parameter space.</p></li>
+</ul>
+<p>Imagine e.g. a simple model without a QPO, and a complex model with a QPO, where in order to make the simpler model out of the more complex one you would set the QPO amplitude to zero. However, the amplitude cannot go below zero, thus the critical parameter value transforming the complex into the simple model lie on the boundary of parameter space.</p>
+<p>If these two conditions are not given, the observed likelihood ratio must be calibrated via simulations of the simpler model. In general, one should <em>not</em> simulate from the best-fit model alone: this ignores the uncertainty in the model parameters, and thus may artificially inflate the significance of the result.</p>
+<p>In the purely frequentist (maximum likelihood case), one does not know the shape of the probability distribution for the parameters. A rough approximation can be obtained by assuming the likelihood surface to be a multi-variate Gaussian, with covariances given by the inverse Fisher information. One may sample from that distribution and then simulate fake data sets using the sampled parameters. Each simulated data set will be fit with both models to compute a likelihood ratio, which is then used
+to build a distribution of likelihood ratios from the simpler model to compare the observed likelihood ratio to.</p>
+<p>In the Bayesian case, one may sample from the posterior for the parameters directly and then use these samples as above to create fake data sets in order to derive a posterior probability distribution for the likelihood ratios and thus a posterior predictive p-value.</p>
+<p>For the statistical background of much of this, see <a class="reference external" href="http://adsabs.harvard.edu/abs/2002ApJ...571..545P">Protassov et al, 2002</a>.</p>
+<p>Below, we set up code that will do exactly that, for both the frequentist and Bayesian case.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[53]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_generate_model</span><span class="p">(</span><span class="n">lpost</span><span class="p">,</span> <span class="n">pars</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Helper function that generates a fake PSD similar to the</span>
+<span class="sd">    one in the data, but with different parameters.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    lpost : instance of a Posterior or LogLikelihood subclass</span>
+<span class="sd">        The object containing the relevant information about the</span>
+<span class="sd">        data and the model</span>
+
+<span class="sd">    pars : iterable</span>
+<span class="sd">        A list of parameters to be passed to lpost.model in oder</span>
+<span class="sd">        to generate a model data set.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">    model_data : numpy.ndarray</span>
+<span class="sd">        An array of model values for each bin in lpost.x</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># get the model</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">lpost</span><span class="o">.</span><span class="n">model</span>
+
+    <span class="c1"># reset the parameters</span>
+    <span class="n">fitter_to_model_params</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">pars</span><span class="p">)</span>
+
+    <span class="c1"># make a model spectrum</span>
+    <span class="n">model_data</span> <span class="o">=</span> <span class="n">lpost</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">lpost</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">model_data</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_generate_psd</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">lpost</span><span class="p">,</span> <span class="n">pars</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a fake power spectrum from a model.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    ----------</span>
+<span class="sd">    lpost : instance of a Posterior or LogLikelihood subclass</span>
+<span class="sd">        The object containing the relevant information about the</span>
+<span class="sd">        data and the model</span>
+
+<span class="sd">    pars : iterable</span>
+<span class="sd">        A list of parameters to be passed to lpost.model in oder</span>
+<span class="sd">        to generate a model data set.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">    sim_ps : stingray.Powerspectrum object</span>
+<span class="sd">        The simulated Powerspectrum object</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">model_spectrum</span> <span class="o">=</span> <span class="n">_generate_model</span><span class="p">(</span><span class="n">lpost</span><span class="p">,</span> <span class="n">pars</span><span class="p">)</span>
+
+      <span class="c1"># use chi-square distribution to get fake data</span>
+    <span class="n">model_powers</span> <span class="o">=</span> <span class="n">model_spectrum</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">chisquare</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">ps</span><span class="o">.</span><span class="n">m</span><span class="p">,</span>
+                                                      <span class="n">size</span><span class="o">=</span><span class="n">model_spectrum</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">ps</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+
+    <span class="n">sim_ps</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">ps</span><span class="p">)</span>
+
+    <span class="n">sim_ps</span><span class="o">.</span><span class="n">powers</span> <span class="o">=</span> <span class="n">model_powers</span>
+
+
+    <span class="k">return</span> <span class="n">sim_ps</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_compute_pvalue</span><span class="p">(</span><span class="n">obs_val</span><span class="p">,</span> <span class="n">sim</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the p-value given an observed value of a test statistic</span>
+<span class="sd">    and some simulations of that same test statistic.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    obs_value : float</span>
+<span class="sd">        The observed value of the test statistic in question</span>
+
+<span class="sd">    sim: iterable</span>
+<span class="sd">        A list or array of simulated values for the test statistic</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pval : float [0, 1]</span>
+<span class="sd">        The p-value for the test statistic given the simulations.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># cast the simulations as a numpy array</span>
+    <span class="n">sim</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sim</span><span class="p">)</span>
+
+    <span class="c1"># find all simulations that are larger than</span>
+    <span class="c1"># the observed value</span>
+    <span class="n">ntail</span> <span class="o">=</span> <span class="n">sim</span><span class="p">[</span><span class="n">sim</span> <span class="o">&gt;</span> <span class="n">obs_val</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># divide by the total number of simulations</span>
+    <span class="n">pval</span> <span class="o">=</span> <span class="n">ntail</span><span class="o">/</span><span class="n">sim</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">pval</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">calibrate_lrt</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">lpost1</span><span class="p">,</span> <span class="n">t1</span><span class="p">,</span> <span class="n">lpost2</span><span class="p">,</span> <span class="n">t2</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">neg</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">max_post</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                  <span class="n">nsim</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">niter</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">nwalker</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">burnin</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">namestr</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">):</span>
+
+
+    <span class="c1"># set up the ParameterEstimation object</span>
+    <span class="n">parest</span> <span class="o">=</span> <span class="n">PSDParEst</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">fitmethod</span><span class="o">=</span><span class="s2">&quot;L-BFGS-B&quot;</span><span class="p">,</span> <span class="n">max_post</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="c1"># compute the observed likelihood ratio</span>
+    <span class="n">lrt_obs</span><span class="p">,</span> <span class="n">res1</span><span class="p">,</span> <span class="n">res2</span> <span class="o">=</span> <span class="n">parest</span><span class="o">.</span><span class="n">compute_lrt</span><span class="p">(</span><span class="n">lpost1</span><span class="p">,</span> <span class="n">t1</span><span class="p">,</span>
+                                             <span class="n">lpost2</span><span class="p">,</span> <span class="n">t2</span><span class="p">,</span>
+                                             <span class="n">neg</span><span class="o">=</span><span class="n">neg</span><span class="p">,</span>
+                                             <span class="n">max_post</span><span class="o">=</span><span class="n">max_post</span><span class="p">)</span>
+
+    <span class="c1"># simulate parameter sets from the simpler model</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">max_post</span><span class="p">:</span>
+        <span class="c1"># using Maximum Likelihood, so I&#39;m going to simulate parameters</span>
+        <span class="c1"># from a multivariate Gaussian</span>
+
+        <span class="c1"># set up the distribution</span>
+        <span class="n">mvn</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">multivariate_normal</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="n">res1</span><span class="o">.</span><span class="n">p_opt</span><span class="p">,</span> <span class="n">cov</span><span class="o">=</span><span class="n">res1</span><span class="o">.</span><span class="n">cov</span><span class="p">)</span>
+
+        <span class="c1"># sample parameters</span>
+        <span class="n">s_all</span> <span class="o">=</span> <span class="n">mvn</span><span class="o">.</span><span class="n">rvs</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">nsim</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">sample</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># sample the posterior using MCMC</span>
+            <span class="n">sample</span> <span class="o">=</span> <span class="n">parest</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">lpost</span><span class="p">,</span> <span class="n">res1</span><span class="o">.</span><span class="n">p_opt</span><span class="p">,</span> <span class="n">cov</span><span class="o">=</span><span class="n">res1</span><span class="o">.</span><span class="n">cov</span><span class="p">,</span>
+                                   <span class="n">nwalkers</span><span class="o">=</span><span class="n">nwalker</span><span class="p">,</span> <span class="n">niter</span><span class="o">=</span><span class="n">niter</span><span class="p">,</span>
+                                   <span class="n">burnin</span><span class="o">=</span><span class="n">burnin</span><span class="p">,</span> <span class="n">namestr</span><span class="o">=</span><span class="n">namestr</span><span class="p">)</span>
+
+
+        <span class="c1"># pick nsim samples out of the posterior sample</span>
+        <span class="n">s_all</span> <span class="o">=</span> <span class="n">sample</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">sample</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">nsim</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span>
+
+    <span class="n">lrt_sim</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nsim</span><span class="p">)</span>
+
+    <span class="c1"># now I can loop over all simulated parameter sets to generate a PSD</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">s_all</span><span class="p">):</span>
+
+        <span class="c1"># generate fake PSD</span>
+        <span class="n">sim_ps</span> <span class="o">=</span> <span class="n">_generate_psd</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">lpost1</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+
+        <span class="c1"># make LogLikelihood objects for both:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">max_post</span><span class="p">:</span>
+            <span class="n">sim_lpost1</span> <span class="o">=</span> <span class="n">PSDLogLikelihood</span><span class="p">(</span><span class="n">sim_ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">sim_ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span>
+                                         <span class="n">model</span><span class="o">=</span><span class="n">lpost1</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">sim_ps</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+            <span class="n">sim_lpost2</span> <span class="o">=</span> <span class="n">PSDLogLikelihood</span><span class="p">(</span><span class="n">sim_ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">sim_ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span>
+                                         <span class="n">model</span><span class="o">=</span><span class="n">lpost2</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">sim_ps</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># make a Posterior object</span>
+            <span class="n">sim_lpost1</span> <span class="o">=</span> <span class="n">PSDPosterior</span><span class="p">(</span><span class="n">sim_ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">sim_ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span>
+                                      <span class="n">lpost1</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">sim_ps</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+            <span class="n">sim_lpost1</span><span class="o">.</span><span class="n">logprior</span> <span class="o">=</span> <span class="n">lpost1</span><span class="o">.</span><span class="n">logprior</span>
+
+            <span class="n">sim_lpost2</span> <span class="o">=</span> <span class="n">PSDPosterior</span><span class="p">(</span><span class="n">sim_ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">sim_ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span>
+                                      <span class="n">lpost2</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">sim_ps</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+            <span class="n">sim_lpost2</span><span class="o">.</span><span class="n">logprior</span> <span class="o">=</span> <span class="n">lpost2</span><span class="o">.</span><span class="n">logprior</span>
+
+
+        <span class="n">parest_sim</span> <span class="o">=</span> <span class="n">PSDParEst</span><span class="p">(</span><span class="n">sim_ps</span><span class="p">,</span> <span class="n">max_post</span><span class="o">=</span><span class="n">max_post</span><span class="p">)</span>
+
+        <span class="n">lrt_sim</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">parest_sim</span><span class="o">.</span><span class="n">compute_lrt</span><span class="p">(</span><span class="n">sim_lpost1</span><span class="p">,</span> <span class="n">t1</span><span class="p">,</span>
+                                         <span class="n">sim_lpost2</span><span class="p">,</span> <span class="n">t2</span><span class="p">,</span>
+                                         <span class="n">neg</span><span class="o">=</span><span class="n">neg</span><span class="p">,</span>
+                                         <span class="n">max_post</span><span class="o">=</span><span class="n">max_post</span><span class="p">)</span>
+
+    <span class="c1"># now I can compute the p-value:</span>
+    <span class="n">pval</span> <span class="o">=</span> <span class="n">_compute_pvalue</span><span class="p">(</span><span class="n">lrt_obs</span><span class="p">,</span> <span class="n">lrt_sim</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pval</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[54]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pval</span> <span class="o">=</span> <span class="n">calibrate_lrt</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">loglike</span><span class="p">,</span> <span class="n">starting_pars</span><span class="p">,</span>
+                     <span class="n">loglike_bplc</span><span class="p">,</span> <span class="n">bplc_start_pars</span><span class="p">,</span>
+                     <span class="n">max_post</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">nsim</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[55]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The p-value for rejecting the simpler model is: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">pval</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+The p-value for rejecting the simpler model is: 0.9
+</pre></div></div>
+</div>
+<p>As expected, the p-value for rejecting the powerlaw model is fairly large: since we simulated from that model, we would be surprised if it generated a small p-value, causing us to reject this model (note, however, that if the null hypothesis is true, the p-value will be uniformely distributed between 0 and 1. By definition, then, you will get a p-value smaller or equal to 0.01 in approximately one out of a hundred cases)</p>
+<p>We can do the same with the Bayesian model, in which case the result is called a <em>posterior predictive p-value</em>, which, in turn, is often used in posterior model checking (not yet implemented!).</p>
+<p>We have not yet defined a <code class="docutils literal notranslate"><span class="pre">PSDPosterior</span></code> object for the bent power law model, so let’s do that. First, let’s define some priors:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[56]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">scipy.stats</span>
+
+<span class="c1"># flat prior for the power law indices</span>
+<span class="n">p_alpha1</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">alpha</span><span class="p">:</span> <span class="p">((</span><span class="o">-</span><span class="mf">1.</span> <span class="o">&lt;=</span> <span class="n">alpha</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">alpha</span> <span class="o">&lt;=</span> <span class="mf">5.</span><span class="p">))</span>
+<span class="n">p_alpha2</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">alpha</span><span class="p">:</span> <span class="p">((</span><span class="o">-</span><span class="mf">1.</span> <span class="o">&lt;=</span> <span class="n">alpha</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">alpha</span> <span class="o">&lt;=</span> <span class="mf">5.</span><span class="p">))</span>
+
+<span class="c1"># flat prior for the break frequency</span>
+<span class="n">p_x_break</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">xbreak</span><span class="p">:</span> <span class="p">((</span><span class="mf">0.01</span> <span class="o">&lt;=</span> <span class="n">xbreak</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="mf">10.0</span> <span class="o">&gt;=</span> <span class="n">xbreak</span><span class="p">))</span>
+
+<span class="c1"># flat prior for the power law amplitude</span>
+<span class="n">p_amplitude</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">amplitude</span><span class="p">:</span> <span class="p">((</span><span class="mf">0.01</span> <span class="o">&lt;=</span> <span class="n">amplitude</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">amplitude</span> <span class="o">&lt;=</span> <span class="mf">10.0</span><span class="p">))</span>
+
+<span class="c1"># normal prior for the white noise parameter</span>
+<span class="n">p_whitenoise</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">white_noise</span><span class="p">:</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span><span class="o">.</span><span class="n">pdf</span><span class="p">(</span><span class="n">white_noise</span><span class="p">)</span>
+
+<span class="n">priors</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">priors</span><span class="p">[</span><span class="s2">&quot;alpha_1_0&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">p_alpha</span>
+<span class="n">priors</span><span class="p">[</span><span class="s2">&quot;alpha_2_0&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">p_alpha</span>
+
+<span class="n">priors</span><span class="p">[</span><span class="s2">&quot;amplitude_0&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">p_amplitude</span>
+<span class="n">priors</span><span class="p">[</span><span class="s2">&quot;amplitude_1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">p_whitenoise</span>
+<span class="n">priors</span><span class="p">[</span><span class="s2">&quot;x_break_0&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">p_x_break</span>
+<br/></pre></div>
+</div>
+</div>
+<p>Now we can set up the <code class="docutils literal notranslate"><span class="pre">PSDPosterior</span></code> object:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[57]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lpost_bplc</span> <span class="o">=</span> <span class="n">PSDPosterior</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">bplc</span><span class="p">,</span> <span class="n">priors</span><span class="o">=</span><span class="n">priors</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[58]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lpost_bplc</span><span class="p">(</span><span class="n">bplc_start_pars</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[58]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+-2230.14039643262
+</pre></div></div>
+</div>
+<p>And do the posterior predictive p-value. Since we’ve already sampled from the simple model, we can pass that sample to the <code class="docutils literal notranslate"><span class="pre">calibrate_lrt</span></code> function, in order to cut down on computation time (if the keyword <code class="docutils literal notranslate"><span class="pre">sample</span></code> is not given, it will automatically run MCMC:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[59]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pval</span> <span class="o">=</span> <span class="n">calibrate_lrt</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">lpost</span><span class="p">,</span> <span class="n">starting_pars</span><span class="p">,</span>
+                     <span class="n">lpost_bplc</span><span class="p">,</span> <span class="n">bplc_start_pars</span><span class="p">,</span>
+                     <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="o">.</span><span class="n">samples</span><span class="p">,</span>
+                     <span class="n">max_post</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nsim</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[60]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The posterior predictive p-value is: p = &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">pval</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+The posterior predictive p-value is: p = 0.99
+</pre></div></div>
+</div>
+<p>Again, we find that the p-value does not suggest rejecting the powerlaw model.</p>
+<p>Of course, a slightly modified version is implemented in <code class="docutils literal notranslate"><span class="pre">stingray</span></code> as a subclass of the <code class="docutils literal notranslate"><span class="pre">PSDParEst</span></code> class:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[61]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.modeling</span><span class="w"> </span><span class="kn">import</span> <span class="n">PSDParEst</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[62]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">parest</span> <span class="o">=</span> <span class="n">PSDParEst</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">fitmethod</span><span class="o">=</span><span class="s2">&quot;BFGS&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[63]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pval</span> <span class="o">=</span> <span class="n">parest</span><span class="o">.</span><span class="n">calibrate_lrt</span><span class="p">(</span><span class="n">lpost</span><span class="p">,</span> <span class="n">starting_pars</span><span class="p">,</span> <span class="n">lpost_bplc</span><span class="p">,</span> <span class="n">bplc_start_pars</span><span class="p">,</span>
+                   <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="o">.</span><span class="n">samples</span><span class="p">,</span> <span class="n">nsim</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">max_post</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[64]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">pval</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+0.22
+</pre></div></div>
+</div>
+</section>
+<section id="Bayesian-ish-QPO-Searches">
+<h2>Bayesian-ish QPO Searches<a class="headerlink" href="#Bayesian-ish-QPO-Searches" title="Link to this heading">¶</a></h2>
+<p>When searching for quasi-periodic oscillations (QPOs) in light curves that are not constant (for example because they are bursts or have other types of variability), one must take care that the variable background is accurately modelled (most standard tools assume that the light curve is constant).</p>
+<p>In <a class="reference external" href="http://adsabs.harvard.edu/abs/2010MNRAS.402..307V">Vaughan et al, 2010</a>, a method was introduced to search for QPOs in the presence of red noise (stochastic variability), and in <a class="reference external" href="http://adsabs.harvard.edu/abs/2013ApJ...768...87H">Huppenkothen et al, 2013</a> it was extended to magnetar bursts, and in <a class="reference external" href="http://adsabs.harvard.edu/abs/2015ApJ...798..108I">Inglis et al, 2015</a> and <a class="reference external" href="http://adsabs.harvard.edu/abs/2016ApJ...833..284I">Inglis et al, 2016</a> a similar approach was used to find
+QPOs in solar flares.</p>
+<p>Based on a model for the broadband spectral noise, the algorithm finds the highest outlier in a test statistic based on the data-model residuals (under the assumption that if the broadband model is correct, the test statistic <span class="math notranslate nohighlight">\(T_R = \max_j(2 D_j/m_j)\)</span> for <span class="math notranslate nohighlight">\(j\)</span> power spectral bins with powers <span class="math notranslate nohighlight">\(D_j\)</span> and model powers <span class="math notranslate nohighlight">\(m_j\)</span> will be distributed following a <span class="math notranslate nohighlight">\(\chi^2\)</span> distribution with two degrees of freedom). The observed test statistic <span class="math notranslate nohighlight">\(T_R\)</span> is then compared to a
+theoretical distribution based on simulated power spectra without an outlier in order to compute a posterior predictive p-value as above for the likelihood ratio.</p>
+<p>Since the concept is very similar to that above, we do not show the full code here. Instead, the p-value can be calculated using the method <code class="docutils literal notranslate"><span class="pre">calibrate_highest_outlier</span></code>, which belongs to the <code class="docutils literal notranslate"><span class="pre">PSDParEst</span></code> class:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[65]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># compute highest outlier in the data, and the frequency and index</span>
+<span class="c1"># where that power occurs</span>
+<span class="n">max_power</span><span class="p">,</span> <span class="n">max_freq</span><span class="p">,</span> <span class="n">max_ind</span> <span class="o">=</span> <span class="n">parest</span><span class="o">.</span><span class="n">_compute_highest_outlier</span><span class="p">(</span><span class="n">lpost</span><span class="p">,</span> <span class="n">res</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[66]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">max_power</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[66]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([16.79715764])
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[67]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pval</span> <span class="o">=</span> <span class="n">parest</span><span class="o">.</span><span class="n">calibrate_highest_outlier</span><span class="p">(</span><span class="n">lpost</span><span class="p">,</span> <span class="n">starting_pars</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span>
+                                  <span class="n">max_post</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                  <span class="n">nsim</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">niter</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">nwalkers</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+                                  <span class="n">burnin</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">namestr</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[68]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pval</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[68]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+0.24
+</pre></div></div>
+</div>
+</section>
+<section id="Convenience-Functions">
+<h2>Convenience Functions<a class="headerlink" href="#Convenience-Functions" title="Link to this heading">¶</a></h2>
+<p>For convenience, we have implemented some simple functions to reduce overhead with having to instantiate objects of the various classes.</p>
+<p>Note that these convenience function use similar approaches and guesses in all cases; this might work for some simple quicklook analysis, but when preparing publication-ready results, one should approach the analysis with more care and make sure the options chosen are appropriate for the problem at hand.</p>
+<section id="Fitting-a-power-spectrum-with-some-model">
+<h3>Fitting a power spectrum with some model<a class="headerlink" href="#Fitting-a-power-spectrum-with-some-model" title="Link to this heading">¶</a></h3>
+<p>The code above allows for a lot of freedom in building an appropriate model for your application. However, in everyday life, one might occasionally want to do a quick fit for various applications, without having to go too much into details. Below is a convenience function written for exactly that purpose.</p>
+<p>Please note that while this aims to use reasonable defaults, this is unlikely to produce publication-ready results!</p>
+<p>So let’s fit a power law and a constant to some data, which we’ll create below:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[69]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">Powerspectrum</span>
+
+<span class="n">m</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">nfreq</span> <span class="o">=</span> <span class="mi">100000</span>
+<span class="n">freq</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">nfreq</span><span class="p">)</span>
+
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>  <span class="c1"># set the seed for the random number generator</span>
+<span class="n">noise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">exponential</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">nfreq</span><span class="p">)</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">PowerLaw1D</span><span class="p">()</span> <span class="o">+</span> <span class="n">models</span><span class="o">.</span><span class="n">Const1D</span><span class="p">()</span>
+<span class="n">model</span><span class="o">.</span><span class="n">x_0_0</span><span class="o">.</span><span class="n">fixed</span> <span class="o">=</span> <span class="kc">True</span>
+
+<span class="n">alpha_0</span> <span class="o">=</span> <span class="mf">2.0</span>
+<span class="n">amplitude_0</span> <span class="o">=</span> <span class="mf">100.0</span>
+<span class="n">amplitude_1</span> <span class="o">=</span> <span class="mf">2.0</span>
+
+<span class="n">model</span><span class="o">.</span><span class="n">alpha_0</span> <span class="o">=</span> <span class="n">alpha_0</span>
+<span class="n">model</span><span class="o">.</span><span class="n">amplitude_0</span> <span class="o">=</span> <span class="n">amplitude_0</span>
+<span class="n">model</span><span class="o">.</span><span class="n">amplitude_1</span> <span class="o">=</span> <span class="n">amplitude_1</span>
+
+<span class="n">p</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">freq</span><span class="p">)</span>
+<span class="n">power</span> <span class="o">=</span> <span class="n">noise</span> <span class="o">*</span> <span class="n">p</span>
+
+<span class="n">ps</span> <span class="o">=</span> <span class="n">Powerspectrum</span><span class="p">()</span>
+<span class="n">ps</span><span class="o">.</span><span class="n">freq</span> <span class="o">=</span> <span class="n">freq</span>
+<span class="n">ps</span><span class="o">.</span><span class="n">power</span> <span class="o">=</span> <span class="n">power</span>
+<span class="n">ps</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">m</span>
+<span class="n">ps</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="n">freq</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">freq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">ps</span><span class="o">.</span><span class="n">norm</span> <span class="o">=</span> <span class="s2">&quot;leahy&quot;</span>
+<br/></pre></div>
+</div>
+</div>
+<p>What does this data set look like?</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[70]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[70]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[&lt;matplotlib.lines.Line2D at 0x28f05d030&gt;]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Modeling_ModelingExamples_109_1.png" src="../../_images/notebooks_Modeling_ModelingExamples_109_1.png" />
+</div>
+</div>
+<p>In order to fit this, we’ll write a convenience function that can take the power spectrum, a model, some starting parameters and just run with it:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[71]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.modeling</span><span class="w"> </span><span class="kn">import</span> <span class="n">PSDLogLikelihood</span><span class="p">,</span> <span class="n">PSDPosterior</span><span class="p">,</span> <span class="n">PSDParEst</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">fit_powerspectrum</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">starting_pars</span><span class="p">,</span> <span class="n">max_post</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">priors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                      <span class="n">fitmethod</span><span class="o">=</span><span class="s2">&quot;L-BFGS-B&quot;</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">priors</span><span class="p">:</span>
+        <span class="n">lpost</span> <span class="o">=</span> <span class="n">PSDPosterior</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">priors</span><span class="o">=</span><span class="n">priors</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">lpost</span> <span class="o">=</span> <span class="n">PSDLogLikelihood</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+
+    <span class="n">parest</span> <span class="o">=</span> <span class="n">PSDParEst</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">fitmethod</span><span class="o">=</span><span class="n">fitmethod</span><span class="p">,</span> <span class="n">max_post</span><span class="o">=</span><span class="n">max_post</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">parest</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">lpost</span><span class="p">,</span> <span class="n">starting_pars</span><span class="p">,</span> <span class="n">neg</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">parest</span><span class="p">,</span> <span class="n">res</span>
+<br/></pre></div>
+</div>
+</div>
+<p>Let’s see if it works. We’ve already defined our model above, but to be explicit, let’s define it again:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[72]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model_to_test</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">PowerLaw1D</span><span class="p">()</span> <span class="o">+</span> <span class="n">models</span><span class="o">.</span><span class="n">Const1D</span><span class="p">()</span>
+<span class="n">model_to_test</span><span class="o">.</span><span class="n">x_0_0</span><span class="o">.</span><span class="n">fixed</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
+</div>
+<p>Now we just need some starting parameters:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[73]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">t0</span> <span class="o">=</span> <span class="p">[</span><span class="mi">80</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[74]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">parest</span><span class="p">,</span> <span class="n">res</span> <span class="o">=</span> <span class="n">fit_powerspectrum</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">model_to_test</span><span class="p">,</span> <span class="n">t0</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[75]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">res</span><span class="o">.</span><span class="n">p_opt</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[75]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([108.97152923,   2.07017797,   2.00200459])
+</pre></div></div>
+</div>
+<p>Looks like it worked! Let’s plot the result, too:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[76]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">mfit</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[76]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[&lt;matplotlib.lines.Line2D at 0x2a5c43d90&gt;]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;Figure size 640x480 with 0 Axes&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Modeling_ModelingExamples_119_2.png" src="../../_images/notebooks_Modeling_ModelingExamples_119_2.png" />
+</div>
+</div>
+<p>You can find the function in the <code class="docutils literal notranslate"><span class="pre">scripts</span></code> sub-module:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[77]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.modeling.scripts</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_powerspectrum</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[78]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">parest</span><span class="p">,</span> <span class="n">res</span> <span class="o">=</span> <span class="n">fit_powerspectrum</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">model_to_test</span><span class="p">,</span> <span class="n">t0</span><span class="p">)</span>
+<span class="n">res</span><span class="o">.</span><span class="n">p_opt</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[78]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([109.03139888,   2.07028842,   2.00200906])
+</pre></div></div>
+</div>
+</section>
+<section id="Fitting-Lorentzians">
+<h3>Fitting Lorentzians<a class="headerlink" href="#Fitting-Lorentzians" title="Link to this heading">¶</a></h3>
+<p>Fitting Lorentzians to power spectra is a routine task for most astronomers working with power spectra, hence there is a function that can produce either Maximum Likelihood or Maximum-A-Posteriori fits of the data.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[79]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">l</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Lorentz1D</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[80]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">l</span><span class="o">.</span><span class="n">param_names</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[80]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&#39;amplitude&#39;, &#39;x_0&#39;, &#39;fwhm&#39;)
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[81]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">fit_lorentzians</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">nlor</span><span class="p">,</span> <span class="n">starting_pars</span><span class="p">,</span> <span class="n">fit_whitenoise</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">max_post</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">priors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">fitmethod</span><span class="o">=</span><span class="s2">&quot;L-BFGS-B&quot;</span><span class="p">):</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Lorentz1D</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">nlor</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nlor</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">model</span> <span class="o">+=</span> <span class="n">models</span><span class="o">.</span><span class="n">Lorentz1D</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">fit_whitenoise</span><span class="p">:</span>
+        <span class="n">model</span> <span class="o">+=</span> <span class="n">models</span><span class="o">.</span><span class="n">Const1D</span><span class="p">()</span>
+
+    <span class="n">parest</span> <span class="o">=</span> <span class="n">PSDParEst</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">fitmethod</span><span class="o">=</span><span class="n">fitmethod</span><span class="p">,</span> <span class="n">max_post</span><span class="o">=</span><span class="n">max_post</span><span class="p">)</span>
+    <span class="n">lpost</span> <span class="o">=</span> <span class="n">PSDPosterior</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">priors</span><span class="o">=</span><span class="n">priors</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">parest</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">lpost</span><span class="p">,</span> <span class="n">starting_pars</span><span class="p">,</span> <span class="n">neg</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">parest</span><span class="p">,</span> <span class="n">res</span>
+</pre></div>
+</div>
+</div>
+<p>Let’s make a dataset so we can test it!</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[82]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">400</span><span class="p">)</span>
+<span class="n">nlor</span> <span class="o">=</span> <span class="mi">3</span>
+
+<span class="n">x_0_0</span> <span class="o">=</span> <span class="mf">0.5</span>
+<span class="n">x_0_1</span> <span class="o">=</span> <span class="mf">2.0</span>
+<span class="n">x_0_2</span> <span class="o">=</span> <span class="mf">7.5</span>
+
+<span class="n">amplitude_0</span> <span class="o">=</span> <span class="mf">150.0</span>
+<span class="n">amplitude_1</span> <span class="o">=</span> <span class="mf">50.0</span>
+<span class="n">amplitude_2</span> <span class="o">=</span> <span class="mf">15.0</span>
+
+<span class="n">fwhm_0</span> <span class="o">=</span> <span class="mf">0.1</span>
+<span class="n">fwhm_1</span> <span class="o">=</span> <span class="mf">1.0</span>
+<span class="n">fwhm_2</span> <span class="o">=</span> <span class="mf">0.5</span>
+
+<span class="n">whitenoise</span> <span class="o">=</span> <span class="mf">2.0</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Lorentz1D</span><span class="p">(</span><span class="n">amplitude_0</span><span class="p">,</span> <span class="n">x_0_0</span><span class="p">,</span> <span class="n">fwhm_0</span><span class="p">)</span> <span class="o">+</span> \
+        <span class="n">models</span><span class="o">.</span><span class="n">Lorentz1D</span><span class="p">(</span><span class="n">amplitude_1</span><span class="p">,</span> <span class="n">x_0_1</span><span class="p">,</span> <span class="n">fwhm_1</span><span class="p">)</span> <span class="o">+</span> \
+        <span class="n">models</span><span class="o">.</span><span class="n">Lorentz1D</span><span class="p">(</span><span class="n">amplitude_2</span><span class="p">,</span> <span class="n">x_0_2</span><span class="p">,</span> <span class="n">fwhm_2</span><span class="p">)</span> <span class="o">+</span> \
+        <span class="n">models</span><span class="o">.</span><span class="n">Const1D</span><span class="p">(</span><span class="n">whitenoise</span><span class="p">)</span>
+
+<span class="n">p</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">)</span>
+<span class="n">noise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">exponential</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">))</span>
+
+<span class="n">power</span> <span class="o">=</span> <span class="n">p</span><span class="o">*</span><span class="n">noise</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">power</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[82]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[&lt;matplotlib.lines.Line2D at 0x12b58a920&gt;]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Modeling_ModelingExamples_128_1.png" src="../../_images/notebooks_Modeling_ModelingExamples_128_1.png" />
+</div>
+</div>
+<p>Let’s make this into a <code class="docutils literal notranslate"><span class="pre">Powerspectrum</span></code> object:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[83]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[84]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ps_new</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">ps</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[85]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ps_new</span><span class="o">.</span><span class="n">power</span> <span class="o">=</span> <span class="n">power</span>
+</pre></div>
+</div>
+</div>
+<p>So now we can fit this model with our new function, but first, we need to define the starting parameters for our fit. The starting parameters will be <code class="docutils literal notranslate"><span class="pre">[amplitude,</span> <span class="pre">x_0,</span> <span class="pre">fwhm]</span></code> for each component plus the white noise component at the end:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[86]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">t0</span> <span class="o">=</span> <span class="p">[</span><span class="mi">150</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mf">2.3</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">2.1</span><span class="p">]</span>
+<span class="n">parest</span><span class="p">,</span> <span class="n">res</span> <span class="o">=</span> <span class="n">fit_lorentzians</span><span class="p">(</span><span class="n">ps_new</span><span class="p">,</span> <span class="n">nlor</span><span class="p">,</span> <span class="n">t0</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Let’s look at the output:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[87]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">res</span><span class="o">.</span><span class="n">p_opt</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[87]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([ 1.48980332e+02,  1.02031369e+00, -2.04742273e-04,  4.70694020e+01,
+        1.90076129e+00,  1.08562751e+00,  1.35701826e+01,  7.50135744e+00,
+        5.44356694e-01,  1.99448241e+00])
+</pre></div></div>
+</div>
+<p>Cool, that seems to work! For convenience <code class="docutils literal notranslate"><span class="pre">PSDParEst</span></code> also has a plotting function:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[88]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">parest</span><span class="o">.</span><span class="n">plotfits</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">save_plot</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">namestr</span><span class="o">=</span><span class="s2">&quot;lorentzian_test&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Modeling_ModelingExamples_138_0.png" src="../../_images/notebooks_Modeling_ModelingExamples_138_0.png" />
+</div>
+</div>
+<p>The function exists in the library as well for ease of use:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[89]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.modeling</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_lorentzians</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[90]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">parest</span><span class="p">,</span> <span class="n">res</span> <span class="o">=</span> <span class="n">fit_lorentzians</span><span class="p">(</span><span class="n">ps_new</span><span class="p">,</span> <span class="n">nlor</span><span class="p">,</span> <span class="n">t0</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[91]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">res</span><span class="o">.</span><span class="n">p_opt</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[91]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([ 1.47775222e+02, -1.95500403e-01, -1.76819873e-03,  4.02910804e+01,
+        1.89163457e+00,  1.20856451e+00,  1.05610820e+01,  7.49861477e+00,
+        6.35659323e-01,  1.99437212e+00])
+</pre></div></div>
+</div>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">The Stingray Modeling API Explained</a><ul>
+<li><a class="reference internal" href="#Some-background">Some background</a></li>
+<li><a class="reference internal" href="#Likelihoods-and-Posteriors">Likelihoods and Posteriors</a></li>
+<li><a class="reference internal" href="#Maximum-Likelihood-Fitting">Maximum Likelihood Fitting</a><ul>
+<li><a class="reference internal" href="#Likelihood-Ratios">Likelihood Ratios</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Bayesian-Parameter-Estimation">Bayesian Parameter Estimation</a></li>
+<li><a class="reference internal" href="#Calibrating-Likelihood-Ratio-Tests">Calibrating Likelihood Ratio Tests</a></li>
+<li><a class="reference internal" href="#Bayesian-ish-QPO-Searches">Bayesian-ish QPO Searches</a></li>
+<li><a class="reference internal" href="#Convenience-Functions">Convenience Functions</a><ul>
+<li><a class="reference internal" href="#Fitting-a-power-spectrum-with-some-model">Fitting a power spectrum with some model</a></li>
+<li><a class="reference internal" href="#Fitting-Lorentzians">Fitting Lorentzians</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/Modeling/ModelingExamples.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

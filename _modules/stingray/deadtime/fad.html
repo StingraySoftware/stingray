@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>stingray.deadtime.fad &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script type="text/javascript" src="../../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for stingray.deadtime.fad</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">gaussian_filter1d</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.interpolate</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnivariateSpline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.table</span><span class="w"> </span><span class="kn">import</span> <span class="n">Table</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.lightcurve</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.loggingconfig</span><span class="w"> </span><span class="kn">import</span> <span class="n">setup_logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..crossspectrum</span><span class="w"> </span><span class="kn">import</span> <span class="n">AveragedCrossspectrum</span><span class="p">,</span> <span class="n">get_flux_generator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..powerspectrum</span><span class="w"> </span><span class="kn">import</span> <span class="n">AveragedPowerspectrum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..fourier</span><span class="w"> </span><span class="kn">import</span> <span class="n">normalize_periodograms</span><span class="p">,</span> <span class="n">fft</span><span class="p">,</span> <span class="n">fftfreq</span><span class="p">,</span> <span class="n">positive_fft_bins</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">show_progress</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..gti</span><span class="w"> </span><span class="kn">import</span> <span class="n">cross_two_gtis</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;calculate_FAD_correction&quot;</span><span class="p">,</span> <span class="s2">&quot;get_periodograms_from_FAD_results&quot;</span><span class="p">,</span> <span class="s2">&quot;FAD&quot;</span><span class="p">]</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">setup_logger</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="FAD">
+<a class="viewcode-back" href="../../../api.html#stingray.deadtime.fad.FAD">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">FAD</span><span class="p">(</span>
+    <span class="n">data1</span><span class="p">,</span>
+    <span class="n">data2</span><span class="p">,</span>
+    <span class="n">segment_size</span><span class="p">,</span>
+    <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;frac&quot;</span><span class="p">,</span>
+    <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">smoothing_alg</span><span class="o">=</span><span class="s2">&quot;gauss&quot;</span><span class="p">,</span>
+    <span class="n">smoothing_length</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">tolerance</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+    <span class="n">strict</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">output_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">return_objects</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Calculate Frequency Amplitude Difference-corrected (cross)power spectra.</span>
+
+<span class="sd">    Reference: Bachetti \&amp; Huppenkothen, 2018, ApJ, 853L, 21</span>
+
+<span class="sd">    The two input light curve must be strictly simultaneous, and recorded by</span>
+<span class="sd">    two independent detectors with similar responses, so that the count rates</span>
+<span class="sd">    are similar and dead time is independent.</span>
+<span class="sd">    The method does not apply to different energy channels of the same</span>
+<span class="sd">    instrument, or to the signal observed by two instruments with very</span>
+<span class="sd">    different responses. See the paper for caveats.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data1 : `Lightcurve` or `EventList`</span>
+<span class="sd">        Input data for channel 1</span>
+<span class="sd">    data2 : `Lightcurve` or `EventList`</span>
+<span class="sd">        Input data for channel 2. Must be strictly simultaneous to ``data1``</span>
+<span class="sd">        and, if a light curve, have the same binning time. Also, it must be</span>
+<span class="sd">        strictly independent, e.g. from a different detector. There must be</span>
+<span class="sd">        no dead time cross-talk between the two time series.</span>
+<span class="sd">    segment_size: float</span>
+<span class="sd">        The final Fourier products are averaged over many segments of the</span>
+<span class="sd">        input light curves. This is the length of each segment being averaged.</span>
+<span class="sd">        Note that the light curve must be long enough to have at least 30</span>
+<span class="sd">        segments, as the result gets better as one averages more and more</span>
+<span class="sd">        segments.</span>
+<span class="sd">    dt : float</span>
+<span class="sd">        Time resolution of the light curves used to produce periodograms</span>
+<span class="sd">    norm: {``frac``, ``abs``, ``leahy``, ``none``}, default ``none``</span>
+<span class="sd">        The normalization of the (real part of the) cross spectrum.</span>
+
+
+<span class="sd">    Other parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    plot : bool, default False</span>
+<span class="sd">        Plot diagnostics: check if the smoothed Fourier difference scatter is</span>
+<span class="sd">        a good approximation of the data scatter.</span>
+<span class="sd">    ax : :class:`matplotlib.axes.axes` object</span>
+<span class="sd">        If not None and ``plot`` is True, use this axis object to produce</span>
+<span class="sd">         the diagnostic plot. Otherwise, create a new figure.</span>
+<span class="sd">    smoothing_alg : {&#39;gauss&#39;, ...}</span>
+<span class="sd">        Smoothing algorithm. For now, the only smoothing algorithm allowed is</span>
+<span class="sd">        ``gauss``, which applies a Gaussian Filter from `scipy`.</span>
+<span class="sd">    smoothing_length : int, default ``segment_size * 3``</span>
+<span class="sd">        Number of bins to smooth in gaussian window smoothing</span>
+<span class="sd">    verbose: bool, default False</span>
+<span class="sd">        Print out information on the outcome of the algorithm (recommended)</span>
+<span class="sd">    tolerance : float, default 0.05</span>
+<span class="sd">        Accepted relative error on the FAD-corrected Fourier amplitude, to be</span>
+<span class="sd">        used as success diagnostics.</span>
+<span class="sd">        Should be</span>
+<span class="sd">        ```</span>
+<span class="sd">        stdtheor = 2 / np.sqrt(n)</span>
+<span class="sd">        std = (average_corrected_fourier_diff / n).std()</span>
+<span class="sd">        np.abs((std - stdtheor) / stdtheor) &lt; tolerance</span>
+<span class="sd">        ```</span>
+<span class="sd">    strict : bool, default False</span>
+<span class="sd">        Decide what to do if the condition on tolerance is not met. If True,</span>
+<span class="sd">        raise a ``RuntimeError``. If False, just throw a warning.</span>
+<span class="sd">    output_file : str, default None</span>
+<span class="sd">        Name of an output file (any extension automatically recognized by</span>
+<span class="sd">        Astropy is fine)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    results : class:`astropy.table.Table` object or ``dict`` or ``str``</span>
+<span class="sd">        The content of ``results`` depends on whether ``return_objects`` is</span>
+<span class="sd">        True or False.</span>
+<span class="sd">        If ``return_objects==False``,</span>
+<span class="sd">        ``results`` is a `Table` with the following columns:</span>
+
+<span class="sd">        + pds1: the corrected PDS of ``lc1``</span>
+<span class="sd">        + pds2: the corrected PDS of ``lc2``</span>
+<span class="sd">        + cs: the corrected cospectrum</span>
+<span class="sd">        + ptot: the corrected PDS of lc1 + lc2</span>
+
+<span class="sd">        If ``return_objects`` is True, ``results`` is a ``dict``, with keys</span>
+<span class="sd">        named like the columns</span>
+<span class="sd">        listed above but with `AveragePowerspectrum` or</span>
+<span class="sd">        `AverageCrossspectrum` objects instead of arrays.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">gti</span> <span class="o">=</span> <span class="n">cross_two_gtis</span><span class="p">(</span><span class="n">data1</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="n">data2</span><span class="o">.</span><span class="n">gti</span><span class="p">)</span>
+    <span class="n">data1</span><span class="o">.</span><span class="n">gti</span> <span class="o">=</span> <span class="n">data2</span><span class="o">.</span><span class="n">gti</span> <span class="o">=</span> <span class="n">gti</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span> <span class="n">Lightcurve</span><span class="p">):</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="n">data1</span><span class="o">.</span><span class="n">dt</span>
+
+    <span class="n">flux_iterable1</span> <span class="o">=</span> <span class="n">get_flux_generator</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span> <span class="n">segment_size</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">)</span>
+    <span class="n">flux_iterable2</span> <span class="o">=</span> <span class="n">get_flux_generator</span><span class="p">(</span><span class="n">data2</span><span class="p">,</span> <span class="n">segment_size</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">)</span>
+    <span class="c1"># Initialize stuff</span>
+    <span class="n">freq</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1"># These will be the final averaged periodograms. Initializing with a single</span>
+    <span class="c1"># scalar 0, but the final products will be arrays.</span>
+    <span class="n">pds1_unnorm</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">pds2_unnorm</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">ptot_unnorm</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">cs_unnorm</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">pds1</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">pds2</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">ptot</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">cs</span> <span class="o">=</span> <span class="mi">0</span><span class="n">j</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">nph1_tot</span> <span class="o">=</span> <span class="n">nph2_tot</span> <span class="o">=</span> <span class="n">nph_tot</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">average_diff</span> <span class="o">=</span> <span class="n">average_diff_uncorr</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">if</span> <span class="n">plot</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">flux1</span><span class="p">,</span> <span class="n">flux2</span> <span class="ow">in</span> <span class="n">show_progress</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">flux_iterable1</span><span class="p">,</span> <span class="n">flux_iterable2</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">flux1</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">flux2</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="n">N</span> <span class="o">=</span> <span class="n">flux1</span><span class="o">.</span><span class="n">size</span>
+        <span class="n">segment_size</span> <span class="o">=</span> <span class="n">N</span> <span class="o">*</span> <span class="n">dt</span>
+        <span class="k">if</span> <span class="n">smoothing_length</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">smoothing_length</span> <span class="o">=</span> <span class="n">segment_size</span> <span class="o">*</span> <span class="mi">3</span>
+        <span class="k">if</span> <span class="n">freq</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fgt0</span> <span class="o">=</span> <span class="n">positive_fft_bins</span><span class="p">(</span><span class="n">N</span><span class="p">)</span>
+            <span class="n">freq</span> <span class="o">=</span> <span class="n">fftfreq</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">dt</span><span class="p">)[</span><span class="n">fgt0</span><span class="p">]</span>
+
+        <span class="c1"># Calculate the sum of each light curve, to calculate the mean</span>
+        <span class="c1"># This will</span>
+        <span class="n">nph1</span> <span class="o">=</span> <span class="n">flux1</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">nph2</span> <span class="o">=</span> <span class="n">flux2</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">nphtot</span> <span class="o">=</span> <span class="n">nph1</span> <span class="o">+</span> <span class="n">nph2</span>
+
+        <span class="c1"># Calculate the FFTs</span>
+        <span class="n">f1</span> <span class="o">=</span> <span class="n">fft</span><span class="p">(</span><span class="n">flux1</span><span class="p">)[</span><span class="n">fgt0</span><span class="p">]</span>
+        <span class="n">f2</span> <span class="o">=</span> <span class="n">fft</span><span class="p">(</span><span class="n">flux2</span><span class="p">)[</span><span class="n">fgt0</span><span class="p">]</span>
+        <span class="n">ftot</span> <span class="o">=</span> <span class="n">fft</span><span class="p">(</span><span class="n">flux1</span> <span class="o">+</span> <span class="n">flux2</span><span class="p">)[</span><span class="n">fgt0</span><span class="p">]</span>
+
+        <span class="n">f1_leahy</span> <span class="o">=</span> <span class="n">f1</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">/</span> <span class="n">nph1</span><span class="p">)</span>
+        <span class="n">f2_leahy</span> <span class="o">=</span> <span class="n">f2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">/</span> <span class="n">nph2</span><span class="p">)</span>
+        <span class="n">ftot_leahy</span> <span class="o">=</span> <span class="n">ftot</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">/</span> <span class="n">nphtot</span><span class="p">)</span>
+
+        <span class="n">fourier_diff</span> <span class="o">=</span> <span class="n">f1_leahy</span> <span class="o">-</span> <span class="n">f2_leahy</span>
+        <span class="k">if</span> <span class="n">plot</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">fourier_diff</span><span class="o">.</span><span class="n">real</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">smoothing_alg</span> <span class="o">==</span> <span class="s2">&quot;gauss&quot;</span><span class="p">:</span>
+            <span class="n">smooth_real</span> <span class="o">=</span> <span class="n">gaussian_filter1d</span><span class="p">(</span><span class="n">fourier_diff</span><span class="o">.</span><span class="n">real</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">smoothing_length</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unknown smoothing algorithm: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">smoothing_alg</span><span class="p">))</span>
+
+        <span class="n">p1</span> <span class="o">=</span> <span class="p">(</span><span class="n">f1</span> <span class="o">*</span> <span class="n">f1</span><span class="o">.</span><span class="n">conj</span><span class="p">())</span><span class="o">.</span><span class="n">real</span>
+        <span class="n">p1</span> <span class="o">=</span> <span class="n">p1</span> <span class="o">/</span> <span class="n">smooth_real</span> <span class="o">*</span> <span class="mi">2</span>
+        <span class="n">p2</span> <span class="o">=</span> <span class="p">(</span><span class="n">f2</span> <span class="o">*</span> <span class="n">f2</span><span class="o">.</span><span class="n">conj</span><span class="p">())</span><span class="o">.</span><span class="n">real</span>
+        <span class="n">p2</span> <span class="o">=</span> <span class="n">p2</span> <span class="o">/</span> <span class="n">smooth_real</span> <span class="o">*</span> <span class="mi">2</span>
+        <span class="n">pt</span> <span class="o">=</span> <span class="p">(</span><span class="n">ftot</span> <span class="o">*</span> <span class="n">ftot</span><span class="o">.</span><span class="n">conj</span><span class="p">())</span><span class="o">.</span><span class="n">real</span>
+        <span class="n">pt</span> <span class="o">=</span> <span class="n">pt</span> <span class="o">/</span> <span class="n">smooth_real</span> <span class="o">*</span> <span class="mi">2</span>
+
+        <span class="n">c</span> <span class="o">=</span> <span class="n">f2</span> <span class="o">*</span> <span class="n">f1</span><span class="o">.</span><span class="n">conj</span><span class="p">()</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">c</span> <span class="o">/</span> <span class="n">smooth_real</span> <span class="o">*</span> <span class="mi">2</span>
+
+        <span class="n">nphgeom</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">nph1</span> <span class="o">*</span> <span class="n">nph2</span><span class="p">)</span>
+        <span class="n">power1</span> <span class="o">=</span> <span class="n">normalize_periodograms</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">nph1</span> <span class="o">/</span> <span class="n">N</span><span class="p">,</span> <span class="n">n_ph</span><span class="o">=</span><span class="n">nph1</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+        <span class="n">power2</span> <span class="o">=</span> <span class="n">normalize_periodograms</span><span class="p">(</span><span class="n">p2</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">nph2</span> <span class="o">/</span> <span class="n">N</span><span class="p">,</span> <span class="n">n_ph</span><span class="o">=</span><span class="n">nph2</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+        <span class="n">power_tot</span> <span class="o">=</span> <span class="n">normalize_periodograms</span><span class="p">(</span><span class="n">pt</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">nphtot</span> <span class="o">/</span> <span class="n">N</span><span class="p">,</span> <span class="n">n_ph</span><span class="o">=</span><span class="n">nphtot</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+        <span class="n">cs_power</span> <span class="o">=</span> <span class="n">normalize_periodograms</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">nphgeom</span> <span class="o">/</span> <span class="n">N</span><span class="p">,</span> <span class="n">n_ph</span><span class="o">=</span><span class="n">nphgeom</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">M</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">plot</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">smooth_real</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">f1_leahy</span><span class="o">.</span><span class="n">real</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">f2_leahy</span><span class="o">.</span><span class="n">real</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Save the unnormalised (but smoothed) powerspectra and cross-spectrum</span>
+        <span class="n">pds1_unnorm</span> <span class="o">+=</span> <span class="n">p1</span>
+        <span class="n">pds2_unnorm</span> <span class="o">+=</span> <span class="n">p2</span>
+        <span class="n">ptot_unnorm</span> <span class="o">+=</span> <span class="n">pt</span>
+        <span class="n">cs_unnorm</span> <span class="o">+=</span> <span class="n">c</span>
+
+        <span class="c1"># Save the normalised and smoothed powerspectra and cross-spectrum</span>
+        <span class="n">ptot</span> <span class="o">+=</span> <span class="n">power_tot</span>
+        <span class="n">pds1</span> <span class="o">+=</span> <span class="n">power1</span>
+        <span class="n">pds2</span> <span class="o">+=</span> <span class="n">power2</span>
+        <span class="n">cs</span> <span class="o">+=</span> <span class="n">cs_power</span>
+
+        <span class="n">average_diff</span> <span class="o">+=</span> <span class="n">fourier_diff</span> <span class="o">/</span> <span class="n">smooth_real</span><span class="o">**</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">average_diff_uncorr</span> <span class="o">+=</span> <span class="n">fourier_diff</span>
+        <span class="n">nph1_tot</span> <span class="o">+=</span> <span class="n">nph1</span>
+        <span class="n">nph2_tot</span> <span class="o">+=</span> <span class="n">nph2</span>
+        <span class="n">nph_tot</span> <span class="o">+=</span> <span class="n">nphtot</span>
+        <span class="n">M</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="n">std</span> <span class="o">=</span> <span class="p">(</span><span class="n">average_diff</span> <span class="o">/</span> <span class="n">M</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+    <span class="n">stdtheor</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">M</span><span class="p">)</span>
+    <span class="n">stduncorr</span> <span class="o">=</span> <span class="p">(</span><span class="n">average_diff_uncorr</span> <span class="o">/</span> <span class="n">M</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+    <span class="n">is_compliant</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">((</span><span class="n">std</span> <span class="o">-</span> <span class="n">stdtheor</span><span class="p">)</span> <span class="o">/</span> <span class="n">stdtheor</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">tolerance</span>
+    <span class="n">verbose_string</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        -------- FAD correction ----------</span>
+<span class="s2">        I smoothed over </span><span class="si">{smoothing_length}</span><span class="s2"> power spectral bins</span>
+<span class="s2">        </span><span class="si">{M}</span><span class="s2"> intervals averaged.</span>
+<span class="s2">        The uncorrected standard deviation of the Fourier</span>
+<span class="s2">        differences is </span><span class="si">{stduncorr}</span><span class="s2"> (dead-time affected!)</span>
+<span class="s2">        The final standard deviation of the FAD-corrected</span>
+<span class="s2">        Fourier differences is </span><span class="si">{std}</span><span class="s2">. For the results to be</span>
+<span class="s2">        acceptable, this should be close to </span><span class="si">{stdtheor}</span>
+<span class="s2">        to within </span><span class="si">{tolerance}</span><span class="s2"> %.</span>
+<span class="s2">        In this case, the results ARE </span><span class="si">{compl}</span><span class="s2">complying.</span>
+<span class="s2">        </span><span class="si">{additional}</span>
+<span class="s2">        ----------------------------------</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="n">smoothing_length</span><span class="o">=</span><span class="n">smoothing_length</span><span class="p">,</span>
+        <span class="n">M</span><span class="o">=</span><span class="n">M</span><span class="p">,</span>
+        <span class="n">stduncorr</span><span class="o">=</span><span class="n">stduncorr</span><span class="p">,</span>
+        <span class="n">std</span><span class="o">=</span><span class="n">std</span><span class="p">,</span>
+        <span class="n">stdtheor</span><span class="o">=</span><span class="n">stdtheor</span><span class="p">,</span>
+        <span class="n">tolerance</span><span class="o">=</span><span class="n">tolerance</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="n">compl</span><span class="o">=</span><span class="s2">&quot;NOT &quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_compliant</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">additional</span><span class="o">=</span><span class="s2">&quot;Maybe something is not right.&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_compliant</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbose</span> <span class="ow">and</span> <span class="n">is_compliant</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">verbose_string</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">is_compliant</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">verbose_string</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">strict</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_compliant</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Results are not compliant, and `strict` mode &quot;</span> <span class="s2">&quot;selected. Exiting.&quot;</span><span class="p">)</span>
+
+    <span class="n">results</span> <span class="o">=</span> <span class="n">Table</span><span class="p">()</span>
+
+    <span class="n">results</span><span class="p">[</span><span class="s2">&quot;freq&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">freq</span>
+    <span class="n">results</span><span class="p">[</span><span class="s2">&quot;pds1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pds1</span> <span class="o">/</span> <span class="n">M</span>
+    <span class="n">results</span><span class="p">[</span><span class="s2">&quot;pds2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pds2</span> <span class="o">/</span> <span class="n">M</span>
+    <span class="n">results</span><span class="p">[</span><span class="s2">&quot;cs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cs</span> <span class="o">/</span> <span class="n">M</span>
+    <span class="n">results</span><span class="p">[</span><span class="s2">&quot;ptot&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ptot</span> <span class="o">/</span> <span class="n">M</span>
+    <span class="n">results</span><span class="p">[</span><span class="s2">&quot;pds1_unnorm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pds1_unnorm</span> <span class="o">/</span> <span class="n">M</span>
+    <span class="n">results</span><span class="p">[</span><span class="s2">&quot;pds2_unnorm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pds2_unnorm</span> <span class="o">/</span> <span class="n">M</span>
+    <span class="n">results</span><span class="p">[</span><span class="s2">&quot;cs_unnorm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cs_unnorm</span> <span class="o">/</span> <span class="n">M</span>
+    <span class="n">results</span><span class="p">[</span><span class="s2">&quot;ptot_unnorm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ptot_unnorm</span> <span class="o">/</span> <span class="n">M</span>
+    <span class="n">results</span><span class="p">[</span><span class="s2">&quot;fad&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">average_diff</span> <span class="o">/</span> <span class="n">M</span>
+    <span class="n">results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;fad_delta&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">std</span> <span class="o">-</span> <span class="n">stdtheor</span><span class="p">)</span> <span class="o">/</span> <span class="n">stdtheor</span>
+    <span class="n">results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;is_compliant&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">is_compliant</span>
+    <span class="n">results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;M&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">M</span>
+    <span class="n">results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;dt&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dt</span>
+    <span class="n">results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;nph1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nph1_tot</span> <span class="o">/</span> <span class="n">M</span>
+    <span class="n">results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;nph2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nph2_tot</span> <span class="o">/</span> <span class="n">M</span>
+    <span class="n">results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;nph&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nph_tot</span> <span class="o">/</span> <span class="n">M</span>
+    <span class="n">results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;norm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">norm</span>
+    <span class="n">results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;smoothing_length&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">smoothing_length</span>
+    <span class="n">results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;df&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">freq</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">output_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">return_objects</span><span class="p">:</span>
+        <span class="n">result_table</span> <span class="o">=</span> <span class="n">results</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">results</span><span class="p">[</span><span class="s2">&quot;pds1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_periodograms_from_FAD_results</span><span class="p">(</span><span class="n">result_table</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;pds1&quot;</span><span class="p">)</span>
+        <span class="n">results</span><span class="p">[</span><span class="s2">&quot;pds2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_periodograms_from_FAD_results</span><span class="p">(</span><span class="n">result_table</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;pds2&quot;</span><span class="p">)</span>
+        <span class="n">results</span><span class="p">[</span><span class="s2">&quot;cs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_periodograms_from_FAD_results</span><span class="p">(</span><span class="n">result_table</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;cs&quot;</span><span class="p">)</span>
+        <span class="n">results</span><span class="p">[</span><span class="s2">&quot;ptot&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_periodograms_from_FAD_results</span><span class="p">(</span><span class="n">result_table</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;ptot&quot;</span><span class="p">)</span>
+        <span class="n">results</span><span class="p">[</span><span class="s2">&quot;fad&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">result_table</span><span class="p">[</span><span class="s2">&quot;fad&quot;</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">results</span></div>
+
+
+
+<div class="viewcode-block" id="calculate_FAD_correction">
+<a class="viewcode-back" href="../../../api.html#stingray.deadtime.fad.calculate_FAD_correction">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_FAD_correction</span><span class="p">(</span>
+    <span class="n">lc1</span><span class="p">,</span>
+    <span class="n">lc2</span><span class="p">,</span>
+    <span class="n">segment_size</span><span class="p">,</span>
+    <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;frac&quot;</span><span class="p">,</span>
+    <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">smoothing_alg</span><span class="o">=</span><span class="s2">&quot;gauss&quot;</span><span class="p">,</span>
+    <span class="n">smoothing_length</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">tolerance</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+    <span class="n">strict</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">output_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">return_objects</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Calculate Frequency Amplitude Difference-corrected (cross)power spectra.</span>
+
+<span class="sd">    Reference: Bachetti \&amp; Huppenkothen, 2018, ApJ, 853L, 21</span>
+
+<span class="sd">    The two input light curve must be strictly simultaneous, and recorded by</span>
+<span class="sd">    two independent detectors with similar responses, so that the count rates</span>
+<span class="sd">    are similar and dead time is independent.</span>
+<span class="sd">    The method does not apply to different energy channels of the same</span>
+<span class="sd">    instrument, or to the signal observed by two instruments with very</span>
+<span class="sd">    different responses. See the paper for caveats.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    lc1: class:`stingray.ligthtcurve.Lightcurve`</span>
+<span class="sd">        Light curve from channel 1</span>
+<span class="sd">    lc2: class:`stingray.ligthtcurve.Lightcurve`</span>
+<span class="sd">        Light curve from channel 2. Must be strictly simultaneous to ``lc1``</span>
+<span class="sd">        and have the same binning time. Also, it must be strictly independent,</span>
+<span class="sd">        e.g. from a different detector. There must be no dead time cross-talk</span>
+<span class="sd">        between the two light curves.</span>
+<span class="sd">    segment_size: float</span>
+<span class="sd">        The final Fourier products are averaged over many segments of the</span>
+<span class="sd">        input light curves. This is the length of each segment being averaged.</span>
+<span class="sd">        Note that the light curve must be long enough to have at least 30</span>
+<span class="sd">        segments, as the result gets better as one averages more and more</span>
+<span class="sd">        segments.</span>
+
+<span class="sd">    norm: {``frac``, ``abs``, ``leahy``, ``none``}, default ``none``</span>
+<span class="sd">        The normalization of the (real part of the) cross spectrum.</span>
+
+
+<span class="sd">    Other parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    plot : bool, default False</span>
+<span class="sd">        Plot diagnostics: check if the smoothed Fourier difference scatter is</span>
+<span class="sd">        a good approximation of the data scatter.</span>
+<span class="sd">    ax : :class:`matplotlib.axes.axes` object</span>
+<span class="sd">        If not None and ``plot`` is True, use this axis object to produce</span>
+<span class="sd">         the diagnostic plot. Otherwise, create a new figure.</span>
+<span class="sd">    smoothing_alg : {&#39;gauss&#39;, ...}</span>
+<span class="sd">        Smoothing algorithm. For now, the only smoothing algorithm allowed is</span>
+<span class="sd">        ``gauss``, which applies a Gaussian Filter from `scipy`.</span>
+<span class="sd">    smoothing_length : int, default ``segment_size * 3``</span>
+<span class="sd">        Number of bins to smooth in gaussian window smoothing</span>
+<span class="sd">    verbose: bool, default False</span>
+<span class="sd">        Print out information on the outcome of the algorithm (recommended)</span>
+<span class="sd">    tolerance : float, default 0.05</span>
+<span class="sd">        Accepted relative error on the FAD-corrected Fourier amplitude, to be</span>
+<span class="sd">        used as success diagnostics.</span>
+<span class="sd">        Should be</span>
+<span class="sd">        ```</span>
+<span class="sd">        stdtheor = 2 / np.sqrt(n)</span>
+<span class="sd">        std = (average_corrected_fourier_diff / n).std()</span>
+<span class="sd">        np.abs((std - stdtheor) / stdtheor) &lt; tolerance</span>
+<span class="sd">        ```</span>
+<span class="sd">    strict : bool, default False</span>
+<span class="sd">        Decide what to do if the condition on tolerance is not met. If True,</span>
+<span class="sd">        raise a ``RuntimeError``. If False, just throw a warning.</span>
+<span class="sd">    output_file : str, default None</span>
+<span class="sd">        Name of an output file (any extension automatically recognized by</span>
+<span class="sd">        Astropy is fine)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    results : class:`astropy.table.Table` object or ``dict`` or ``str``</span>
+<span class="sd">        The content of ``results`` depends on whether ``return_objects`` is</span>
+<span class="sd">        True or False.</span>
+<span class="sd">        If ``return_objects==False``,</span>
+<span class="sd">        ``results`` is a `Table` with the following columns:</span>
+
+<span class="sd">        + pds1: the corrected PDS of ``lc1``</span>
+<span class="sd">        + pds2: the corrected PDS of ``lc2``</span>
+<span class="sd">        + cs: the corrected cospectrum</span>
+<span class="sd">        + ptot: the corrected PDS of lc1 + lc2</span>
+
+<span class="sd">        If ``return_objects`` is True, ``results`` is a ``dict``, with keys</span>
+<span class="sd">        named like the columns</span>
+<span class="sd">        listed above but with `AveragePowerspectrum` or</span>
+<span class="sd">        `AverageCrossspectrum` objects instead of arrays.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">FAD</span><span class="p">(</span>
+        <span class="n">lc1</span><span class="p">,</span>
+        <span class="n">lc2</span><span class="p">,</span>
+        <span class="n">segment_size</span><span class="p">,</span>
+        <span class="n">dt</span><span class="o">=</span><span class="n">lc1</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+        <span class="n">plot</span><span class="o">=</span><span class="n">plot</span><span class="p">,</span>
+        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+        <span class="n">smoothing_alg</span><span class="o">=</span><span class="n">smoothing_alg</span><span class="p">,</span>
+        <span class="n">smoothing_length</span><span class="o">=</span><span class="n">smoothing_length</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+        <span class="n">tolerance</span><span class="o">=</span><span class="n">tolerance</span><span class="p">,</span>
+        <span class="n">strict</span><span class="o">=</span><span class="n">strict</span><span class="p">,</span>
+        <span class="n">output_file</span><span class="o">=</span><span class="n">output_file</span><span class="p">,</span>
+        <span class="n">return_objects</span><span class="o">=</span><span class="n">return_objects</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="get_periodograms_from_FAD_results">
+<a class="viewcode-back" href="../../../api.html#stingray.deadtime.fad.get_periodograms_from_FAD_results">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_periodograms_from_FAD_results</span><span class="p">(</span><span class="n">FAD_results</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;ptot&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get Stingray periodograms from FAD results.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    FAD_results : :class:`astropy.table.Table` object or `str`</span>
+<span class="sd">        Results from `calculate_FAD_correction`, either as a Table or an output</span>
+<span class="sd">        file name</span>
+<span class="sd">    kind : :class:`str`, one of [&#39;ptot&#39;, &#39;pds1&#39;, &#39;pds2&#39;, &#39;cs&#39;]</span>
+<span class="sd">        Kind of periodogram to get (E.g., &#39;ptot&#39; -&gt; PDS from the sum of the two</span>
+<span class="sd">        light curves, &#39;cs&#39; -&gt; cospectrum, etc.)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    results : `AveragedCrossspectrum` or `Averagedpowerspectrum` object</span>
+<span class="sd">        The periodogram.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">FAD_results</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">FAD_results</span> <span class="o">=</span> <span class="n">Table</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">FAD_results</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">kind</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;p&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">kind</span> <span class="ow">in</span> <span class="n">FAD_results</span><span class="o">.</span><span class="n">colnames</span><span class="p">:</span>
+        <span class="n">powersp</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="p">()</span>
+        <span class="n">powersp</span><span class="o">.</span><span class="n">nphots</span> <span class="o">=</span> <span class="n">FAD_results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;nph&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;1&quot;</span> <span class="ow">in</span> <span class="n">kind</span><span class="p">:</span>
+            <span class="n">powersp</span><span class="o">.</span><span class="n">nphots</span> <span class="o">=</span> <span class="n">FAD_results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;nph1&quot;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="s2">&quot;2&quot;</span> <span class="ow">in</span> <span class="n">kind</span><span class="p">:</span>
+            <span class="n">powersp</span><span class="o">.</span><span class="n">nphots</span> <span class="o">=</span> <span class="n">FAD_results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;nph2&quot;</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s2">&quot;cs&quot;</span><span class="p">:</span>
+        <span class="n">powersp</span> <span class="o">=</span> <span class="n">AveragedCrossspectrum</span><span class="p">(</span><span class="n">power_type</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>
+        <span class="n">powersp</span><span class="o">.</span><span class="n">pds1</span> <span class="o">=</span> <span class="n">get_periodograms_from_FAD_results</span><span class="p">(</span><span class="n">FAD_results</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;pds1&quot;</span><span class="p">)</span>
+        <span class="n">powersp</span><span class="o">.</span><span class="n">pds2</span> <span class="o">=</span> <span class="n">get_periodograms_from_FAD_results</span><span class="p">(</span><span class="n">FAD_results</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;pds2&quot;</span><span class="p">)</span>
+        <span class="n">powersp</span><span class="o">.</span><span class="n">nphots1</span> <span class="o">=</span> <span class="n">FAD_results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;nph1&quot;</span><span class="p">]</span>
+        <span class="n">powersp</span><span class="o">.</span><span class="n">nphots2</span> <span class="o">=</span> <span class="n">FAD_results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;nph2&quot;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unknown periodogram type&quot;</span><span class="p">)</span>
+
+    <span class="n">powersp</span><span class="o">.</span><span class="n">freq</span> <span class="o">=</span> <span class="n">FAD_results</span><span class="p">[</span><span class="s2">&quot;freq&quot;</span><span class="p">]</span>
+    <span class="n">powersp</span><span class="o">.</span><span class="n">power</span> <span class="o">=</span> <span class="n">FAD_results</span><span class="p">[</span><span class="n">kind</span><span class="p">]</span>
+    <span class="n">powersp</span><span class="o">.</span><span class="n">unnorm_power</span> <span class="o">=</span> <span class="n">FAD_results</span><span class="p">[</span><span class="n">kind</span> <span class="o">+</span> <span class="s2">&quot;_unnorm&quot;</span><span class="p">]</span>
+    <span class="n">powersp</span><span class="o">.</span><span class="n">power_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">powersp</span><span class="o">.</span><span class="n">power</span><span class="p">)</span>
+    <span class="n">powersp</span><span class="o">.</span><span class="n">unnorm_power_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">powersp</span><span class="o">.</span><span class="n">unnorm_power</span><span class="p">)</span>
+    <span class="n">powersp</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">FAD_results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;M&quot;</span><span class="p">]</span>
+    <span class="n">powersp</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="n">FAD_results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;df&quot;</span><span class="p">]</span>
+    <span class="n">powersp</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="n">FAD_results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;dt&quot;</span><span class="p">]</span>
+    <span class="n">powersp</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">powersp</span><span class="o">.</span><span class="n">freq</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span>
+    <span class="n">powersp</span><span class="o">.</span><span class="n">norm</span> <span class="o">=</span> <span class="n">FAD_results</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;norm&quot;</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">powersp</span></div>
+
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

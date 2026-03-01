@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Observations with frequent data gaps &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Analysing Pulsar Data" href="../../pulsar.html" />
+    <link rel="prev" title="Imports" href="../LAXPC%20analysis/laxpc_analysis.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="../../pulsar.html" title="Analysing Pulsar Data">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="../LAXPC%20analysis/laxpc_analysis.html" title="Imports">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../dataexplo.html" accesskey="U">More Data Exploration</a> &#187;</li>
+      
+      <li>Observations with frequent data gaps</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">load_ext</span> autoreload
+<span class="o">%</span><span class="k">autoreload</span> 2
+<span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventList</span><span class="p">,</span> <span class="n">AveragedPowerspectrum</span><span class="p">,</span> <span class="n">AveragedCrossspectrum</span><span class="p">,</span> <span class="n">Powerspectrum</span><span class="p">,</span> <span class="n">LombScarglePowerspectrum</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="n">ev1</span> <span class="o">=</span> <span class="n">EventList</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s2">&quot;nustar_A_src.evt&quot;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;ogip&quot;</span><span class="p">)</span>
+<span class="n">ev2</span> <span class="o">=</span> <span class="n">EventList</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s2">&quot;nustar_B_src.evt&quot;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;ogip&quot;</span><span class="p">)</span>
+
+<span class="n">ev_tot</span> <span class="o">=</span> <span class="n">ev1</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ev2</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<section id="Observations-with-frequent-data-gaps">
+<h1>Observations with frequent data gaps<a class="headerlink" href="#Observations-with-frequent-data-gaps" title="Link to this heading">¶</a></h1>
+<p>Many X-ray missions are in low-Earth orbits, which means that their target is often occulted by the Earth. Additionally, these satellites can pass through the South-Atlantic Anomaly, where the flux of particles increases the background (and, in some cases, might even damage the detector, so the Science Operations centers often just switch the instruments off for protection).</p>
+<p>This observation of an accreting black hole is an example. Here, transparent red stripes indicate occultation and other bad-data time intervals, while data in good time intervals are plotted in blue:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_10</span> <span class="o">=</span> <span class="n">ev_tot</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lc_10</span><span class="o">.</span><span class="n">time</span> <span class="o">-</span> <span class="n">lc_10</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">lc_10</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;grey&quot;</span><span class="p">)</span>
+<span class="n">lc_10</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">(</span><span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lc_10</span><span class="o">.</span><span class="n">time</span> <span class="o">-</span> <span class="n">lc_10</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">lc_10</span><span class="o">.</span><span class="n">counts</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Time (s)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Counts&quot;</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">g0</span><span class="p">,</span> <span class="n">g1</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">lc_10</span><span class="o">.</span><span class="n">gti</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">lc_10</span><span class="o">.</span><span class="n">gti</span><span class="p">[</span><span class="mi">1</span><span class="p">:]):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axvspan</span><span class="p">(</span><span class="n">g0</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">lc_10</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">g1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">lc_10</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_2_0.png" src="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_2_0.png" />
+</div>
+</div>
+<p>When we study the variability of this light curve, we usually use periodograms. It is well known that these gaps are like square windows, whose Fourier transform has infinite harmonics, and that gets convolved with the actual variability of the data. If we were to ignore the good time intervals and just get a <code class="docutils literal notranslate"><span class="pre">Periodogram</span></code> of the dataset, we would get something like this (the black vertical line indicates the orbital period of the satellite and some of its harmonics):</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev_tot_dirty</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">ev_tot</span><span class="p">)</span>
+<span class="n">ev_tot_dirty</span><span class="o">.</span><span class="n">gti</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([[</span><span class="n">ev_tot</span><span class="o">.</span><span class="n">gti</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">ev_tot</span><span class="o">.</span><span class="n">gti</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]])</span>
+<span class="n">pds_dirty</span> <span class="o">=</span> <span class="n">Powerspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">ev_tot_dirty</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;leahy&quot;</span><span class="p">)</span>
+<span class="n">pds_dirty_reb</span> <span class="o">=</span> <span class="n">pds_dirty</span><span class="o">.</span><span class="n">rebin_log</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="n">pds_dirty_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds_dirty_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">drawstyle</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency (Hz)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Power (Leahy)&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">9</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">i</span> <span class="o">/</span> <span class="mi">97</span> <span class="o">/</span> <span class="mi">60</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_5_0.png" src="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_5_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">semilogy</span><span class="p">(</span><span class="n">pds_dirty_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds_dirty_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">drawstyle</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency (Hz)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Power (Leahy)&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">30</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">i</span> <span class="o">/</span> <span class="mi">97</span> <span class="o">/</span> <span class="mi">60</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">([</span><span class="mf">5e-5</span><span class="p">,</span> <span class="mf">5e-3</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(5e-05, 0.005)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_6_1.png" src="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_6_1.png" />
+</div>
+</div>
+<p>Yes, we do see a nice QPO there, but how can we be sure about the low-frequency continuum when it’s so polluted from the harmonics of the observing window?</p>
+<p>A proper treatment of gaps is not possible at these long timescales, but gaps can certainly be ignored at shorter time scales. As we’ve seen in the <code class="docutils literal notranslate"><span class="pre">AveragedPowerspectrum</span></code> tutorial, we can study the short-term variability with</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pds</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="p">(</span><span class="n">ev_tot</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;leahy&quot;</span><span class="p">)</span>
+<span class="n">pds_reb</span> <span class="o">=</span> <span class="n">pds</span><span class="o">.</span><span class="n">rebin_log</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+258it [00:00, 1671.53it/s]
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="n">pds_dirty_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds_dirty_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">drawstyle</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;grey&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="n">pds_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">drawstyle</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency (Hz)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Power (Leahy)&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">i</span> <span class="o">/</span> <span class="mi">97</span> <span class="o">/</span> <span class="mi">60</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_9_0.png" src="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_9_0.png" />
+</div>
+</div>
+<p>Note that, while the “clean” and “dirty” periodograms at high frequencies mostly match, at low frequencies the two diverge. The low-frequency periodogram cannot be trusted if one does not use some trick to avoid the gaps.</p>
+</section>
+<section id="The-Lomb-Scargle-periodogram">
+<h1>The Lomb-Scargle periodogram<a class="headerlink" href="#The-Lomb-Scargle-periodogram" title="Link to this heading">¶</a></h1>
+<p>Fortunately, a method exists and is called the <em>Lomb Scargle periodogram</em> (<a class="reference external" href="https://iopscience.iop.org/article/10.3847/1538-4365/aab766/pdf">See this review from Jake Van Der Plas</a>)</p>
+<p>The method is slower than the standard periodogram, so we will limit its usage to the interesting frequency range.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">maxfreq</span> <span class="o">=</span> <span class="mf">1.</span>
+<span class="n">dt</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">/</span> <span class="n">maxfreq</span>  <span class="c1"># Using the Nyquist limit</span>
+<span class="n">ls</span> <span class="o">=</span> <span class="n">LombScarglePowerspectrum</span><span class="p">(</span><span class="n">ev_tot</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">max_freq</span><span class="o">=</span><span class="n">maxfreq</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;leahy&quot;</span><span class="p">)</span>
+<span class="n">ls_reb</span> <span class="o">=</span> <span class="n">ls</span><span class="o">.</span><span class="n">rebin_log</span><span class="p">(</span><span class="mf">0.02</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds_dirty_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds_dirty_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Powerspectrum, ignore gtis&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;grey&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;AveragedPowerspectrum&quot;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ls_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ls_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Lomb-Scargle periodogram&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mf">1e6</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">&quot;upper right&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">i</span> <span class="o">/</span> <span class="mi">97</span> <span class="o">/</span> <span class="mi">60</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_12_0.png" src="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_12_0.png" />
+</div>
+</div>
+<p>Now we’re talking! The Lomb-Scargle periodogram nicely connects to the low-frequency part of the periodogram. Now, we can try to model the low-frequency continuum more confidently.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">semilogy</span><span class="p">(</span><span class="n">pds_dirty_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds_dirty_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">drawstyle</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;AveragedPowerspectrum&quot;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ls_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ls_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Lomb-Scargle periodogram&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency (Hz)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Power (Leahy)&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">30</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">i</span> <span class="o">/</span> <span class="mi">97</span> <span class="o">/</span> <span class="mi">60</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">([</span><span class="mf">5e-5</span><span class="p">,</span> <span class="mf">3e-3</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(5e-05, 0.003)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_14_1.png" src="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_14_1.png" />
+</div>
+</div>
+<p>We might still expect to detect the satellite orbital time scale in the periodogram, due to the imperfect frequency response during the orbit, but it’s a lower-order problem now.</p>
+<p>Looking into more detail, the two curves do not exactly match, in particular close to the maximum frequency:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds_dirty_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds_dirty_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Powerspectrum, ignore gtis&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;grey&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;AveragedPowerspectrum&quot;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ls_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ls_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Lomb-Scargle periodogram&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(1.0, 10.0)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_16_1.png" src="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_16_1.png" />
+</div>
+</div>
+<p>That little “wiggle” happens somewhere between 0.5 and 1 times the “Nyquist” frequency when data are mostly evenly sampled as in our case. The solution is simply to use a smaller sampling time while maintaining the same maximum frequency.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">maxfreq</span> <span class="o">=</span> <span class="mf">1.</span>
+<span class="n">dt</span> <span class="o">=</span> <span class="mf">0.2</span> <span class="o">/</span> <span class="n">maxfreq</span>  <span class="c1"># smaller than the Nyquist limit</span>
+<span class="n">ls</span> <span class="o">=</span> <span class="n">LombScarglePowerspectrum</span><span class="p">(</span><span class="n">ev_tot</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">max_freq</span><span class="o">=</span><span class="n">maxfreq</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;leahy&quot;</span><span class="p">)</span>
+<span class="n">ls_reb</span> <span class="o">=</span> <span class="n">ls</span><span class="o">.</span><span class="n">rebin_log</span><span class="p">(</span><span class="mf">0.02</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds_dirty_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds_dirty_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Powerspectrum, ignore gtis&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;grey&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;AveragedPowerspectrum&quot;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ls_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ls_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Lomb-Scargle periodogram&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(1.0, 10.0)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_18_1.png" src="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_18_1.png" />
+</div>
+</div>
+</section>
+<section id="The-Cross-spectrum">
+<h1>The Cross spectrum<a class="headerlink" href="#The-Cross-spectrum" title="Link to this heading">¶</a></h1>
+<p>A great new addition to Stingray is the Lomb-Scargle <em>cross</em> spectrum. The cross spectrum is the basis for many of the spectral-timing techniques that Stingray was born for (e.g. the covariance spectrum, time lags).</p>
+<p>Here we show a simple usage of the cross spectrum as a proxy for the (Poisson noise-subtracted) power density spectrum, using two datasets from two identical instruments onboard the same satellite.</p>
+<p>Time lags measured with this cross spectrum make sense in our tests, only when the light curves are sampled at the same times. Also, we do not provide error bars on the time lags at the moment. Use with care!</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">LombScargleCrossspectrum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.gti</span><span class="w"> </span><span class="kn">import</span> <span class="n">cross_two_gtis</span>
+<span class="n">gti</span> <span class="o">=</span> <span class="n">cross_two_gtis</span><span class="p">(</span><span class="n">ev1</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="n">ev2</span><span class="o">.</span><span class="n">gti</span><span class="p">)</span>
+<span class="n">ev1</span><span class="o">.</span><span class="n">gti</span> <span class="o">=</span> <span class="n">gti</span>
+<span class="n">ev2</span><span class="o">.</span><span class="n">gti</span> <span class="o">=</span> <span class="n">gti</span>
+<span class="n">lscs</span> <span class="o">=</span> <span class="n">LombScargleCrossspectrum</span><span class="p">(</span><span class="n">ev1</span><span class="p">,</span> <span class="n">ev2</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;leahy&quot;</span><span class="p">)</span>
+<span class="n">lscs_reb</span> <span class="o">=</span> <span class="n">lscs</span><span class="o">.</span><span class="n">rebin_log</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
+
+<span class="n">cs</span> <span class="o">=</span> <span class="n">AveragedCrossspectrum</span><span class="p">(</span><span class="n">ev1</span><span class="p">,</span> <span class="n">ev2</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;leahy&quot;</span><span class="p">)</span>
+<span class="n">cs_reb</span> <span class="o">=</span> <span class="n">cs</span><span class="o">.</span><span class="n">rebin_log</span><span class="p">(</span><span class="mf">0.02</span><span class="p">)</span>
+
+<span class="c1"># plt.plot(pds_dirty_reb.freq, pds_dirty_reb.power, alpha=0.5, ds=&quot;steps-mid&quot;, label=&quot;Powerspectrum, ignore gtis&quot;, color=&quot;grey&quot;)</span>
+<span class="c1"># plt.plot(pds_reb.freq, pds_reb.power, ds=&quot;steps-mid&quot;, label=&quot;AveragedPowerspectrum&quot;, zorder=10)</span>
+<span class="c1"># plt.plot(ls_reb.freq, ls_reb.power, ds=&quot;steps-mid&quot;, label=&quot;Lomb-Scargle periodogram&quot;)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cs_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">cs_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;AveragedCrossspectrum&quot;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">()</span>
+<span class="n">good</span> <span class="o">=</span> <span class="n">lscs_reb</span><span class="o">.</span><span class="n">freq</span> <span class="o">&lt;</span> <span class="n">maxfreq</span> <span class="o">/</span> <span class="mi">2</span>
+<span class="n">lscs_reb</span><span class="o">.</span><span class="n">freq</span> <span class="o">=</span> <span class="n">lscs_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">[</span><span class="n">good</span><span class="p">]</span>
+<span class="n">lscs_reb</span><span class="o">.</span><span class="n">power</span> <span class="o">=</span> <span class="n">lscs_reb</span><span class="o">.</span><span class="n">power</span><span class="p">[</span><span class="n">good</span><span class="p">]</span>
+<span class="n">lscs_reb</span><span class="o">.</span><span class="n">unnorm_power</span> <span class="o">=</span> <span class="n">lscs_reb</span><span class="o">.</span><span class="n">unnorm_power</span><span class="p">[</span><span class="n">good</span><span class="p">]</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lscs_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">lscs_reb</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Lomb-Scargle cross spectrum&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+258it [00:02, 107.72it/s]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[&lt;matplotlib.lines.Line2D at 0x177fb2290&gt;]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_20_2.png" src="../../_images/notebooks_LombScargle_Very_slow_variability_with_Lomb-Scargle_methods_20_2.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Observations with frequent data gaps</a></li>
+<li><a class="reference internal" href="#The-Lomb-Scargle-periodogram">The Lomb-Scargle periodogram</a></li>
+<li><a class="reference internal" href="#The-Cross-spectrum">The Cross spectrum</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/LombScargle/Very slow variability with Lomb-Scargle methods.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

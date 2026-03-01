@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Why using weights? &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Gaussian Processes Inferencing in Stingray" href="../Modeling/GP_Modeling/GP_modeling_tutorial.html" />
+    <link rel="prev" title="Introduction" href="StingrayTimeseries%20Tutorial.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="../Modeling/GP_Modeling/GP_modeling_tutorial.html" title="Gaussian Processes Inferencing in Stingray">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="StingrayTimeseries%20Tutorial.html" title="Introduction">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../timeseries.html" accesskey="U">Working with more generic time series</a> &#187;</li>
+      
+      <li>Why using weights?</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">load_ext</span> autoreload
+<span class="o">%</span><span class="k">autoreload</span> 2
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">StingrayTimeseries</span><span class="p">,</span> <span class="n">EventList</span><span class="p">,</span> <span class="n">Lightcurve</span><span class="p">,</span> <span class="n">Powerspectrum</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<br/></pre></div>
+</div>
+</div>
+<section id="Why-using-weights?">
+<h1>Why using weights?<a class="headerlink" href="#Why-using-weights?" title="Link to this heading">¶</a></h1>
+<p>In some missions like Fermi, events are assigned a weight. The weight measures the probability that a given event is associated with the source, based on position and data quality.</p>
+<p>In this tutorial, we go beyond the concept of count light curves and show how to use weighted event lists. We will use <code class="docutils literal notranslate"><span class="pre">StingrayTimeseries</span></code> objects, that allow for more flexibility than <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code>s.</p>
+<p>Note that that weight can have any name. Here, we will call it <code class="docutils literal notranslate"><span class="pre">poids</span></code>, using the French term for <code class="docutils literal notranslate"><span class="pre">weight</span></code></p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># The FOV is assumed to be a detector with 1000 x 1000 pixels</span>
+<span class="n">center</span> <span class="o">=</span> <span class="mi">50</span>
+<span class="c1"># The source is right at the center, with a Gaussian spread of 10 pixels</span>
+<span class="n">pixel_spread</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">min_pixel</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">max_pixel</span> <span class="o">=</span> <span class="mi">100</span>
+
+<span class="c1"># Create an event list with a pulsation</span>
+<span class="n">freq</span> <span class="o">=</span> <span class="mf">1.2</span>
+<span class="n">ampl</span> <span class="o">=</span> <span class="mf">1.</span>
+
+<span class="c1"># Input Light curve characteristics</span>
+<span class="n">t0</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">t1</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="c1"># Dt should be smaller and not an integer divisor of the period</span>
+<span class="n">dt</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">971</span><span class="o">*</span><span class="mi">3</span><span class="p">)</span> <span class="o">/</span> <span class="n">freq</span>
+<span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">t0</span> <span class="o">+</span> <span class="n">dt</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">t1</span> <span class="o">-</span> <span class="n">dt</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span>
+
+<span class="c1"># The actual number will be a random number, Poisson-distributed</span>
+<span class="n">raw_n_pulsed_counts</span> <span class="o">=</span> <span class="mi">2000</span>
+<span class="n">n_background_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="mi">200000</span><span class="p">)</span>
+
+<span class="c1"># Normalize so that the sum gives the number of expected counts</span>
+<span class="n">continuous_pulsed_counts</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">ampl</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq</span> <span class="o">*</span> <span class="n">times</span><span class="p">))</span>
+<span class="n">continuous_pulsed_counts</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">continuous_pulsed_counts</span><span class="p">)</span>
+<span class="n">continuous_pulsed_counts</span> <span class="o">*=</span> <span class="n">raw_n_pulsed_counts</span>
+
+<span class="c1"># This light curve only serves the purpose of the simulation</span>
+<span class="n">continuous_pulsed_lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">continuous_pulsed_counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">pulsed_ev</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">gti</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([[</span><span class="n">t0</span><span class="p">,</span> <span class="n">t1</span><span class="p">]]))</span>
+<span class="n">pulsed_ev</span><span class="o">.</span><span class="n">simulate_times</span><span class="p">(</span><span class="n">continuous_pulsed_lc</span><span class="p">)</span>
+<span class="n">n_pulsed_counts</span> <span class="o">=</span> <span class="n">pulsed_ev</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">size</span>
+
+<span class="n">unpulsed_ev</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t1</span><span class="p">,</span> <span class="n">n_background_counts</span><span class="p">)),</span> <span class="n">gti</span><span class="o">=</span><span class="n">pulsed_ev</span><span class="o">.</span><span class="n">gti</span><span class="p">)</span>
+
+<span class="c1"># Now, give each event a position.</span>
+<span class="n">pulsed_ev</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">center</span><span class="p">,</span> <span class="n">pixel_spread</span><span class="p">,</span> <span class="n">n_pulsed_counts</span><span class="p">)</span>
+<span class="n">pulsed_ev</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">center</span><span class="p">,</span> <span class="n">pixel_spread</span><span class="p">,</span> <span class="n">n_pulsed_counts</span><span class="p">)</span>
+
+<span class="n">unpulsed_ev</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">min_pixel</span><span class="p">,</span> <span class="n">max_pixel</span><span class="p">,</span> <span class="n">n_background_counts</span><span class="p">)</span>
+<span class="n">unpulsed_ev</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">min_pixel</span><span class="p">,</span> <span class="n">max_pixel</span><span class="p">,</span> <span class="n">n_background_counts</span><span class="p">)</span>
+
+<span class="n">ev</span> <span class="o">=</span> <span class="n">pulsed_ev</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">unpulsed_ev</span><span class="p">)</span>
+
+<span class="c1"># The weight is a probability that an event is from the source, given the</span>
+<span class="c1"># distance from the center of the FOV.</span>
+<span class="n">weight</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">pixel_spread</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span> <span class="o">/</span> <span class="n">pixel_spread</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="p">((</span><span class="n">ev</span><span class="o">.</span><span class="n">x</span> <span class="o">-</span> <span class="n">center</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">ev</span><span class="o">.</span><span class="n">y</span> <span class="o">-</span> <span class="n">center</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+<span class="c1"># weight[weight &lt; 1e-10] = 0</span>
+<span class="n">ev</span><span class="o">.</span><span class="n">poids</span> <span class="o">=</span> <span class="n">weight</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">hist2d</span><span class="p">(</span><span class="n">ev</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">ev</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;twilight&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_3_0.png" src="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_3_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">hist2d</span><span class="p">(</span><span class="n">ev</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">ev</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">ev</span><span class="o">.</span><span class="n">poids</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;twilight&quot;</span><span class="p">);</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_4_0.png" src="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_4_0.png" />
+</div>
+</div>
+<p>Now, let us create a <code class="docutils literal notranslate"><span class="pre">StingrayTimeseries</span></code> object from this event list.</p>
+<p>By default, the <code class="docutils literal notranslate"><span class="pre">to_binned_timeseries</span></code> method calculates a series from the weighted sum of all attributes of the same length of <code class="docutils literal notranslate"><span class="pre">ev.time</span></code> (such as <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>), plus the number of counts per bin (like in <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code>).</p>
+<p>However, one can specify a list of attributes to weigh on through the <code class="docutils literal notranslate"><span class="pre">array_attrs</span></code> keyword.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Let&#39;s use a different dt</span>
+<span class="n">ts_dt</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">89</span><span class="p">)</span> <span class="o">/</span> <span class="n">freq</span>
+<span class="n">ts_all</span> <span class="o">=</span> <span class="n">ev</span><span class="o">.</span><span class="n">to_binned_timeseries</span><span class="p">(</span><span class="n">ts_dt</span><span class="p">)</span>
+<span class="n">ts</span> <span class="o">=</span> <span class="n">ev</span><span class="o">.</span><span class="n">to_binned_timeseries</span><span class="p">(</span><span class="n">ts_dt</span><span class="p">,</span> <span class="n">array_attrs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;poids&quot;</span><span class="p">})</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Attributes without the array_attrs keyword:&quot;</span><span class="p">,</span> <span class="n">ts_all</span><span class="o">.</span><span class="n">array_attrs</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Attributes with the array_attrs keyword:&quot;</span><span class="p">,</span> <span class="n">ts</span><span class="o">.</span><span class="n">array_attrs</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Attributes without the array_attrs keyword: [&#39;counts&#39;, &#39;poids&#39;, &#39;x&#39;, &#39;y&#39;]
+Attributes with the array_attrs keyword: [&#39;counts&#39;, &#39;poids&#39;]
+</pre></div></div>
+</div>
+<p>Since event lists might have many attributes, it is advisable to select which ones to transform in weights.</p>
+<p>Giving an empty dictionary (<code class="docutils literal notranslate"><span class="pre">array_attrs={}</span></code>) creates something very similar to a standard <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code></p>
+<p>Finally, for usage with <code class="docutils literal notranslate"><span class="pre">Powerspectrum</span></code>, let us assign a mean error for the weights. This will only work and make sense when the vast majority of events are from noise.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ts</span><span class="o">.</span><span class="n">poids_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">poids</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">poids</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+</section>
+<section id="Timing-analysis-using-StingrayTimeseries">
+<h1>Timing analysis using StingrayTimeseries<a class="headerlink" href="#Timing-analysis-using-StingrayTimeseries" title="Link to this heading">¶</a></h1>
+<p>The timing analysis that can be done with a StingrayTimeseries object is very similar to the one doable with a <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code>. For example, we can call the <code class="docutils literal notranslate"><span class="pre">from_stingray_timeseries</span></code> method of <code class="docutils literal notranslate"><span class="pre">Powerspectrum</span></code>.</p>
+<p>Note that in this case we have to specify which attribute to use as flux (in the <code class="docutils literal notranslate"><span class="pre">from_lightcurve</span></code> method, <code class="docutils literal notranslate"><span class="pre">counts</span></code> was the default). For this, we use the <code class="docutils literal notranslate"><span class="pre">flux_attr</span></code> keyword.</p>
+<p>We can also, optionally, specify another attribute which will serve as an error bar for those normalizations where it makes sense. For this, we use the <code class="docutils literal notranslate"><span class="pre">error_flux_attr</span></code> keyword.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ps_counts</span> <span class="o">=</span> \
+    <span class="n">Powerspectrum</span><span class="o">.</span><span class="n">from_stingray_timeseries</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">flux_attr</span><span class="o">=</span><span class="s2">&quot;counts&quot;</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;leahy&quot;</span><span class="p">)</span>
+<span class="n">ps_weighted</span> <span class="o">=</span> \
+    <span class="n">Powerspectrum</span><span class="o">.</span><span class="n">from_stingray_timeseries</span><span class="p">(</span>
+        <span class="n">ts</span><span class="p">,</span> <span class="n">flux_attr</span><span class="o">=</span><span class="s2">&quot;poids&quot;</span><span class="p">,</span> <span class="n">error_flux_attr</span><span class="o">=</span><span class="s2">&quot;poids_err&quot;</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;leahy&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">higher</span> <span class="o">=</span> <span class="n">ps_weighted</span><span class="o">.</span><span class="n">power</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">ps_counts</span><span class="o">.</span><span class="n">power</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ps_counts</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span>
+         <span class="n">ps_counts</span><span class="o">.</span><span class="n">power</span><span class="p">,</span>
+         <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span> <span class="k">if</span> <span class="n">higher</span> <span class="k">else</span> <span class="mi">0</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ps_weighted</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span>
+         <span class="n">ps_weighted</span><span class="o">.</span><span class="n">power</span><span class="p">,</span>
+         <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">higher</span> <span class="k">else</span> <span class="mi">0</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.lines.Line2D at 0x176660ca0&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_12_1.png" src="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_12_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ps_counts</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span>
+         <span class="n">ps_counts</span><span class="o">.</span><span class="n">power</span><span class="p">,</span>
+         <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span> <span class="k">if</span> <span class="n">higher</span> <span class="k">else</span> <span class="mi">0</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ps_weighted</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span>
+         <span class="n">ps_weighted</span><span class="o">.</span><span class="n">power</span><span class="p">,</span>
+         <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">higher</span> <span class="k">else</span> <span class="mi">0</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">semilogy</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(2, 1021.5756611715042)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_13_1.png" src="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_13_1.png" />
+</div>
+</div>
+<p>As we can see, the analysis using weights has found the pulsation whereas the one considering just the events hasn’t.</p>
+<p>This was a very trivial case, where the selection could have been done by just selecting events around the source position. But weights might take into account many other factors, such as the energy, the data quality, and more.</p>
+</section>
+<section id="Polarimetric-light-curves">
+<h1>Polarimetric light curves<a class="headerlink" href="#Polarimetric-light-curves" title="Link to this heading">¶</a></h1>
+<p>Another case that might be useful is when we are looking for a pulsation not in the flux, but in some other quantity. This might be the case, for example, in polarimetric light curves.</p>
+<p>In the following example, we introduce a significant periodic change of polarization in a signal which has no periodic modulation of the flux.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">extract_varying_random_photon_angles</span><span class="p">(</span><span class="n">photon_times</span><span class="p">,</span> <span class="n">psi_mean</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">psi_amp</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">pd_mean</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">pd_amp</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">n_bins_per_cycle</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">N</span> <span class="o">=</span><span class="mi">100</span><span class="p">):</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.interpolate</span><span class="w"> </span><span class="kn">import</span> <span class="n">interp1d</span>
+
+    <span class="n">pulse_cycles</span> <span class="o">=</span> <span class="n">photon_times</span> <span class="o">*</span> <span class="n">freq</span>
+    <span class="n">pulse_cycle_frac</span> <span class="o">=</span> <span class="n">pulse_cycles</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">pulse_cycles</span><span class="p">)</span>
+    <span class="n">order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">pulse_cycle_frac</span><span class="p">)</span>
+    <span class="n">disordered_photon_times</span> <span class="o">=</span> <span class="n">photon_times</span><span class="p">[</span><span class="n">order</span><span class="p">]</span>
+
+    <span class="n">sorted_cycle_frac</span> <span class="o">=</span> <span class="n">pulse_cycle_frac</span><span class="p">[</span><span class="n">order</span><span class="p">]</span>
+
+    <span class="n">random_angles</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">photon_times</span><span class="p">)</span>
+
+    <span class="n">idx0</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">delta_cycle_frac</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">n_bins_per_cycle</span>
+    <span class="n">angles</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="n">N</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">baseline</span> <span class="o">=</span> <span class="n">photon_times</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="n">n_bins_per_cycle</span>
+    <span class="n">A_mean</span> <span class="o">=</span> <span class="n">pd_mean</span> <span class="o">*</span> <span class="n">baseline</span>
+    <span class="n">A_amp</span> <span class="o">=</span> <span class="n">pd_amp</span> <span class="o">*</span> <span class="n">baseline</span>
+    <span class="k">for</span> <span class="n">cycle_no</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_bins_per_cycle</span><span class="p">):</span>
+        <span class="n">idx1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">sorted_cycle_frac</span><span class="p">[</span><span class="n">idx0</span><span class="p">:],</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cycle_no</span><span class="p">)</span> <span class="o">*</span> <span class="n">delta_cycle_frac</span><span class="p">)</span>
+
+        <span class="n">sorted_cycle_frac_good</span> <span class="o">=</span> <span class="n">sorted_cycle_frac</span><span class="p">[</span><span class="n">idx0</span><span class="p">:</span> <span class="n">idx0</span> <span class="o">+</span> <span class="n">idx1</span><span class="p">]</span>
+        <span class="n">n_phot</span> <span class="o">=</span> <span class="n">sorted_cycle_frac_good</span><span class="o">.</span><span class="n">size</span>
+        <span class="n">mean_cycle_frac</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.5</span> <span class="o">+</span> <span class="n">cycle_no</span><span class="p">)</span> <span class="o">*</span> <span class="n">delta_cycle_frac</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">A_mean</span> <span class="o">+</span> <span class="n">A_amp</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">mean_cycle_frac</span><span class="p">)</span>
+        <span class="n">psi</span> <span class="o">=</span> <span class="n">psi_mean</span> <span class="o">+</span> <span class="n">psi_amp</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">mean_cycle_frac</span><span class="p">)</span>
+
+        <span class="c1"># TODO: be safe at edges of distribution</span>
+        <span class="c1"># The distribution is the one expected for polarization angles.</span>
+        <span class="n">distr</span> <span class="o">=</span> <span class="n">A</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">angles</span><span class="o">+</span> <span class="n">psi</span><span class="p">))</span> <span class="o">+</span> <span class="n">baseline</span>
+
+        <span class="n">norm_distr</span> <span class="o">=</span> <span class="n">distr</span> <span class="o">/</span> <span class="n">distr</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">dph</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">distr</span><span class="o">.</span><span class="n">size</span>
+        <span class="n">cdf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">norm_distr</span><span class="p">)</span>
+        <span class="n">cdf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(([</span><span class="mi">0</span><span class="p">],</span> <span class="n">cdf</span><span class="p">))</span>
+
+        <span class="n">interp</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">cdf</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">dph</span><span class="p">,</span> <span class="n">dph</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">),</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;cubic&quot;</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="s2">&quot;extrapolate&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Generate random values of polarization angle with the inverse CDF method.</span>
+        <span class="n">random_cdf_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n_phot</span><span class="p">)</span>
+        <span class="n">random_angles</span><span class="p">[</span><span class="n">idx0</span><span class="p">:</span> <span class="n">idx0</span> <span class="o">+</span> <span class="n">idx1</span><span class="p">]</span> <span class="o">=</span> <span class="n">interp</span><span class="p">(</span><span class="n">random_cdf_val</span><span class="p">)</span>
+        <span class="c1"># Note that we searched from idx0 on</span>
+        <span class="n">idx0</span> <span class="o">+=</span> <span class="n">idx1</span>
+
+    <span class="n">order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">disordered_photon_times</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">random_angles</span><span class="p">[</span><span class="n">order</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_angle_distribution_with_pulse_phase</span><span class="p">(</span><span class="n">photon_times</span><span class="p">,</span> <span class="n">random_angles</span><span class="p">,</span> <span class="n">freq</span><span class="p">):</span>
+    <span class="n">pulse_phase</span> <span class="o">=</span> <span class="p">(</span><span class="n">photon_times</span> <span class="o">*</span> <span class="n">freq</span><span class="p">)</span>
+    <span class="n">pulse_phase</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">pulse_phase</span><span class="p">)</span>
+
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+    <span class="n">gs</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_gridspec</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">hspace</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">wspace</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">height_ratios</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">width_ratios</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="c1"># gs = plt.GridSpec(2, 2, height_ratios=[1, 2], width_ratios=[2, 1])</span>
+
+    <span class="p">(</span><span class="n">ax00</span><span class="p">,</span> <span class="n">ax01</span><span class="p">),</span> <span class="p">(</span><span class="n">ax10</span><span class="p">,</span> <span class="n">ax11</span><span class="p">)</span> <span class="o">=</span> <span class="n">gs</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">sharex</span><span class="o">=</span><span class="s1">&#39;col&#39;</span><span class="p">,</span> <span class="n">sharey</span><span class="o">=</span><span class="s1">&#39;row&#39;</span><span class="p">)</span>
+
+    <span class="n">h2</span><span class="p">,</span> <span class="n">binsx</span><span class="p">,</span> <span class="n">binsy</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">ax10</span><span class="o">.</span><span class="n">hist2d</span><span class="p">(</span><span class="n">pulse_phase</span><span class="p">,</span> <span class="n">random_angles</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;twilight&quot;</span><span class="p">)</span>
+    <span class="n">ax10</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;$\psi$&quot;</span><span class="p">)</span>
+    <span class="n">ax10</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;Pulse phase&quot;</span><span class="p">)</span>
+    <span class="n">mean_binsx</span> <span class="o">=</span> <span class="p">(</span><span class="n">binsx</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">binsx</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="n">mean_binsy</span> <span class="o">=</span> <span class="p">(</span><span class="n">binsy</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">binsy</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">h2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+        <span class="n">ax00</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mean_binsx</span><span class="p">,</span> <span class="n">h2</span><span class="p">[:,</span> <span class="n">i</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">h2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="n">ax11</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">h2</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:],</span> <span class="n">mean_binsy</span><span class="p">)</span>
+<br/><br/><br/></pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">n_photons</span> <span class="o">=</span> <span class="mi">100000</span>
+<span class="n">psi_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="mf">22.5</span><span class="p">)</span>
+<span class="c1"># Photon times are completely random. No pulsation</span>
+<span class="n">photon_times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t1</span><span class="p">,</span> <span class="n">n_photons</span><span class="p">))</span>
+
+<span class="c1"># Here we generate polarization angles for all the photons</span>
+<span class="n">random_angles</span> <span class="o">=</span> <span class="n">extract_varying_random_photon_angles</span><span class="p">(</span>
+    <span class="n">photon_times</span><span class="p">,</span>
+    <span class="n">psi_mean</span><span class="o">=</span><span class="n">psi_mean</span><span class="p">,</span>
+    <span class="n">psi_amp</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="c1"># No change of polarization angle</span>
+    <span class="n">pd_mean</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="c1"># A mean polarization degree of 50%</span>
+    <span class="n">pd_amp</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="c1"># A *change* of polarization degree by 10%</span>
+    <span class="n">freq</span><span class="o">=</span><span class="n">freq</span><span class="p">)</span>
+
+<span class="n">plot_angle_distribution_with_pulse_phase</span><span class="p">(</span><span class="n">photon_times</span><span class="p">,</span> <span class="n">random_angles</span><span class="p">,</span> <span class="n">freq</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_17_0.png" src="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_17_0.png" />
+</div>
+</div>
+<p>The plot above shows the change of the modulation curve with pulse phase. Please note: there is no change of flux. There is no pulsation that can be seen in the here, in the pulsed profile (red bands indicate 1, 2, and 3 sigma deviations from the mean):</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">phases</span> <span class="o">=</span> <span class="p">(</span><span class="n">photon_times</span> <span class="o">/</span> <span class="n">freq</span><span class="p">)</span> <span class="o">%</span> <span class="mi">1</span>
+
+<span class="n">profile</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">phases</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">17</span><span class="p">))</span>
+
+<span class="n">mean</span> <span class="o">=</span> <span class="n">profile</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">nsigma</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axhspan</span><span class="p">(</span><span class="n">mean</span> <span class="o">-</span> <span class="n">nsigma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">mean</span><span class="p">),</span> <span class="n">mean</span> <span class="o">+</span> <span class="n">nsigma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">mean</span><span class="p">),</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="s2">&quot;steps-mid&quot;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Pulse Phase&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Counts&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0, 0.5, &#39;Counts&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_19_1.png" src="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_19_1.png" />
+</div>
+</div>
+<p>Now, let us put the polarimetric information in the form of Stokes parameters in an <code class="docutils literal notranslate"><span class="pre">EventList</span></code> object.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev_polar</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">photon_times</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="p">[[</span><span class="n">t0</span><span class="p">,</span> <span class="n">t1</span><span class="p">]])</span>
+<span class="n">ev_polar</span><span class="o">.</span><span class="n">q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">random_angles</span><span class="p">)</span>
+<span class="n">ev_polar</span><span class="o">.</span><span class="n">u</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">random_angles</span><span class="p">)</span>
+
+<span class="n">ts_polar</span> <span class="o">=</span> <span class="n">ev_polar</span><span class="o">.</span><span class="n">to_binned_timeseries</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="n">ts_dt</span><span class="p">,</span> <span class="n">array_attrs</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;q&quot;</span><span class="p">,</span> <span class="s2">&quot;u&quot;</span><span class="p">])</span>
+<span class="n">ts_polar</span><span class="o">.</span><span class="n">array_attrs</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[&#39;counts&#39;, &#39;q&#39;, &#39;u&#39;]
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ax</span> <span class="o">=</span> <span class="n">Powerspectrum</span><span class="o">.</span><span class="n">from_stingray_timeseries</span><span class="p">(</span><span class="n">ts_polar</span><span class="p">,</span> <span class="n">flux_attr</span><span class="o">=</span><span class="s2">&quot;q&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.lines.Line2D at 0x1774ef6d0&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_22_1.png" src="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_22_1.png" />
+</div>
+</div>
+<p>A pulsation in the Q Stokes parameter! Let us see the U parameter:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ax</span> <span class="o">=</span> <span class="n">Powerspectrum</span><span class="o">.</span><span class="n">from_stingray_timeseries</span><span class="p">(</span><span class="n">ts_polar</span><span class="p">,</span> <span class="n">flux_attr</span><span class="o">=</span><span class="s2">&quot;u&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.lines.Line2D at 0x17767be80&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_24_1.png" src="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_24_1.png" />
+</div>
+</div>
+<p>Of course, different mean polarization angles will lead to very different contributions in the U and Q parameters. Our choice of 22.5 degrees was made on purpose, to have similar contributions in the two parameters.</p>
+<p>To reiterate that this pulsation cannot be seen in the flux, we plot the standard power spectrum:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ax</span> <span class="o">=</span> <span class="n">Powerspectrum</span><span class="o">.</span><span class="n">from_stingray_timeseries</span><span class="p">(</span><span class="n">ts_polar</span><span class="p">,</span> <span class="n">flux_attr</span><span class="o">=</span><span class="s2">&quot;counts&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.lines.Line2D at 0x17745fa90&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_27_1.png" src="../../_images/notebooks_StingrayTimeseries_Working_with_weights_and_polarization_27_1.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Why using weights?</a></li>
+<li><a class="reference internal" href="#Timing-analysis-using-StingrayTimeseries">Timing analysis using StingrayTimeseries</a></li>
+<li><a class="reference internal" href="#Polarimetric-light-curves">Polarimetric light curves</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/StingrayTimeseries/Working with weights and polarization.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

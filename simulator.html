@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Stingray Simulator (stingray.simulator) &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=17ab1725" />
+    
+    <script src="_static/jquery.js?v=5d32c60e"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="_static/sidebar.js"></script>
+    <script type="text/javascript" src="_static/copybutton.js"></script>
+    <link rel="icon" href="_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Outline" href="notebooks/Simulator/Concepts/Simulator.html" />
+    <link rel="prev" title="The Stingray Modeling API Explained" href="notebooks/Modeling/ModelingExamples.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="genindex.html">Index</a></li>
+    <li><a title="Module Index" href="py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="notebooks/Simulator/Concepts/Simulator.html" title="Outline">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="notebooks/Modeling/ModelingExamples.html" title="The Stingray Modeling API Explained">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      
+      <li>Stingray Simulator (<code class="xref py py-obj docutils literal notranslate"><span class="pre">stingray.simulator</span></code>)</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="stingray-simulator-stingray-simulator">
+<h1>Stingray Simulator (<code class="xref py py-obj docutils literal notranslate"><span class="pre">stingray.simulator</span></code>)<a class="headerlink" href="#stingray-simulator-stingray-simulator" title="Link to this heading">¶</a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading">¶</a></h2>
+<p><code class="xref py py-obj docutils literal notranslate"><span class="pre">stingray.simulator</span></code> provides a framework to simulate light curves with given variability distributions. In time series experiments, understanding the certainty is crucial to interpret the derived results in context of physical models. The simulator module provides tools to assess this uncertainty by simulating time series and spectral data.</p>
+<p>Stingray simulator supports multiple methods to carry out these simulation. Light curves can be simulated through power-law spectrum, through a user-defined or pre-defined model, or through impulse responses. The module is designed in a way such that all these methods can be accessed using similar set of commands.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="xref py py-obj docutils literal notranslate"><span class="pre">stingray.simulator</span></code> is currently a work-in-progress, and thus it is likely
+there will still be API changes in later versions of Stingray.  Backwards
+compatibility support between versions will still be maintained as much as
+possible, but new features and enhancements are coming in future versions.</p>
+</div>
+</section>
+<section id="getting-started">
+<span id="stingray-getting-started"></span><h2>Getting started<a class="headerlink" href="#getting-started" title="Link to this heading">¶</a></h2>
+<p>The examples here assume that the following libraries and modules have been imported:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span><span class="p">,</span> <span class="n">sampledata</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">simulator</span><span class="p">,</span> <span class="n">models</span>
+</pre></div>
+</div>
+<section id="creating-a-simulator-object">
+<h3>Creating a Simulator Object<a class="headerlink" href="#creating-a-simulator-object" title="Link to this heading">¶</a></h3>
+<p>Stingray has a simulator class which can be used to instantiate a simulator
+object and subsequently, perform simulations. We can pass on arguments to
+this class class to set the properties of the desired light curve.</p>
+<p>The simulator object can be instantiated as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">Simulator</span><span class="p">(</span><span class="n">N</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">0.125</span><span class="p">,</span> <span class="n">rms</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Here, <code class="xref py py-obj docutils literal notranslate"><span class="pre">N</span></code> specifies the bins count of the simulated light curve, <code class="xref py py-obj docutils literal notranslate"><span class="pre">mean</span></code> specifies
+the mean value, <code class="xref py py-obj docutils literal notranslate"><span class="pre">dt</span></code> is the time resolution, and <code class="xref py py-obj docutils literal notranslate"><span class="pre">rms</span></code> is the fractional rms amplitude,
+defined as the ratio of standard deviation to the mean.. Additional arguments can be
+provided e.g. to account for the effect of red noise leakage.</p>
+</section>
+<section id="simulate-method">
+<h3>Simulate Method<a class="headerlink" href="#simulate-method" title="Link to this heading">¶</a></h3>
+<p>Stingray provides multiple ways to simulate a light curve. However, all these methods follow a common recipe:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">Simulator</span><span class="p">(</span><span class="n">N</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">0.125</span><span class="p">,</span> <span class="n">rms</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lc</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="using-power-law-spectrum">
+<h3>Using Power-Law Spectrum<a class="headerlink" href="#using-power-law-spectrum" title="Link to this heading">¶</a></h3>
+<p>When only an integer argument (beta) is provided to the <code class="xref py py-obj docutils literal notranslate"><span class="pre">simulate</span></code> method, that integer defines the shape of the power law spectrum. Passing <code class="xref py py-obj docutils literal notranslate"><span class="pre">beta</span></code> as 1 gives a flicker-noise distribution, while a beta of 2 generates a random-walk distribution.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">rcParams</span>
+<span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;font.family&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;sans-serif&#39;</span>
+<span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;font.sans-serif&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Tahoma&#39;</span><span class="p">]</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">simulator</span>
+
+<span class="c1"># Instantiate simulator object</span>
+<span class="n">sim</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">Simulator</span><span class="p">(</span><span class="n">N</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">0.125</span><span class="p">,</span> <span class="n">rms</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+<span class="c1"># Specify beta value</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="s1">&#39;g&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Random-walk Distribution Simulation&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="s1">&#39;16&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Counts&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="s1">&#39;14&#39;</span><span class="p">,</span> <span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Flux&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="s1">&#39;14&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>(<a class="reference download internal" download="" href="_downloads/57e221082e8b56500cefe6d46e4708c5/simulator-1.py"><code class="xref download docutils literal notranslate"><span class="pre">Source</span> <span class="pre">code</span></code></a>, <a class="reference download internal" download="" href="_downloads/9b1049a0bb3a88bde8ef9037e8090597/simulator-1.png"><code class="xref download docutils literal notranslate"><span class="pre">png</span></code></a>, <a class="reference download internal" download="" href="_downloads/5918583ff0fc69067a254ce95024dadb/simulator-1.hires.png"><code class="xref download docutils literal notranslate"><span class="pre">hires.png</span></code></a>, <a class="reference download internal" download="" href="_downloads/fa0debfa94ffa24a10f2357632d98fa8/simulator-1.pdf"><code class="xref download docutils literal notranslate"><span class="pre">pdf</span></code></a>)</p>
+<figure class="align-default">
+<img alt="_images/simulator-1.png" class="plot-directive" src="_images/simulator-1.png" />
+</figure>
+</section>
+<section id="using-user-defined-model">
+<h3>Using User-defined Model<a class="headerlink" href="#using-user-defined-model" title="Link to this heading">¶</a></h3>
+<p>Light curve can also be simulated using a user-defined spectrum, which can be
+passed on as a numpy array.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">rcParams</span>
+<span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;font.family&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;sans-serif&#39;</span>
+<span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;font.sans-serif&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Tahoma&#39;</span><span class="p">]</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">simulator</span>
+
+<span class="c1"># Instantiate simulator object</span>
+<span class="n">sim</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">Simulator</span><span class="p">(</span><span class="n">N</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">0.125</span><span class="p">,</span> <span class="n">rms</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+<span class="c1"># Define a spectrum</span>
+<span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span><span class="p">(</span><span class="n">sim</span><span class="o">.</span><span class="n">N</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="n">sim</span><span class="o">.</span><span class="n">dt</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]</span>
+<span class="n">spectrum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">((</span><span class="mi">1</span><span class="o">/</span><span class="n">w</span><span class="p">),</span><span class="mi">2</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+<span class="c1"># Simulate</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">spectrum</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="s1">&#39;g&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;User-defined Model Simulation&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="s1">&#39;16&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Counts&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="s1">&#39;14&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Flux&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="s1">&#39;14&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>(<a class="reference download internal" download="" href="_downloads/1027494781794f48a5d8afc7ff6c2fc5/simulator-2.py"><code class="xref download docutils literal notranslate"><span class="pre">Source</span> <span class="pre">code</span></code></a>, <a class="reference download internal" download="" href="_downloads/62c21690ff66bac966d836faf3d3e8a8/simulator-2.png"><code class="xref download docutils literal notranslate"><span class="pre">png</span></code></a>, <a class="reference download internal" download="" href="_downloads/a8bca686e9c247f93d953deed8a266fb/simulator-2.hires.png"><code class="xref download docutils literal notranslate"><span class="pre">hires.png</span></code></a>, <a class="reference download internal" download="" href="_downloads/e6f4bd25496b463f5843540b50e92112/simulator-2.pdf"><code class="xref download docutils literal notranslate"><span class="pre">pdf</span></code></a>)</p>
+<figure class="align-default">
+<img alt="_images/simulator-2.png" class="plot-directive" src="_images/simulator-2.png" />
+</figure>
+</section>
+<section id="using-pre-defined-models">
+<h3>Using Pre-defined Models<a class="headerlink" href="#using-pre-defined-models" title="Link to this heading">¶</a></h3>
+<p>One of the pre-defined spectrum models can be used to simulate a light curve.
+In this case, model name and model parameters (as list iterable) need to be
+passed on as function arguments.</p>
+</section>
+<section id="using-impulse-response">
+<h3>Using Impulse Response<a class="headerlink" href="#using-impulse-response" title="Link to this heading">¶</a></h3>
+<p>In order to simulate a light curve using impulse response, we need the original light curve and impulse response. Stingray provides <code class="xref py py-obj docutils literal notranslate"><span class="pre">TransferFunction</span></code> class which can be used to obtain time and energy averaged impulse response by passing in a 2-D intensity profile as the input. A detailed tutorial on obtaining impulse response is provided <a class="reference external" href="https://github.com/StingraySoftware/notebooks/blob/master/Transfer%20Functions/TransferFunction%20Tutorial.ipynb">here</a>.</p>
+<p>Here, for the sake of simplicity, we use a simulated impulse response.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">rcParams</span>
+<span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;font.family&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;sans-serif&#39;</span>
+<span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;font.sans-serif&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Tahoma&#39;</span><span class="p">]</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">sampledata</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">simulator</span>
+
+<span class="c1"># Obtain a sample light curve</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">sampledata</span><span class="o">.</span><span class="n">sample_data</span><span class="p">()</span><span class="o">.</span><span class="n">counts</span>
+<span class="c1"># Instantiate simulator object</span>
+<span class="n">sim</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">Simulator</span><span class="p">(</span><span class="n">N</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">0.125</span><span class="p">,</span> <span class="n">rms</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+<span class="c1"># Obtain an artificial impulse response</span>
+<span class="n">ir</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">relativistic_ir</span><span class="p">()</span>
+<span class="c1"># Simulate</span>
+<span class="n">lc_new</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">ir</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lc_new</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="s1">&#39;g&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Impulse Response based Simulation&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="s1">&#39;16&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Counts&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="s1">&#39;14&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Flux&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="s1">&#39;14&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>(<a class="reference download internal" download="" href="_downloads/53d6a719342bb95c167fbdcb1fc14cc1/simulator-3.py"><code class="xref download docutils literal notranslate"><span class="pre">Source</span> <span class="pre">code</span></code></a>, <a class="reference download internal" download="" href="_downloads/28cbdc2e58c1d9bf4e5dcd02158d3f81/simulator-3.png"><code class="xref download docutils literal notranslate"><span class="pre">png</span></code></a>, <a class="reference download internal" download="" href="_downloads/a97179e14e3edfdc5f4c94b97302c0ce/simulator-3.hires.png"><code class="xref download docutils literal notranslate"><span class="pre">hires.png</span></code></a>, <a class="reference download internal" download="" href="_downloads/281ad6814950bcd6a32c9d01c96dd224/simulator-3.pdf"><code class="xref download docutils literal notranslate"><span class="pre">pdf</span></code></a>)</p>
+<figure class="align-default">
+<img alt="_images/simulator-3.png" class="plot-directive" src="_images/simulator-3.png" />
+</figure>
+<p>Since, the new light curve is produced by the convolution of original light curveand impulse response, its length is truncated by default for ease of analysis. This can be changed, however, by supplying an additional parameter <code class="xref py py-obj docutils literal notranslate"><span class="pre">full</span></code>. However, at times, we do not need to include lag delay portion in the output light curve. This can be done by changing the final function parameter to <code class="xref py py-obj docutils literal notranslate"><span class="pre">filtered</span></code>. For a more detailed analysis on lag-frequency spectrum, follow the notebook <a class="reference external" href="https://github.com/StingraySoftware/notebooks/blob/master/Simulator/Lag%20Analysis.ipynb">here</a>.</p>
+</section>
+</section>
+<section id="channel-simulation">
+<h2>Channel Simulation<a class="headerlink" href="#channel-simulation" title="Link to this heading">¶</a></h2>
+<p>The <code class="xref py py-obj docutils literal notranslate"><span class="pre">simulator</span></code> class provides the functionality to simulate light curves independently for each channel. This is useful, for example, when dealing with energy dependent impulse responses where we can create a di↵erent simulation channel for each energy range. The module provides options to count, retrieve and delete channels.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">Simulator</span><span class="p">(</span><span class="n">N</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">0.125</span><span class="p">,</span> <span class="n">rms</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">simulate_channel</span><span class="p">(</span><span class="s1">&#39;3.5 - 4.5&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">count_channels</span><span class="p">()</span>
+<span class="go">1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lc</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">get_channel</span><span class="p">(</span><span class="s1">&#39;3.5 - 4.5&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">delete_channel</span><span class="p">(</span><span class="s1">&#39;3.5 - 4.5&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Alternatively, assume that we have light curves in the simulated energy channels <code class="xref py py-obj docutils literal notranslate"><span class="pre">3.5</span> <span class="pre">-</span> <span class="pre">4.5</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">4.5</span> <span class="pre">-</span> <span class="pre">5.5</span></code> and <code class="xref py py-obj docutils literal notranslate"><span class="pre">5.5</span> <span class="pre">-</span> <span class="pre">6.5</span></code>. These channels can be retrieved or deleted in single commands.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">count_channels</span><span class="p">()</span>
+<span class="go">0</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">simulate_channel</span><span class="p">(</span><span class="s1">&#39;3.5 - 4.5&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">simulate_channel</span><span class="p">(</span><span class="s1">&#39;4.5 - 5.5&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">simulate_channel</span><span class="p">(</span><span class="s1">&#39;5.5 - 6.5&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">chans</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">get_channels</span><span class="p">([</span><span class="s1">&#39;3.5 - 4.5&#39;</span><span class="p">,</span><span class="s1">&#39;4.5 - 5.5&#39;</span><span class="p">,</span><span class="s1">&#39;5.5 - 6.5&#39;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span><span class="o">.</span><span class="n">delete_channels</span><span class="p">([</span><span class="s1">&#39;3.5 - 4.5&#39;</span><span class="p">,</span><span class="s1">&#39;4.5 - 5.5&#39;</span><span class="p">,</span><span class="s1">&#39;5.5 - 6.5&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</section>
+<section id="tutorials">
+<h2>Tutorials<a class="headerlink" href="#tutorials" title="Link to this heading">¶</a></h2>
+<section id="important-concepts">
+<h3>Important Concepts<a class="headerlink" href="#important-concepts" title="Link to this heading">¶</a></h3>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Simulator/Concepts/Simulator.html">Outline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Simulator/Concepts/Simulator.html#Lag-frequency-Spectrum">Lag-frequency Spectrum</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Simulator/Concepts/Simulator.html#Simple-Delta-Impulse-Response">Simple Delta Impulse Response</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Simulator/Concepts/Simulator.html#More-realistic-impulse-response">More realistic impulse response</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Simulator/Concepts/Simulator.html#Energy-Dependence">Energy Dependence</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Simulator/Concepts/Simulator.html#With-same-intensity-and-varying-position">With same intensity and varying position</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Simulator/Concepts/Simulator.html#With-same-position-and-varying-intensity">With same position and varying intensity</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Simulator/Concepts/Simulate%20Event%20Lists%20With%20Inverse%20CDF.html">Simulating event times with the inverse CDF method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Simulator/Concepts/Inverse%20Transform%20Sampling.html">Inverse Transform Sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Simulator/Concepts/PowerLaw%20Spectrum.html">Simulating Light Curves from Power Law Power Spectra</a></li>
+</ul>
+</div>
+</section>
+<section id="the-simulator-object">
+<h3>The Simulator Object<a class="headerlink" href="#the-simulator-object" title="Link to this heading">¶</a></h3>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Simulator/Simulator%20Tutorial.html">Contents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Simulator/Simulator%20Tutorial.html#Setup">Setup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Simulator/Simulator%20Tutorial.html#Creating-a-Simulator-Object">Creating a Simulator Object</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Simulator/Simulator%20Tutorial.html#Light-Curve-Simulation">Light Curve Simulation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Simulator/Simulator%20Tutorial.html#(i)-Using-power-law-spectrum">(i) Using power-law spectrum</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Simulator/Simulator%20Tutorial.html#(ii)-Using-user-defined-model">(ii) Using user-defined model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Simulator/Simulator%20Tutorial.html#(iii)-Using-pre-defined-models">(iii) Using pre-defined models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Simulator/Simulator%20Tutorial.html#(iv)-Using-impulse-response">(iv) Using impulse response</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Simulator/Simulator%20Tutorial.html#Channel-Simulation">Channel Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Simulator/Simulator%20Tutorial.html#Reading/Writing">Reading/Writing</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="available-spectral-models">
+<h3>Available Spectral Models<a class="headerlink" href="#available-spectral-models" title="Link to this heading">¶</a></h3>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Simulator/Power%20Spectral%20Models.html">Contents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Simulator/Power%20Spectral%20Models.html#Setup">Setup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Simulator/Power%20Spectral%20Models.html#Power-Spectral-Models">Power Spectral Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Simulator/Power%20Spectral%20Models.html#Light-Curve-Simulation">Light Curve Simulation</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="an-example-lag-analysis">
+<h3>An Example Lag Analysis<a class="headerlink" href="#an-example-lag-analysis" title="Link to this heading">¶</a></h3>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Simulator/Lag%20Analysis.html">Contents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Simulator/Lag%20Analysis.html#Setup">Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Simulator/Lag%20Analysis.html#Initializing">Initializing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Simulator/Lag%20Analysis.html#Analysis">Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Simulator/Lag%20Analysis.html#Energy-Dependent-Impulse-Responses">Energy Dependent Impulse Responses</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="transfer-functions">
+<h3>Transfer Functions<a class="headerlink" href="#transfer-functions" title="Link to this heading">¶</a></h3>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Transfer%20Functions/Data%20Preparation.html">Setting Up Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Transfer%20Functions/TransferFunction%20Tutorial.html">Contents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Transfer%20Functions/TransferFunction%20Tutorial.html#Setup">Setup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Transfer%20Functions/TransferFunction%20Tutorial.html#Creating-TransferFunction">Creating TransferFunction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Transfer%20Functions/TransferFunction%20Tutorial.html#Obtaining-Time-Resolved-Response">Obtaining Time-Resolved Response</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Transfer%20Functions/TransferFunction%20Tutorial.html#Obtaining-Energy-Resolved-Response">Obtaining Energy-Resolved Response</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Transfer%20Functions/TransferFunction%20Tutorial.html#Plotting-Responses">Plotting Responses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Transfer%20Functions/TransferFunction%20Tutorial.html#IO">IO</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Transfer%20Functions/TransferFunction%20Tutorial.html#Artificial-Responses">Artificial Responses</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="window-functions">
+<h3>Window Functions<a class="headerlink" href="#window-functions" title="Link to this heading">¶</a></h3>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Window%20Functions/window_functions.html">Window functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Window%20Functions/window_functions.html#Uniform-Window">Uniform Window</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Window%20Functions/window_functions.html#Parzen-Window">Parzen Window</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Window%20Functions/window_functions.html#Hamming-Window">Hamming Window</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Window%20Functions/window_functions.html#Hanning-Window">Hanning Window</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Window%20Functions/window_functions.html#Traingular-Window">Traingular Window</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Window%20Functions/window_functions.html#Welch-Window">Welch Window</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Window%20Functions/window_functions.html#Blackmann's-Window">Blackmann’s Window</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Window%20Functions/window_functions.html#Flat-Top-Window">Flat Top Window</a></li>
+</ul>
+</div>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Stingray Simulator (<code class="xref py py-obj docutils literal notranslate"><span class="pre">stingray.simulator</span></code>)</a><ul>
+<li><a class="reference internal" href="#introduction">Introduction</a></li>
+<li><a class="reference internal" href="#getting-started">Getting started</a><ul>
+<li><a class="reference internal" href="#creating-a-simulator-object">Creating a Simulator Object</a></li>
+<li><a class="reference internal" href="#simulate-method">Simulate Method</a></li>
+<li><a class="reference internal" href="#using-power-law-spectrum">Using Power-Law Spectrum</a></li>
+<li><a class="reference internal" href="#using-user-defined-model">Using User-defined Model</a></li>
+<li><a class="reference internal" href="#using-pre-defined-models">Using Pre-defined Models</a></li>
+<li><a class="reference internal" href="#using-impulse-response">Using Impulse Response</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#channel-simulation">Channel Simulation</a></li>
+<li><a class="reference internal" href="#tutorials">Tutorials</a><ul>
+<li><a class="reference internal" href="#important-concepts">Important Concepts</a></li>
+<li><a class="reference internal" href="#the-simulator-object">The Simulator Object</a></li>
+<li><a class="reference internal" href="#available-spectral-models">Available Spectral Models</a></li>
+<li><a class="reference internal" href="#an-example-lag-analysis">An Example Lag Analysis</a></li>
+<li><a class="reference internal" href="#transfer-functions">Transfer Functions</a></li>
+<li><a class="reference internal" href="#window-functions">Window Functions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="_sources/simulator.rst.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

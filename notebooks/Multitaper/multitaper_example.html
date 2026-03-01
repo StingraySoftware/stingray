@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Install Stingray in colab &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Lomb Scargle Cross Spectra" href="../LombScargle/LombScargleCrossspectrum_tutorial.html" />
+    <link rel="prev" title="Baysian Excess Variance (Bexvar)" href="../Bexvar/Bexvar%20tutorial.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="../LombScargle/LombScargleCrossspectrum_tutorial.html" title="Lomb Scargle Cross Spectra">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="../Bexvar/Bexvar%20tutorial.html" title="Baysian Excess Variance (Bexvar)">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../core.html" accesskey="U">Core Stingray Functionality</a> &#187;</li>
+      
+      <li>Install Stingray in colab</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <p><a class="reference external" href="https://colab.research.google.com/github/dhruv9vats/misc/blob/main/multitaper_example.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" /></a></p>
+<p>If clicking the link above turns the screen gray, try right clicking on the link and selecting “Open link in new tab”.</p>
+<section id="Install-Stingray-in-colab">
+<h1>Install Stingray in colab<a class="headerlink" href="#Install-Stingray-in-colab" title="Link to this heading">¶</a></h1>
+<p>Comment out the cell below if running locally.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># %%capture --no-display</span>
+<span class="c1"># !git clone --recursive https://github.com/StingraySoftware/stingray.git</span>
+<span class="c1"># %cd stingray</span>
+<span class="c1"># !pip install astropy scipy matplotlib numpy pytest pytest-astropy h5py tqdm seaborn</span>
+<span class="c1"># !pip install -e &quot;.&quot;</span>
+<span class="c1"># %cd ..</span>
+
+<span class="c1"># import os</span>
+<span class="c1"># os.kill(os.getpid(), 9)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>The kernel will (crash and then) restart after executing the above cell to finish installing Stingray. So the cells below will have to be run again or manually.</strong></p>
+</section>
+<section id="Multitaper-Spectral-Estimator-Example">
+<h1>Multitaper Spectral Estimator Example<a class="headerlink" href="#Multitaper-Spectral-Estimator-Example" title="Link to this heading">¶</a></h1>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">seaborn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sns</span>
+<span class="n">sns</span><span class="o">.</span><span class="n">set_theme</span><span class="p">()</span>
+<span class="n">sns</span><span class="o">.</span><span class="n">set_palette</span><span class="p">(</span><span class="s2">&quot;husl&quot;</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">signal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">Multitaper</span><span class="p">,</span> <span class="n">Powerspectrum</span><span class="p">,</span> <span class="n">Lightcurve</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/home/dhruv/repos/stingray/stingray/largememory.py:25: UserWarning: Large Datasets may not be processed efficiently due to computational constraints
+  warnings.warn(
+</pre></div></div>
+</div>
+</section>
+<section id="###-Creating-a-light-curve">
+<h1>### Creating a light curve<a class="headerlink" href="####-Creating-a-light-curve" title="Link to this heading">¶</a></h1>
+<p>Lets create a <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> sampled from an autoregressive process of order 4 that has been frequently exemplified in literature in similar contexts</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+<span class="n">coeff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">2.7607</span><span class="p">,</span> <span class="o">-</span><span class="mf">3.8106</span><span class="p">,</span> <span class="mf">2.6535</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.9238</span><span class="p">])</span> <span class="c1"># The 4 coefficients for the AR(4) process</span>
+<span class="n">ar4</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="n">coeff</span><span class="p">]</span> <span class="c1"># For use with scipy.signal</span>
+<span class="n">N</span> <span class="o">=</span> <span class="mi">1024</span>
+
+<span class="n">freq_analytical</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">freqz</span><span class="p">(</span><span class="n">b</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="n">ar4</span><span class="p">,</span> <span class="n">worN</span><span class="o">=</span><span class="n">N</span><span class="p">,</span> <span class="n">fs</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># True PSD of AR(4)</span>
+<span class="n">psd_analytical</span> <span class="o">=</span> <span class="p">(</span><span class="n">h</span> <span class="o">*</span> <span class="n">h</span><span class="o">.</span><span class="n">conj</span><span class="p">())</span><span class="o">.</span><span class="n">real</span>
+
+<span class="n">data</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">lfilter</span><span class="p">([</span><span class="mf">1.0</span><span class="p">],</span> <span class="n">ar4</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">N</span><span class="p">))</span> <span class="c1"># N AR(4) data samples.</span>
+
+<span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">)</span>
+
+<span class="n">err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span>
+
+<span class="n">lc_ar4</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">times</span><span class="p">,</span> <span class="n">counts</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">err_dist</span><span class="o">=</span><span class="s1">&#39;gauss&#39;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">err</span><span class="p">)</span>
+<span class="n">lc_ar4</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+WARNING:root:Checking if light curve is well behaved. This can take time, so if you are sure it is already sorted, specify skip_checks=True at light curve creation.
+WARNING:root:Checking if light curve is sorted.
+/home/dhruv/repos/stingray/stingray/utils.py:126: UserWarning: SIMON says: Stingray only uses poisson err_dist at the moment. All analysis in the light curve will assume Poisson errors. Sorry for the inconvenience.
+  warnings.warn(&#34;SIMON says: {0}&#34;.format(message), **kwargs)
+WARNING:root:Computing the bin time ``dt``. This can take time. If you know the bin time, please specify it at light curve creation
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_8_1.png" src="../../_images/notebooks_Multitaper_multitaper_example_8_1.png" />
+</div>
+</div>
+<section id="The-Multitaper-Periodogram">
+<h2>The Multitaper Periodogram<a class="headerlink" href="#The-Multitaper-Periodogram" title="Link to this heading">¶</a></h2>
+<p>Tapering a time series as a way of obtaining a spectral estimator with acceptable bias properties is an important concept. While tapering does reduce bias due to leakage, there is a price to pay in that the sample size is effectively reduced. The loss of information inherent in tapering can often be avoided either by prewhitening or by using Welch’s overlapped segment averaging.</p>
+<p>The multitaper periodogram is another approach to recover information lost due to tapering. This apporach was introduced by Thomson (1982) and involves the use of multiple orthogonal tapers.</p>
+<p>In the multitaper method the data is windowed or tapered, but this method differs from the traditional methods in the tapers used, which are the most band-limited functions amongst those defined on a finite time domain, and also, these tapers are orthogonal, enabling us to average the <em>eigenspectrum</em> (spectrum estimates from individual tapers) from more than one tapers to obtain a superior estimate in terms of noise. The resulting spectrum has low leakage, low variance, and retains information
+contained in the beginning and end of the time series. For more details on the multitaper periodogram, please have a look at the references.</p>
+<section id="Let's-have-a-look-at-the-individual-tapers.">
+<h3>Let’s have a look at the individual tapers.<a class="headerlink" href="#Let's-have-a-look-at-the-individual-tapers." title="Link to this heading">¶</a></h3>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">NW</span> <span class="o">=</span> <span class="mi">4</span> <span class="c1"># normalized half-bandwidth = 4</span>
+<span class="n">Kmax</span> <span class="o">=</span> <span class="mi">8</span> <span class="c1"># Number of tapers</span>
+<span class="n">dpss_tapers</span><span class="p">,</span> <span class="n">eigvals</span> <span class="o">=</span> \
+<span class="n">signal</span><span class="o">.</span><span class="n">windows</span><span class="o">.</span><span class="n">dpss</span><span class="p">(</span><span class="n">M</span><span class="o">=</span><span class="n">lc_ar4</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="n">NW</span><span class="o">=</span><span class="n">NW</span><span class="p">,</span> <span class="n">Kmax</span><span class="o">=</span><span class="n">Kmax</span><span class="p">,</span>
+                    <span class="n">sym</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">return_ratios</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">data_multitaper</span> <span class="o">=</span> <span class="n">lc_ar4</span><span class="o">.</span><span class="n">counts</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">lc_ar4</span><span class="o">.</span><span class="n">counts</span><span class="p">)</span>  <span class="c1"># De-mean</span>
+<span class="n">data_multitaper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">data_multitaper</span><span class="p">,</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">eigvals</span><span class="p">),</span> <span class="mi">1</span><span class="p">))</span>
+
+ <span class="c1"># Data tapered with the dpss windows</span>
+<span class="n">data_multitaper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">data_multitaper</span><span class="p">,</span> <span class="n">dpss_tapers</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Plotted below are the first 8 tapers (on the left), and the corresponding tapered time series</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="mi">27</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span> <span class="n">sharey</span><span class="o">=</span><span class="s1">&#39;col&#39;</span><span class="p">)</span>
+
+<span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">palette</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">color_palette</span><span class="p">(</span><span class="s2">&quot;husl&quot;</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">taper</span><span class="p">,</span> <span class="n">tapered_data</span><span class="p">,</span> <span class="n">axes_rows</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">dpss_tapers</span><span class="p">,</span> <span class="n">data_multitaper</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+    <span class="n">axes_rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lc_ar4</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">taper</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+    <span class="n">axes_rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;K = </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">axes_rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;t&quot;</span><span class="p">)</span>
+
+    <span class="n">axes_rows</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lc_ar4</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">tapered_data</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+    <span class="n">axes_rows</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;t&quot;</span><span class="p">)</span>
+
+    <span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;DPSS tapers&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">18</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Tapered time series&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">18</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">txt</span><span class="o">=</span><span class="s2">&quot;DPSS tapers and product of these tapers and the AR(4) time series.</span><span class="se">\n\</span>
+<span class="s2">    Note that, for K=0 in the top row, the extremes of the time series are severly</span><span class="se">\n\</span>
+<span class="s2">    attenuated, but those portions of the extremes, as K increases, are accentuated.&quot;</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.025</span><span class="p">,</span> <span class="n">txt</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">18</span><span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_14_0.png" src="../../_images/notebooks_Multitaper_multitaper_example_14_0.png" />
+</div>
+</div>
+<section id="Now-let's-see-their-frequency-domain-representations-(here-PSD)">
+<h4>Now let’s see their frequency domain representations (here PSD)<a class="headerlink" href="#Now-let's-see-their-frequency-domain-representations-(here-PSD)" title="Link to this heading">¶</a></h4>
+<p>We can have a good look at the leakage properties of these tapers (and the resulting time series) from their PSD representations.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%capture</span> --no-display
+<span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="mi">28</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span> <span class="n">sharey</span><span class="o">=</span><span class="s1">&#39;col&#39;</span><span class="p">)</span>
+
+<span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">palette</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">color_palette</span><span class="p">(</span><span class="s2">&quot;husl&quot;</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+
+<span class="n">freq</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span><span class="p">(</span><span class="n">lc_ar4</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="n">lc_ar4</span><span class="o">.</span><span class="n">dt</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">taper</span><span class="p">,</span> <span class="n">tapered_data</span><span class="p">,</span> <span class="n">axes_rows</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">dpss_tapers</span><span class="p">,</span> <span class="n">data_multitaper</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+
+    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">freqz</span><span class="p">(</span><span class="n">taper</span><span class="p">,</span> <span class="n">fs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">worN</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mi">200</span><span class="p">))</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">conj</span><span class="p">(</span><span class="n">h</span><span class="p">))</span>
+    <span class="n">axes_rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+    <span class="n">axes_rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">NW</span><span class="o">/</span><span class="n">N</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Frequency</span><span class="se">\n</span><span class="s2">W=4/N&quot;</span><span class="p">)</span>
+    <span class="n">axes_rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+        <span class="n">ylabel</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;K = </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2"> </span><span class="se">\n</span><span class="s2">Power&quot;</span><span class="p">,</span>
+        <span class="n">xlabel</span><span class="o">=</span><span class="s2">&quot;Frequency&quot;</span><span class="p">,</span>
+        <span class="n">yscale</span><span class="o">=</span><span class="s2">&quot;log&quot;</span>
+    <span class="p">)</span>
+    <span class="n">axes_rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+    <span class="n">fft_tapered_data</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfft</span><span class="p">(</span><span class="n">tapered_data</span><span class="p">)</span>
+    <span class="n">psd_tapered_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">fft_tapered_data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">conj</span><span class="p">(</span><span class="n">fft_tapered_data</span><span class="p">))</span>
+    <span class="n">axes_rows</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">psd_tapered_data</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;K=</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2"> eigenspectrum&quot;</span><span class="p">)</span>
+    <span class="n">axes_rows</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq_analytical</span><span class="p">,</span> <span class="n">psd_analytical</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.56</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;True S(f)&quot;</span><span class="p">)</span>
+    <span class="n">axes_rows</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+        <span class="n">xlabel</span><span class="o">=</span><span class="s2">&quot;Frequency&quot;</span><span class="p">,</span>
+        <span class="n">ylabel</span><span class="o">=</span><span class="s2">&quot;Power&quot;</span><span class="p">,</span>
+        <span class="n">yscale</span><span class="o">=</span><span class="s2">&quot;log&quot;</span>
+    <span class="p">)</span>
+    <span class="n">axes_rows</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+    <span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="c1"># fig.suptitle(&quot;Left: DPSS taper spectral windows \n Right: Eigenspectra for AR(4) time series with given K&quot;, y=1)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;DPSS taper spectral windows&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">18</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Eigenspectra for AR(4) tapered time series&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">18</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+
+<span class="n">text</span><span class="o">=</span><span class="s2">&quot;Note the marked increase in bias in the eigenspectra as K increases.</span><span class="se">\n\</span>
+<span class="s2">The left-hand plots show the low frequency portion of the spectral windows (of DPSS tapers)</span><span class="se">\n\</span>
+<span class="s2">K = 0 to 7. The thin vertical line in each plot indicates the location of the frequency</span><span class="se">\n\</span>
+<span class="s2">W = 1/256 = 0.003906 = 4/N. Note that, as K increases, the level of the sidelobes of</span><span class="se">\n\</span>
+<span class="s2">spectral windows (of DPSS tapers) also increases until at K = 7 the main sidelobe level</span><span class="se">\n\</span>
+<span class="s2">is just barely below the lowest lobe in [-W, W].&quot;</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.06</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">18</span><span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_16_0.png" src="../../_images/notebooks_Multitaper_multitaper_example_16_0.png" />
+</div>
+</div>
+</section>
+</section>
+</section>
+<section id="Summary-of-Multitaper-Spectral-Estimation">
+<h2>Summary of Multitaper Spectral Estimation<a class="headerlink" href="#Summary-of-Multitaper-Spectral-Estimation" title="Link to this heading">¶</a></h2>
+<p>We assume that $ X_1, X_2, …, X_N $ is a sample of length <span class="math notranslate nohighlight">\(N\)</span> from a zero mean real-valued stationary process $ {X_t} $ with unknown sdf $ S(<span class="math">\cdot</span>) $ defined over the interval <span class="math notranslate nohighlight">\([-f_{(N)}, f_{(N)}]\)</span>, where <span class="math notranslate nohighlight">\(f_{(N)} \equiv 1/(2\Delta t)\)</span> is the Nyquist frequency and <span class="math notranslate nohighlight">\(\Delta t\)</span> is the sampling interval between observations. (If <span class="math notranslate nohighlight">\(\{X_t\}\)</span> has an unknown mean, we need to replace <span class="math notranslate nohighlight">\(X_t\)</span> with <span class="math notranslate nohighlight">\(X_t' \equiv X_t - \bar{X_t}\)</span> in all computational
+formulae, where <span class="math notranslate nohighlight">\(\bar{X_t} = \sum^N_{t=1}X_t/N\)</span> is the sample mean.)</p>
+<ul class="simple">
+<li><p><strong>Simple multitaper spectral estimator</strong> <span class="math notranslate nohighlight">\(\hat{S}^{mt}(\cdot)\)</span></p></li>
+</ul>
+<p>This estimator is defined as the average of K eigenspectra <span class="math notranslate nohighlight">\(\hat{S}^{mt}_k(\cdot),k = 0, ..., K - 1\)</span>, the <span class="math notranslate nohighlight">\(k^{th}\)</span> of which is a direct spectral estimator employing a dpss data taper <span class="math notranslate nohighlight">\(\{h_{t,k}\}\)</span> with parameter <span class="math notranslate nohighlight">\(W\)</span>. The estimator <span class="math notranslate nohighlight">\(\hat{S}^{mt}_k(f)\)</span> is approximately equal in distribution to <span class="math notranslate nohighlight">\(S(f)_{\chi^2_{2K}}/2K\)</span></p>
+<ul class="simple">
+<li><p><strong>Adaptive multitaper spectral estimator</strong> <span class="math notranslate nohighlight">\(\hat{S}^{amt}(\cdot)\)</span></p></li>
+</ul>
+<p>This estimator uses the same eigenspectra as <span class="math notranslate nohighlight">\(\hat{S}^{mt}(\cdot)\)</span>, but it now adaptively weights the <span class="math notranslate nohighlight">\(\hat{S}^{mt}(\cdot)\)</span> terms. The weight for the <span class="math notranslate nohighlight">\(k^{th}\)</span> eigenspectrum is proportional to <span class="math notranslate nohighlight">\(b^2_k(f)\lambda_k\)</span>, where <span class="math notranslate nohighlight">\(\lambda_k\)</span> is the eigenvalue corresponding to the eigenvector with elements <span class="math notranslate nohighlight">\(\{h_{t,k}\}\)</span>, while <span class="math notranslate nohighlight">\(b_k(f)\)</span> is given by</p>
+<div align="center"><p><span class="math notranslate nohighlight">\(\large{b_k(f) = \frac {S(f)} {\lambda_k S(f) + (1-\lambda_k)\sigma^2\Delta t}}\)</span></p>
+</div><p>The <span class="math notranslate nohighlight">\(b_k(f)\)</span> term depends on the unknown sdf <span class="math notranslate nohighlight">\(S(f)\)</span>, but it is estimated using an iterative scheme. The estimator <span class="math notranslate nohighlight">\(\hat{S}^{mt}_k(f)\)</span> is approximately equal in distribution to <span class="math notranslate nohighlight">\(S(f)_{\chi^2_\nu}/\nu\)</span>.</p>
+<p>This summary, by no means, is an exhaustive explanation of the multitapering concept. Further exploration of the topic is highly encouraged. Use the references as the starting point.</p>
+</section>
+</section>
+<section id="Creating-a-Multitaper-object">
+<h1>Creating a <code class="docutils literal notranslate"><span class="pre">Multitaper</span></code> object<a class="headerlink" href="#Creating-a-Multitaper-object" title="Link to this heading">¶</a></h1>
+<p>Pass the <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> object to the <code class="docutils literal notranslate"><span class="pre">Multitaper</span></code> constructor ### Other (optional) parameters that can be set at instantiation are: (Given here for completness, feel free to skip as they are later showcased)</p>
+<div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">norm</span></code>: {<code class="docutils literal notranslate"><span class="pre">leahy</span></code> | <code class="docutils literal notranslate"><span class="pre">frac</span></code> | <code class="docutils literal notranslate"><span class="pre">abs</span></code> | <code class="docutils literal notranslate"><span class="pre">none</span></code> }, optional, default <code class="docutils literal notranslate"><span class="pre">frac</span></code></div>
+<div class="line">The normaliation of the power spectrum to be used. Options are <code class="docutils literal notranslate"><span class="pre">leahy</span></code>, <code class="docutils literal notranslate"><span class="pre">frac</span></code>, <code class="docutils literal notranslate"><span class="pre">abs</span></code> and <code class="docutils literal notranslate"><span class="pre">none</span></code>, default is <code class="docutils literal notranslate"><span class="pre">frac</span></code>.</div>
+</div>
+<div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">NW</span></code>: float, optional, default <code class="docutils literal notranslate"><span class="pre">4</span></code></div>
+<div class="line">The normalized half-bandwidth of the data tapers, indicating a multiple of the fundamental frequency of the DFT (Fs/N). Common choices are n/2, for n &gt;= 4.</div>
+</div>
+<div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">adaptive</span></code>: boolean, optional, default <code class="docutils literal notranslate"><span class="pre">False</span></code></div>
+<div class="line">Use an adaptive weighting routine to combine the PSD estimates of different tapers.</div>
+</div>
+<div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">jackknife</span></code>: boolean, optional, default <code class="docutils literal notranslate"><span class="pre">True</span></code></div>
+<div class="line">Use the jackknife method to make an estimate of the PSD variance at each point.</div>
+</div>
+<div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">low_bias</span></code>: boolean, optional, default <code class="docutils literal notranslate"><span class="pre">True</span></code></div>
+<div class="line">Rather than use 2NW tapers, only use the tapers that have better than 90% spectral concentration within the bandwidth (still using a maximum of 2NW tapers)</div>
+</div>
+<div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">lombscargle</span></code>: boolean, optional, default <code class="docutils literal notranslate"><span class="pre">False</span></code></div>
+<div class="line">Whether to use the Lomb (1976) Scargle (1982) periodogram when calculating the Multitaper spectral estimate. Highly recommended for unevenly sampled time-series. Adaptive weighting and jack-knife estimated variance are yet not supported.</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mtp</span> <span class="o">=</span> <span class="n">Multitaper</span><span class="p">(</span><span class="n">lc_ar4</span><span class="p">,</span> <span class="n">adaptive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;abs&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">mtp</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/home/dhruv/repos/stingray/stingray/utils.py:126: UserWarning: SIMON says: Stingray only uses poisson err_dist at the moment. All analysis in the light curve will assume Poisson errors. Sorry for the inconvenience.
+  warnings.warn(&#34;SIMON says: {0}&#34;.format(message), **kwargs)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Using 7 DPSS windows for multitaper spectrum estimator
+&lt;stingray.multitaper.Multitaper object at 0x7fed1f89f130&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/home/dhruv/repos/stingray/stingray/utils.py:126: UserWarning: SIMON says: Looks like your lightcurve statistic is not poisson.The errors in the Powerspectrum will be incorrect.
+  warnings.warn(&#34;SIMON says: {0}&#34;.format(message), **kwargs)
+</pre></div></div>
+</div>
+<section id="The-results">
+<h2>The results<a class="headerlink" href="#The-results" title="Link to this heading">¶</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;slateblue&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Multitaper estimate&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq_analytical</span><span class="p">,</span> <span class="n">psd_analytical</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;True S(f)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">yscale</span><span class="p">(</span><span class="s2">&quot;log&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Power&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;AR(4) Spectrum&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_23_0.png" src="../../_images/notebooks_Multitaper_multitaper_example_23_0.png" />
+</div>
+</div>
+</section>
+<section id="While-it-seems-decent,-lets-compare-with-Powerspectrum">
+<h2>While it seems decent, lets compare with <code class="docutils literal notranslate"><span class="pre">Powerspectrum</span></code><a class="headerlink" href="#While-it-seems-decent,-lets-compare-with-Powerspectrum" title="Link to this heading">¶</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ps</span> <span class="o">=</span> <span class="n">Powerspectrum</span><span class="p">(</span><span class="n">lc_ar4</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;abs&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/home/dhruv/repos/stingray/stingray/utils.py:126: UserWarning: SIMON says: Stingray only uses poisson err_dist at the moment. All analysis in the light curve will assume Poisson errors. Sorry for the inconvenience.
+  warnings.warn(&#34;SIMON says: {0}&#34;.format(message), **kwargs)
+/home/dhruv/repos/stingray/stingray/utils.py:126: UserWarning: SIMON says: Looks like your lightcurve statistic is not poisson.The errors in the Powerspectrum will be incorrect.
+  warnings.warn(&#34;SIMON says: {0}&#34;.format(message), **kwargs)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;slateblue&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Multitaper estimate&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Periodogram estimate&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.4</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq_analytical</span><span class="p">,</span> <span class="n">psd_analytical</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;True S(f)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">yscale</span><span class="p">(</span><span class="s2">&quot;log&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Power&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;AR(4) Spectrum&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0.5, 1.0, &#39;AR(4) Spectrum&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_26_1.png" src="../../_images/notebooks_Multitaper_multitaper_example_26_1.png" />
+</div>
+</div>
+<section id="As-can-be-seen,-there-is-improvement-in-both-the-variance-and-the-bias.">
+<h3>As can be seen, there is improvement in both the variance and the bias.<a class="headerlink" href="#As-can-be-seen,-there-is-improvement-in-both-the-variance-and-the-bias." title="Link to this heading">¶</a></h3>
+</section>
+</section>
+<section id="Attributes-of-the-Multitaper-object">
+<h2>Attributes of the Multitaper object<a class="headerlink" href="#Attributes-of-the-Multitaper-object" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">norm</span></code>: {<code class="docutils literal notranslate"><span class="pre">leahy</span></code> | <code class="docutils literal notranslate"><span class="pre">frac</span></code> | <code class="docutils literal notranslate"><span class="pre">abs</span></code> | <code class="docutils literal notranslate"><span class="pre">none</span></code> } the normalization of the power spectrun</p>
+<p><code class="docutils literal notranslate"><span class="pre">freq</span></code>: The array of mid-bin frequencies that the Fourier transform samples</p>
+<p><code class="docutils literal notranslate"><span class="pre">power</span></code>: The array of normalized squared absolute values of Fourier amplitudes</p>
+<p><code class="docutils literal notranslate"><span class="pre">unnorm_power</span></code>: The array of unnormalized values of Fourier amplitudes</p>
+<p><code class="docutils literal notranslate"><span class="pre">multitaper_norm_power</span></code>:The array of normalized values of Fourier amplitudes, normalized according to the scheme followed in nitime, that is, by the length and the sampling frequency.</p>
+<p><code class="docutils literal notranslate"><span class="pre">power_err</span></code>: The uncertainties of <code class="docutils literal notranslate"><span class="pre">power</span></code>. An approximation for each bin given by <code class="docutils literal notranslate"><span class="pre">power_err</span> <span class="pre">=</span> <span class="pre">power/sqrt(m)</span></code>. Where <code class="docutils literal notranslate"><span class="pre">m</span></code> is the number of power averaged in each bin (by frequency binning, or averaging power spectrum). Note that for a single realization (<code class="docutils literal notranslate"><span class="pre">m=1</span></code>) the error is equal to the power.</p>
+<p><code class="docutils literal notranslate"><span class="pre">df</span></code>: The frequency resolution</p>
+<p><code class="docutils literal notranslate"><span class="pre">m</span></code>: The number of averaged powers in each bin</p>
+<p><code class="docutils literal notranslate"><span class="pre">n</span></code>: The number of data points in the light curve</p>
+<p><code class="docutils literal notranslate"><span class="pre">nphots</span></code>: The total number of photons in the light curve</p>
+<p><code class="docutils literal notranslate"><span class="pre">jk_var_deg_freedom</span></code>: Array differs depending on whether the jackknife was used. It is either</p>
+<ul class="simple">
+<li><p>The jackknife estimated variance of the log-psd, OR</p></li>
+<li><p>The degrees of freedom in a chi2 model of how the estimated PSD is distributed about the true log-PSD (this is either 2*floor(2*NW), or calculated from adaptive weights)</p></li>
+</ul>
+</section>
+<section id="A-look-at-the-values-contained-in-these-attributes.">
+<h2>A look at the values contained in these attributes.<a class="headerlink" href="#A-look-at-the-values-contained-in-these-attributes." title="Link to this heading">¶</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">mtp</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;norm: &quot;</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">norm</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">norm</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;power.shape: &quot;</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">power</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">power</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;unnorm_power.shape: &quot;</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">unnorm_power</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">unnorm_power</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;multitaper_norm_power.shape: &quot;</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">multitaper_norm_power</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">multitaper_norm_power</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;power_err.shape: &quot;</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">power_err</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">power_err</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;df: &quot;</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">df</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">df</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;m: &quot;</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">m</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">m</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;n: &quot;</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">n</span><span class="p">))</span> <span class="c1"># Notice the length of PSDs is half that of the number of data points in the light curve, as the imaginary (complex) part is discarded.</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;nphots: &quot;</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">nphots</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">nphots</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;jk_var_deg_freedom.shape: &quot;</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">jk_var_deg_freedom</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">jk_var_deg_freedom</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;stingray.multitaper.Multitaper object at 0x7fed1f89f130&gt;
+norm:  abs &lt;class &#39;str&#39;&gt;
+power.shape:  (511,) &lt;class &#39;numpy.ndarray&#39;&gt;
+unnorm_power.shape:  (511,) &lt;class &#39;numpy.ndarray&#39;&gt;
+multitaper_norm_power.shape:  (511,) &lt;class &#39;numpy.ndarray&#39;&gt;
+power_err.shape:  (511,) &lt;class &#39;numpy.ndarray&#39;&gt;
+df:  0.0009765625 &lt;class &#39;numpy.float64&#39;&gt;
+m:  1 &lt;class &#39;int&#39;&gt;
+n:  1024 &lt;class &#39;int&#39;&gt;
+nphots:  -73.38213649959974 &lt;class &#39;numpy.float64&#39;&gt;
+jk_var_deg_freedom.shape:  (511,) &lt;class &#39;numpy.ndarray&#39;&gt;
+</pre></div></div>
+</div>
+</section>
+<section id="A-look-at-the-different-normalizations">
+<h2>A look at the different normalizations<a class="headerlink" href="#A-look-at-the-different-normalizations" title="Link to this heading">¶</a></h2>
+<p>The normalized S(f) estimates are stored in the <code class="docutils literal notranslate"><span class="pre">power</span></code> attribute can be accessed like <code class="docutils literal notranslate"><span class="pre">mtp.power</span></code> if the object name is <code class="docutils literal notranslate"><span class="pre">mtp</span></code></p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%capture</span> --no-display
+<span class="n">norms</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;leahy&quot;</span><span class="p">,</span> <span class="s2">&quot;frac&quot;</span><span class="p">,</span> <span class="s2">&quot;abs&quot;</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">]</span>
+
+<span class="k">for</span> <span class="n">norm</span> <span class="ow">in</span> <span class="n">norms</span><span class="p">:</span>
+    <span class="n">ps</span> <span class="o">=</span> <span class="n">Powerspectrum</span><span class="p">(</span><span class="n">lc_ar4</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+    <span class="n">mtp</span> <span class="o">=</span> <span class="n">Multitaper</span><span class="p">(</span><span class="n">lc_ar4</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">adaptive</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="c1"># adaptive=False does not calculate adaptive weights to reduce bias, helps see the normalization similarities better</span>
+
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;slateblue&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Multitaper estimate&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Periodogram estimate&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.4</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq_analytical</span><span class="p">,</span> <span class="n">psd_analytical</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;True S(f)&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">yscale</span><span class="p">(</span><span class="s2">&quot;log&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Power&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;AR(4) Spectrum, &quot;</span> <span class="o">+</span> <span class="p">(</span><span class="n">norm</span> <span class="o">+</span> <span class="s2">&quot; normalized&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">title</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_32_0.png" src="../../_images/notebooks_Multitaper_multitaper_example_32_0.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_32_1.png" src="../../_images/notebooks_Multitaper_multitaper_example_32_1.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_32_2.png" src="../../_images/notebooks_Multitaper_multitaper_example_32_2.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_32_3.png" src="../../_images/notebooks_Multitaper_multitaper_example_32_3.png" />
+</div>
+</div>
+</section>
+<section id="Other-attributes-with-the-S(f)-estimates">
+<h2>Other attributes with the S(f) estimates<a class="headerlink" href="#Other-attributes-with-the-S(f)-estimates" title="Link to this heading">¶</a></h2>
+<p>If you look closely at the attributes of the <code class="docutils literal notranslate"><span class="pre">multitaper</span></code> object, there is a <code class="docutils literal notranslate"><span class="pre">multitaper_norm_power</span></code> attribute. This attributes contains the PSD normalized according to</p>
+<p>Another attribute containing the PSD is the <code class="docutils literal notranslate"><span class="pre">unnorm_power</span></code>, and as the name suggests, contains the unnormalized PSD.</p>
+</section>
+</section>
+<section id="A-summary-of-the-jackknife-variance-estimate">
+<h1>A summary of the jackknife variance estimate<a class="headerlink" href="#A-summary-of-the-jackknife-variance-estimate" title="Link to this heading">¶</a></h1>
+<p>Assume that we have a sample of <span class="math notranslate nohighlight">\(K\)</span> independent observations, <span class="math notranslate nohighlight">\(\{x_i\}, i = 1,...K\)</span>, drawn from some distribution characterized by a parameter <span class="math notranslate nohighlight">\(\theta\)</span>, which is to be estimated. Here, <span class="math notranslate nohighlight">\(\theta\)</span> is usually a spectrum or coherence at a particular frequency or a simple parameter such as the frequency of a periodic component. Denote an estimate of <span class="math notranslate nohighlight">\(\theta\)</span> made using all <span class="math notranslate nohighlight">\(K\)</span> observations by <span class="math notranslate nohighlight">\(\hat{\theta_{all}}\)</span>. Next, subdivide the data into <span class="math notranslate nohighlight">\(K\)</span> groups
+of size <span class="math notranslate nohighlight">\(K − 1\)</span> by deleting each entry in turn from the whole set, and let the estimate of <span class="math notranslate nohighlight">\(\theta\)</span> with the <span class="math notranslate nohighlight">\(i\)</span>th observation deleted be</p>
+<div align="center"><p><span class="math notranslate nohighlight">\(\large{\theta_{\setminus i} = \hat{\theta}\{x_1,..x_{i-1},x_{i+1},...x_K\}}\)</span></p>
+</div><p>for <span class="math notranslate nohighlight">\(i = 1, 2,..., K\)</span>, where the subscript <span class="math notranslate nohighlight">\(\setminus\)</span> is the set-theoretic sense of without. Using <span class="math notranslate nohighlight">\(\bullet\)</span> in the statistical sense of averaged over, define the average of the <span class="math notranslate nohighlight">\(K\)</span> delete-one estimates as</p>
+<div align="center"><p><span class="math notranslate nohighlight">\(\large{\theta_{\setminus \bullet} = \frac {1}{K} \sum_{i=1}^{K} \hat{ \theta_{\setminus i}}}\)</span></p>
+</div><p>and the jackknife variance of <span class="math notranslate nohighlight">\(\hat{\theta_{all}}\)</span> as</p>
+<div align="center"><p><span class="math notranslate nohighlight">\(\large{\widehat{Var}\{{\hat{\theta_{all}}}\} = \frac {K - 1}{K} \sum_{i=1}^{K} (\hat{ \theta_{\setminus i}}} - \hat{ \theta_{\setminus \bullet}})^2\)</span></p>
+</div><p>This is just a summary of the jackknife variance estimate, kindly explore the references for further in-depth details.</p>
+<section id="A-look-at-jk_var_deg_freedom">
+<h2>A look at <code class="docutils literal notranslate"><span class="pre">jk_var_deg_freedom</span></code><a class="headerlink" href="#A-look-at-jk_var_deg_freedom" title="Link to this heading">¶</a></h2>
+<p>This attribute differs depending on whether the jackknife was used. It is either</p>
+<ul class="simple">
+<li><p>The jackknife estimated variance of the log-psd, OR</p></li>
+<li><p>The degrees of freedom in a <span class="math notranslate nohighlight">\(chi^2\)</span> model of how the estimated PSD is distributed about the true log-PSD (this is either 2<span class="math notranslate nohighlight">\(*\)</span>floor(2<span class="math notranslate nohighlight">\(*\)</span>NW), or calculated from adaptive weights)</p></li>
+</ul>
+<p>We’ll do a combination of the valid values for the <code class="docutils literal notranslate"><span class="pre">adaptive</span></code> and <code class="docutils literal notranslate"><span class="pre">jk_var_deg_freedom</span></code> and have a look at the results.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%capture</span> --no-display
+
+<span class="c1"># Setup utilities</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.stats.distributions</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dist</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">[</span><span class="mi">11</span><span class="p">,</span> <span class="mi">26</span><span class="p">],</span> <span class="n">sharey</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">(</span><span class="n">pad</span><span class="o">=</span><span class="mf">4.0</span><span class="p">)</span>
+
+<span class="n">axs</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+<span class="n">idx</span><span class="o">=</span><span class="mi">0</span>
+
+<span class="k">for</span> <span class="n">adaptive</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">jackknife</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+
+        <span class="n">mtp</span> <span class="o">=</span> <span class="n">Multitaper</span><span class="p">(</span><span class="n">lc_ar4</span><span class="p">,</span> <span class="n">adaptive</span><span class="o">=</span><span class="n">adaptive</span><span class="p">,</span> <span class="n">jackknife</span><span class="o">=</span><span class="n">jackknife</span><span class="p">)</span>
+
+        <span class="n">mtp_stingray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">multitaper_norm_power</span><span class="p">)</span>
+
+        <span class="n">Kmax</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">eigvals</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">jackknife</span><span class="p">:</span>
+
+            <span class="n">jk_p</span> <span class="o">=</span> <span class="p">(</span><span class="n">dist</span><span class="o">.</span><span class="n">t</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mf">.975</span><span class="p">,</span> <span class="n">Kmax</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">jk_var_deg_freedom</span><span class="p">))</span>
+            <span class="n">jk_limits_stingray</span> <span class="o">=</span> <span class="p">(</span><span class="n">mtp_stingray</span> <span class="o">-</span> <span class="n">jk_p</span><span class="p">,</span> <span class="n">mtp_stingray</span> <span class="o">+</span> <span class="n">jk_p</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="n">p975</span> <span class="o">=</span> <span class="n">dist</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mf">.975</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">jk_var_deg_freedom</span><span class="p">)</span>
+            <span class="n">p025</span> <span class="o">=</span> <span class="n">dist</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mf">.025</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">jk_var_deg_freedom</span><span class="p">)</span>
+
+            <span class="n">l1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">jk_var_deg_freedom</span> <span class="o">/</span> <span class="n">p975</span><span class="p">)</span>
+            <span class="n">l2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">jk_var_deg_freedom</span> <span class="o">/</span> <span class="n">p025</span><span class="p">)</span>
+
+            <span class="n">jk_limits_stingray</span> <span class="o">=</span> <span class="p">(</span><span class="n">mtp_stingray</span> <span class="o">+</span> <span class="n">l1</span><span class="p">,</span> <span class="n">mtp_stingray</span> <span class="o">+</span> <span class="n">l2</span><span class="p">)</span>
+
+
+        <span class="n">axs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">mtp_stingray</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Multitaper S(f) Estimate&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="mi">6</span><span class="p">])</span>
+        <span class="n">axs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">jk_limits_stingray</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">y2</span><span class="o">=</span><span class="n">jk_limits_stingray</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.4</span><span class="p">)</span>
+
+        <span class="n">axs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq_analytical</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">psd_analytical</span><span class="p">),</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="n">axs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Adaptive: </span><span class="si">{</span><span class="n">adaptive</span><span class="si">}</span><span class="s2">, Jackknife: </span><span class="si">{</span><span class="n">jackknife</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">ylabel</span><span class="o">=</span><span class="s2">&quot;Power, ln&quot;</span><span class="p">,</span>
+            <span class="n">xlabel</span><span class="o">=</span><span class="s2">&quot;Frequency&quot;</span>
+        <span class="p">)</span>
+        <span class="n">axs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+        <span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
+
+
+<span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;if jackknife == True:</span><span class="se">\n\</span>
+<span class="s2">jk_var_deg_freedom = jackknife estimated variance of the log-psd.</span><span class="se">\n\</span>
+<span class="s2">else:</span><span class="se">\n\</span>
+<span class="s2">jk_var_deg_freedom = degrees of freedom in a chi2</span><span class="se">\n\</span>
+<span class="s2">model of how the estimated PSD is distributed about</span><span class="se">\n\</span>
+<span class="s2">the true log-PSD&quot;</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_37_0.png" src="../../_images/notebooks_Multitaper_multitaper_example_37_0.png" />
+</div>
+</div>
+</section>
+<section id="Linearly-re-binning-a-power-spectrum-in-frequency">
+<h2>Linearly re-binning a power spectrum in frequency<a class="headerlink" href="#Linearly-re-binning-a-power-spectrum-in-frequency" title="Link to this heading">¶</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mtp</span> <span class="o">=</span> <span class="n">Multitaper</span><span class="p">(</span><span class="n">lc_ar4</span><span class="p">,</span> <span class="n">adaptive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;abs&quot;</span><span class="p">)</span>
+<span class="n">mtp_rebin</span> <span class="o">=</span> <span class="n">mtp</span><span class="o">.</span><span class="n">rebin</span><span class="p">(</span><span class="n">f</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Original df: &quot;</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">df</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Rebinned df: &quot;</span><span class="p">,</span> <span class="n">mtp_rebin</span><span class="o">.</span><span class="n">df</span><span class="p">)</span>
+
+<span class="n">f</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">dpi</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">[</span><span class="mi">11</span><span class="p">,</span> <span class="mi">6</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Original&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mtp_rebin</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">mtp_rebin</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Rebinned&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="mi">7</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq_analytical</span><span class="p">,</span> <span class="n">psd_analytical</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">yscale</span><span class="p">(</span><span class="s2">&quot;log&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Power&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency&quot;</span><span class="p">)</span>
+<span class="n">f</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/home/dhruv/repos/stingray/stingray/utils.py:126: UserWarning: SIMON says: Stingray only uses poisson err_dist at the moment. All analysis in the light curve will assume Poisson errors. Sorry for the inconvenience.
+  warnings.warn(&#34;SIMON says: {0}&#34;.format(message), **kwargs)
+/home/dhruv/repos/stingray/stingray/utils.py:126: UserWarning: SIMON says: Looks like your lightcurve statistic is not poisson.The errors in the Powerspectrum will be incorrect.
+  warnings.warn(&#34;SIMON says: {0}&#34;.format(message), **kwargs)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Using 7 DPSS windows for multitaper spectrum estimator
+Original df:  0.0009765625
+Rebinned df:  0.0068359375
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_39_2.png" src="../../_images/notebooks_Multitaper_multitaper_example_39_2.png" />
+</div>
+</div>
+</section>
+<section id="Poisson-distributed-lightcurve">
+<h2>Poisson distributed lightcurve<a class="headerlink" href="#Poisson-distributed-lightcurve" title="Link to this heading">¶</a></h2>
+<p>Generate an array of relative timestamps that’s 8 seconds long, with dt = 0.03125 s, and make two signals in units of counts. The signal is a sine wave with amplitude = 300 cts/s, frequency = 2 Hz, phase offset = 0 radians, and mean = 1000 cts/s. We then add Poisson noise to the light curve.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dt</span> <span class="o">=</span> <span class="mf">0.03125</span>  <span class="c1"># seconds</span>
+<span class="n">exposure</span> <span class="o">=</span> <span class="mf">8.</span>  <span class="c1"># seconds</span>
+<span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">exposure</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span>  <span class="c1"># seconds</span>
+
+<span class="n">signal</span> <span class="o">=</span> <span class="mi">300</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">times</span><span class="o">/</span><span class="mf">0.5</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1000</span>  <span class="c1"># counts/s</span>
+<span class="n">noisy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">signal</span><span class="o">*</span><span class="n">dt</span><span class="p">)</span>  <span class="c1"># counts</span>
+
+<span class="n">lc_poisson</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">noisy</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">)</span>
+<span class="n">lc_poisson</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+WARNING:root:Checking if light curve is well behaved. This can take time, so if you are sure it is already sorted, specify skip_checks=True at light curve creation.
+WARNING:root:Checking if light curve is sorted.
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_41_1.png" src="../../_images/notebooks_Multitaper_multitaper_example_41_1.png" />
+</div>
+</div>
+</section>
+<section id="Comparing-Powerspectrum-and-Multitaper-on-poisson-distributed-lightcurve">
+<h2>Comparing Powerspectrum and Multitaper on poisson-distributed lightcurve<a class="headerlink" href="#Comparing-Powerspectrum-and-Multitaper-on-poisson-distributed-lightcurve" title="Link to this heading">¶</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ps</span> <span class="o">=</span> <span class="n">Powerspectrum</span><span class="p">(</span><span class="n">lc_poisson</span><span class="p">)</span>
+<span class="n">mtp</span> <span class="o">=</span> <span class="n">Multitaper</span><span class="p">(</span><span class="n">lc_poisson</span><span class="p">,</span> <span class="n">adaptive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">low_bias</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">f</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">dpi</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">[</span><span class="mi">11</span><span class="p">,</span> <span class="mi">6</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mtp</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">mtp</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Multitaper Estimate&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Powerspectrum Estimate&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="mi">7</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">yscale</span><span class="p">(</span><span class="s2">&quot;log&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Power&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency, Hz&quot;</span><span class="p">)</span>
+<span class="n">f</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Using 7 DPSS windows for multitaper spectrum estimator
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_43_1.png" src="../../_images/notebooks_Multitaper_multitaper_example_43_1.png" />
+</div>
+</div>
+</section>
+</section>
+<section id="Time-series-with-uneven-temporal-sampling:-Multitaper-Lomb-Scargle">
+<h1>Time series with uneven temporal sampling: Multitaper Lomb-Scargle<a class="headerlink" href="#Time-series-with-uneven-temporal-sampling:-Multitaper-Lomb-Scargle" title="Link to this heading">¶</a></h1>
+<p>Uneven temporal sampling is quite common in astronomical time series, and a popular method to deal with them is the Lomb-Scargle Periodogram.</p>
+<p>A 2020 paper (A. Springford, et al.) used the Lomb-Scargle Periodogram in conjunction with the Multitapering concept for time-series with uneven sampling. That method is implemented here in Stingray.</p>
+<p>Everthing works as before, just</p>
+<ul class="simple">
+<li><p>Create a <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> with the unevenly sampled time-series</p></li>
+<li><p>Create a <code class="docutils literal notranslate"><span class="pre">Multitaper</span></code> object by passing it this <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> object, with the desired value of NW, <strong>just additionally pass the ``lombscargle = True`` keyword during instantiation.</strong></p></li>
+</ul>
+<p><strong>NOTE</strong>: Jack-knife variance estimation and adaptive weighting methods are not currently supported, so setting their keywords will have no effect if <code class="docutils literal notranslate"><span class="pre">lombscargle</span> <span class="pre">=</span> <span class="pre">True</span></code>.</p>
+<section id="Testing-the-Multitaper-Lomb-Scargle-on-a-Kepler-dataset-(used-in-A.-Springford-et-al.-(2020)-)">
+<h2>Testing the Multitaper Lomb-Scargle on a Kepler dataset (used in A. Springford et al. (2020) )<a class="headerlink" href="#Testing-the-Multitaper-Lomb-Scargle-on-a-Kepler-dataset-(used-in-A.-Springford-et-al.-(2020)-)" title="Link to this heading">¶</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Loading data</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="c1"># If downloaded locally, use</span>
+<span class="c1"># pd.read_csv(&quot;koi2133.csv&quot;)</span>
+<span class="n">kepler_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;https://raw.githubusercontent.com/StingraySoftware/notebooks/main/Multitaper/koi2133.csv&quot;</span><span class="p">)</span>
+<span class="n">times_kp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">kepler_data</span><span class="p">[</span><span class="s2">&quot;times&quot;</span><span class="p">])</span>
+<span class="n">flux_kp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">kepler_data</span><span class="p">[</span><span class="s2">&quot;flux&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_kepler</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">times_kp</span><span class="p">,</span> <span class="n">counts</span><span class="o">=</span><span class="n">flux_kp</span><span class="p">,</span> <span class="n">err_dist</span><span class="o">=</span><span class="s2">&quot;gauss&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">times_kp</span><span class="p">))</span>
+<span class="n">lc_kepler</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+WARNING:root:Checking if light curve is well behaved. This can take time, so if you are sure it is already sorted, specify skip_checks=True at light curve creation.
+WARNING:root:Checking if light curve is sorted.
+/home/dhruv/repos/stingray/stingray/utils.py:126: UserWarning: SIMON says: Stingray only uses poisson err_dist at the moment. All analysis in the light curve will assume Poisson errors. Sorry for the inconvenience.
+  warnings.warn(&#34;SIMON says: {0}&#34;.format(message), **kwargs)
+WARNING:root:Computing the bin time ``dt``. This can take time. If you know the bin time, please specify it at light curve creation
+/home/dhruv/repos/stingray/stingray/utils.py:126: UserWarning: SIMON says: Bin sizes in input time array aren&#39;t equal throughout! This could cause problems with Fourier transforms. Please make the input time evenly sampled.
+  warnings.warn(&#34;SIMON says: {0}&#34;.format(message), **kwargs)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_47_1.png" src="../../_images/notebooks_Multitaper_multitaper_example_47_1.png" />
+</div>
+</div>
+<section id="Plotting-the-first-3000-data-points-of-the-kepler-lightcurve">
+<h3>Plotting the first 3000 data points of the kepler lightcurve<a class="headerlink" href="#Plotting-the-first-3000-data-points-of-the-kepler-lightcurve" title="Link to this heading">¶</a></h3>
+<p>The unevenness of the temporal sampling can be better seen with this</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">f</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">dpi</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">[</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lc_kepler</span><span class="o">.</span><span class="n">time</span><span class="p">[:</span><span class="mi">3000</span><span class="p">],</span> <span class="n">lc_kepler</span><span class="o">.</span><span class="n">counts</span><span class="p">[:</span><span class="mi">3000</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="mi">3</span><span class="p">]);</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Relative Flux&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Days&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0.5, 0, &#39;Days&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_49_1.png" src="../../_images/notebooks_Multitaper_multitaper_example_49_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%time</span>
+<span class="n">mtls_kepler</span> <span class="o">=</span> <span class="n">Multitaper</span><span class="p">(</span><span class="n">lc_kepler</span><span class="p">,</span> <span class="n">NW</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">lombscargle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;leahy&quot;</span><span class="p">)</span> <span class="c1"># Using normalized half bandwidth = 10</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/home/dhruv/repos/stingray/stingray/utils.py:126: UserWarning: SIMON says: Stingray only uses poisson err_dist at the moment. All analysis in the light curve will assume Poisson errors. Sorry for the inconvenience.
+  warnings.warn(&#34;SIMON says: {0}&#34;.format(message), **kwargs)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Using 19 DPSS windows for multitaper spectrum estimator
+CPU times: user 19 s, sys: 4.61 s, total: 23.6 s
+Wall time: 9.73 s
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/home/dhruv/repos/stingray/stingray/utils.py:126: UserWarning: SIMON says: Looks like your lightcurve statistic is not poisson.The errors in the Powerspectrum will be incorrect.
+  warnings.warn(&#34;SIMON says: {0}&#34;.format(message), **kwargs)
+</pre></div></div>
+</div>
+<p>As stated before, the <code class="docutils literal notranslate"><span class="pre">adaptive</span></code> weighting method and <code class="docutils literal notranslate"><span class="pre">jackknife</span></code> log-psd estimate are currently not supported, hence these keywords will have no effect, no matter their value.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">f</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">dpi</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">[</span><span class="mi">11</span><span class="p">,</span> <span class="mi">6</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mtls_kepler</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">mtls_kepler</span><span class="o">.</span><span class="n">unnorm_power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;MTLS estimate </span><span class="se">\n</span><span class="s2"> NW=10, K=19&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">yscale</span><span class="p">(</span><span class="s2">&quot;log&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Power&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency, 1/Day&quot;</span><span class="p">)</span>
+<span class="n">f</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_52_0.png" src="../../_images/notebooks_Multitaper_multitaper_example_52_0.png" />
+</div>
+</div>
+<section id="But-how-does-this-compare-to-the-classical-Lomb-Scargle-Periodogram?">
+<h4>But how does this compare to the classical Lomb-Scargle Periodogram?<a class="headerlink" href="#But-how-does-this-compare-to-the-classical-Lomb-Scargle-Periodogram?" title="Link to this heading">¶</a></h4>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">astropy.timeseries</span><span class="w"> </span><span class="kn">import</span> <span class="n">LombScargle</span>
+
+<span class="n">ls_freq</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">lc_kepler</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="n">lc_kepler</span><span class="o">.</span><span class="n">dt</span><span class="p">)[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="c1"># Avioding zero</span>
+<span class="n">data</span> <span class="o">=</span>  <span class="n">lc_kepler</span><span class="o">.</span><span class="n">counts</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">lc_kepler</span><span class="o">.</span><span class="n">counts</span><span class="p">)</span>
+<span class="n">ls_psd</span> <span class="o">=</span> <span class="n">LombScargle</span><span class="p">(</span><span class="n">lc_kepler</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">frequency</span><span class="o">=</span><span class="n">ls_freq</span><span class="p">,</span> <span class="n">normalization</span><span class="o">=</span><span class="s2">&quot;psd&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">f</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">[</span><span class="mi">11</span><span class="p">,</span> <span class="mi">11</span><span class="p">])</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mtls_kepler</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">mtls_kepler</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;MTLS estimate </span><span class="se">\n</span><span class="s2"> NW=10, K=19&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s2">&quot;log&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Power&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency, 1/Day&quot;</span><span class="p">)</span>
+
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ls_freq</span><span class="p">,</span> <span class="n">ls_psd</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Lomb-Scargle Periodogram&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="mi">6</span><span class="p">])</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Power&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s2">&quot;log&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency, 1/Day&quot;</span><span class="p">)</span>
+<span class="n">f</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_55_0.png" src="../../_images/notebooks_Multitaper_multitaper_example_55_0.png" />
+</div>
+</div>
+<p>A pretty visual reduction in variance can be seen</p>
+</section>
+</section>
+<section id="Zooming-in">
+<h3>Zooming in<a class="headerlink" href="#Zooming-in" title="Link to this heading">¶</a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">f</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">[</span><span class="mi">11</span><span class="p">,</span> <span class="mi">18</span><span class="p">])</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mtls_kepler</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">mtls_kepler</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;MTLS estimate </span><span class="se">\n</span><span class="s2"> NW=10, K=19&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Power&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency, Hz&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s2">&quot;log&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">([</span><span class="mf">5.8</span><span class="p">,</span> <span class="mf">13.2</span><span class="p">])</span>
+
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ls_freq</span><span class="p">,</span> <span class="n">ls_psd</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Lomb-Scargle Periodogram&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">palette</span><span class="p">[</span><span class="mi">6</span><span class="p">])</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Power&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency, 1/Day&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s2">&quot;log&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">([</span><span class="mf">5.8</span><span class="p">,</span> <span class="mf">13.2</span><span class="p">])</span>
+<span class="n">f</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Multitaper_multitaper_example_57_0.png" src="../../_images/notebooks_Multitaper_multitaper_example_57_0.png" />
+</div>
+</div>
+</section>
+</section>
+</section>
+<section id="References">
+<h1>References<a class="headerlink" href="#References" title="Link to this heading">¶</a></h1>
+<p>[1] Springford, Aaron, Gwendolyn M. Eadie, and David J. Thomson. 2020. “Improving the Lomb–Scargle Periodogram with the Thomson Multitaper.” The Astronomical Journal (American Astronomical Society) 159: 205. doi:10.3847/1538-3881/ab7fa1.</p>
+<p>[2] Huppenkothen, Daniela, Matteo Bachetti, Abigail L. Stevens, Simone Migliari, Paul Balm, Omar Hammad, Usman Mahmood Khan, et al. 2019. “Stingray: A Modern Python Library for Spectral Timing.” The Astrophysical Journal (American Astronomical Society) 881: 39. doi:10.3847/1538-4357/ab258d.</p>
+<p>[3] Thomson, D. J. 1982. “Spectrum Estimation and Harmonic Analysis.” IEEE Proceedings 70: 1055-1096. <a class="reference external" href="https://ui.adsabs.harvard.edu/abs/1982IEEEP..70.1055T">https://ui.adsabs.harvard.edu/abs/1982IEEEP..70.1055T</a>.</p>
+<p>[4] Thomson, D. J. 1990 “Time series analysis of Holocene climate data.” Philosophical Transactions of the Royal Society of London. Series A, Mathematical and Physical Sciences (The Royal Society) 330: 601–616. doi:10.1098/rsta.1990.0041.</p>
+<p>[5] Lomb, N. R. 1976. “Least-squares frequency analysis of unequally spaced data.” Astrophysics and Space Science (Springer Science and Business Media LLC) 39: 447–462. doi:10.1007/bf00648343.</p>
+<p>[6] Scargle, J. D. 1982. “Studies in astronomical time series analysis. II - Statistical aspects of spectral analysis of unevenly spaced data.” The Astrophysical Journal (American Astronomical Society) 263: 835. doi:10.1086/160554.</p>
+<p>[7] Slepian, D. 1978. “Prolate Spheroidal Wave Functions, Fourier Analysis, and Uncertainty-V: The Discrete Case.” Bell System Technical Journal (Institute of Electrical and Electronics Engineers (IEEE)) 57: 1371–1430. doi:10.1002/j.1538-7305.1978.tb02104.x.</p>
+<p>[8] D. J. Thomson, “Jackknifing Multitaper Spectrum Estimates,” in IEEE Signal Processing Magazine, vol. 24, no. 4, pp. 20-30, July 2007, doi: 10.1109/MSP.2007.4286561.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Install Stingray in colab</a></li>
+<li><a class="reference internal" href="#Multitaper-Spectral-Estimator-Example">Multitaper Spectral Estimator Example</a></li>
+<li><a class="reference internal" href="####-Creating-a-light-curve">### Creating a light curve</a><ul>
+<li><a class="reference internal" href="#The-Multitaper-Periodogram">The Multitaper Periodogram</a><ul>
+<li><a class="reference internal" href="#Let's-have-a-look-at-the-individual-tapers.">Let’s have a look at the individual tapers.</a><ul>
+<li><a class="reference internal" href="#Now-let's-see-their-frequency-domain-representations-(here-PSD)">Now let’s see their frequency domain representations (here PSD)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Summary-of-Multitaper-Spectral-Estimation">Summary of Multitaper Spectral Estimation</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Creating-a-Multitaper-object">Creating a <code class="docutils literal notranslate"><span class="pre">Multitaper</span></code> object</a><ul>
+<li><a class="reference internal" href="#The-results">The results</a></li>
+<li><a class="reference internal" href="#While-it-seems-decent,-lets-compare-with-Powerspectrum">While it seems decent, lets compare with <code class="docutils literal notranslate"><span class="pre">Powerspectrum</span></code></a><ul>
+<li><a class="reference internal" href="#As-can-be-seen,-there-is-improvement-in-both-the-variance-and-the-bias.">As can be seen, there is improvement in both the variance and the bias.</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Attributes-of-the-Multitaper-object">Attributes of the Multitaper object</a></li>
+<li><a class="reference internal" href="#A-look-at-the-values-contained-in-these-attributes.">A look at the values contained in these attributes.</a></li>
+<li><a class="reference internal" href="#A-look-at-the-different-normalizations">A look at the different normalizations</a></li>
+<li><a class="reference internal" href="#Other-attributes-with-the-S(f)-estimates">Other attributes with the S(f) estimates</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#A-summary-of-the-jackknife-variance-estimate">A summary of the jackknife variance estimate</a><ul>
+<li><a class="reference internal" href="#A-look-at-jk_var_deg_freedom">A look at <code class="docutils literal notranslate"><span class="pre">jk_var_deg_freedom</span></code></a></li>
+<li><a class="reference internal" href="#Linearly-re-binning-a-power-spectrum-in-frequency">Linearly re-binning a power spectrum in frequency</a></li>
+<li><a class="reference internal" href="#Poisson-distributed-lightcurve">Poisson distributed lightcurve</a></li>
+<li><a class="reference internal" href="#Comparing-Powerspectrum-and-Multitaper-on-poisson-distributed-lightcurve">Comparing Powerspectrum and Multitaper on poisson-distributed lightcurve</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Time-series-with-uneven-temporal-sampling:-Multitaper-Lomb-Scargle">Time series with uneven temporal sampling: Multitaper Lomb-Scargle</a><ul>
+<li><a class="reference internal" href="#Testing-the-Multitaper-Lomb-Scargle-on-a-Kepler-dataset-(used-in-A.-Springford-et-al.-(2020)-)">Testing the Multitaper Lomb-Scargle on a Kepler dataset (used in A. Springford et al. (2020) )</a><ul>
+<li><a class="reference internal" href="#Plotting-the-first-3000-data-points-of-the-kepler-lightcurve">Plotting the first 3000 data points of the kepler lightcurve</a><ul>
+<li><a class="reference internal" href="#But-how-does-this-compare-to-the-classical-Lomb-Scargle-Periodogram?">But how does this compare to the classical Lomb-Scargle Periodogram?</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Zooming-in">Zooming in</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#References">References</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/Multitaper/multitaper_example.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

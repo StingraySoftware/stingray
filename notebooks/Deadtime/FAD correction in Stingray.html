@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Fourier Amplitude Difference correction in Stingray &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Working with more generic time series" href="../../timeseries.html" />
+    <link rel="prev" title="Stingray’s dead time models" href="Dead%20time%20model%20in%20Stingray.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="../../timeseries.html" title="Working with more generic time series">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="Dead%20time%20model%20in%20Stingray.html" title="Stingray’s dead time models">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../deadtime.html" accesskey="U">Dealing with dead time</a> &#187;</li>
+      
+      <li>Fourier Amplitude Difference correction in Stingray</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="Fourier-Amplitude-Difference-correction-in-Stingray">
+<h1>Fourier Amplitude Difference correction in Stingray<a class="headerlink" href="#Fourier-Amplitude-Difference-correction-in-Stingray" title="Link to this heading">¶</a></h1>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">load_ext</span> autoreload
+<span class="o">%</span><span class="k">autoreload</span> 2
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventList</span><span class="p">,</span> <span class="n">AveragedCrossspectrum</span><span class="p">,</span> <span class="n">AveragedPowerspectrum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.deadtime.fad</span><span class="w"> </span><span class="kn">import</span> <span class="n">calculate_FAD_correction</span><span class="p">,</span> <span class="n">FAD</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.filters</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_for_deadtime</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<br/></pre></div>
+</div>
+</div>
+<p>Dead time affects most counting experiments. While the instrument is busy processing one event, it is “dead” to other photons/particles hitting the detector. This is usually not an issue if the count rate is low enough, or the processing time (<em>dead</em> time) is small enough. However, at high count rate dead time affects greatly the statistical properties of the data, to a point where a standard periodicity search based on the periodogram/power density spectrum (PDS) cannot be carried out.</p>
+<p>The Fourier Amplitude Difference (FAD) correction is described in <a class="reference external" href="https://ui.adsabs.harvard.edu/abs/2018ApJ...853L..21B">Bachetti &amp; Huppenkothen, 2018, ApJ, 853L, 21</a>, and is able to correct precisely deadtime affected PDSs if we have at least two identical and independent detectors. This is common in new generation X-ray timing instruments, often based on multiple-detector configurations (e.g. NuSTAR, NICER, AstroSAT, etc.).</p>
+<p>In the code below, we calculate the PDS of light curves without dead time, after applying a dead time filter, and after applying the FAD to the dead-time affected dataset.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">generate_events</span><span class="p">(</span><span class="n">length</span><span class="p">,</span> <span class="n">ncounts</span><span class="p">):</span>
+    <span class="n">ev</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">ncounts</span><span class="p">)</span>
+    <span class="n">ev</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">ev</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ctrate</span> <span class="o">=</span> <span class="mi">500</span>
+<span class="n">dt</span> <span class="o">=</span> <span class="mf">0.001</span>
+<span class="n">deadtime</span> <span class="o">=</span> <span class="mf">2.5e-3</span>
+<span class="n">tstart</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">length</span> <span class="o">=</span> <span class="mi">25600</span>
+<span class="n">segment_size</span> <span class="o">=</span> <span class="mf">256.</span>
+<span class="n">ncounts</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">ctrate</span> <span class="o">*</span> <span class="n">length</span><span class="p">)</span>
+<span class="n">ev1</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">generate_events</span><span class="p">(</span><span class="n">length</span><span class="p">,</span> <span class="n">ncounts</span><span class="p">),</span> <span class="n">mjdref</span><span class="o">=</span><span class="mi">58000</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="p">[[</span><span class="n">tstart</span><span class="p">,</span> <span class="n">length</span><span class="p">]])</span>
+<span class="n">ev2</span> <span class="o">=</span> <span class="n">EventList</span><span class="p">(</span><span class="n">generate_events</span><span class="p">(</span><span class="n">length</span><span class="p">,</span> <span class="n">ncounts</span><span class="p">),</span> <span class="n">mjdref</span><span class="o">=</span><span class="mi">58000</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="p">[[</span><span class="n">tstart</span><span class="p">,</span> <span class="n">length</span><span class="p">]])</span>
+
+<span class="n">pds1</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">ev1</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s1">&#39;leahy&#39;</span><span class="p">)</span>
+<span class="n">pds2</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">ev2</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s1">&#39;leahy&#39;</span><span class="p">)</span>
+<span class="n">ptot</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">ev1</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ev2</span><span class="p">),</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s1">&#39;leahy&#39;</span><span class="p">)</span>
+<span class="n">cs</span> <span class="o">=</span> <span class="n">AveragedCrossspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">ev1</span><span class="p">,</span> <span class="n">ev2</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s1">&#39;leahy&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100it [00:01, 98.20it/s]
+100it [00:00, 134.62it/s]
+100it [00:01, 80.61it/s]
+100it [00:01, 52.97it/s]
+</pre></div></div>
+</div>
+<p>Now let us apply a deadtime filter to the events generated above, and calculate the corresponding periodograms</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ev1_dt</span> <span class="o">=</span> <span class="n">ev1</span><span class="o">.</span><span class="n">apply_deadtime</span><span class="p">(</span><span class="n">deadtime</span><span class="p">)</span>
+<span class="n">ev2_dt</span> <span class="o">=</span> <span class="n">ev2</span><span class="o">.</span><span class="n">apply_deadtime</span><span class="p">(</span><span class="n">deadtime</span><span class="p">)</span>
+
+<span class="n">pds1_dt</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">ev1_dt</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s1">&#39;leahy&#39;</span><span class="p">)</span>
+<span class="n">pds2_dt</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">ev2_dt</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s1">&#39;leahy&#39;</span><span class="p">)</span>
+<span class="n">ptot_dt</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">ev1_dt</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ev2_dt</span><span class="p">),</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s1">&#39;leahy&#39;</span><span class="p">)</span>
+<span class="n">cs_dt</span> <span class="o">=</span> <span class="n">AveragedCrossspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">ev1_dt</span><span class="p">,</span> <span class="n">ev2_dt</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s1">&#39;leahy&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100it [00:00, 154.30it/s]
+100it [00:00, 167.20it/s]
+100it [00:00, 133.60it/s]
+100it [00:01, 67.74it/s]
+</pre></div></div>
+</div>
+<p>The FAD method relies on averaging out many values of the difference between the Fourier transforms in the two channels in <em>contiguous frequencies</em>, and <strong>it works best when the frequency resolution is very high</strong> compared with the distortion of the power spectrum due to deadtime.</p>
+<p>For example, in NuSTAR the effect of deadtime appears above <span class="math notranslate nohighlight">\(\sim10\)</span> Hz. We want to calculate the correction on a Hz-by-Hz basis, so that the correction is adequate. The frequency resolution from the FFT is <code class="docutils literal notranslate"><span class="pre">1/segment_size</span></code>.</p>
+<p>Therefore, <strong>the ``segment_size`` should ideally be some hundred seconds</strong> to have some hundred bins in a Hz. The smoothing length should be of the order of the number of bins in <span class="math notranslate nohighlight">\(\sim1\)</span> Hz (in this example 2Hz).</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">results</span> <span class="o">=</span> \
+    <span class="n">FAD</span><span class="p">(</span><span class="n">ev1_dt</span><span class="p">,</span> <span class="n">ev2_dt</span><span class="p">,</span> <span class="n">segment_size</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;leahy&quot;</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                      <span class="n">smoothing_alg</span><span class="o">=</span><span class="s1">&#39;gauss&#39;</span><span class="p">,</span>
+                      <span class="n">smoothing_length</span><span class="o">=</span><span class="n">segment_size</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span>
+                      <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                      <span class="n">tolerance</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
+
+<span class="n">freq_f</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s1">&#39;freq&#39;</span><span class="p">]</span>
+<span class="n">pds1_f</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s1">&#39;pds1&#39;</span><span class="p">]</span>
+<span class="n">pds2_f</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s1">&#39;pds2&#39;</span><span class="p">]</span>
+<span class="n">cs_f</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s1">&#39;cs&#39;</span><span class="p">]</span>
+<span class="n">ptot_f</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s1">&#39;ptot&#39;</span><span class="p">]</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100it [00:33,  2.99it/s]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+M: 100
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">spec</span><span class="p">,</span> <span class="n">spec_dt</span><span class="p">,</span> <span class="n">spec_f</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">pds1</span><span class="p">,</span> <span class="n">pds1</span><span class="p">,</span> <span class="n">ptot</span><span class="p">,</span> <span class="n">cs</span><span class="p">],</span>
+        <span class="p">[</span><span class="n">pds1_dt</span><span class="p">,</span> <span class="n">pds2_dt</span><span class="p">,</span> <span class="n">ptot_dt</span><span class="p">,</span> <span class="n">cs_dt</span><span class="p">],</span>
+        <span class="p">[</span><span class="n">pds1_f</span><span class="p">,</span> <span class="n">pds2_f</span><span class="p">,</span> <span class="n">ptot_f</span><span class="p">,</span> <span class="n">cs_f</span><span class="p">],</span>
+        <span class="p">[</span><span class="s1">&#39;PDS from light curve 1&#39;</span><span class="p">,</span> <span class="s1">&#39;PDS from light curve 2&#39;</span><span class="p">,</span> <span class="s1">&#39;PDS from lcs 1+2&#39;</span><span class="p">,</span> <span class="s1">&#39;cospectrum&#39;</span><span class="p">]</span>
+        <span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;No dead time&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">spec_dt</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">spec_dt</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Dead time-affected&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq_f</span><span class="p">,</span> <span class="n">spec_f</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;FAD-corrected&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_FAD_correction_in_Stingray_9_0.png" src="../../_images/notebooks_Deadtime_FAD_correction_in_Stingray_9_0.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_FAD_correction_in_Stingray_9_1.png" src="../../_images/notebooks_Deadtime_FAD_correction_in_Stingray_9_1.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_FAD_correction_in_Stingray_9_2.png" src="../../_images/notebooks_Deadtime_FAD_correction_in_Stingray_9_2.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_FAD_correction_in_Stingray_9_3.png" src="../../_images/notebooks_Deadtime_FAD_correction_in_Stingray_9_3.png" />
+</div>
+</div>
+<p>As can be seen above, all power density and co- spectra have been corrected accurately in their basic property (the white noise level). See Bachetti &amp; Huppenkothen 2019 for more information.</p>
+<p>Note that this can also be done starting from light curves:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Calculate light curves</span>
+<span class="n">lc1_dt</span> <span class="o">=</span> <span class="n">ev1_dt</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">)</span>
+<span class="n">lc2_dt</span> <span class="o">=</span> <span class="n">ev2_dt</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">)</span>
+
+<span class="n">results</span> <span class="o">=</span> \
+    <span class="n">FAD</span><span class="p">(</span><span class="n">lc1_dt</span><span class="p">,</span> <span class="n">lc2_dt</span><span class="p">,</span> <span class="n">segment_size</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;leahy&quot;</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                      <span class="n">smoothing_alg</span><span class="o">=</span><span class="s1">&#39;gauss&#39;</span><span class="p">,</span>
+                      <span class="n">smoothing_length</span><span class="o">=</span><span class="n">segment_size</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span>
+                      <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                      <span class="n">tolerance</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
+
+<span class="n">freq_f</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s1">&#39;freq&#39;</span><span class="p">]</span>
+<span class="n">pds1_f</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s1">&#39;pds1&#39;</span><span class="p">]</span>
+<span class="n">pds2_f</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s1">&#39;pds2&#39;</span><span class="p">]</span>
+<span class="n">cs_f</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s1">&#39;cs&#39;</span><span class="p">]</span>
+<span class="n">ptot_f</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s1">&#39;ptot&#39;</span><span class="p">]</span>
+
+<span class="k">for</span> <span class="n">spec</span><span class="p">,</span> <span class="n">spec_dt</span><span class="p">,</span> <span class="n">spec_f</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">pds1</span><span class="p">,</span> <span class="n">pds1</span><span class="p">,</span> <span class="n">ptot</span><span class="p">,</span> <span class="n">cs</span><span class="p">],</span>
+        <span class="p">[</span><span class="n">pds1_dt</span><span class="p">,</span> <span class="n">pds2_dt</span><span class="p">,</span> <span class="n">ptot_dt</span><span class="p">,</span> <span class="n">cs_dt</span><span class="p">],</span>
+        <span class="p">[</span><span class="n">pds1_f</span><span class="p">,</span> <span class="n">pds2_f</span><span class="p">,</span> <span class="n">ptot_f</span><span class="p">,</span> <span class="n">cs_f</span><span class="p">],</span>
+        <span class="p">[</span><span class="s1">&#39;PDS from light curve 1&#39;</span><span class="p">,</span> <span class="s1">&#39;PDS from light curve 2&#39;</span><span class="p">,</span> <span class="s1">&#39;PDS from lcs 1+2&#39;</span><span class="p">,</span> <span class="s1">&#39;cospectrum&#39;</span><span class="p">]</span>
+        <span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;No dead time&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">spec_dt</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">spec_dt</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Dead time-affected&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq_f</span><span class="p">,</span> <span class="n">spec_f</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;FAD-corrected&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100it [00:34,  2.93it/s]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+M: 100
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_FAD_correction_in_Stingray_11_2.png" src="../../_images/notebooks_Deadtime_FAD_correction_in_Stingray_11_2.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_FAD_correction_in_Stingray_11_3.png" src="../../_images/notebooks_Deadtime_FAD_correction_in_Stingray_11_3.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_FAD_correction_in_Stingray_11_4.png" src="../../_images/notebooks_Deadtime_FAD_correction_in_Stingray_11_4.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Deadtime_FAD_correction_in_Stingray_11_5.png" src="../../_images/notebooks_Deadtime_FAD_correction_in_Stingray_11_5.png" />
+</div>
+</div>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Fourier Amplitude Difference correction in Stingray</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/Deadtime/FAD correction in Stingray.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

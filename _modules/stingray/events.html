@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>stingray.events &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for stingray.events</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Definition of :class:`EventList`.</span>
+
+<span class="sd">:class:`EventList` is used to handle photon arrival times.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">_int_sum_non_zero</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.loggingconfig</span><span class="w"> </span><span class="kn">import</span> <span class="n">setup_logger</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">StingrayTimeseries</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.filters</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_deadtime_mask</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.gti</span><span class="w"> </span><span class="kn">import</span> <span class="n">generate_indices_of_boundaries</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">pi_to_energy</span><span class="p">,</span> <span class="n">get_file_extension</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">FITSTimeseriesReader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.lightcurve</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">simon</span><span class="p">,</span> <span class="n">njit</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">histogram</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;EventList&quot;</span><span class="p">]</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">setup_logger</span><span class="p">()</span>
+
+
+<span class="nd">@njit</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_from_lc_numba</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">empty_times</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a rough event list from a light curve.</span>
+
+<span class="sd">    This function creates as many events as the counts in each time bin of the light curve,</span>
+<span class="sd">    with event times equal to the light curve time stamps.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    times : array-like</span>
+<span class="sd">        Array of time stamps</span>
+<span class="sd">    counts : array-like</span>
+<span class="sd">        Array of counts</span>
+<span class="sd">    empty_times : array-like</span>
+<span class="sd">        Empty array to be filled with time stamps</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">last</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">counts</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">c</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">c</span> <span class="o">+</span> <span class="n">last</span>
+        <span class="n">empty_times</span><span class="p">[</span><span class="n">last</span><span class="p">:</span><span class="n">val</span><span class="p">]</span> <span class="o">=</span> <span class="n">t</span>
+        <span class="n">last</span> <span class="o">=</span> <span class="n">val</span>
+    <span class="c1"># If c &lt; 0 in some cases, some times will be empty</span>
+    <span class="k">return</span> <span class="n">empty_times</span><span class="p">[:</span><span class="n">val</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">simple_events_from_lc</span><span class="p">(</span><span class="n">lc</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create an :class:`EventList` from a :class:`stingray.Lightcurve` object. Note that all</span>
+<span class="sd">    events in a given time bin will have the same time stamp.</span>
+
+<span class="sd">    Bins with negative counts will be ignored.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    lc: :class:`stingray.Lightcurve` object</span>
+<span class="sd">        Light curve to use for creation of the event list.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ev: :class:`EventList` object</span>
+<span class="sd">        The resulting list of photon arrival times generated from the light curve.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; from stingray import Lightcurve</span>
+<span class="sd">    &gt;&gt;&gt; lc = Lightcurve([0, 1, 2], [2, 3, -1], dt=1)</span>
+<span class="sd">    &gt;&gt;&gt; ev = simple_events_from_lc(lc)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(ev.time, [0, 0, 1, 1, 1])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">counts</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">allcounts</span> <span class="o">=</span> <span class="n">_int_sum_non_zero</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span>
+    <span class="n">times</span> <span class="o">=</span> <span class="n">_from_lc_numba</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">allcounts</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">EventList</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">times</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">gti</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="EventList">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">EventList</span><span class="p">(</span><span class="n">StingrayTimeseries</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Basic class for event list data. Event lists generally correspond to individual events (e.g. photons)</span>
+<span class="sd">    recorded by the detector, and their associated properties. For X-ray data where this type commonly occurs,</span>
+<span class="sd">    events are time stamps of when a photon arrived in the detector, and (optionally) the photon energy associated</span>
+<span class="sd">    with the event.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time: iterable</span>
+<span class="sd">        A list or array of time stamps</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    dt: float</span>
+<span class="sd">        The time resolution of the events. Only relevant when using events</span>
+<span class="sd">        to produce light curves with similar bin time.</span>
+
+<span class="sd">    energy: iterable</span>
+<span class="sd">        A list of array of photon energy values in keV</span>
+
+<span class="sd">    mjdref : float</span>
+<span class="sd">        The MJD used as a reference for the time array.</span>
+
+<span class="sd">    ncounts: int</span>
+<span class="sd">        Number of desired data points in event list. Deprecated</span>
+
+<span class="sd">    gtis: ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``</span>
+<span class="sd">        Good Time Intervals</span>
+
+<span class="sd">    pi : integer, numpy.ndarray</span>
+<span class="sd">        PI channels</span>
+
+<span class="sd">    notes : str</span>
+<span class="sd">        Any useful annotations</span>
+
+<span class="sd">    high_precision : bool</span>
+<span class="sd">        Change the precision of self.time to float128. Useful while dealing with fast pulsars.</span>
+
+<span class="sd">    mission : str</span>
+<span class="sd">        Mission that recorded the data (e.g. NICER)</span>
+
+<span class="sd">    instr : str</span>
+<span class="sd">        Instrument onboard the mission</span>
+
+<span class="sd">    header : str</span>
+<span class="sd">        The full header of the original FITS file, if relevant</span>
+
+<span class="sd">    detector_id : iterable</span>
+<span class="sd">        The detector that recorded each photon (if the instrument has more than</span>
+<span class="sd">        one, e.g. XMM/EPIC-pn)</span>
+
+<span class="sd">    timeref : str</span>
+<span class="sd">        The time reference, as recorded in the FITS file (e.g. SOLARSYSTEM)</span>
+
+<span class="sd">    timesys : str</span>
+<span class="sd">        The time system, as recorded in the FITS file (e.g. TDB)</span>
+
+<span class="sd">    ephem : str</span>
+<span class="sd">        The JPL ephemeris used to barycenter the data, if any (e.g. DE430)</span>
+
+<span class="sd">    rmf_file : str, default None</span>
+<span class="sd">        The file name of the RMF file to use for calibration.</span>
+
+<span class="sd">    skip_checks : bool, default False</span>
+<span class="sd">        Skip checks for the validity of the event list. Use with caution.</span>
+
+<span class="sd">    **other_kw :</span>
+<span class="sd">        Used internally. Any other keyword arguments will be ignored</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time: numpy.ndarray</span>
+<span class="sd">        The array of event arrival times, in seconds from the reference</span>
+<span class="sd">        MJD defined in ``mjdref``</span>
+
+<span class="sd">    energy: numpy.ndarray</span>
+<span class="sd">        The array of photon energy values</span>
+
+<span class="sd">    ncounts: int</span>
+<span class="sd">        The number of data points in the event list</span>
+
+<span class="sd">    dt: float</span>
+<span class="sd">        The time resolution of the events. Only relevant when using events</span>
+<span class="sd">        to produce light curves with similar bin time.</span>
+
+<span class="sd">    mjdref : float</span>
+<span class="sd">        The MJD used as a reference for the time array.</span>
+
+<span class="sd">    gtis: ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``</span>
+<span class="sd">        Good Time Intervals</span>
+
+<span class="sd">    pi : integer, numpy.ndarray</span>
+<span class="sd">        PI channels</span>
+
+<span class="sd">    high_precision : bool</span>
+<span class="sd">        Change the precision of self.time to float128. Useful while dealing with fast pulsars.</span>
+
+<span class="sd">    mission : str</span>
+<span class="sd">        Mission that recorded the data (e.g. NICER)</span>
+
+<span class="sd">    instr : str</span>
+<span class="sd">        Instrument onboard the mission</span>
+
+<span class="sd">    detector_id : iterable</span>
+<span class="sd">        The detector that recoded each photon, if relevant (e.g. XMM, Chandra)</span>
+
+<span class="sd">    header : str</span>
+<span class="sd">        The full header of the original FITS file, if relevant</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">main_array_attr</span> <span class="o">=</span> <span class="s2">&quot;time&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">energy</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">ncounts</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">mjdref</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">dt</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">notes</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">pi</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">high_precision</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">mission</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">instr</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">detector_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">ephem</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">timeref</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">timesys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">rmf_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">skip_checks</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">other_kw</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">ncounts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;The ncounts keyword does nothing, and is maintained for backwards compatibility.&quot;</span><span class="p">,</span>
+                <span class="ne">DeprecationWarning</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">rmf_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">pi</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;PI channels must be provided to calibrate the energy&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">energy</span> <span class="o">=</span> <span class="n">pi_to_energy</span><span class="p">(</span><span class="n">pi</span><span class="p">,</span> <span class="n">rmf_file</span><span class="p">)</span>
+
+        <span class="n">StingrayTimeseries</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">time</span><span class="o">=</span><span class="n">time</span><span class="p">,</span>
+            <span class="n">energy</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">energy</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">(</span><span class="n">energy</span><span class="p">),</span>
+            <span class="n">mjdref</span><span class="o">=</span><span class="n">mjdref</span><span class="p">,</span>
+            <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+            <span class="n">notes</span><span class="o">=</span><span class="n">notes</span><span class="p">,</span>
+            <span class="n">gti</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">(</span><span class="n">gti</span><span class="p">)</span> <span class="k">if</span> <span class="n">gti</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">pi</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">pi</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">(</span><span class="n">pi</span><span class="p">),</span>
+            <span class="n">high_precision</span><span class="o">=</span><span class="n">high_precision</span><span class="p">,</span>
+            <span class="n">mission</span><span class="o">=</span><span class="n">mission</span><span class="p">,</span>
+            <span class="n">instr</span><span class="o">=</span><span class="n">instr</span><span class="p">,</span>
+            <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">,</span>
+            <span class="n">detector_id</span><span class="o">=</span><span class="n">detector_id</span><span class="p">,</span>
+            <span class="n">ephem</span><span class="o">=</span><span class="n">ephem</span><span class="p">,</span>
+            <span class="n">timeref</span><span class="o">=</span><span class="n">timeref</span><span class="p">,</span>
+            <span class="n">timesys</span><span class="o">=</span><span class="n">timesys</span><span class="p">,</span>
+            <span class="n">rmf_file</span><span class="o">=</span><span class="n">rmf_file</span><span class="p">,</span>
+            <span class="n">skip_checks</span><span class="o">=</span><span class="n">skip_checks</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">other_kw</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">other_kw</span> <span class="o">!=</span> <span class="p">{}:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unrecognized keywords: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">other_kw</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">)</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Lengths of time and energy must be equal.&quot;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ncounts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of events in the event list.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span>
+
+<div class="viewcode-block" id="EventList.to_lc">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.to_lc">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_lc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">tstart</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tseg</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert event list to a :class:`stingray.Lightcurve` object.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        dt: float</span>
+<span class="sd">            Binning time of the light curve</span>
+
+<span class="sd">        Other Parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        tstart : float</span>
+<span class="sd">            Start time of the light curve</span>
+
+<span class="sd">        tseg: float</span>
+<span class="sd">            Total duration of light curve</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        lc: :class:`stingray.Lightcurve` object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">suggest_compatible_dt</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Lightcurve</span><span class="o">.</span><span class="n">make_lightcurve</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">tstart</span><span class="o">=</span><span class="n">tstart</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_gti</span><span class="p">,</span> <span class="n">tseg</span><span class="o">=</span><span class="n">tseg</span><span class="p">,</span> <span class="n">mjdref</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mjdref</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EventList.to_binned_timeseries">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.to_binned_timeseries">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_binned_timeseries</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">array_attrs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert the event list to a binned :class:`stingray.StingrayTimeseries` object.</span>
+
+<span class="sd">        The result will be something similar to a light curve, but with arbitrary</span>
+<span class="sd">        attributes corresponding to a weighted sum of each specified attribute of</span>
+<span class="sd">        the event list.</span>
+
+<span class="sd">        E.g. if the event list has a ``q`` attribute, the final time series will</span>
+<span class="sd">        have a ``q`` attribute, which is the sum of all ``q`` values in each time bin.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        dt: float</span>
+<span class="sd">            Binning time of the light curve</span>
+
+<span class="sd">        Other Parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        array_attrs: list of str</span>
+<span class="sd">            List of attributes to be converted to light curve arrays. If None,</span>
+<span class="sd">            all array attributes will be converted.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        lc: :class:`stingray.Lightcurve` object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">array_attrs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">array_attrs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">array_attrs</span><span class="p">()</span>
+
+        <span class="n">ranges</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]</span>
+        <span class="n">nbins</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">ranges</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">ranges</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="n">dt</span><span class="p">)</span>
+        <span class="n">ranges</span> <span class="o">=</span> <span class="p">[</span><span class="n">ranges</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ranges</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">nbins</span> <span class="o">*</span> <span class="n">dt</span><span class="p">]</span>
+        <span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">ranges</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">dt</span> <span class="o">*</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">ranges</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">dt</span><span class="p">)</span>
+
+        <span class="n">counts</span> <span class="o">=</span> <span class="n">histogram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="nb">range</span><span class="o">=</span><span class="n">ranges</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">nbins</span><span class="p">)</span>
+
+        <span class="n">attr_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">counts</span><span class="o">=</span><span class="n">counts</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">array_attrs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Creating the </span><span class="si">{</span><span class="n">attr</span><span class="si">}</span><span class="s2"> array&quot;</span><span class="p">)</span>
+
+                <span class="n">attr_dict</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span> <span class="o">=</span> <span class="n">histogram</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">nbins</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">),</span> <span class="nb">range</span><span class="o">=</span><span class="n">ranges</span>
+                <span class="p">)</span>
+        <span class="n">meta_attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="n">attr</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">))</span> <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta_attrs</span><span class="p">())</span>
+        <span class="n">new_ts</span> <span class="o">=</span> <span class="n">StingrayTimeseries</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">array_attrs</span><span class="o">=</span><span class="n">attr_dict</span><span class="p">,</span> <span class="o">**</span><span class="n">meta_attrs</span><span class="p">)</span>
+        <span class="n">new_ts</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="n">dt</span>
+        <span class="k">return</span> <span class="n">new_ts</span></div>
+
+
+<div class="viewcode-block" id="EventList.to_lc_iter">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.to_lc_iter">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_lc_iter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert event list to a generator of Lightcurves.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        dt: float</span>
+<span class="sd">            Binning time of the light curves</span>
+
+<span class="sd">        Other parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        segment_size : float, default None</span>
+<span class="sd">            Optional segment size. If None, use the GTI boundaries</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        lc_gen: `generator`</span>
+<span class="sd">            Generates one :class:`stingray.Lightcurve` object for each GTI or segment</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">segment_iter</span> <span class="o">=</span> <span class="n">generate_indices_of_boundaries</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mi">0</span>
+        <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">st</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">idx_st</span><span class="p">,</span> <span class="n">idx_end</span> <span class="ow">in</span> <span class="n">segment_iter</span><span class="p">:</span>
+            <span class="n">tseg</span> <span class="o">=</span> <span class="n">end</span> <span class="o">-</span> <span class="n">st</span>
+
+            <span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="o">.</span><span class="n">make_lightcurve</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="n">idx_st</span> <span class="p">:</span> <span class="n">idx_end</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span>
+                <span class="n">dt</span><span class="p">,</span>
+                <span class="n">tstart</span><span class="o">=</span><span class="n">st</span><span class="p">,</span>
+                <span class="n">gti</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">([[</span><span class="n">st</span><span class="p">,</span> <span class="n">end</span><span class="p">]]),</span>
+                <span class="n">tseg</span><span class="o">=</span><span class="n">tseg</span><span class="p">,</span>
+                <span class="n">mjdref</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mjdref</span><span class="p">,</span>
+                <span class="n">use_hist</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">yield</span> <span class="n">lc</span></div>
+
+
+<div class="viewcode-block" id="EventList.to_lc_list">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.to_lc_list">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_lc_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert event list to a list of Lightcurves.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        dt: float</span>
+<span class="sd">            Binning time of the light curves</span>
+
+<span class="sd">        Other parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        segment_size : float, default None</span>
+<span class="sd">            Optional segment size. If None, use the GTI boundaries</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        lc_list: `List`</span>
+<span class="sd">            List containing one :class:`stingray.Lightcurve` object for each GTI or segment</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">to_lc_iter</span><span class="p">(</span><span class="n">dt</span><span class="p">,</span> <span class="n">segment_size</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="EventList.from_lc">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.from_lc">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_lc</span><span class="p">(</span><span class="n">lc</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create an :class:`EventList` from a :class:`stingray.Lightcurve` object. Note that all</span>
+<span class="sd">        events in a given time bin will have the same time stamp.</span>
+
+<span class="sd">        Bins with negative counts will be ignored.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        lc: :class:`stingray.Lightcurve` object</span>
+<span class="sd">            Light curve to use for creation of the event list.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        ev: :class:`EventList` object</span>
+<span class="sd">            The resulting list of photon arrival times generated from the light curve.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">simple_events_from_lc</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EventList.simulate_times">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.simulate_times">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">simulate_times</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lc</span><span class="p">,</span> <span class="n">use_spline</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">bin_time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Simulate times from an input light curve.</span>
+
+<span class="sd">        Randomly simulate photon arrival times to an :class:`EventList` from a</span>
+<span class="sd">        :class:`stingray.Lightcurve` object, using the inverse CDF method.</span>
+
+<span class="sd">        ..note::</span>
+<span class="sd">            Preferably use model light curves containing **no Poisson noise**,</span>
+<span class="sd">            as this method will intrinsically add Poisson noise to them.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        lc: :class:`stingray.Lightcurve` object</span>
+
+<span class="sd">        Other Parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        use_spline : bool</span>
+<span class="sd">            Approximate the light curve with a spline to avoid binning effects</span>
+
+<span class="sd">        bin_time : float default None</span>
+<span class="sd">            Ignored and deprecated, maintained for backwards compatibility.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        times : array-like</span>
+<span class="sd">            Simulated photon arrival times</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Need import here, or there will be a circular import</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.simulator.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">simulate_times</span>
+
+        <span class="k">if</span> <span class="n">bin_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Bin time will be ignored in simulate_times&quot;</span><span class="p">,</span> <span class="ne">DeprecationWarning</span><span class="p">)</span>
+
+        <span class="n">vals</span> <span class="o">=</span> <span class="n">simulate_times</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">use_spline</span><span class="o">=</span><span class="n">use_spline</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">vals</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gti</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">gti</span></div>
+
+
+<div class="viewcode-block" id="EventList.simulate_energies">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.simulate_energies">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">simulate_energies</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">,</span> <span class="n">use_spline</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Assign (simulate) energies to event list from a spectrum.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        spectrum: 2-d array or list [energies, spectrum]</span>
+<span class="sd">            Energies versus corresponding fluxes. The 2-d array or list must</span>
+<span class="sd">            have energies across the first dimension and fluxes across the</span>
+<span class="sd">            second one. If the dimension of the energies is the same as</span>
+<span class="sd">            spectrum, they are interpreted as bin centers.</span>
+<span class="sd">            If it is longer by one, they are interpreted as proper bin edges</span>
+<span class="sd">            (similarly to the bins of `np.histogram`).</span>
+<span class="sd">            Note that for non-uniformly binned spectra, it is advisable to pass</span>
+<span class="sd">            the exact edges.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.simulator.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">simulate_with_inverse_cdf</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncounts</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncounts</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">simon</span><span class="p">(</span><span class="s2">&quot;Simulating on an empty event list&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">spectrum</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">spectrum</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="n">energy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">(</span><span class="n">spectrum</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">fluxes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">(</span><span class="n">spectrum</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">energy</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="s2">&quot;Spectrum must be a 2-d array or list&quot;</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Spectrum must be a 2-d array or list&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">energy</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="n">fluxes</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+            <span class="n">de</span> <span class="o">=</span> <span class="n">energy</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">energy</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">energy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">energy</span> <span class="o">-</span> <span class="n">de</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="p">[</span><span class="n">energy</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">de</span> <span class="o">/</span> <span class="mi">2</span><span class="p">]])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">energy</span> <span class="o">=</span> <span class="n">simulate_with_inverse_cdf</span><span class="p">(</span>
+            <span class="n">fluxes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncounts</span><span class="p">,</span> <span class="n">edges</span><span class="o">=</span><span class="n">energy</span><span class="p">,</span> <span class="nb">sorted</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">interp_kind</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EventList.sort">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.sort">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sort</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sort the event list in time.</span>
+
+<span class="sd">        Other parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        inplace : bool, default False</span>
+<span class="sd">            Sort in place. If False, return a new event list.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        eventlist : `EventList`</span>
+<span class="sd">            The sorted event list. If ``inplace=True``, it will be a shallow copy</span>
+<span class="sd">            of ``self``.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &gt;&gt;&gt; events = EventList(time=[0, 2, 1], energy=[0.3, 2, 0.5], pi=[3, 20, 5],</span>
+<span class="sd">        ...                    skip_checks=True)</span>
+<span class="sd">        &gt;&gt;&gt; e1 = events.sort()</span>
+<span class="sd">        &gt;&gt;&gt; assert np.allclose(e1.time, [0, 1, 2])</span>
+<span class="sd">        &gt;&gt;&gt; assert np.allclose(e1.energy, [0.3, 0.5, 2])</span>
+<span class="sd">        &gt;&gt;&gt; assert np.allclose(e1.pi, [3, 5, 20])</span>
+
+<span class="sd">        But the original event list has not been altered (``inplace=False`` by</span>
+<span class="sd">        default):</span>
+<span class="sd">        &gt;&gt;&gt; assert np.allclose(events.time, [0, 2, 1])</span>
+
+<span class="sd">        Let&#39;s do it in place instead</span>
+<span class="sd">        &gt;&gt;&gt; e2 = events.sort(inplace=True)</span>
+<span class="sd">        &gt;&gt;&gt; assert np.allclose(e2.time, [0, 1, 2])</span>
+
+<span class="sd">        In this case, the original event list has been altered.</span>
+<span class="sd">        &gt;&gt;&gt; assert np.allclose(events.time, [0, 1, 2])</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_mask</span><span class="p">(</span><span class="n">order</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EventList.join">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.join">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">join</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">strategy</span><span class="o">=</span><span class="s2">&quot;infer&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Join two :class:`EventList` objects into one.</span>
+
+<span class="sd">        If both are empty, an empty :class:`EventList` is returned.</span>
+
+<span class="sd">        GTIs are crossed if the event lists are over a common time interval,</span>
+<span class="sd">        and appended otherwise.</span>
+
+<span class="sd">        Standard attributes such as ``pi`` and ``energy`` remain ``None`` if they are ``None``</span>
+<span class="sd">        in both. Otherwise, ``np.nan`` is used as a default value for the :class:`EventList` where</span>
+<span class="sd">        they were None. Arbitrary attributes (e.g., Stokes parameters in polarimetric data) are</span>
+<span class="sd">        created and joined using the same convention.</span>
+
+<span class="sd">        Multiple checks are done on the joined event lists. If the time array of the event list</span>
+<span class="sd">        being joined is empty, it is ignored. If the time resolution is different, the final</span>
+<span class="sd">        event list will have the rougher time resolution. If the MJDREF is different, the time</span>
+<span class="sd">        reference will be changed to the one of the first event list. An empty event list will</span>
+<span class="sd">        be ignored.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        other : :class:`EventList` object or class:`list` of :class:`EventList` objects</span>
+<span class="sd">            The other :class:`EventList` object which is supposed to be joined with.</span>
+<span class="sd">            If ``other`` is a list, it is assumed to be a list of :class:`EventList` objects</span>
+<span class="sd">            and they are all joined, one by one.</span>
+
+<span class="sd">        Other parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        strategy : {&quot;intersection&quot;, &quot;union&quot;, &quot;append&quot;, &quot;infer&quot;, &quot;none&quot;}</span>
+<span class="sd">            Method to use to merge the GTIs. If &quot;intersection&quot;, the GTIs are merged</span>
+<span class="sd">            using the intersection of the GTIs. If &quot;union&quot;, the GTIs are merged</span>
+<span class="sd">            using the union of the GTIs. If &quot;none&quot;, a single GTI with the minimum and</span>
+<span class="sd">            the maximum time stamps of all GTIs is returned. If &quot;infer&quot;, the strategy</span>
+<span class="sd">            is decided based on the GTIs. If there are no overlaps, &quot;union&quot; is used,</span>
+<span class="sd">            otherwise &quot;intersection&quot; is used. If &quot;append&quot;, the GTIs are simply appended</span>
+<span class="sd">            but they must be mutually exclusive.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        `ev_new` : :class:`EventList` object</span>
+<span class="sd">            The resulting :class:`EventList` object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_join_timeseries</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">strategy</span><span class="o">=</span><span class="n">strategy</span><span class="p">,</span> <span class="n">ignore_meta</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;header&quot;</span><span class="p">,</span> <span class="s2">&quot;ncounts&quot;</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="EventList.read">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.read">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rmf_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Read a :class:`EventList` object from file.</span>
+
+<span class="sd">        Currently supported formats are</span>
+
+<span class="sd">        * pickle (not recommended for long-term storage)</span>
+<span class="sd">        * hea or ogip : FITS Event files from (well, some) HEASARC-supported missions.</span>
+<span class="sd">        * any other formats compatible with the writers in</span>
+<span class="sd">          :class:`astropy.table.Table` (ascii.ecsv, hdf5, etc.)</span>
+
+<span class="sd">        Files that need the :class:`astropy.table.Table` interface MUST contain</span>
+<span class="sd">        at least a ``time`` column. Other recognized columns are ``energy`` and</span>
+<span class="sd">        ``pi``.</span>
+<span class="sd">        The default ascii format is enhanced CSV (ECSV). Data formats</span>
+<span class="sd">        supporting the serialization of metadata (such as ECSV and HDF5) can</span>
+<span class="sd">        contain all eventlist attributes such as ``mission``, ``gti``, etc with</span>
+<span class="sd">        no significant loss of information. Other file formats might lose part</span>
+<span class="sd">        of the metadata, so must be used with care.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filename: str</span>
+<span class="sd">            Path and file name for the file to be read.</span>
+
+<span class="sd">        fmt: str</span>
+<span class="sd">            Available options are &#39;pickle&#39;, &#39;hea&#39;, and any `Table`-supported</span>
+<span class="sd">            format such as &#39;hdf5&#39;, &#39;ascii.ecsv&#39;, etc.</span>
+
+<span class="sd">        Other parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        rmf_file : str, default None</span>
+<span class="sd">            The file name of the RMF file to use for energy calibration. Defaults to</span>
+<span class="sd">            None, which implies no channel-&gt;energy conversion at this stage (or a default</span>
+<span class="sd">            calibration applied to selected missions).</span>
+
+<span class="sd">        kwargs : dict</span>
+<span class="sd">            Any further keyword arguments to be passed to ``FITSTimeseriesReader``</span>
+<span class="sd">            for reading in event lists in OGIP/HEASOFT format</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        ev: :class:`EventList` object</span>
+<span class="sd">            The :class:`EventList` object reconstructed from file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">fmt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">fits_ext</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;fits&quot;</span><span class="p">,</span> <span class="s2">&quot;evt&quot;</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">fits_ext</span> <span class="ow">in</span> <span class="n">get_file_extension</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                    <span class="n">fmt</span> <span class="o">=</span> <span class="s2">&quot;hea&quot;</span>
+                    <span class="k">break</span>
+        <span class="k">if</span> <span class="n">fmt</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">fmt</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;hea&quot;</span><span class="p">,</span> <span class="s2">&quot;ogip&quot;</span><span class="p">):</span>
+            <span class="n">additional_columns</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;additional_columns&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+            <span class="n">evt</span> <span class="o">=</span> <span class="n">FITSTimeseriesReader</span><span class="p">(</span>
+                <span class="n">filename</span><span class="p">,</span> <span class="n">output_class</span><span class="o">=</span><span class="n">EventList</span><span class="p">,</span> <span class="n">additional_columns</span><span class="o">=</span><span class="n">additional_columns</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+            <span class="p">)[:]</span>
+
+            <span class="k">if</span> <span class="n">rmf_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">evt</span><span class="o">.</span><span class="n">convert_pi_to_energy</span><span class="p">(</span><span class="n">rmf_file</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">evt</span>
+
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="n">fmt</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EventList.convert_pi_to_energy">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.convert_pi_to_energy">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">convert_pi_to_energy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rmf_file</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calibrate the energy column of the event list.</span>
+
+<span class="sd">        Defines the ``energy`` attribute of the event list by converting the</span>
+<span class="sd">        PI channels to energy using the provided RMF file.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        rmf_file : str</span>
+<span class="sd">            The file name of the RMF file to use for calibration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">energy</span> <span class="o">=</span> <span class="n">pi_to_energy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">rmf_file</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EventList.get_energy_mask">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.get_energy_mask">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_energy_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">energy_range</span><span class="p">,</span> <span class="n">use_pi</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get a mask corresponding to events with a given energy range.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        energy_range: [float, float]</span>
+<span class="sd">            Energy range in keV, or in PI channel (if ``use_pi`` is True)</span>
+
+<span class="sd">        Other Parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        use_pi : bool, default False</span>
+<span class="sd">            Use PI channel instead of energy in keV</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">use_pi</span><span class="p">:</span>
+            <span class="n">energies</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pi</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">energies</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">energies</span> <span class="o">&gt;=</span> <span class="n">energy_range</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">energies</span> <span class="o">&lt;</span> <span class="n">energy_range</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="EventList.suggest_compatible_dt">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.suggest_compatible_dt">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">suggest_compatible_dt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">warn</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Suggest a compatible time resolution for the event list.</span>
+
+<span class="sd">        If the event list has a time resolution, it is better to avoid</span>
+<span class="sd">        using a time bin smaller than that for sure, but also a time bin which is</span>
+<span class="sd">        not a multiple of it, as it will create beats that appear in the power spectrum</span>
+<span class="sd">        as a comb of peaks. This method suggests a compatible time resolution.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        dt : float</span>
+<span class="sd">            Desired time resolution</span>
+
+<span class="sd">        Other Parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        warn : bool, default True</span>
+<span class="sd">            Issue a warning if the time resolution is changed</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;dt&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">):</span>
+            <span class="n">dt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">*</span> <span class="nb">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">rint</span><span class="p">(</span><span class="n">dt</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;The input event list has a time resolution of </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="si">}</span><span class="s2">. &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Using a multiple of that as dt (</span><span class="si">{</span><span class="n">dt</span><span class="si">}</span><span class="s2">).&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">dt</span>
+        <span class="k">return</span> <span class="n">dt</span></div>
+
+
+<div class="viewcode-block" id="EventList.filter_energy_range">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.filter_energy_range">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">filter_energy_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">energy_range</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_pi</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Filter the event list from a given energy range.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        energy_range: [float, float]</span>
+<span class="sd">            Energy range in keV, or in PI channel (if ``use_pi`` is True)</span>
+
+<span class="sd">        Other Parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        inplace : bool, default False</span>
+<span class="sd">            Do the change in place (modify current event list). Otherwise, copy</span>
+<span class="sd">            to a new event list.</span>
+<span class="sd">        use_pi : bool, default False</span>
+<span class="sd">            Use PI channel instead of energy in keV</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &gt;&gt;&gt; events = EventList(time=[0, 1, 2], energy=[0.3, 0.5, 2], pi=[3, 5, 20])</span>
+<span class="sd">        &gt;&gt;&gt; e1 = events.filter_energy_range([0, 1])</span>
+<span class="sd">        &gt;&gt;&gt; assert np.allclose(e1.time, [0, 1])</span>
+<span class="sd">        &gt;&gt;&gt; assert np.allclose(events.time, [0, 1, 2])</span>
+<span class="sd">        &gt;&gt;&gt; e2 = events.filter_energy_range([0, 10], use_pi=True, inplace=True)</span>
+<span class="sd">        &gt;&gt;&gt; assert np.allclose(e2.time, [0, 1])</span>
+<span class="sd">        &gt;&gt;&gt; assert np.allclose(events.time, [0, 1])</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_energy_mask</span><span class="p">(</span><span class="n">energy_range</span><span class="p">,</span> <span class="n">use_pi</span><span class="o">=</span><span class="n">use_pi</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_mask</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EventList.apply_deadtime">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.apply_deadtime">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply_deadtime</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">deadtime</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply deadtime filter to this event list.</span>
+
+<span class="sd">        Additional arguments in ``kwargs`` are passed to `get_deadtime_mask`</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        deadtime : float</span>
+<span class="sd">            Value of dead time to apply to data</span>
+<span class="sd">        inplace : bool, default False</span>
+<span class="sd">            If True, apply the deadtime to the current event list. Otherwise,</span>
+<span class="sd">            return a new event list.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        new_event_list : `EventList` object</span>
+<span class="sd">            Filtered event list. if `inplace` is True, this is the input object</span>
+<span class="sd">            filtered for deadtime, otherwise this is a new object.</span>
+<span class="sd">        additional_output : object</span>
+<span class="sd">            Only returned if `return_all` is True. See `get_deadtime_mask` for</span>
+<span class="sd">            more details.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &gt;&gt;&gt; events = np.array([1, 1.05, 1.07, 1.08, 1.1, 2, 2.2, 3, 3.1, 3.2])</span>
+<span class="sd">        &gt;&gt;&gt; events = EventList(events, gti=[[0, 3.3]])</span>
+<span class="sd">        &gt;&gt;&gt; events.pi=np.array([1, 2, 2, 2, 2, 1, 1, 1, 2, 1])</span>
+<span class="sd">        &gt;&gt;&gt; events.energy=np.array([1, 2, 2, 2, 2, 1, 1, 1, 2, 1])</span>
+<span class="sd">        &gt;&gt;&gt; events.mjdref = 10</span>
+<span class="sd">        &gt;&gt;&gt; filt_events, retval = events.apply_deadtime(0.11, inplace=False,</span>
+<span class="sd">        ...                                             verbose=False,</span>
+<span class="sd">        ...                                             return_all=True)</span>
+<span class="sd">        &gt;&gt;&gt; assert filt_events is not events</span>
+<span class="sd">        &gt;&gt;&gt; expected = np.array([1, 2, 2.2, 3, 3.2])</span>
+<span class="sd">        &gt;&gt;&gt; assert np.allclose(filt_events.time, expected)</span>
+<span class="sd">        &gt;&gt;&gt; assert np.allclose(filt_events.pi, 1)</span>
+<span class="sd">        &gt;&gt;&gt; assert np.allclose(filt_events.energy, 1)</span>
+<span class="sd">        &gt;&gt;&gt; assert not np.allclose(events.pi, 1)</span>
+<span class="sd">        &gt;&gt;&gt; filt_events = events.apply_deadtime(0.11, inplace=True,</span>
+<span class="sd">        ...                                     verbose=False)</span>
+<span class="sd">        &gt;&gt;&gt; assert filt_events is events</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">local_retall</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;return_all&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+        <span class="n">mask</span><span class="p">,</span> <span class="n">retall</span> <span class="o">=</span> <span class="n">get_deadtime_mask</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">deadtime</span><span class="p">,</span> <span class="n">return_all</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="n">new_ev</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_mask</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">local_retall</span><span class="p">:</span>
+            <span class="n">new_ev</span> <span class="o">=</span> <span class="p">[</span><span class="n">new_ev</span><span class="p">,</span> <span class="n">retall</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">new_ev</span></div>
+
+
+<div class="viewcode-block" id="EventList.get_color_evolution">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.get_color_evolution">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_color_evolution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">energy_ranges</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_pi</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the color in equal-length segments of the event list.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        energy_ranges : 2x2 list</span>
+<span class="sd">            List of energy ranges to compute the color:</span>
+<span class="sd">            ``[[en1_min, en1_max], [en2_min, en2_max]]``</span>
+<span class="sd">        segment_size : float</span>
+<span class="sd">            Segment size in seconds. If None, the full GTIs are considered</span>
+<span class="sd">            instead as segments.</span>
+
+<span class="sd">        Other Parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        use_pi : bool, default False</span>
+<span class="sd">            Use PI channel instead of energy in keV</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        color : array-like</span>
+<span class="sd">            Array of colors, computed in each segment as the ratio of the</span>
+<span class="sd">            counts in the second energy range to the counts in the first energy</span>
+<span class="sd">            range.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">energy_ranges</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">energy_ranges</span><span class="p">)</span> <span class="o">!=</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Energy ranges must be specified as a 2x2 array&quot;</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">color</span><span class="p">(</span><span class="n">ev</span><span class="p">):</span>
+            <span class="n">mask1</span> <span class="o">=</span> <span class="n">ev</span><span class="o">.</span><span class="n">get_energy_mask</span><span class="p">(</span><span class="n">energy_ranges</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">use_pi</span><span class="o">=</span><span class="n">use_pi</span><span class="p">)</span>
+            <span class="n">mask2</span> <span class="o">=</span> <span class="n">ev</span><span class="o">.</span><span class="n">get_energy_mask</span><span class="p">(</span><span class="n">energy_ranges</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">use_pi</span><span class="o">=</span><span class="n">use_pi</span><span class="p">)</span>
+            <span class="n">en1_ct</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">mask1</span><span class="p">)</span>
+            <span class="n">en2_ct</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">mask2</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">en1_ct</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">en2_ct</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;No counts in one of the energy ranges. Returning NaN&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="n">en2_ct</span> <span class="o">/</span> <span class="n">en1_ct</span>
+            <span class="n">color_err</span> <span class="o">=</span> <span class="n">color</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">en1_ct</span><span class="p">)</span> <span class="o">/</span> <span class="n">en1_ct</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">en2_ct</span><span class="p">)</span> <span class="o">/</span> <span class="n">en2_ct</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">color</span><span class="p">,</span> <span class="n">color_err</span>
+
+        <span class="n">starts</span><span class="p">,</span> <span class="n">stops</span><span class="p">,</span> <span class="p">(</span><span class="n">colors</span><span class="p">,</span> <span class="n">color_errs</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analyze_segments</span><span class="p">(</span><span class="n">color</span><span class="p">,</span> <span class="n">segment_size</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">starts</span><span class="p">,</span> <span class="n">stops</span><span class="p">,</span> <span class="n">colors</span><span class="p">,</span> <span class="n">color_errs</span></div>
+
+
+<div class="viewcode-block" id="EventList.get_intensity_evolution">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.get_intensity_evolution">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_intensity_evolution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">energy_range</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_pi</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the intensity in equal-length segments (or full GTIs) of the event list.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        energy_range : ``[en1_min, en1_max]``</span>
+<span class="sd">            Energy range to compute the intensity</span>
+<span class="sd">        segment_size : float</span>
+<span class="sd">            Segment size in seconds. If None, the full GTIs are considered</span>
+<span class="sd">            instead as segments.</span>
+
+<span class="sd">        Other Parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        use_pi : bool, default False</span>
+<span class="sd">            Use PI channel instead of energy in keV</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        intensity : array-like</span>
+<span class="sd">            Array of intensities (in counts/s), computed in each segment.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">energy_range</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">energy_range</span><span class="p">)</span> <span class="o">!=</span> <span class="p">(</span><span class="mi">2</span><span class="p">,):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Energy ranges must be specified as a 2-element list&quot;</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">intensity</span><span class="p">(</span><span class="n">ev</span><span class="p">):</span>
+            <span class="n">mask1</span> <span class="o">=</span> <span class="n">ev</span><span class="o">.</span><span class="n">get_energy_mask</span><span class="p">(</span><span class="n">energy_range</span><span class="p">,</span> <span class="n">use_pi</span><span class="o">=</span><span class="n">use_pi</span><span class="p">)</span>
+            <span class="n">en1_ct</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">mask1</span><span class="p">)</span>
+            <span class="n">segment_size</span> <span class="o">=</span> <span class="n">ev</span><span class="o">.</span><span class="n">gti</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">ev</span><span class="o">.</span><span class="n">gti</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+            <span class="n">rate</span> <span class="o">=</span> <span class="n">en1_ct</span> <span class="o">/</span> <span class="n">segment_size</span>
+            <span class="n">rate_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">en1_ct</span><span class="p">)</span> <span class="o">/</span> <span class="n">segment_size</span>
+            <span class="k">return</span> <span class="n">rate</span><span class="p">,</span> <span class="n">rate_err</span>
+
+        <span class="n">starts</span><span class="p">,</span> <span class="n">stops</span><span class="p">,</span> <span class="p">(</span><span class="n">rate</span><span class="p">,</span> <span class="n">rate_err</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analyze_segments</span><span class="p">(</span><span class="n">intensity</span><span class="p">,</span> <span class="n">segment_size</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">starts</span><span class="p">,</span> <span class="n">stops</span><span class="p">,</span> <span class="n">rate</span><span class="p">,</span> <span class="n">rate_err</span></div>
+
+
+<div class="viewcode-block" id="EventList.get_mask_for_filter_by_detector_id">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.get_mask_for_filter_by_detector_id">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_mask_for_filter_by_detector_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Supplies a mask to filter the data for a particular detector(s) for a event file.</span>
+<span class="sd">        For example can be used to filter the data for a single unit of LAXPC or a selected NICER detector ID</span>
+
+
+<span class="sd">        Args:</span>
+<span class="sd">            value: The value for which the mask returns 1</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">detector_id</span>
+            <span class="k">return</span> <span class="n">col</span> <span class="o">==</span> <span class="n">value</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">value</span><span class="p">):</span>
+            <span class="n">col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">detector_id</span>
+            <span class="n">full_mask</span> <span class="o">=</span> <span class="n">col</span> <span class="o">==</span> <span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)):</span>
+                <span class="n">mask</span> <span class="o">=</span> <span class="n">col</span> <span class="o">==</span> <span class="n">value</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">full_mask</span> <span class="o">=</span> <span class="n">full_mask</span> <span class="o">|</span> <span class="n">mask</span>
+            <span class="k">return</span> <span class="n">full_mask</span></div>
+
+
+<div class="viewcode-block" id="EventList.filter_detector_id">
+<a class="viewcode-back" href="../../api.html#stingray.events.EventList.filter_detector_id">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">filter_detector_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">detector_id</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Filters the data selecting only a selected detector or a list of detectors.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            detector_id (int, optional): The detector id on which the filtering needs to be applied. It can be a list.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_mask_for_filter_by_detector_id</span><span class="p">(</span><span class="n">detector_id</span><span class="p">)</span>
+        <span class="n">new_ev</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_mask</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_ev</span></div>
+</div>
+
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

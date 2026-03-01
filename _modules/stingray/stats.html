@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>stingray.stats &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for stingray.stats</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">simon</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">vectorize</span><span class="p">,</span> <span class="n">float64</span><span class="p">,</span> <span class="n">float32</span><span class="p">,</span> <span class="n">int32</span><span class="p">,</span> <span class="n">int64</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;p_multitrial_from_single_trial&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;p_single_trial_from_p_multitrial&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;fold_profile_probability&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;fold_profile_logprobability&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;fold_detection_level&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;phase_dispersion_detection_level&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;phase_dispersion_probability&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;phase_dispersion_logprobability&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pds_probability&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pds_detection_level&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;z2_n_detection_level&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;z2_n_probability&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;z2_n_logprobability&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;classical_pvalue&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;chi2_logp&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;equivalent_gaussian_Nsigma&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;equivalent_gaussian_Nsigma_from_logp&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;power_confidence_limits&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;power_upper_limit&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pf_from_ssig&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pf_from_a&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pf_upper_limit&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;a_from_pf&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;a_from_ssig&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ssig_from_a&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ssig_from_pf&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;amplitude_upper_limit&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<span class="nd">@vectorize</span><span class="p">([</span><span class="n">float64</span><span class="p">(</span><span class="n">float32</span><span class="p">),</span> <span class="n">float64</span><span class="p">(</span><span class="n">float64</span><span class="p">)],</span> <span class="n">nopython</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_extended_equiv_gaussian_Nsigma</span><span class="p">(</span><span class="n">logp</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Equivalent gaussian sigma for small log-probability.</span>
+
+<span class="sd">    Return the equivalent gaussian sigma corresponding to the natural log of</span>
+<span class="sd">    the cumulative gaussian probability logp. In other words, return x, such</span>
+<span class="sd">    that Q(x) = p, where Q(x) is the cumulative normal distribution. This</span>
+<span class="sd">    version uses the rational approximation from Abramowitz and Stegun,</span>
+<span class="sd">    eqn 26.2.23, that claims to be precise to ~1e-4. Using the log(P) as input</span>
+<span class="sd">    gives a much extended range.</span>
+
+<span class="sd">    The parameters here are the result of a best-fit, with no physical meaning.</span>
+
+<span class="sd">    Translated from Scott Ransom&#39;s PRESTO</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="o">-</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">logp</span><span class="p">)</span>
+    <span class="n">num</span> <span class="o">=</span> <span class="mf">2.515517</span> <span class="o">+</span> <span class="n">t</span> <span class="o">*</span> <span class="p">(</span><span class="mf">0.802853</span> <span class="o">+</span> <span class="n">t</span> <span class="o">*</span> <span class="mf">0.010328</span><span class="p">)</span>
+    <span class="n">denom</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">+</span> <span class="n">t</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.432788</span> <span class="o">+</span> <span class="n">t</span> <span class="o">*</span> <span class="p">(</span><span class="mf">0.189269</span> <span class="o">+</span> <span class="n">t</span> <span class="o">*</span> <span class="mf">0.001308</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">t</span> <span class="o">-</span> <span class="n">num</span> <span class="o">/</span> <span class="n">denom</span>
+
+
+<span class="nd">@np</span><span class="o">.</span><span class="n">vectorize</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">equivalent_gaussian_Nsigma_from_logp</span><span class="p">(</span><span class="n">logp</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Number of Gaussian sigmas corresponding to tail log-probability.</span>
+
+<span class="sd">    This function computes the value of the characteristic function of a</span>
+<span class="sd">    standard Gaussian distribution for the tail probability equivalent to the</span>
+<span class="sd">    provided p-value, and turns this value into units of standard deviations</span>
+<span class="sd">    away from the Gaussian mean. This allows the user to make a statement</span>
+<span class="sd">    about the signal such as “I detected this pulsation at 4.1 sigma</span>
+
+<span class="sd">    The example values below are obtained by brute-force integrating the</span>
+<span class="sd">    Gaussian probability density function using the mpmath library</span>
+<span class="sd">    between Nsigma and +inf.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; pvalues = [0.15865525393145707, 0.0013498980316301035,</span>
+<span class="sd">    ...            9.865877e-10, 6.22096e-16,</span>
+<span class="sd">    ...            3.0567e-138]</span>
+<span class="sd">    &gt;&gt;&gt; log_pvalues = np.log(np.array(pvalues))</span>
+<span class="sd">    &gt;&gt;&gt; sigmas = np.array([1, 3, 6, 8, 25])</span>
+<span class="sd">    &gt;&gt;&gt; # Single number</span>
+<span class="sd">    &gt;&gt;&gt; assert np.isclose(equivalent_gaussian_Nsigma_from_logp(log_pvalues[0]),</span>
+<span class="sd">    ...                   sigmas[0], atol=0.01)</span>
+<span class="sd">    &gt;&gt;&gt; # Array</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(equivalent_gaussian_Nsigma_from_logp(log_pvalues),</span>
+<span class="sd">    ...                    sigmas, atol=0.01)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">logp</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mi">300</span><span class="p">:</span>
+        <span class="c1"># print(&quot;Extended&quot;)</span>
+        <span class="k">return</span> <span class="n">_extended_equiv_gaussian_Nsigma</span><span class="p">(</span><span class="n">logp</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">isf</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">logp</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="equivalent_gaussian_Nsigma">
+<a class="viewcode-back" href="../../api.html#stingray.stats.equivalent_gaussian_Nsigma">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">equivalent_gaussian_Nsigma</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Number of Gaussian sigmas corresponding to tail probability.</span>
+
+<span class="sd">    This function computes the value of the characteristic function of a</span>
+<span class="sd">    standard Gaussian distribution for the tail probability equivalent to the</span>
+<span class="sd">    provided p-value, and turns this value into units of standard deviations</span>
+<span class="sd">    away from the Gaussian mean. This allows the user to make a statement</span>
+<span class="sd">    about the signal such as “I detected this pulsation at 4.1 sigma</span>
+
+<span class="sd">    The example values below are obtained by brute-force integrating the</span>
+<span class="sd">    Gaussian probability density function using the mpmath library</span>
+<span class="sd">    between Nsigma and +inf.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; assert np.isclose(equivalent_gaussian_Nsigma(0.15865525393145707), 1,</span>
+<span class="sd">    ...                   atol=0.01)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.isclose(equivalent_gaussian_Nsigma(0.0013498980316301035), 3,</span>
+<span class="sd">    ...                   atol=0.01)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.isclose(equivalent_gaussian_Nsigma(9.865877e-10), 6,</span>
+<span class="sd">    ...                   atol=0.01)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.isclose(equivalent_gaussian_Nsigma(6.22096e-16), 8,</span>
+<span class="sd">    ...                   atol=0.01)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.isclose(equivalent_gaussian_Nsigma(3.0567e-138), 25, atol=0.1)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">equivalent_gaussian_Nsigma_from_logp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">p</span><span class="p">))</span></div>
+
+
+
+<span class="nd">@vectorize</span><span class="p">([</span><span class="n">float64</span><span class="p">(</span><span class="n">float32</span><span class="p">,</span> <span class="n">float32</span><span class="p">),</span> <span class="n">float64</span><span class="p">(</span><span class="n">float64</span><span class="p">,</span> <span class="n">float64</span><span class="p">)],</span> <span class="n">nopython</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_log_asymptotic_incomplete_gamma</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Asymptotic natural log of incomplete gamma function.</span>
+
+<span class="sd">    Return the natural log of the incomplete gamma function in</span>
+<span class="sd">    its asymptotic limit as z-&gt;infty.  This is from Abramowitz</span>
+<span class="sd">    and Stegun eqn 6.5.32.</span>
+
+<span class="sd">    Translated from Scott Ransom&#39;s PRESTO</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">newxpart</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">term</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">ii</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">while</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">newxpart</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">1e-15</span><span class="p">:</span>
+        <span class="n">term</span> <span class="o">*=</span> <span class="n">a</span> <span class="o">-</span> <span class="n">ii</span>
+        <span class="n">newxpart</span> <span class="o">=</span> <span class="n">term</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">ii</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">+=</span> <span class="n">newxpart</span>
+        <span class="n">ii</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">z</span><span class="p">)</span> <span class="o">-</span> <span class="n">z</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+
+<span class="nd">@vectorize</span><span class="p">([</span><span class="n">float64</span><span class="p">(</span><span class="n">float32</span><span class="p">),</span> <span class="n">float64</span><span class="p">(</span><span class="n">float64</span><span class="p">)],</span> <span class="n">nopython</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_log_asymptotic_gamma</span><span class="p">(</span><span class="n">z</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Natural log of the Gamma function in its asymptotic limit.</span>
+
+<span class="sd">    Return the natural log of the gamma function in its asymptotic limit</span>
+<span class="sd">    as z-&gt;infty.  This is from Abramowitz and Stegun eqn 6.1.41.</span>
+
+<span class="sd">    Translated from Scott Ransom&#39;s PRESTO</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">half_log_twopi</span> <span class="o">=</span> <span class="mf">0.91893853320467267</span>  <span class="c1"># (1/2)*log(2*pi)</span>
+    <span class="n">one_twelfth</span> <span class="o">=</span> <span class="mf">8.3333333333333333333333e-2</span>
+    <span class="n">one_degree</span> <span class="o">=</span> <span class="mf">2.7777777777777777777778e-3</span>  <span class="c1"># 1 / 360</span>
+    <span class="n">one_over_1680</span> <span class="o">=</span> <span class="mf">5.9523809523809529e-4</span>
+    <span class="n">one_over_1260</span> <span class="o">=</span> <span class="mf">7.9365079365079365079365e-4</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">z</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">z</span><span class="p">)</span> <span class="o">-</span> <span class="n">z</span> <span class="o">+</span> <span class="n">half_log_twopi</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">z</span> <span class="o">*</span> <span class="n">z</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">+=</span> <span class="p">(((</span><span class="o">-</span><span class="n">one_over_1680</span> <span class="o">*</span> <span class="n">y</span> <span class="o">+</span> <span class="n">one_over_1260</span><span class="p">)</span> <span class="o">*</span> <span class="n">y</span> <span class="o">-</span> <span class="n">one_degree</span><span class="p">)</span> <span class="o">*</span> <span class="n">y</span> <span class="o">+</span> <span class="n">one_twelfth</span><span class="p">)</span> <span class="o">/</span> <span class="n">z</span>
+    <span class="k">return</span> <span class="n">x</span>
+
+
+<span class="nd">@np</span><span class="o">.</span><span class="n">vectorize</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">chi2_logp</span><span class="p">(</span><span class="n">chi2</span><span class="p">,</span> <span class="n">dof</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Log survival function of the chi-squared distribution.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; chi2 = 31</span>
+<span class="sd">    &gt;&gt;&gt; # Test check on dof</span>
+<span class="sd">    &gt;&gt;&gt; chi2_logp(chi2, 1) # doctest:+ELLIPSIS</span>
+<span class="sd">    Traceback (most recent call last):</span>
+<span class="sd">        ...</span>
+<span class="sd">    ValueError: The number of degrees of freedom cannot be &lt; 2</span>
+<span class="sd">    &gt;&gt;&gt; # Test that approximate function works as expected. chi2 / dof &gt; 15,</span>
+<span class="sd">    &gt;&gt;&gt; # but small and safe number in order to compare to scipy.stats</span>
+<span class="sd">    &gt;&gt;&gt; assert np.isclose(chi2_logp(chi2, 2), stats.chi2.logsf(chi2, 2), atol=0.1)</span>
+<span class="sd">    &gt;&gt;&gt; chi2 = np.array([5, 32])</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(chi2_logp(chi2, 2), stats.chi2.logsf(chi2, 2), atol=0.1)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">dof</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The number of degrees of freedom cannot be &lt; 2&quot;</span><span class="p">)</span>
+
+    <span class="c1"># If very large reduced chi squared, use approximation. This is an</span>
+    <span class="c1"># eyeballed limit parameter space where the difference between the</span>
+    <span class="c1"># approximation and the scipy version is tiny, but above which the scipy</span>
+    <span class="c1"># version starts failing.</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">chi2</span> <span class="o">/</span> <span class="n">dof</span> <span class="o">&gt;</span> <span class="mf">15.0</span><span class="p">)</span> <span class="ow">or</span> <span class="p">((</span><span class="n">dof</span> <span class="o">&gt;</span> <span class="mi">150</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">chi2</span> <span class="o">/</span> <span class="n">dof</span> <span class="o">&gt;</span> <span class="mf">6.0</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="n">_log_asymptotic_incomplete_gamma</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">dof</span><span class="p">,</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">chi2</span><span class="p">)</span> <span class="o">-</span> <span class="n">_log_asymptotic_gamma</span><span class="p">(</span>
+            <span class="mf">0.5</span> <span class="o">*</span> <span class="n">dof</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">logsf</span><span class="p">(</span><span class="n">chi2</span><span class="p">,</span> <span class="n">dof</span><span class="p">)</span>
+
+
+<span class="nd">@vectorize</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="n">float64</span><span class="p">(</span><span class="n">float32</span><span class="p">,</span> <span class="n">int32</span><span class="p">),</span>
+        <span class="n">float64</span><span class="p">(</span><span class="n">float32</span><span class="p">,</span> <span class="n">int64</span><span class="p">),</span>
+        <span class="n">float64</span><span class="p">(</span><span class="n">float64</span><span class="p">,</span> <span class="n">int32</span><span class="p">),</span>
+        <span class="n">float64</span><span class="p">(</span><span class="n">float64</span><span class="p">,</span> <span class="n">int64</span><span class="p">),</span>
+    <span class="p">],</span>
+    <span class="n">nopython</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_logp_multitrial_from_single_logp</span><span class="p">(</span><span class="n">logp1</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate a multi-trial p-value from the log of a single-trial one.</span>
+
+<span class="sd">    This allows to work around Numba&#39;s limitation on longdoubles, a way to</span>
+<span class="sd">    vectorize the computation when we need longdouble precision.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    logp1 : float</span>
+<span class="sd">        The natural logarithm of the significance at which we reject the null</span>
+<span class="sd">        hypothesis on each single trial.</span>
+<span class="sd">    n : int</span>
+<span class="sd">        The number of trials</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    logpn : float</span>
+<span class="sd">        The log of the significance at which we reject the null hypothesis</span>
+<span class="sd">        after multiple trials</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># If the the probability is very small (p1 * n) &lt; 1e-6, use Bonferroni</span>
+    <span class="c1"># approximation.</span>
+    <span class="n">logn</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">logp1</span> <span class="o">+</span> <span class="n">logn</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mi">7</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">logp1</span> <span class="o">+</span> <span class="n">logn</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">logp1</span><span class="p">))</span> <span class="o">**</span> <span class="n">n</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="p_multitrial_from_single_trial">
+<a class="viewcode-back" href="../../api.html#stingray.stats.p_multitrial_from_single_trial">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">p_multitrial_from_single_trial</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Calculate a multi-trial p-value from a single-trial one.</span>
+
+<span class="sd">    Calling *p* the probability of a single success, the Binomial</span>
+<span class="sd">    distributions says that the probability *at least* one outcome</span>
+<span class="sd">    in n trials is</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        P(k\geq 1) = \sum_{k\geq 1} \binom{n}{k} p^k (1-p)^{(n-k)}</span>
+
+<span class="sd">    or more simply, using P(k ≥ 0) = 1</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        P(k\geq 1) = 1 - \binom{n}{0} (1-p)^n = 1 - (1-p)^n</span>
+
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    p1 : float</span>
+<span class="sd">        The significance at which we reject the null hypothesis on</span>
+<span class="sd">        each single trial.</span>
+<span class="sd">    n : int</span>
+<span class="sd">        The number of trials</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pn : float</span>
+<span class="sd">        The significance at which we reject the null hypothesis</span>
+<span class="sd">        after multiple trials</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logpn</span> <span class="o">=</span> <span class="n">_logp_multitrial_from_single_logp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">p1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">double</span><span class="p">),</span> <span class="n">n</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">longdouble</span><span class="p">(</span><span class="n">logpn</span><span class="p">))</span></div>
+
+
+
+<span class="nd">@vectorize</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="n">float64</span><span class="p">(</span><span class="n">float32</span><span class="p">,</span> <span class="n">int32</span><span class="p">),</span>
+        <span class="n">float64</span><span class="p">(</span><span class="n">float32</span><span class="p">,</span> <span class="n">int64</span><span class="p">),</span>
+        <span class="n">float64</span><span class="p">(</span><span class="n">float64</span><span class="p">,</span> <span class="n">int32</span><span class="p">),</span>
+        <span class="n">float64</span><span class="p">(</span><span class="n">float64</span><span class="p">,</span> <span class="n">int64</span><span class="p">),</span>
+    <span class="p">],</span>
+    <span class="n">nopython</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_logp_single_trial_from_logp_multitrial</span><span class="p">(</span><span class="n">logpn</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate a multi-trial p-value from the log of a single-trial one.</span>
+
+<span class="sd">    This allows to work around Numba&#39;s limitation on longdoubles, a way to</span>
+<span class="sd">    vectorize the computation when we need longdouble precision.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    logpn : float</span>
+<span class="sd">        The natural logarithm of the significance at which we want to reject</span>
+<span class="sd">        the null hypothesis after multiple trials</span>
+<span class="sd">    n : int</span>
+<span class="sd">        The number of trials</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    logp1 : float</span>
+<span class="sd">        The log of the significance at which we reject the null hypothesis on</span>
+<span class="sd">        each single trial.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logn</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="c1"># If the the probability is very small, use Bonferroni approximation.</span>
+    <span class="k">if</span> <span class="n">logpn</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mi">7</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">logpn</span> <span class="o">-</span> <span class="n">logn</span>
+
+    <span class="c1"># Numerical errors arise when pn is very close to 1. (logpn ~ 0)</span>
+    <span class="k">if</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">logpn</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">double</span><span class="p">)</span><span class="o">.</span><span class="n">resolution</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="n">p1</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">logpn</span><span class="p">),</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">n</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">p1</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="p_single_trial_from_p_multitrial">
+<a class="viewcode-back" href="../../api.html#stingray.stats.p_single_trial_from_p_multitrial">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">p_single_trial_from_p_multitrial</span><span class="p">(</span><span class="n">pn</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Calculate the single-trial p-value from a total p-value</span>
+
+<span class="sd">    Let us say that we want to reject a null hypothesis at the</span>
+<span class="sd">    ``pn`` level, after executing ``n`` different measurements.</span>
+<span class="sd">    This might be the case because, e.g., we</span>
+<span class="sd">    want to have a 1% probability of detecting a signal in an</span>
+<span class="sd">    entire power spectrum, and we need to correct the detection</span>
+<span class="sd">    level accordingly.</span>
+
+<span class="sd">    The typical procedure is dividing the initial probability</span>
+<span class="sd">    (often called _epsilon_) by the number of trials. This is</span>
+<span class="sd">    called the Bonferroni correction and it is often a good</span>
+<span class="sd">    approximation, when ``pn`` is low: ``p1 = pn / n``.</span>
+
+<span class="sd">    However, if ``pn`` is close to 1, this approximation gives</span>
+<span class="sd">    incorrect results.</span>
+
+<span class="sd">    Here we calculate this probability by inverting the Binomial</span>
+<span class="sd">    problem. Given that (see ``p_multitrial_from_single_trial``)</span>
+<span class="sd">    the probability of getting more than one hit in n trials,</span>
+<span class="sd">    given the single-trial probability *p*, is</span>
+
+<span class="sd">    .. math ::</span>
+
+<span class="sd">        P (k \geq 1) =  1 - (1 - p)^n,</span>
+
+<span class="sd">    we get the single trial probability from the multi-trial one</span>
+<span class="sd">    from</span>
+
+<span class="sd">    .. math ::</span>
+
+<span class="sd">        p = 1 - (1 - P)^{(1/n)}</span>
+
+<span class="sd">    This is also known as Šidák correction.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pn : float</span>
+<span class="sd">        The significance at which we want to reject the null</span>
+<span class="sd">        hypothesis after multiple trials</span>
+<span class="sd">    n : int</span>
+<span class="sd">        The number of trials</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    p1 : float</span>
+<span class="sd">        The significance at which we reject the null hypothesis on</span>
+<span class="sd">        each single trial.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">logp</span> <span class="o">=</span> <span class="n">_logp_single_trial_from_logp_multitrial</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">pn</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">n</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">logp</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">pn</span> <span class="o">&lt;</span> <span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">double</span><span class="p">)</span><span class="o">.</span><span class="n">resolution</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">):</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Multi-trial probability is very close to 1.&quot;</span><span class="p">)</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;The problem is ill-conditioned. Returning NaN&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">logp</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="fold_profile_probability">
+<a class="viewcode-back" href="../../api.html#stingray.stats.fold_profile_probability">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fold_profile_probability</span><span class="p">(</span><span class="n">stat</span><span class="p">,</span> <span class="n">nbin</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the probability of a certain folded profile, due to noise.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    stat : float</span>
+<span class="sd">        The epoch folding statistics</span>
+<span class="sd">    nbin : int</span>
+<span class="sd">        The number of bins in the profile</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ntrial : int</span>
+<span class="sd">        The number of trials executed to find this profile</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    p : float</span>
+<span class="sd">        The probability that the profile has been produced by noise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">p1</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">sf</span><span class="p">(</span><span class="n">stat</span><span class="p">,</span> <span class="p">(</span><span class="n">nbin</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">p_multitrial_from_single_trial</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">ntrial</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="fold_profile_logprobability">
+<a class="viewcode-back" href="../../api.html#stingray.stats.fold_profile_logprobability">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fold_profile_logprobability</span><span class="p">(</span><span class="n">stat</span><span class="p">,</span> <span class="n">nbin</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the probability of a certain folded profile, due to noise.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    stat : float</span>
+<span class="sd">        The epoch folding statistics</span>
+<span class="sd">    nbin : int</span>
+<span class="sd">        The number of bins in the profile</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ntrial : int</span>
+<span class="sd">        The number of trials executed to find this profile</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    logp : float</span>
+<span class="sd">        The log-probability that the profile has been produced by noise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">p1</span> <span class="o">=</span> <span class="n">chi2_logp</span><span class="p">(</span><span class="n">stat</span><span class="p">,</span> <span class="p">(</span><span class="n">nbin</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">_logp_multitrial_from_single_logp</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">ntrial</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="fold_detection_level">
+<a class="viewcode-back" href="../../api.html#stingray.stats.fold_detection_level">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fold_detection_level</span><span class="p">(</span><span class="n">nbin</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the detection level for a folded profile.</span>
+
+<span class="sd">    See Leahy et al. (1983).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    nbin : int</span>
+<span class="sd">        The number of bins in the profile</span>
+<span class="sd">    epsilon : float, default 0.01</span>
+<span class="sd">        The fractional probability that the signal has been produced</span>
+<span class="sd">        by noise</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ntrial : int</span>
+<span class="sd">        The number of trials executed to find this profile</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    detlev : float</span>
+<span class="sd">        The epoch folding statistics corresponding to a probability</span>
+<span class="sd">        epsilon * 100 % that the signal has been produced by noise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">epsilon</span> <span class="o">=</span> <span class="n">p_single_trial_from_p_multitrial</span><span class="p">(</span><span class="n">epsilon</span><span class="p">,</span> <span class="n">ntrial</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">isf</span><span class="p">(</span><span class="n">epsilon</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">double</span><span class="p">),</span> <span class="n">nbin</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="phase_dispersion_probability">
+<a class="viewcode-back" href="../../api.html#stingray.stats.phase_dispersion_probability">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">phase_dispersion_probability</span><span class="p">(</span><span class="n">stat</span><span class="p">,</span> <span class="n">nsamples</span><span class="p">,</span> <span class="n">nbin</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the probability of a peak in a phase dispersion</span>
+<span class="sd">    minimization periodogram, due to noise.</span>
+
+<span class="sd">    Uses the beta-distribution from Czerny-Schwarzendorf (1997).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    stat : float</span>
+<span class="sd">        The value of the PDM inverse peak</span>
+
+<span class="sd">    nsamples : int</span>
+<span class="sd">        The number of samples in the time series</span>
+
+<span class="sd">    nbin : int</span>
+<span class="sd">        The number of bins in the profile</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ntrial : int</span>
+<span class="sd">        The number of trials executed to find this profile</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    p : float</span>
+<span class="sd">        The probability that the profile has been produced by noise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">d2</span> <span class="o">=</span> <span class="n">nsamples</span> <span class="o">-</span> <span class="n">nbin</span>
+    <span class="n">d1</span> <span class="o">=</span> <span class="n">nbin</span> <span class="o">-</span> <span class="mi">1</span>
+
+    <span class="n">beta</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">beta</span><span class="p">(</span><span class="n">d2</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">d1</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span>
+    <span class="n">p1</span> <span class="o">=</span> <span class="n">beta</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">stat</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">p_multitrial_from_single_trial</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">ntrial</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="phase_dispersion_logprobability">
+<a class="viewcode-back" href="../../api.html#stingray.stats.phase_dispersion_logprobability">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">phase_dispersion_logprobability</span><span class="p">(</span><span class="n">stat</span><span class="p">,</span> <span class="n">nsamples</span><span class="p">,</span> <span class="n">nbin</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the log-probability of a peak in a phase dispersion</span>
+<span class="sd">    minimization periodogram, due to noise.</span>
+
+<span class="sd">    Uses the beta-distribution from Czerny-Schwarzendorf (1997).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    stat : float</span>
+<span class="sd">        The value of the PDM inverse peak</span>
+
+<span class="sd">    nsamples : int</span>
+<span class="sd">        The number of samples in the time series</span>
+
+<span class="sd">    nbin : int</span>
+<span class="sd">        The number of bins in the profile</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ntrial : int</span>
+<span class="sd">        The number of trials executed to find this profile</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    logp : float</span>
+<span class="sd">        The log-probability that the profile has been produced by noise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">d2</span> <span class="o">=</span> <span class="n">nsamples</span> <span class="o">-</span> <span class="n">nbin</span>
+    <span class="n">d1</span> <span class="o">=</span> <span class="n">nbin</span> <span class="o">-</span> <span class="mi">1</span>
+
+    <span class="n">beta</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">beta</span><span class="p">(</span><span class="n">d2</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">d1</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span>
+    <span class="n">p1</span> <span class="o">=</span> <span class="n">beta</span><span class="o">.</span><span class="n">logcdf</span><span class="p">(</span><span class="n">stat</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">_logp_multitrial_from_single_logp</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">ntrial</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="phase_dispersion_detection_level">
+<a class="viewcode-back" href="../../api.html#stingray.stats.phase_dispersion_detection_level">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">phase_dispersion_detection_level</span><span class="p">(</span><span class="n">nsamples</span><span class="p">,</span> <span class="n">nbin</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the detection level for a phase dispersion minimization</span>
+<span class="sd">    periodogram..</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    nsamples : int</span>
+<span class="sd">        The number of time bins in the light curve</span>
+
+<span class="sd">    nbin : int</span>
+<span class="sd">        The number of bins in the profile</span>
+
+<span class="sd">    epsilon : float, default 0.01</span>
+<span class="sd">        The fractional probability that the signal has been produced</span>
+<span class="sd">        by noise</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ntrial : int</span>
+<span class="sd">        The number of trials executed to find this profile</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    detlev : float</span>
+<span class="sd">        The epoch folding statistics corresponding to a probability</span>
+<span class="sd">        epsilon * 100 % that the signal has been produced by noise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">epsilon</span> <span class="o">=</span> <span class="n">p_single_trial_from_p_multitrial</span><span class="p">(</span><span class="n">epsilon</span><span class="p">,</span> <span class="n">ntrial</span><span class="p">)</span>
+
+    <span class="n">d2</span> <span class="o">=</span> <span class="n">nsamples</span> <span class="o">-</span> <span class="n">nbin</span>
+    <span class="n">d1</span> <span class="o">=</span> <span class="n">nbin</span> <span class="o">-</span> <span class="mi">1</span>
+
+    <span class="n">beta</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">beta</span><span class="p">(</span><span class="n">d2</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">d1</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">beta</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="n">epsilon</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">double</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="z2_n_probability">
+<a class="viewcode-back" href="../../api.html#stingray.stats.z2_n_probability">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">z2_n_probability</span><span class="p">(</span><span class="n">z2</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_summed_spectra</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the probability of a certain folded profile, due to noise.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    z2 : float</span>
+<span class="sd">        A Z^2_n statistics value</span>
+<span class="sd">    n : int, default 2</span>
+<span class="sd">        The ``n`` in $Z^2_n$ (number of harmonics, including the fundamental)</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ntrial : int</span>
+<span class="sd">        The number of trials executed to find this profile</span>
+<span class="sd">    n_summed_spectra : int</span>
+<span class="sd">        Number of Z_2^n periodograms that were averaged to obtain z2</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    p : float</span>
+<span class="sd">        The probability that the Z^2_n value has been produced by noise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">epsilon_1</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">sf</span><span class="p">(</span><span class="n">z2</span> <span class="o">*</span> <span class="n">n_summed_spectra</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">n</span> <span class="o">*</span> <span class="n">n_summed_spectra</span><span class="p">)</span>
+    <span class="n">epsilon</span> <span class="o">=</span> <span class="n">p_multitrial_from_single_trial</span><span class="p">(</span><span class="n">epsilon_1</span><span class="p">,</span> <span class="n">ntrial</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">epsilon</span></div>
+
+
+
+<div class="viewcode-block" id="z2_n_logprobability">
+<a class="viewcode-back" href="../../api.html#stingray.stats.z2_n_logprobability">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">z2_n_logprobability</span><span class="p">(</span><span class="n">z2</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_summed_spectra</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the probability of a certain folded profile, due to noise.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    z2 : float</span>
+<span class="sd">        A Z^2_n statistics value</span>
+<span class="sd">    n : int, default 2</span>
+<span class="sd">        The ``n`` in $Z^2_n$ (number of harmonics, including the fundamental)</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ntrial : int</span>
+<span class="sd">        The number of trials executed to find this profile</span>
+<span class="sd">    n_summed_spectra : int</span>
+<span class="sd">        Number of Z_2^n periodograms that were averaged to obtain z2</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    p : float</span>
+<span class="sd">        The probability that the Z^2_n value has been produced by noise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">epsilon_1</span> <span class="o">=</span> <span class="n">chi2_logp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">double</span><span class="p">(</span><span class="n">z2</span> <span class="o">*</span> <span class="n">n_summed_spectra</span><span class="p">),</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">n</span> <span class="o">*</span> <span class="n">n_summed_spectra</span><span class="p">)</span>
+    <span class="n">epsilon</span> <span class="o">=</span> <span class="n">_logp_multitrial_from_single_logp</span><span class="p">(</span><span class="n">epsilon_1</span><span class="p">,</span> <span class="n">ntrial</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">epsilon</span></div>
+
+
+
+<div class="viewcode-block" id="z2_n_detection_level">
+<a class="viewcode-back" href="../../api.html#stingray.stats.z2_n_detection_level">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">z2_n_detection_level</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_summed_spectra</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the detection level for the Z^2_n statistics.</span>
+
+<span class="sd">    See Buccheri et al. (1983), Bendat and Piersol (1971).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    n : int, default 2</span>
+<span class="sd">        The ``n`` in $Z^2_n$ (number of harmonics, including the fundamental)</span>
+<span class="sd">    epsilon : float, default 0.01</span>
+<span class="sd">        The fractional probability that the signal has been produced by noise</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ntrial : int</span>
+<span class="sd">        The number of trials executed to find this profile</span>
+<span class="sd">    n_summed_spectra : int</span>
+<span class="sd">        Number of Z_2^n periodograms that are being averaged</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    detlev : float</span>
+<span class="sd">        The epoch folding statistics corresponding to a probability</span>
+<span class="sd">        epsilon * 100 % that the signal has been produced by noise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">epsilon</span> <span class="o">=</span> <span class="n">p_single_trial_from_p_multitrial</span><span class="p">(</span><span class="n">epsilon</span><span class="p">,</span> <span class="n">ntrial</span><span class="p">)</span>
+    <span class="n">retlev</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">isf</span><span class="p">(</span><span class="n">epsilon</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">double</span><span class="p">),</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">n_summed_spectra</span> <span class="o">*</span> <span class="n">n</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span>
+        <span class="n">n_summed_spectra</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">retlev</span></div>
+
+
+
+<div class="viewcode-block" id="pds_probability">
+<a class="viewcode-back" href="../../api.html#stingray.stats.pds_probability">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pds_probability</span><span class="p">(</span><span class="n">level</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_summed_spectra</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_rebin</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Give the probability of a given power level in PDS.</span>
+
+<span class="sd">    Return the probability of a certain power level in a Power Density</span>
+<span class="sd">    Spectrum of nbins bins, normalized a la Leahy (1983), based on</span>
+<span class="sd">    the 2-dof :math:`{\chi}^2` statistics, corrected for rebinning (n_rebin)</span>
+<span class="sd">    and multiple PDS averaging (n_summed_spectra)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    level : float or array of floats</span>
+<span class="sd">        The power level for which we are calculating the probability</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ntrial : int</span>
+<span class="sd">        The number of *independent* trials (the independent bins of the PDS)</span>
+<span class="sd">    n_summed_spectra : int</span>
+<span class="sd">        The number of power density spectra that have been averaged to obtain</span>
+<span class="sd">        this power level</span>
+<span class="sd">    n_rebin : int</span>
+<span class="sd">        The number of power density bins that have been averaged to obtain</span>
+<span class="sd">        this power level</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    epsilon : float</span>
+<span class="sd">        The probability value(s)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">epsilon_1</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">sf</span><span class="p">(</span><span class="n">level</span> <span class="o">*</span> <span class="n">n_summed_spectra</span> <span class="o">*</span> <span class="n">n_rebin</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">n_summed_spectra</span> <span class="o">*</span> <span class="n">n_rebin</span><span class="p">)</span>
+
+    <span class="n">epsilon</span> <span class="o">=</span> <span class="n">p_multitrial_from_single_trial</span><span class="p">(</span><span class="n">epsilon_1</span><span class="p">,</span> <span class="n">ntrial</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">epsilon</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">pds_logprobability</span><span class="p">(</span><span class="n">level</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_summed_spectra</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_rebin</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Give the probability of a given power level in PDS.</span>
+
+<span class="sd">    Return the probability of a certain power level in a Power Density</span>
+<span class="sd">    Spectrum of nbins bins, normalized a la Leahy (1983), based on</span>
+<span class="sd">    the 2-dof :math:`{\chi}^2` statistics, corrected for rebinning (n_rebin)</span>
+<span class="sd">    and multiple PDS averaging (n_summed_spectra)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    level : float or array of floats</span>
+<span class="sd">        The power level for which we are calculating the probability</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ntrial : int</span>
+<span class="sd">        The number of *independent* trials (the independent bins of the PDS)</span>
+<span class="sd">    n_summed_spectra : int</span>
+<span class="sd">        The number of power density spectra that have been averaged to obtain</span>
+<span class="sd">        this power level</span>
+<span class="sd">    n_rebin : int</span>
+<span class="sd">        The number of power density bins that have been averaged to obtain</span>
+<span class="sd">        this power level</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    epsilon : float</span>
+<span class="sd">        The probability value(s)</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Let us test that it is always consistent with `pds_probability`.</span>
+<span class="sd">    We use relatively small power values, because for large values</span>
+<span class="sd">    `pds_probability` underflows.</span>
+<span class="sd">    &gt;&gt;&gt; powers = np.random.uniform(2, 40, 10)</span>
+<span class="sd">    &gt;&gt;&gt; nrebin = np.random.randint(1, 10, 10)</span>
+<span class="sd">    &gt;&gt;&gt; nsummed = np.random.randint(1, 100, 10)</span>
+<span class="sd">    &gt;&gt;&gt; ntrial = np.random.randint(1, 10000, 10)</span>
+<span class="sd">    &gt;&gt;&gt; logp = pds_logprobability(powers, ntrial, nsummed, nrebin)</span>
+<span class="sd">    &gt;&gt;&gt; p = pds_probability(powers, ntrial, nsummed, nrebin)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(p, np.exp(logp))</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">epsilon_1</span> <span class="o">=</span> <span class="n">chi2_logp</span><span class="p">(</span><span class="n">level</span> <span class="o">*</span> <span class="n">n_summed_spectra</span> <span class="o">*</span> <span class="n">n_rebin</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">n_summed_spectra</span> <span class="o">*</span> <span class="n">n_rebin</span><span class="p">)</span>
+
+    <span class="n">epsilon</span> <span class="o">=</span> <span class="n">_logp_multitrial_from_single_logp</span><span class="p">(</span><span class="n">epsilon_1</span><span class="p">,</span> <span class="n">ntrial</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">epsilon</span>
+
+
+<div class="viewcode-block" id="pds_detection_level">
+<a class="viewcode-back" href="../../api.html#stingray.stats.pds_detection_level">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pds_detection_level</span><span class="p">(</span><span class="n">epsilon</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_summed_spectra</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_rebin</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Detection level for a PDS.</span>
+
+<span class="sd">    Return the detection level (with probability 1 - epsilon) for a Power</span>
+<span class="sd">    Density Spectrum of nbins bins, normalized a la Leahy (1983), based on</span>
+<span class="sd">    the 2-dof :math:`{\chi}^2` statistics, corrected for rebinning (n_rebin)</span>
+<span class="sd">    and multiple PDS averaging (n_summed_spectra)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    epsilon : float</span>
+<span class="sd">        The single-trial probability value(s)</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    ntrial : int</span>
+<span class="sd">        The number of *independent* trials (the independent bins of the PDS)</span>
+<span class="sd">    n_summed_spectra : int</span>
+<span class="sd">        The number of power density spectra that have been averaged to obtain</span>
+<span class="sd">        this power level</span>
+<span class="sd">    n_rebin : int</span>
+<span class="sd">        The number of power density bins that have been averaged to obtain</span>
+<span class="sd">        this power level</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; assert np.isclose(pds_detection_level(0.1), 4.6, atol=0.1)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(pds_detection_level(0.1, n_rebin=[1]), [4.6], atol=0.1)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">epsilon</span> <span class="o">=</span> <span class="n">p_single_trial_from_p_multitrial</span><span class="p">(</span><span class="n">epsilon</span><span class="p">,</span> <span class="n">ntrial</span><span class="p">)</span>
+    <span class="n">epsilon</span> <span class="o">=</span> <span class="n">epsilon</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">double</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">n_rebin</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">):</span>
+        <span class="n">retlev</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">isf</span><span class="p">(</span><span class="n">epsilon</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">n_summed_spectra</span> <span class="o">*</span> <span class="n">r</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n_summed_spectra</span> <span class="o">*</span> <span class="n">r</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">n_rebin</span>
+        <span class="p">]</span>
+        <span class="n">retlev</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">retlev</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">n_rebin</span>
+        <span class="n">retlev</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">isf</span><span class="p">(</span><span class="n">epsilon</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">n_summed_spectra</span> <span class="o">*</span> <span class="n">r</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n_summed_spectra</span> <span class="o">*</span> <span class="n">r</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">retlev</span></div>
+
+
+
+<div class="viewcode-block" id="classical_pvalue">
+<a class="viewcode-back" href="../../api.html#stingray.stats.classical_pvalue">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">classical_pvalue</span><span class="p">(</span><span class="n">power</span><span class="p">,</span> <span class="n">nspec</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Note:</span>
+<span class="sd">    This is stingray&#39;s original implementation of the probability</span>
+<span class="sd">    distribution for the power spectrum. It is superseded by the</span>
+<span class="sd">    implementation in pds_probability for practical purposes, but</span>
+<span class="sd">    remains here for backwards compatibility and for its educational</span>
+<span class="sd">    value as a clear, explicit implementation of the correct</span>
+<span class="sd">    probability distribution.</span>
+
+<span class="sd">    Compute the probability of detecting the current power under</span>
+<span class="sd">    the assumption that there is no periodic oscillation in the data.</span>
+
+<span class="sd">    This computes the single-trial p-value that the power was</span>
+<span class="sd">    observed under the null hypothesis that there is no signal in</span>
+<span class="sd">    the data.</span>
+
+<span class="sd">    Important: the underlying assumptions that make this calculation valid</span>
+<span class="sd">    are:</span>
+
+<span class="sd">    1. the powers in the power spectrum follow a chi-square distribution</span>
+<span class="sd">    2. the power spectrum is normalized according to [Leahy 1983]_, such</span>
+<span class="sd">       that the powers have a mean of 2 and a variance of 4</span>
+<span class="sd">    3. there is only white noise in the light curve. That is, there is no</span>
+<span class="sd">       aperiodic variability that would change the overall shape of the power</span>
+<span class="sd">       spectrum.</span>
+
+<span class="sd">    Also note that the p-value is for a *single trial*, i.e. the power</span>
+<span class="sd">    currently being tested. If more than one power or more than one power</span>
+<span class="sd">    spectrum are being tested, the resulting p-value must be corrected for the</span>
+<span class="sd">    number of trials (Bonferroni correction).</span>
+
+<span class="sd">    Mathematical formulation in [Groth 1975]_.</span>
+<span class="sd">    Original implementation in IDL by Anna L. Watts.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    power :  float</span>
+<span class="sd">        The squared Fourier amplitude of a spectrum to be evaluated</span>
+
+<span class="sd">    nspec : int</span>
+<span class="sd">        The number of spectra or frequency bins averaged in ``power``.</span>
+<span class="sd">        This matters because averaging spectra or frequency bins increases</span>
+<span class="sd">        the signal-to-noise ratio, i.e. makes the statistical distributions</span>
+<span class="sd">        of the noise narrower, such that a smaller power might be very</span>
+<span class="sd">        significant in averaged spectra even though it would not be in a single</span>
+<span class="sd">        power spectrum.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pval : float</span>
+<span class="sd">        The classical p-value of the observed power being consistent with</span>
+<span class="sd">        the null hypothesis of white noise</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    * .. [Leahy 1983] https://ui.adsabs.harvard.edu/#abs/1983ApJ...266..160L/abstract</span>
+<span class="sd">    * .. [Groth 1975] https://ui.adsabs.harvard.edu/#abs/1975ApJS...29..285G/abstract</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;This function was substituted by pds_probability.&quot;</span><span class="p">,</span> <span class="ne">DeprecationWarning</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">power</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;power must be a finite floating point number!&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">power</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;power must be a positive real number!&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">nspec</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;nspec must be a finite integer number&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">nspec</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;nspec must be larger or equal to 1&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">nspec</span> <span class="o">%</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;nspec must be an integer number!&quot;</span><span class="p">)</span>
+
+    <span class="c1"># If the power is really big, it&#39;s safe to say it&#39;s significant,</span>
+    <span class="c1"># and the p-value will be nearly zero</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">power</span> <span class="o">*</span> <span class="n">nspec</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">30000</span><span class="p">:</span>
+        <span class="n">simon</span><span class="p">(</span><span class="s2">&quot;Probability of no signal too minuscule to calculate.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">pval</span> <span class="o">=</span> <span class="n">_pavnosigfun</span><span class="p">(</span><span class="n">power</span><span class="p">,</span> <span class="n">nspec</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">pval</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_pavnosigfun</span><span class="p">(</span><span class="n">power</span><span class="p">,</span> <span class="n">nspec</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Helper function doing the actual calculation of the p-value.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    power : float</span>
+<span class="sd">        The measured candidate power</span>
+
+<span class="sd">    nspec : int</span>
+<span class="sd">        The number of power spectral bins that were averaged in `power`</span>
+<span class="sd">        (note: can be either through averaging spectra or neighbouring bins)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">sum</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">nspec</span> <span class="o">-</span> <span class="mi">1</span>
+
+    <span class="n">pn</span> <span class="o">=</span> <span class="n">power</span> <span class="o">*</span> <span class="n">nspec</span>
+
+    <span class="k">while</span> <span class="n">m</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">s</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">m</span> <span class="o">-</span> <span class="n">i</span><span class="p">))</span>
+
+        <span class="n">logterm</span> <span class="o">=</span> <span class="n">m</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">pn</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="n">pn</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">-</span> <span class="n">s</span>
+        <span class="n">term</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">logterm</span><span class="p">)</span>
+        <span class="n">ratio</span> <span class="o">=</span> <span class="nb">sum</span> <span class="o">/</span> <span class="n">term</span>
+
+        <span class="k">if</span> <span class="n">ratio</span> <span class="o">&gt;</span> <span class="mf">1.0e15</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">sum</span>
+
+        <span class="nb">sum</span> <span class="o">+=</span> <span class="n">term</span>
+        <span class="n">m</span> <span class="o">-=</span> <span class="mi">1</span>
+
+    <span class="k">return</span> <span class="nb">sum</span>
+
+
+<div class="viewcode-block" id="power_confidence_limits">
+<a class="viewcode-back" href="../../api.html#stingray.stats.power_confidence_limits">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">power_confidence_limits</span><span class="p">(</span><span class="n">preal</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span> <span class="n">summed_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Confidence limits on power, given a (theoretical) signal power.</span>
+
+<span class="sd">    This is to be used when we *expect* a given power (e.g. from the pulsed</span>
+<span class="sd">    fraction measured in previous observations) and we want to know the</span>
+<span class="sd">    range of values the measured power could take to a given confidence level.</span>
+<span class="sd">    Adapted from Vaughan et al. 1994, noting that, after appropriate</span>
+<span class="sd">    normalization of the spectral stats, the distribution of powers in the PDS</span>
+<span class="sd">    and the Z^2_n searches is always described by a noncentral chi squared</span>
+<span class="sd">    distribution.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    preal: float</span>
+<span class="sd">        The theoretical signal-generated value of power</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    n: int</span>
+<span class="sd">        The number of summed powers to obtain the result. It can be multiple</span>
+<span class="sd">        harmonics of the PDS, adjacent bins in a PDS summed to collect all the</span>
+<span class="sd">        power in a QPO, or the n in Z^2_n</span>
+<span class="sd">    c: float</span>
+<span class="sd">        The confidence level (e.g. 0.95=95%)</span>
+<span class="sd">    summed_flag: bool</span>
+<span class="sd">        Whether the power is (if True) summed or (if False) averaged. Only</span>
+<span class="sd">        relevant if n &gt; 1</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pmeas: [float, float]</span>
+<span class="sd">        The lower and upper bounds of the symmetric ``c``-level confidence</span>
+<span class="sd">        interval on the measured power</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; cl = power_confidence_limits(150, c=0.68, n=1, summed_flag=True)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(cl, [127, 176], atol=1)</span>
+<span class="sd">    &gt;&gt;&gt; cl = power_confidence_limits(150, c=0.68, n=8, summed_flag=True)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(cl, [141, 190], atol=1)</span>
+<span class="sd">    &gt;&gt;&gt; cl = power_confidence_limits(150, c=0.68, n=1, summed_flag=False)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(cl, [127, 176], atol=1)</span>
+<span class="sd">    &gt;&gt;&gt; cl = power_confidence_limits(150, c=0.68, n=8, summed_flag=False)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(cl, [143, 160], atol=1)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">summed_flag</span><span class="p">:</span>
+        <span class="n">rv</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">ncx2</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">,</span> <span class="n">preal</span><span class="p">)</span>
+        <span class="n">ints</span> <span class="o">=</span> <span class="n">rv</span><span class="o">.</span><span class="n">ppf</span><span class="p">([(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">c</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">rv</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">ncx2</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">,</span> <span class="n">preal</span> <span class="o">*</span> <span class="n">n</span><span class="p">)</span>
+        <span class="n">ints</span> <span class="o">=</span> <span class="n">rv</span><span class="o">.</span><span class="n">ppf</span><span class="p">([(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">c</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">])</span> <span class="o">/</span> <span class="n">n</span>
+    <span class="k">return</span> <span class="n">ints</span></div>
+
+
+
+<div class="viewcode-block" id="power_upper_limit">
+<a class="viewcode-back" href="../../api.html#stingray.stats.power_upper_limit">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">power_upper_limit</span><span class="p">(</span><span class="n">pmeas</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span> <span class="n">summed_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Upper limit on signal power, given a measured power in the PDS/Z search.</span>
+
+<span class="sd">    Adapted from Vaughan et al. 1994, noting that, after appropriate</span>
+<span class="sd">    normalization of the spectral stats, the distribution of powers in the PDS</span>
+<span class="sd">    and the Z^2_n searches is always described by a noncentral chi squared</span>
+<span class="sd">    distribution.</span>
+
+<span class="sd">    Note that Vaughan+94 gives p(pmeas | preal), while we are interested in</span>
+<span class="sd">    p(real | pmeas), which is not described by the NCX2 stat. Rather than</span>
+<span class="sd">    integrating the CDF of this probability distribution, we start from a</span>
+<span class="sd">    reasonable approximation and fit to find the preal that gives pmeas as</span>
+<span class="sd">    a (e.g.95%) confidence limit.</span>
+
+<span class="sd">    As Vaughan+94 shows, this power is always larger than the observed one.</span>
+<span class="sd">    This is because we are looking for the maximum signal power that,</span>
+<span class="sd">    combined with noise powers, would give the observed power. This involves</span>
+<span class="sd">    the possibility that noise powers partially cancel out some signal power.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pmeas: float</span>
+<span class="sd">        The measured value of power</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    n: int</span>
+<span class="sd">        The number of summed powers to obtain pmeas. It can be multiple</span>
+<span class="sd">        harmonics of the PDS, adjacent bins in a PDS summed to collect all the</span>
+<span class="sd">        power in a QPO, the n in Z^2_n or the number of averaged PDS</span>
+<span class="sd">    c: float</span>
+<span class="sd">        The confidence value for the probability (e.g. 0.95 = 95%)</span>
+<span class="sd">    summed_flag: bool</span>
+<span class="sd">        If True, pmeas is the sum of n powers. If False, pmeas is the average</span>
+<span class="sd">        of n powers. This is relevant when dealing with averaged PDS, where</span>
+<span class="sd">        the powers are averaged rather than summed. For example, Z^2_n searches</span>
+<span class="sd">        deal with summed powers (i.e. summed_flag=True), while if power spectrum</span>
+<span class="sd">        is averaged to improve the statistics the summed_flag should be set to False.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    psig: float</span>
+<span class="sd">        The signal power that could produce P&gt;pmeas with 1 - c probability</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; pup = power_upper_limit(40, 1, 0.99)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.isclose(pup, 75, atol=2)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.optimize</span><span class="w"> </span><span class="kn">import</span> <span class="n">brentq</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">ppf</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        <span class="n">rv</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">ncx2</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">rv</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">isf</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        <span class="n">rv</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">ncx2</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">rv</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">summed_flag</span><span class="p">:</span>
+        <span class="nb">pow</span> <span class="o">=</span> <span class="n">pmeas</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">pow</span> <span class="o">=</span> <span class="n">pmeas</span> <span class="o">*</span> <span class="n">n</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">func_to_minimize</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">ppf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="nb">pow</span>
+
+    <span class="n">rv</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">)</span>
+    <span class="n">plow</span> <span class="o">=</span> <span class="n">rv</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">pow</span> <span class="o">&lt;</span> <span class="n">plow</span><span class="p">:</span>
+        <span class="c1"># Any power below plow is consistent with noise,</span>
+        <span class="c1"># so the upper limit on the signal power is 0.</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+
+    <span class="n">initial</span> <span class="o">=</span> <span class="n">isf</span><span class="p">(</span><span class="nb">pow</span><span class="p">)</span>
+    <span class="n">sol</span> <span class="o">=</span> <span class="n">brentq</span><span class="p">(</span><span class="n">func_to_minimize</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">initial</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">summed_flag</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">sol</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">sol</span> <span class="o">/</span> <span class="n">n</span></div>
+
+
+
+<div class="viewcode-block" id="amplitude_upper_limit">
+<a class="viewcode-back" href="../../api.html#stingray.stats.amplitude_upper_limit">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">amplitude_upper_limit</span><span class="p">(</span>
+    <span class="n">pmeas</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span> <span class="n">fft_corr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">nyq_ratio</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">summed_flag</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Upper limit on a sinusoidal modulation, given a measured power in the PDS/Z search.</span>
+
+<span class="sd">    Eq. 10 in Vaughan+94 and `a_from_ssig`: they are equivalent but Vaughan+94</span>
+<span class="sd">    corrects further for the response inside an FFT bin and at frequencies close</span>
+<span class="sd">    to Nyquist. These two corrections are added by using fft_corr=True and</span>
+<span class="sd">    nyq_ratio to the correct :math:`f / f_{Nyq}` of the FFT peak</span>
+
+<span class="sd">    To understand the meaning of this amplitude: if the modulation is described by:</span>
+
+<span class="sd">    ..math:: p = \overline{p} (1 + a * \sin(x))</span>
+
+<span class="sd">    this function returns a.</span>
+
+<span class="sd">    If it is a sum of sinusoidal harmonics instead</span>
+<span class="sd">    ..math:: p = \overline{p} (1 + \sum_l a_l * \sin(lx))</span>
+<span class="sd">    a is equivalent to :math:`\sqrt(\sum_l a_l^2)`.</span>
+
+<span class="sd">    See `power_upper_limit`</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pmeas: float</span>
+<span class="sd">        The measured value of power</span>
+
+<span class="sd">    counts: int</span>
+<span class="sd">        The number of counts in the light curve used to calculate the spectrum</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    n: int</span>
+<span class="sd">        The number of summed powers to obtain pmeas. It can be multiple</span>
+<span class="sd">        harmonics of the PDS, adjacent bins in a PDS summed to collect all the</span>
+<span class="sd">        power in a QPO, the n in Z^2_n or the number of averaged PDS</span>
+<span class="sd">    c: float</span>
+<span class="sd">        The confidence value for the probability (e.g. 0.95 = 95%)</span>
+<span class="sd">    fft_corr: bool</span>
+<span class="sd">        Apply a correction for the expected power concentrated in an FFT bin,</span>
+<span class="sd">        which is about 0.773 on average (it&#39;s 1 at the center of the bin, 2/pi</span>
+<span class="sd">        at the bin edge.</span>
+<span class="sd">    nyq_ratio: float</span>
+<span class="sd">        Ratio of the frequency of this feature with respect to the Nyquist</span>
+<span class="sd">        frequency. Important to know when dealing with FFTs, because the FFT</span>
+<span class="sd">        response decays between 0 and f_Nyq similarly to the response inside</span>
+<span class="sd">        a frequency bin: from 1 at 0 Hz to ~2/pi at f_Nyq</span>
+<span class="sd">    summed_flag: bool</span>
+<span class="sd">        If True, pmeas is the sum of n powers. If False, pmeas is the average</span>
+<span class="sd">        of n powers. This is relevant when dealing with averaged PDS, where</span>
+<span class="sd">        the powers are averaged rather than summed. For example, Z^2_n searches</span>
+<span class="sd">        deal with summed powers (i.e. summed_flag=True), while if power spectrum</span>
+<span class="sd">        is averaged to improve the statistics the summed_flag should be set to False.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    a: float</span>
+<span class="sd">        The modulation amplitude that could produce P&gt;pmeas with 1 - c probability</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; aup = amplitude_upper_limit(40, 30000, 1, 0.99)</span>
+<span class="sd">    &gt;&gt;&gt; aup_nyq = amplitude_upper_limit(40, 30000, 1, 0.99, nyq_ratio=1)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.isclose(aup_nyq, aup / (2 / np.pi))</span>
+<span class="sd">    &gt;&gt;&gt; aup_corr = amplitude_upper_limit(40, 30000, 1, 0.99, fft_corr=True)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.isclose(aup_corr, aup / np.sqrt(0.773))</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">uplim</span> <span class="o">=</span> <span class="n">power_upper_limit</span><span class="p">(</span><span class="n">pmeas</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">summed_flag</span><span class="o">=</span><span class="n">summed_flag</span><span class="p">)</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">a_from_ssig</span><span class="p">(</span><span class="n">uplim</span><span class="p">,</span> <span class="n">counts</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">fft_corr</span><span class="p">:</span>
+        <span class="n">factor</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">0.773</span><span class="p">)</span>
+        <span class="n">a</span> <span class="o">*=</span> <span class="n">factor</span>
+    <span class="k">if</span> <span class="n">nyq_ratio</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">factor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">nyq_ratio</span>
+        <span class="n">sinc_factor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">factor</span><span class="p">)</span> <span class="o">/</span> <span class="n">factor</span>
+        <span class="n">a</span> <span class="o">/=</span> <span class="n">sinc_factor</span>
+    <span class="k">return</span> <span class="n">a</span></div>
+
+
+
+<div class="viewcode-block" id="pf_upper_limit">
+<a class="viewcode-back" href="../../api.html#stingray.stats.pf_upper_limit">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pf_upper_limit</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Upper limit on pulsed fraction, given a measured power in the PDS/Z search.</span>
+
+<span class="sd">    See `power_upper_limit` and `pf_from_ssig`.</span>
+<span class="sd">    All arguments are the same as `amplitude_upper_limit`</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pmeas: float</span>
+<span class="sd">        The measured value of power</span>
+
+<span class="sd">    counts: int</span>
+<span class="sd">        The number of counts in the light curve used to calculate the spectrum</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    n: int</span>
+<span class="sd">        The number of summed powers to obtain pmeas. It can be multiple</span>
+<span class="sd">        harmonics of the PDS, adjacent bins in a PDS summed to collect all the</span>
+<span class="sd">        power in a QPO, or the n in Z^2_n</span>
+<span class="sd">    c: float</span>
+<span class="sd">        The confidence value for the probability (e.g. 0.95 = 95%)</span>
+<span class="sd">    fft_corr: bool</span>
+<span class="sd">        Apply a correction for the expected power concentrated in an FFT bin,</span>
+<span class="sd">        which is about 0.773 on average (it&#39;s 1 at the center of the bin, 2/pi</span>
+<span class="sd">        at the bin edge.</span>
+<span class="sd">    nyq_ratio: float</span>
+<span class="sd">        Ratio of the frequency of this feature with respect to the Nyquist</span>
+<span class="sd">        frequency. Important to know when dealing with FFTs, because the FFT</span>
+<span class="sd">        response decays between 0 and f_Nyq similarly to the response inside</span>
+<span class="sd">        a frequency bin: from 1 at 0 Hz to ~2/pi at f_Nyq</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pf: float</span>
+<span class="sd">        The pulsed fraction that could produce P&gt;pmeas with 1 - c probability</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; pfup = pf_upper_limit(40, 30000, 1, 0.99)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.isclose(pfup, 0.13, atol=0.01)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="n">pf_from_a</span><span class="p">(</span><span class="n">amplitude_upper_limit</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="pf_from_a">
+<a class="viewcode-back" href="../../api.html#stingray.stats.pf_from_a">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pf_from_a</span><span class="p">(</span><span class="n">a</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pulsed fraction from fractional amplitude of modulation.</span>
+
+<span class="sd">    If the pulsed profile is defined as</span>
+<span class="sd">    p = mean * (1 + a * sin(phase)),</span>
+
+<span class="sd">    we define &quot;pulsed fraction&quot; as 2a/b, where b = mean + a is the maximum and</span>
+<span class="sd">    a is the amplitude of the modulation.</span>
+
+<span class="sd">    Hence, pulsed fraction = 2a/(1+a)</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; pf_from_a(1)</span>
+<span class="sd">    1.0</span>
+<span class="sd">    &gt;&gt;&gt; pf_from_a(0)</span>
+<span class="sd">    0.0</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">a</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">a</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="a_from_pf">
+<a class="viewcode-back" href="../../api.html#stingray.stats.a_from_pf">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">a_from_pf</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fractional amplitude of modulation from pulsed fraction</span>
+
+<span class="sd">    If the pulsed profile is defined as</span>
+<span class="sd">    p = mean * (1 + a * sin(phase)),</span>
+
+<span class="sd">    we define &quot;pulsed fraction&quot; as 2a/b, where b = mean + a is the maximum and</span>
+<span class="sd">    a is the amplitude of the modulation.</span>
+
+<span class="sd">    Hence, a = pf / (2 - pf)</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; a_from_pf(1)</span>
+<span class="sd">    1.0</span>
+<span class="sd">    &gt;&gt;&gt; a_from_pf(0)</span>
+<span class="sd">    0.0</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">p</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">-</span> <span class="n">p</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ssig_from_a">
+<a class="viewcode-back" href="../../api.html#stingray.stats.ssig_from_a">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">ssig_from_a</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">ncounts</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Theoretical power in the Z or PDS search for a sinusoid of amplitude a.</span>
+
+<span class="sd">    From Leahy et al. 1983, given a pulse profile</span>
+<span class="sd">    p = lambda * (1 + a * sin(phase)),</span>
+<span class="sd">    The theoretical value of Z^2_n is Ncounts / 2 * a^2</span>
+
+<span class="sd">    Note that if there are multiple sinusoidal components, one can use</span>
+<span class="sd">    a = sqrt(sum(a_l))</span>
+<span class="sd">    (Bachetti+2021b)</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; round(ssig_from_a(0.1, 30000), 1)</span>
+<span class="sd">    150.0</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">ncounts</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">a</span><span class="o">**</span><span class="mi">2</span></div>
+
+
+
+<div class="viewcode-block" id="a_from_ssig">
+<a class="viewcode-back" href="../../api.html#stingray.stats.a_from_ssig">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">a_from_ssig</span><span class="p">(</span><span class="n">ssig</span><span class="p">,</span> <span class="n">ncounts</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Amplitude of a sinusoid corresponding to a given Z/PDS value</span>
+
+<span class="sd">    From Leahy et al. 1983, given a pulse profile</span>
+<span class="sd">    p = lambda * (1 + a * sin(phase)),</span>
+<span class="sd">    The theoretical value of Z^2_n is Ncounts / 2 * a^2</span>
+
+<span class="sd">    Note that if there are multiple sinusoidal components, one can use</span>
+<span class="sd">    a = sqrt(sum(a_l))</span>
+<span class="sd">    (Bachetti+2021b)</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; assert np.isclose(a_from_ssig(150, 30000), 0.1)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">ssig</span> <span class="o">/</span> <span class="n">ncounts</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ssig_from_pf">
+<a class="viewcode-back" href="../../api.html#stingray.stats.ssig_from_pf">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">ssig_from_pf</span><span class="p">(</span><span class="n">pf</span><span class="p">,</span> <span class="n">ncounts</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Theoretical power in the Z or PDS for a sinusoid of pulsed fraction pf.</span>
+
+<span class="sd">    See `ssig_from_a` and `a_from_pf` for more details</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; assert round(ssig_from_pf(pf_from_a(0.1), 30000), 1) == 150.0</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">a_from_pf</span><span class="p">(</span><span class="n">pf</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ncounts</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">a</span><span class="o">**</span><span class="mi">2</span></div>
+
+
+
+<div class="viewcode-block" id="pf_from_ssig">
+<a class="viewcode-back" href="../../api.html#stingray.stats.pf_from_ssig">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pf_from_ssig</span><span class="p">(</span><span class="n">ssig</span><span class="p">,</span> <span class="n">ncounts</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Estimate pulsed fraction for a sinusoid from a given Z or PDS power.</span>
+
+<span class="sd">    See `a_from_ssig` and `pf_from_a` for more details</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; assert np.isclose(round(a_from_pf(pf_from_ssig(150, 30000)), 1), 0.1)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">a_from_ssig</span><span class="p">(</span><span class="n">ssig</span><span class="p">,</span> <span class="n">ncounts</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pf_from_a</span><span class="p">(</span><span class="n">a</span><span class="p">)</span></div>
+
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

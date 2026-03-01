@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>stingray.simulator.simulator &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script type="text/javascript" src="../../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for stingray.simulator.simulator</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pickle</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">os</span><span class="w"> </span><span class="kn">import</span> <span class="n">error</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numbers</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">signal</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">astropy.modeling.models</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">utils</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">AveragedPowerspectrum</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Simulator&quot;</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="Simulator">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.simulator.Simulator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Simulator</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Framework to simulate light curves with given variability distributions.</span>
+<span class="sd">    The simulator module provides tools to simulate time series and spectral data. This can be useful, e.g.,</span>
+<span class="sd">    to access the uncertainty of a previous analysis or to develop an intuition of the detectability of a given phenomenon</span>
+
+<span class="sd">    Stingray simulator supports multiple methods to carry out these simulations.</span>
+<span class="sd">    Light curves can be simulated through power-law spectrum, through a user-defined or pre-defined model, or through impulse responses.</span>
+<span class="sd">    The module is designed in a way such that all these methods can be accessed using a common interface.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dt : float, default 1</span>
+<span class="sd">        Time resolution (sampling interval) of the simulated light curve in seconds.</span>
+<span class="sd">    N : int, default 1024</span>
+<span class="sd">        Number of time bins in the simulated light curve.</span>
+<span class="sd">    mean : float, default 0</span>
+<span class="sd">        mean value of the simulated light curve.</span>
+<span class="sd">    rms : float, default 1</span>
+<span class="sd">        Fractional RMS amplitude of the light curve; actual RMS is `mean * rms`.</span>
+<span class="sd">    err : float, default 0</span>
+<span class="sd">        the errorbars on the final light curves.</span>
+<span class="sd">    red_noise : int, default 1</span>
+<span class="sd">        Factor by which to extend the light curve length to mitigate red noise leakage.</span>
+<span class="sd">    random_state : int or numpy.random.RandomState, optional</span>
+<span class="sd">        Seed or random state for reproducible random number generation.</span>
+<span class="sd">    tstart : float, default 0</span>
+<span class="sd">        Start time of the light curve in seconds.</span>
+<span class="sd">    poisson : bool, default False</span>
+<span class="sd">        If True, simulates Poisson-distributed counts; otherwise, assumes Gaussian noise.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">rms</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">red_noise</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tstart</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">poisson</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="n">dt</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;N must be integer!&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">=</span> <span class="n">N</span>
+
+        <span class="k">if</span> <span class="n">mean</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;Careful! A mean of zero is unphysical!&quot;</span> <span class="o">+</span> <span class="s2">&quot;This may have unintended consequences!&quot;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mean</span> <span class="o">=</span> <span class="n">mean</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nphot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mean</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rms</span> <span class="o">=</span> <span class="n">rms</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">red_noise</span> <span class="o">=</span> <span class="n">red_noise</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tstart</span> <span class="o">=</span> <span class="n">tstart</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">dt</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">tstart</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nphot_factor</span> <span class="o">=</span> <span class="mi">1000_000</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">err</span> <span class="o">=</span> <span class="n">err</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">poisson</span> <span class="o">=</span> <span class="n">poisson</span>
+
+        <span class="c1"># Initialize a tuple of energy ranges with corresponding light curves</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channels</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">random_state</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">get_random_state</span><span class="p">(</span><span class="n">random_state</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">rms</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Fractional rms must be less than 1.&quot;</span>
+        <span class="k">assert</span> <span class="n">dt</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;Time resolution must be greater than 0&quot;</span>
+
+<div class="viewcode-block" id="Simulator.simulate">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.simulator.Simulator.simulate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">simulate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simulate light curve generation using power spectrum or</span>
+<span class="sd">        impulse response.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        * x = simulate(beta):</span>
+<span class="sd">           For generating a light curve using power law spectrum.</span>
+
+<span class="sd">              Parameters:</span>
+<span class="sd">                * beta : float</span>
+<span class="sd">                  Defines the shape of spectrum</span>
+
+<span class="sd">        * x = simulate(s):</span>
+<span class="sd">           For generating a light curve from user-provided spectrum.</span>
+<span class="sd">            **Note**: In this case, the `red_noise` parameter is provided.</span>
+<span class="sd">            You can generate a longer light curve by providing a higher</span>
+<span class="sd">            frequency resolution on the input power spectrum.</span>
+
+<span class="sd">              Parameters:</span>
+<span class="sd">                * s : array-like</span>
+<span class="sd">                  power spectrum</span>
+
+<span class="sd">        * x = simulate(model):</span>
+<span class="sd">           For generating a light curve from pre-defined model</span>
+
+<span class="sd">              Parameters:</span>
+<span class="sd">                * model : astropy.modeling.Model</span>
+<span class="sd">                  the pre-defined model</span>
+
+<span class="sd">        * x = simulate(&#39;model&#39;, params):</span>
+<span class="sd">           For generating a light curve from pre-defined model</span>
+
+<span class="sd">              Parameters:</span>
+<span class="sd">                * model : string</span>
+<span class="sd">                  the pre-defined model</span>
+<span class="sd">                * params : list iterable or dict</span>
+<span class="sd">                  the parameters for the pre-defined model</span>
+
+<span class="sd">        * x = simulate(s, h):</span>
+<span class="sd">           For generating a light curve using impulse response.</span>
+
+<span class="sd">              Parameters:</span>
+<span class="sd">                * s : array-like</span>
+<span class="sd">                  Underlying variability signal</span>
+<span class="sd">                * h : array-like</span>
+<span class="sd">                  Impulse response</span>
+
+<span class="sd">        * x = simulate(s, h, &#39;same&#39;):</span>
+<span class="sd">           For generating a light curve of same length as input signal,</span>
+<span class="sd">           using impulse response.</span>
+
+<span class="sd">              Parameters:</span>
+<span class="sd">                * s : array-like</span>
+<span class="sd">                  Underlying variability signal</span>
+<span class="sd">                * h : array-like</span>
+<span class="sd">                  Impulse response</span>
+<span class="sd">                * mode : str</span>
+<span class="sd">                  mode can be &#39;same&#39;, &#39;filtered, or &#39;full&#39;.</span>
+<span class="sd">                  &#39;same&#39; indicates that the length of output light</span>
+<span class="sd">                  curve is same as that of input signal.</span>
+<span class="sd">                  &#39;filtered&#39; means that length of output light curve</span>
+<span class="sd">                  is len(s) - lag_delay</span>
+<span class="sd">                  &#39;full&#39; indicates that the length of output light</span>
+<span class="sd">                  curve is len(s) + len(h) -1</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        args</span>
+<span class="sd">            See examples below.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        lightCurve : `LightCurve` object</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="n">numbers</span><span class="o">.</span><span class="n">Integral</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_simulate_power_law</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">astropy</span><span class="o">.</span><span class="n">modeling</span><span class="o">.</span><span class="n">Model</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_simulate_model</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="k">elif</span> <span class="n">utils</span><span class="o">.</span><span class="n">is_string</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_simulate_model_string</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_simulate_power_spectrum</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_simulate_impulse_response</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_simulate_impulse_response</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">args</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Length of arguments must be 1, 2 or 3.&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Simulator.simulate_channel">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.simulator.Simulator.simulate_channel">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">simulate_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simulate a lightcurve and add it to corresponding energy</span>
+<span class="sd">        channel.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        channel : str</span>
+<span class="sd">            range of energy channel (e.g., 3.5-4.5)</span>
+
+<span class="sd">        *args</span>
+<span class="sd">            see description of simulate() for details</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            lightCurve : `LightCurve` object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Check that channel name does not already exist.</span>
+        <span class="k">if</span> <span class="n">channel</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="n">lc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">lc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">channel</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)))</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;A channel with this name already exists.&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Simulator.get_channel">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.simulator.Simulator.get_channel">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get lightcurve belonging to the energy channel.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="p">[</span><span class="n">lc</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">lc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span> <span class="k">if</span> <span class="n">lc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">channel</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="Simulator.get_channels">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.simulator.Simulator.get_channels">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_channels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channels</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get multiple light curves belonging to the energy channels.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="p">[</span><span class="n">lc</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">lc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span> <span class="k">if</span> <span class="n">lc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">channels</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="Simulator.get_all_channels">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.simulator.Simulator.get_all_channels">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_all_channels</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get lightcurves belonging to all channels.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="p">[</span><span class="n">lc</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">lc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="Simulator.delete_channel">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.simulator.Simulator.delete_channel">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">delete_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Delete an energy channel.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">channel</span> <span class="o">=</span> <span class="p">[</span><span class="n">lc</span> <span class="k">for</span> <span class="n">lc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span> <span class="k">if</span> <span class="n">lc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">channel</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;This channel does not exist or has already been &quot;</span> <span class="s2">&quot;deleted.&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">channel</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="p">[</span><span class="n">index</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="Simulator.delete_channels">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.simulator.Simulator.delete_channels">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">delete_channels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channels</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Delete multiple energy channels.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">channels</span><span class="p">)</span>
+        <span class="n">channels</span> <span class="o">=</span> <span class="p">[</span><span class="n">lc</span> <span class="k">for</span> <span class="n">lc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span> <span class="k">if</span> <span class="n">lc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">channels</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">channels</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+                <span class="s2">&quot;One of more of the channels do not exist or have &quot;</span> <span class="s2">&quot;already been deleted.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">indices</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span> <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="n">channels</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="Simulator.count_channels">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.simulator.Simulator.count_channels">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">count_channels</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return total number of energy channels.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Simulator.simple_ir">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.simulator.Simulator.simple_ir">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">simple_ir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">intensity</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Construct a simple impulse response using start time,</span>
+<span class="sd">        width and scaling intensity.</span>
+<span class="sd">        To create a delta impulse response, set width to 1.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        start : int</span>
+<span class="sd">            start time of impulse response</span>
+<span class="sd">        width : int</span>
+<span class="sd">            width of impulse response</span>
+<span class="sd">        intensity : float</span>
+<span class="sd">            scaling parameter to set the intensity of delayed emission</span>
+<span class="sd">            corresponding to direct emission.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        h : numpy.ndarray</span>
+<span class="sd">            Constructed impulse response</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Fill in 0 entries until the start time</span>
+        <span class="n">h_zeros</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">start</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">))</span>
+
+        <span class="c1"># Define constant impulse response</span>
+        <span class="n">h_ones</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">width</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">))</span> <span class="o">*</span> <span class="n">intensity</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">h_zeros</span><span class="p">,</span> <span class="n">h_ones</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Simulator.relativistic_ir">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.simulator.Simulator.relativistic_ir">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">relativistic_ir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t1</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">t2</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">t3</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">p1</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">p2</span><span class="o">=</span><span class="mf">1.4</span><span class="p">,</span> <span class="n">rise</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">decay</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Construct a realistic impulse response considering the relativistic</span>
+<span class="sd">        effects.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        t1 : int</span>
+<span class="sd">            primary peak time</span>
+<span class="sd">        t2 : int</span>
+<span class="sd">            secondary peak time</span>
+<span class="sd">        t3 : int</span>
+<span class="sd">            end time</span>
+<span class="sd">        p1 : float</span>
+<span class="sd">            value of primary peak</span>
+<span class="sd">        p2 : float</span>
+<span class="sd">            value of secondary peak</span>
+<span class="sd">        rise : float</span>
+<span class="sd">            slope of rising exponential from primary peak to secondary peak</span>
+<span class="sd">        decay : float</span>
+<span class="sd">            slope of decaying exponential from secondary peak to end time</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        h : numpy.ndarray</span>
+<span class="sd">            Constructed impulse response</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">dt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span>
+
+        <span class="k">assert</span> <span class="n">t2</span> <span class="o">&gt;</span> <span class="n">t1</span><span class="p">,</span> <span class="s2">&quot;Secondary peak must be after primary peak.&quot;</span>
+        <span class="k">assert</span> <span class="n">t3</span> <span class="o">&gt;</span> <span class="n">t2</span><span class="p">,</span> <span class="s2">&quot;End time must be after secondary peak.&quot;</span>
+        <span class="k">assert</span> <span class="n">p2</span> <span class="o">&gt;</span> <span class="n">p1</span><span class="p">,</span> <span class="s2">&quot;Secondary peak must be greater than primary peak.&quot;</span>
+
+        <span class="c1"># Append zeros before start time</span>
+        <span class="n">h_primary</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">t1</span> <span class="o">/</span> <span class="n">dt</span><span class="p">)),</span> <span class="n">p1</span><span class="p">)</span>
+
+        <span class="c1"># Create a rising exponential of user-provided slope</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">t1</span> <span class="o">/</span> <span class="n">dt</span><span class="p">,</span> <span class="n">t2</span> <span class="o">/</span> <span class="n">dt</span><span class="p">,</span> <span class="nb">int</span><span class="p">((</span><span class="n">t2</span> <span class="o">-</span> <span class="n">t1</span><span class="p">)</span> <span class="o">/</span> <span class="n">dt</span><span class="p">))</span>
+        <span class="n">h_rise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">rise</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span>
+
+        <span class="c1"># Evaluate a factor for scaling exponential</span>
+        <span class="n">factor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">h_rise</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">p2</span> <span class="o">-</span> <span class="n">p1</span><span class="p">)</span>
+        <span class="n">h_secondary</span> <span class="o">=</span> <span class="p">(</span><span class="n">h_rise</span> <span class="o">/</span> <span class="n">factor</span><span class="p">)</span> <span class="o">+</span> <span class="n">p1</span>
+
+        <span class="c1"># Create a decaying exponential until the end time</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">t2</span> <span class="o">/</span> <span class="n">dt</span><span class="p">,</span> <span class="n">t3</span> <span class="o">/</span> <span class="n">dt</span><span class="p">,</span> <span class="nb">int</span><span class="p">((</span><span class="n">t3</span> <span class="o">-</span> <span class="n">t2</span><span class="p">)</span> <span class="o">/</span> <span class="n">dt</span><span class="p">))</span>
+        <span class="n">h_decay</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">((</span><span class="o">-</span><span class="n">decay</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="mi">4</span> <span class="o">/</span> <span class="n">dt</span><span class="p">))</span>
+
+        <span class="c1"># Add the three responses</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">h_primary</span><span class="p">,</span> <span class="n">h_secondary</span><span class="p">)</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">h_decay</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">h</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_find_inverse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">real</span><span class="p">,</span> <span class="n">imaginary</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Forms complex numbers corresponding to real and imaginary</span>
+<span class="sd">        parts and finds inverse series.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        real : numpy.ndarray</span>
+<span class="sd">            Co-effients corresponding to real parts of complex numbers</span>
+<span class="sd">        imaginary : numpy.ndarray</span>
+<span class="sd">            Co-efficients correspondong to imaginary parts of complex</span>
+<span class="sd">            numbers</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        ifft : numpy.ndarray</span>
+<span class="sd">            Real inverse fourier transform of complex numbers</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Form complex numbers corresponding to each frequency</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="p">[</span><span class="nb">complex</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span><span class="p">,</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">real</span><span class="p">,</span> <span class="n">imaginary</span><span class="p">)]</span>
+
+        <span class="n">f</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">mean</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">red_noise</span><span class="p">,</span> <span class="n">f</span><span class="p">])</span>
+
+        <span class="c1"># Obtain time series</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">irfft</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">red_noise</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_timmerkoenig</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pds_shape</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Straight application of T&amp;K method to a PDS shape.&quot;&quot;&quot;</span>
+        <span class="n">pds_size</span> <span class="o">=</span> <span class="n">pds_shape</span><span class="o">.</span><span class="n">size</span>
+
+        <span class="n">real</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">pds_size</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">pds_shape</span><span class="p">)</span>
+        <span class="n">imaginary</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">pds_size</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">pds_shape</span><span class="p">)</span>
+        <span class="n">imaginary</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">counts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_inverse</span><span class="p">(</span><span class="n">real</span><span class="p">,</span> <span class="n">imaginary</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">std</span> <span class="o">=</span> <span class="n">counts</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+
+        <span class="n">rescaled_counts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_and_scale</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span>
+        <span class="n">err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">rescaled_counts</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">poisson</span><span class="p">:</span>
+            <span class="n">bad</span> <span class="o">=</span> <span class="n">rescaled_counts</span> <span class="o">&lt;</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">bad</span><span class="p">):</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Some bins of the light curve have counts &lt; 0. Setting to 0&quot;</span><span class="p">)</span>
+                <span class="n">rescaled_counts</span><span class="p">[</span><span class="n">bad</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">,</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">rescaled_counts</span><span class="p">),</span>
+                <span class="n">err_dist</span><span class="o">=</span><span class="s2">&quot;poisson&quot;</span><span class="p">,</span>
+                <span class="n">dt</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span>
+                <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">lc</span><span class="o">.</span><span class="n">smooth_counts</span> <span class="o">=</span> <span class="n">rescaled_counts</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">rescaled_counts</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">err</span><span class="p">,</span> <span class="n">err_dist</span><span class="o">=</span><span class="s2">&quot;gauss&quot;</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">lc</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_simulate_power_law</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">B</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate LightCurve from a power law spectrum.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        B : int</span>
+<span class="sd">            Defines the shape of power law spectrum.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        lightCurve : array-like</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Define frequencies at which to compute PSD</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">red_noise</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]</span>
+
+        <span class="n">pds_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">((</span><span class="mi">1</span> <span class="o">/</span> <span class="n">w</span><span class="p">),</span> <span class="n">B</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timmerkoenig</span><span class="p">(</span><span class="n">pds_shape</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_simulate_power_spectrum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate a light curve from user-provided spectrum.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        s : array-like</span>
+<span class="sd">            power spectrum</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        lightCurve : `LightCurve` object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Cast spectrum as numpy array</span>
+        <span class="n">pds_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">size</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">red_noise</span><span class="p">)</span>
+        <span class="n">pds_shape</span><span class="p">[:</span> <span class="n">s</span><span class="o">.</span><span class="n">size</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timmerkoenig</span><span class="p">(</span><span class="n">pds_shape</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_simulate_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        For generating a light curve from a pre-defined model</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        model : astropy.modeling.Model derived function</span>
+<span class="sd">            the pre-defined model</span>
+<span class="sd">            (library-based, available in astropy.modeling.models or</span>
+<span class="sd">            custom-defined)</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        lightCurve : :class:`stingray.lightcurve.LightCurve` object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Frequencies at which the PSD is to be computed</span>
+        <span class="c1"># (only positive frequencies, since the signal is real)</span>
+        <span class="n">nbins</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">red_noise</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span>
+        <span class="n">simfreq</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span><span class="p">(</span><span class="n">nbins</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]</span>
+
+        <span class="c1"># Compute PSD from model</span>
+        <span class="n">simpsd</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">simfreq</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timmerkoenig</span><span class="p">(</span><span class="n">simpsd</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_simulate_model_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_str</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        For generating a light curve from a pre-defined model</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        model_str : string</span>
+<span class="sd">            name of the pre-defined model</span>
+<span class="sd">        params : list or dictionary</span>
+<span class="sd">            parameters of the pre-defined model</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        lightCurve : :class:`stingray.lightcurve.LightCurve` object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">models</span>
+
+        <span class="c1"># Frequencies at which the PSD is to be computed</span>
+        <span class="c1"># (only positive frequencies, since the signal is real)</span>
+        <span class="n">nbins</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">red_noise</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span>
+        <span class="n">simfreq</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span><span class="p">(</span><span class="n">nbins</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]</span>
+
+        <span class="k">if</span> <span class="n">model_str</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">models</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Model is not defined!&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="s2">&quot;models.&quot;</span> <span class="o">+</span> <span class="n">model_str</span> <span class="o">+</span> <span class="s2">&quot;(**params)&quot;</span><span class="p">)</span>
+            <span class="c1"># Compute PSD from model</span>
+            <span class="n">simpsd</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">simfreq</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">simpsd</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="s2">&quot;models.&quot;</span> <span class="o">+</span> <span class="n">model_str</span> <span class="o">+</span> <span class="s2">&quot;(simfreq, params)&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Params should be list or dictionary!&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timmerkoenig</span><span class="p">(</span><span class="n">simpsd</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_simulate_impulse_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;same&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate LightCurve from impulse response. To get</span>
+<span class="sd">        accurate results, binning intervals (dt) of variability</span>
+<span class="sd">        signal &#39;s&#39; and impulse response &#39;h&#39; must be equal.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        s : array-like</span>
+<span class="sd">            Underlying variability signal</span>
+<span class="sd">        h : array-like</span>
+<span class="sd">            Impulse response</span>
+<span class="sd">        mode : str</span>
+<span class="sd">            mode can be &#39;same&#39;, &#39;filtered, or &#39;full&#39;.</span>
+<span class="sd">            &#39;same&#39; indicates that the length of output light</span>
+<span class="sd">            curve is same as that of input signal.</span>
+<span class="sd">            &#39;filtered&#39; means that length of output light curve</span>
+<span class="sd">            is len(s) - lag_delay</span>
+<span class="sd">            &#39;full&#39; indicates that the length of output light</span>
+<span class="sd">            curve is len(s) + len(h) -1</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        lightCurve : :class:`stingray.lightcurve.LightCurve` object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">lc</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">fftconvolve</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;same&quot;</span><span class="p">:</span>
+            <span class="n">lc</span> <span class="o">=</span> <span class="n">lc</span><span class="p">[:</span> <span class="o">-</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">h</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span>
+
+        <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;filtered&quot;</span><span class="p">:</span>
+            <span class="n">lc</span> <span class="o">=</span> <span class="n">lc</span><span class="p">[(</span><span class="nb">len</span><span class="p">(</span><span class="n">h</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">:</span> <span class="o">-</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">h</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span>
+
+        <span class="n">time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">lc</span><span class="p">))</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">tstart</span>
+        <span class="n">err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">lc</span><span class="p">,</span> <span class="n">err_dist</span><span class="o">=</span><span class="s2">&quot;gauss&quot;</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">err</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extract_and_scale</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">long_lc</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        i) Make a random cut and extract a light curve of required</span>
+<span class="sd">        length.</span>
+
+<span class="sd">        ii) Rescale light curve i) with zero mean and unit standard</span>
+<span class="sd">        deviation, and ii) user provided mean and rms (fractional</span>
+<span class="sd">        rms * mean)</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        long_lc : numpy.ndarray</span>
+<span class="sd">            Simulated lightcurve of length &#39;N&#39; times &#39;red_noise&#39;</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        lc : numpy.ndarray</span>
+<span class="sd">            Normalized and extracted lightcurve of length &#39;N&#39;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">red_noise</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">lc</span> <span class="o">=</span> <span class="n">long_lc</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Make random cut and extract light curve of length &#39;N&#39;</span>
+            <span class="n">extract</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">red_noise</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">lc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="n">long_lc</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="n">extract</span><span class="p">,</span> <span class="n">extract</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">))</span>
+
+        <span class="n">mean_lc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mean</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">lc</span> <span class="o">-</span> <span class="n">mean_lc</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">std</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">rms</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">lc</span> <span class="o">-</span> <span class="n">mean_lc</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">std</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">mean</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">rms</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">mean</span>
+
+<div class="viewcode-block" id="Simulator.powerspectrum">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.simulator.Simulator.powerspectrum">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">powerspectrum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lc</span><span class="p">,</span> <span class="n">seg_size</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Make a powerspectrum of the simulated light curve.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        lc : lightcurve.Lightcurve object OR</span>
+<span class="sd">            iterable of lightcurve.Lightcurve objects</span>
+<span class="sd">            The light curve data to be Fourier-transformed.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        power : numpy.ndarray</span>
+<span class="sd">            The array of normalized squared absolute values of Fourier</span>
+<span class="sd">            amplitudes</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">seg_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">seg_size</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">tseg</span>
+
+        <span class="k">return</span> <span class="n">AveragedPowerspectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">seg_size</span><span class="p">)</span><span class="o">.</span><span class="n">power</span></div>
+
+
+<div class="viewcode-block" id="Simulator.read">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.simulator.Simulator.read">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;pickle&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Reads transfer function from a &#39;pickle&#39; file.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        fmt : str</span>
+<span class="sd">            the format of the file to be retrieved - accepts &#39;pickle&#39;.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        data : class instance</span>
+<span class="sd">            `TransferFunction` object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">fmt</span> <span class="o">==</span> <span class="s2">&quot;pickle&quot;</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fobj</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fobj</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;Format not understood.&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Simulator.write">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.simulator.Simulator.write">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;pickle&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Writes a transfer function to &#39;pickle&#39; file.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        fmt : str</span>
+<span class="sd">            the format of the file to be saved - accepts &#39;pickle&#39;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">fmt</span> <span class="o">==</span> <span class="s2">&quot;pickle&quot;</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fobj</span><span class="p">:</span>
+                <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fobj</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;Format not understood.&quot;</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

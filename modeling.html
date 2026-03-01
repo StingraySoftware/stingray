@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>The Stingray Modelling Interface &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=17ab1725" />
+    
+    <script src="_static/jquery.js?v=5d32c60e"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="_static/sidebar.js"></script>
+    <script type="text/javascript" src="_static/copybutton.js"></script>
+    <link rel="icon" href="_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="The Stingray Modeling API Explained" href="notebooks/Modeling/ModelingExamples.html" />
+    <link rel="prev" title="Phase Dispersion Minimization in Stingray" href="notebooks/Pulsar/Phase%20Dispersion%20Minimization.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="genindex.html">Index</a></li>
+    <li><a title="Module Index" href="py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="notebooks/Modeling/ModelingExamples.html" title="The Stingray Modeling API Explained">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="notebooks/Pulsar/Phase%20Dispersion%20Minimization.html" title="Phase Dispersion Minimization in Stingray">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      
+      <li>The Stingray Modelling Interface</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="the-stingray-modelling-interface">
+<h1>The Stingray Modelling Interface<a class="headerlink" href="#the-stingray-modelling-interface" title="Link to this heading">¶</a></h1>
+<p>Stingray provides a custom-built fitting interface, built on top
+of <a class="reference external" href="https://scipy.org/#">scipy</a> and <a class="reference external" href="https://emcee.readthedocs.io/">emcee</a> as well as a set of general functions
+and classes that allow the user to perform standard model fitting tasks
+on Fourier products, but also enable users to implement their own models
+and classes based on this framework.</p>
+<p>Below, we show on some examples how this interface can be used.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Modeling/ModelingExamples.html">The Stingray Modeling API Explained</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Modeling/ModelingExamples.html#Some-background">Some background</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Modeling/ModelingExamples.html#Likelihoods-and-Posteriors">Likelihoods and Posteriors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Modeling/ModelingExamples.html#Maximum-Likelihood-Fitting">Maximum Likelihood Fitting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Modeling/ModelingExamples.html#Bayesian-Parameter-Estimation">Bayesian Parameter Estimation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Modeling/ModelingExamples.html#Calibrating-Likelihood-Ratio-Tests">Calibrating Likelihood Ratio Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Modeling/ModelingExamples.html#Bayesian-ish-QPO-Searches">Bayesian-ish QPO Searches</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Modeling/ModelingExamples.html#Convenience-Functions">Convenience Functions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">The Stingray Modelling Interface</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="_sources/modeling.rst.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

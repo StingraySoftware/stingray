@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Outline &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="Simulating event times with the inverse CDF method" href="Simulate%20Event%20Lists%20With%20Inverse%20CDF.html" />
+    <link rel="prev" title="Stingray Simulator (stingray.simulator)" href="../../../simulator.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="Simulate%20Event%20Lists%20With%20Inverse%20CDF.html" title="Simulating event times with the inverse CDF method">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="../../../simulator.html" title="Stingray Simulator (stingray.simulator)">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../../simulator.html" accesskey="U">Stingray Simulator (<code class="xref py py-obj docutils literal notranslate"><span class="pre">stingray.simulator</span></code>)</a> &#187;</li>
+      
+      <li>Outline</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="Outline">
+<h1>Outline<a class="headerlink" href="#Outline" title="Link to this heading">¶</a></h1>
+<p>Following features of impulse response simulator have been implemented in this notebook.</p>
+<p>1- Find lag-frequency spectrum of a simple delta impulse response.</p>
+<p>2- Find lag-frequency spectrum of a <em>more</em> realistic impulse response based on real physical principles.</p>
+<p>3- Compute lag-frequency spectrum of delta impulse responses with same intensities and varying positions at different energy levels.</p>
+<p>4- Compute lag-frequency spectrum of delta impulse responses with same positions and varying intensities at different energy levels.</p>
+<p>Import libraries and obtain data.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">Crossspectrum</span><span class="p">,</span> <span class="n">Lightcurve</span><span class="p">,</span> <span class="n">sampledata</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">signal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="o">%</span><span class="k">matplotlib</span> inline
+</pre></div>
+</div>
+</div>
+<p>Define variability signal.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span> <span class="o">=</span> <span class="n">sampledata</span><span class="o">.</span><span class="n">sample_data</span><span class="p">()</span>
+<span class="n">s</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">counts</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Lag-frequency-Spectrum">
+<h1>Lag-frequency Spectrum<a class="headerlink" href="#Lag-frequency-Spectrum" title="Link to this heading">¶</a></h1>
+<section id="Simple-Delta-Impulse-Response">
+<h2>Simple Delta Impulse Response<a class="headerlink" href="#Simple-Delta-Impulse-Response" title="Link to this heading">¶</a></h2>
+<p>Define a delta impulse response with a delay of 10.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">delay</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">10</span><span class="o">/</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">)</span>
+<span class="n">h_zeros</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">delay</span><span class="p">)</span>
+<span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">h_zeros</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Find output signal by taking convolution of variability signal and impulse response.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">fftconvolve</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+<span class="c1"># To make two counts of equal size, remove last &#39;delay&#39; entries and avoid first zeros</span>
+<span class="n">output</span> <span class="o">=</span> <span class="n">output</span><span class="p">[</span><span class="n">delay</span><span class="p">:</span><span class="o">-</span><span class="n">delay</span><span class="p">]</span>
+<span class="n">s_mod</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="n">delay</span><span class="p">:]</span>
+</pre></div>
+</div>
+</div>
+<p>Visualize input and output signals.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">s_mod</span><span class="p">[</span><span class="o">-</span><span class="mi">80</span><span class="p">:],</span><span class="s1">&#39;r&#39;</span><span class="p">,</span><span class="n">output</span><span class="p">[</span><span class="o">-</span><span class="mi">80</span><span class="p">:],</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/notebooks_Simulator_Concepts_Simulator_13_0.png" src="../../../_images/notebooks_Simulator_Concepts_Simulator_13_0.png" />
+</div>
+</div>
+<p>Make lightcurves using <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> class.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">time</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="n">delay</span><span class="p">:]</span>
+<span class="n">lc1</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">s_mod</span><span class="p">)</span>
+<span class="n">lc2</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Compute crossspectrum.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cross</span> <span class="o">=</span> <span class="n">Crossspectrum</span><span class="p">(</span><span class="n">lc2</span><span class="p">,</span> <span class="n">lc1</span><span class="p">)</span>
+<span class="c1"># Rebin the cross spectrum for ease of visualization</span>
+<span class="n">cross</span> <span class="o">=</span> <span class="n">cross</span><span class="o">.</span><span class="n">rebin</span><span class="p">(</span><span class="mf">0.0075</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Calculate time lag.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">angle</span><span class="p">(</span><span class="n">cross</span><span class="o">.</span><span class="n">power</span><span class="p">)</span><span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">cross</span><span class="o">.</span><span class="n">freq</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Plot lag.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+
+<span class="c1"># Plot lag-frequency spectrum.</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cross</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">lag</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+
+<span class="c1"># Find cutoff points</span>
+<span class="n">v_cutoff</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="mf">10.0</span><span class="p">)</span>
+<span class="n">h_cutoff</span> <span class="o">=</span> <span class="n">lag</span><span class="p">[</span><span class="nb">int</span><span class="p">((</span><span class="n">v_cutoff</span><span class="o">-</span><span class="mf">0.0075</span><span class="p">)</span><span class="o">*</span><span class="mi">1</span><span class="o">/</span><span class="mf">0.0075</span><span class="p">)]</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">v_cutoff</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;g&#39;</span><span class="p">,</span><span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">h_cutoff</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;-.&#39;</span><span class="p">)</span>
+
+<span class="c1"># Define axis</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mf">0.2</span><span class="p">,</span><span class="o">-</span><span class="mi">15</span><span class="p">,</span><span class="mi">15</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/notebooks_Simulator_Concepts_Simulator_21_0.png" src="../../../_images/notebooks_Simulator_Concepts_Simulator_21_0.png" />
+</div>
+</div>
+<p>According to Uttley et al, the lag-frequency spectrum shows a constant delay until the frequency (1/2*time_delay) which is represented by the green vertical line in the above figure. After this point, the phase warps and the lag becomes negative. This is given in page 43 of review.</p>
+</section>
+<section id="More-realistic-impulse-response">
+<h2>More realistic impulse response<a class="headerlink" href="#More-realistic-impulse-response" title="Link to this heading">¶</a></h2>
+<p>The response of refelection from an accretion disk to an instantaneous flash follows the <em>top-hat function</em> to first order approximation. The response shows an initial steep rise some time after the initial flash (slope depending on the light travel time to the disk) and then gradually decays, as parts of the accretion disk farther away from the source receieve radiations at later times.</p>
+<p>The secondary peak is caused due to the bending of light in strong gravitational field around the black hole. This is the re-emergence of photons reflected from the far side of accretion disk that although would be classically blocked from our view, are lensed by strong gravitational field around black hole into our line of sight.</p>
+<p>Below, we obtain an impulse response similar to one in Utley et al.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Primary peak time, secondary peak time, end time</span>
+<span class="n">t1</span><span class="p">,</span> <span class="n">t2</span><span class="p">,</span> <span class="n">t3</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">10</span>
+<span class="c1"># Peaks&#39; values</span>
+<span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">1.4</span>
+<span class="c1"># Rise and decay slopes</span>
+<span class="n">rise</span><span class="p">,</span> <span class="n">decay</span> <span class="o">=</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.1</span>
+
+<span class="c1"># Append zeros before start time</span>
+<span class="n">h_primary</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">t1</span><span class="o">/</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">)),</span> <span class="n">p1</span><span class="p">)</span>
+
+<span class="c1"># Create a rising exponential of user-provided slope that ends at secondary peak time and secondary peak</span>
+<span class="c1"># value</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">t1</span><span class="o">/</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">t2</span><span class="o">/</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">),</span> <span class="nb">int</span><span class="p">((</span><span class="n">t2</span><span class="o">-</span><span class="n">t1</span><span class="p">)</span><span class="o">/</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">))</span>
+<span class="n">h_rise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">rise</span><span class="o">*</span><span class="n">x</span><span class="p">)</span>
+<span class="c1"># Find a factor for scaling</span>
+<span class="n">factor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">h_rise</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">p2</span><span class="o">-</span><span class="n">p1</span><span class="p">)</span>
+<span class="n">h_secondary</span> <span class="o">=</span> <span class="p">(</span><span class="n">h_rise</span><span class="o">/</span><span class="n">factor</span><span class="p">)</span> <span class="o">+</span> <span class="n">p1</span>
+
+<span class="c1"># Create a decaying exponential until the end time</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">t2</span><span class="o">/</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">t3</span><span class="o">/</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">),</span> <span class="nb">int</span><span class="p">((</span><span class="n">t3</span><span class="o">-</span><span class="n">t2</span><span class="p">)</span><span class="o">/</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">))</span>
+<span class="n">h_decay</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">((</span><span class="o">-</span><span class="n">decay</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">x</span><span class="o">-</span><span class="mi">4</span><span class="o">/</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">)))</span>
+
+<span class="c1"># Add the three responses</span>
+<span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">h_primary</span><span class="p">,</span> <span class="n">h_secondary</span><span class="p">)</span>
+<span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">h_decay</span><span class="p">)</span>
+
+<span class="c1"># Plot</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">h</span><span class="p">,</span><span class="s1">&#39;y&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/notebooks_Simulator_Concepts_Simulator_25_0.png" src="../../../_images/notebooks_Simulator_Concepts_Simulator_25_0.png" />
+</div>
+</div>
+<p>Obtain output through convolution.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">delay</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">t3</span><span class="o">/</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">))</span>
+<span class="n">output</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">fftconvolve</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+<span class="n">output</span> <span class="o">=</span> <span class="n">output</span><span class="p">[</span><span class="n">delay</span><span class="p">:</span><span class="o">-</span><span class="n">delay</span><span class="p">]</span>
+<span class="n">s_mod</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="n">delay</span><span class="p">:]</span>
+</pre></div>
+</div>
+</div>
+<p>Form light curves.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">time</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="n">delay</span><span class="p">:]</span>
+<span class="n">lc1</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">s_mod</span><span class="p">)</span>
+<span class="n">lc2</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Find cross spectrum and compute lags.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cross</span> <span class="o">=</span> <span class="n">Crossspectrum</span><span class="p">(</span><span class="n">lc2</span><span class="p">,</span> <span class="n">lc1</span><span class="p">)</span>
+<span class="n">cross</span> <span class="o">=</span> <span class="n">cross</span><span class="o">.</span><span class="n">rebin</span><span class="p">(</span><span class="mf">0.0075</span><span class="p">)</span>
+<span class="n">lag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">angle</span><span class="p">(</span><span class="n">cross</span><span class="o">.</span><span class="n">power</span><span class="p">)</span><span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">cross</span><span class="o">.</span><span class="n">freq</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Plot results.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+
+<span class="c1"># Plot lag-frequency spectrum.</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cross</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">lag</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+
+<span class="c1"># Define the x-position of vertical line</span>
+<span class="n">v_cutoff</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">t2</span><span class="p">)</span>
+<span class="n">h_cutoff</span> <span class="o">=</span> <span class="n">lag</span><span class="p">[</span><span class="nb">int</span><span class="p">((</span><span class="n">v_cutoff</span><span class="o">-</span><span class="mf">0.0075</span><span class="p">)</span><span class="o">*</span><span class="mi">1</span><span class="o">/</span><span class="mf">0.0075</span><span class="p">)]</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">v_cutoff</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">h_cutoff</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;-.&#39;</span><span class="p">)</span>
+
+<span class="c1"># Define axis</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mf">0.2</span><span class="p">,</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/notebooks_Simulator_Concepts_Simulator_33_0.png" src="../../../_images/notebooks_Simulator_Concepts_Simulator_33_0.png" />
+</div>
+</div>
+</section>
+</section>
+<section id="Energy-Dependence">
+<h1>Energy Dependence<a class="headerlink" href="#Energy-Dependence" title="Link to this heading">¶</a></h1>
+<section id="With-same-intensity-and-varying-position">
+<h2>With same intensity and varying position<a class="headerlink" href="#With-same-intensity-and-varying-position" title="Link to this heading">¶</a></h2>
+<p>To create different lags for different energy channels, we create delta impulses of same intensity at different positions.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">energies</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">4.5</span><span class="p">,</span><span class="mf">8.5</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<p>Create impulse responses for all energy channels.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">h_zeros</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="o">/</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">energies</span><span class="p">]</span>
+<span class="n">responses</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">h_zeros</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">delays</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="o">/</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">energies</span><span class="p">]</span>
+<span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">signal</span><span class="o">.</span><span class="n">fftconvolve</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">h</span><span class="p">)[</span><span class="n">d</span><span class="p">:</span><span class="o">-</span><span class="n">d</span><span class="p">]</span> <span class="k">for</span> <span class="n">h</span><span class="p">,</span><span class="n">d</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">responses</span><span class="p">,</span><span class="n">delays</span><span class="p">)]</span>
+<span class="n">s_mods</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="p">[</span><span class="n">d</span><span class="p">:]</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">delays</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<p>Make light curves.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">t_mods</span> <span class="o">=</span> <span class="p">[</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="n">d</span><span class="p">:]</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">delays</span><span class="p">]</span>
+<span class="n">lc_input</span> <span class="o">=</span> <span class="p">[</span><span class="n">Lightcurve</span><span class="p">(</span><span class="n">t_mod</span><span class="p">,</span> <span class="n">s_mod</span><span class="p">)</span> <span class="k">for</span> <span class="n">t_mod</span><span class="p">,</span> <span class="n">s_mod</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">t_mods</span><span class="p">,</span><span class="n">s_mods</span><span class="p">)]</span>
+<span class="n">lc_output</span> <span class="o">=</span> <span class="p">[</span><span class="n">Lightcurve</span><span class="p">(</span><span class="n">t_mod</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span> <span class="k">for</span> <span class="n">t_mod</span><span class="p">,</span> <span class="n">output</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">t_mods</span><span class="p">,</span><span class="n">outputs</span><span class="p">)]</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cross_spectrums</span> <span class="o">=</span> <span class="p">[</span><span class="n">Crossspectrum</span><span class="p">(</span><span class="n">lc2</span><span class="p">,</span> <span class="n">lc1</span><span class="p">)</span><span class="o">.</span><span class="n">rebin</span><span class="p">(</span><span class="mf">0.0075</span><span class="p">)</span> <span class="k">for</span> <span class="n">lc1</span><span class="p">,</span><span class="n">lc2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">lc_input</span><span class="p">,</span><span class="n">lc_output</span><span class="p">)]</span>
+</pre></div>
+</div>
+</div>
+<p>Compute lags and cutoffs.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lags</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">angle</span><span class="p">(</span><span class="n">cross</span><span class="o">.</span><span class="n">power</span><span class="p">)</span><span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">cross</span><span class="o">.</span><span class="n">freq</span><span class="p">)</span> <span class="k">for</span> <span class="n">cross</span> <span class="ow">in</span> <span class="n">cross_spectrums</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<p>Get cutoff points for all energy channels.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">v_cutoffs</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">energy</span><span class="p">)</span> <span class="k">for</span> <span class="n">energy</span> <span class="ow">in</span> <span class="n">energies</span><span class="p">]</span>
+<span class="n">h_cutoffs</span> <span class="o">=</span> <span class="p">[</span><span class="n">lag</span><span class="p">[</span><span class="nb">int</span><span class="p">((</span><span class="n">v_cutoff</span><span class="o">-</span><span class="mf">0.0075</span><span class="p">)</span><span class="o">*</span><span class="mi">1</span><span class="o">/</span><span class="mf">0.0075</span><span class="p">)]</span> <span class="k">for</span> <span class="n">lag</span><span class="p">,</span> <span class="n">v_cutoff</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">lags</span><span class="p">,</span> <span class="n">v_cutoffs</span><span class="p">)]</span>
+</pre></div>
+</div>
+</div>
+<p>We plot lag-frequency spectrum for all energy channels.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plots</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">colors</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">,</span><span class="s1">&#39;g&#39;</span><span class="p">]</span>
+
+<span class="c1"># Plot lag-frequency spectrum</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">lags</span><span class="p">)):</span>
+    <span class="n">plots</span> <span class="o">+=</span> <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cross_spectrums</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">lags</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">colors</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">energies</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">+</span><span class="s1">&#39;keV&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">v_cutoffs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">color</span><span class="o">=</span><span class="n">colors</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">h_cutoffs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="n">colors</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;-.&#39;</span><span class="p">)</span>
+
+<span class="c1"># Define axes and add labels</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mf">0.2</span><span class="p">,</span><span class="o">-</span><span class="mi">20</span><span class="p">,</span><span class="mi">20</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequencies (Hz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Lags&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Energy Dependent Frequency-lag Spectrum&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/notebooks_Simulator_Concepts_Simulator_49_0.png" src="../../../_images/notebooks_Simulator_Concepts_Simulator_49_0.png" />
+</div>
+</div>
+<p>Note:</p>
+<p>Currently, lag-energy spectrum isn’t plotted and hence I am unable to verify results from Uttley et al. However, as soon as it is implemented in library project, I will test it here as well.</p>
+</section>
+<section id="With-same-position-and-varying-intensity">
+<h2>With same position and varying intensity<a class="headerlink" href="#With-same-position-and-varying-intensity" title="Link to this heading">¶</a></h2>
+<p>Here, we use delta impulse responses whose position remains same but intensity varies.</p>
+<p>Again, first we define energies and then create impulse responses, and subsequently using convolution, obtain the output light curves.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">energies</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">4.5</span><span class="p">,</span><span class="mf">8.5</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">h_zeros</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="mi">10</span><span class="o">/</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">))</span>
+<span class="n">responses</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">h_zeros</span><span class="p">,</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">energies</span><span class="p">))]</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">delay</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">10</span><span class="o">/</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">)</span>
+<span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">signal</span><span class="o">.</span><span class="n">fftconvolve</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">h</span><span class="p">)[</span><span class="n">delay</span><span class="p">:</span><span class="o">-</span><span class="n">delay</span><span class="p">]</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">responses</span><span class="p">]</span>
+<span class="n">s_mod</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="n">delay</span><span class="p">:]</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[26]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">t_mod</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="n">delay</span><span class="p">:]</span>
+<span class="n">lc_input</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">t_mod</span><span class="p">,</span> <span class="n">s_mod</span><span class="p">)</span>
+<span class="n">lc_output</span> <span class="o">=</span> <span class="p">[</span><span class="n">Lightcurve</span><span class="p">(</span><span class="n">t_mod</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span> <span class="k">for</span> <span class="n">output</span> <span class="ow">in</span> <span class="n">outputs</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[27]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cross_spectrums</span> <span class="o">=</span> <span class="p">[</span><span class="n">Crossspectrum</span><span class="p">(</span><span class="n">lc2</span><span class="p">,</span> <span class="n">lc_input</span><span class="p">)</span><span class="o">.</span><span class="n">rebin</span><span class="p">(</span><span class="mf">0.0075</span><span class="p">)</span> <span class="k">for</span> <span class="n">lc2</span> <span class="ow">in</span> <span class="n">lc_output</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[28]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lags</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">angle</span><span class="p">(</span><span class="n">cross</span><span class="o">.</span><span class="n">power</span><span class="p">)</span><span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">cross</span><span class="o">.</span><span class="n">freq</span><span class="p">)</span> <span class="k">for</span> <span class="n">cross</span> <span class="ow">in</span> <span class="n">cross_spectrums</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[29]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">v_cutoff</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">/</span><span class="p">(</span><span class="mf">2.0</span><span class="o">*</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">h_cutoff</span> <span class="o">=</span> <span class="n">lags</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="nb">int</span><span class="p">((</span><span class="n">v_cutoff</span><span class="o">-</span><span class="mf">0.0075</span><span class="p">)</span><span class="o">*</span><span class="mi">1</span><span class="o">/</span><span class="mf">0.0075</span><span class="p">)]</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plots</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">colors</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">,</span><span class="s1">&#39;g&#39;</span><span class="p">]</span>
+
+<span class="c1"># Plot lag-frequency spectrum</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">lags</span><span class="p">)):</span>
+    <span class="n">plots</span> <span class="o">+=</span> <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cross_spectrums</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">lags</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">colors</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">energies</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">+</span><span class="s1">&#39;keV&#39;</span><span class="p">)</span>
+
+<span class="c1"># Draw horizontal and vertical line</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">v_cutoff</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">h_cutoff</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;-.&#39;</span><span class="p">)</span>
+
+
+<span class="c1"># Define axis</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mf">0.2</span><span class="p">,</span><span class="o">-</span><span class="mi">25</span><span class="p">,</span><span class="mi">25</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequencies (Hz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Lags&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Energy Dependent Frequency-lag Spectrum&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/notebooks_Simulator_Concepts_Simulator_60_0.png" src="../../../_images/notebooks_Simulator_Concepts_Simulator_60_0.png" />
+</div>
+</div>
+<p>As expected (and also demonstrated in Utley et al), the shape of lag-frequency spectrum for both energy channels is similar.</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Outline</a></li>
+<li><a class="reference internal" href="#Lag-frequency-Spectrum">Lag-frequency Spectrum</a><ul>
+<li><a class="reference internal" href="#Simple-Delta-Impulse-Response">Simple Delta Impulse Response</a></li>
+<li><a class="reference internal" href="#More-realistic-impulse-response">More realistic impulse response</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Energy-Dependence">Energy Dependence</a><ul>
+<li><a class="reference internal" href="#With-same-intensity-and-varying-position">With same intensity and varying position</a></li>
+<li><a class="reference internal" href="#With-same-position-and-varying-intensity">With same position and varying intensity</a></li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../../_sources/notebooks/Simulator/Concepts/Simulator.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

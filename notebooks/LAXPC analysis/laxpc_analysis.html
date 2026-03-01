@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Imports &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Observations with frequent data gaps" href="../LombScargle/Very%20slow%20variability%20with%20Lomb-Scargle%20methods.html" />
+    <link rel="prev" title="Quicklook NuSTAR data with Stingray" href="../DataQuickLook/Quicklook%20NuSTAR%20data%20with%20Stingray.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="../LombScargle/Very%20slow%20variability%20with%20Lomb-Scargle%20methods.html" title="Observations with frequent data gaps">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="../DataQuickLook/Quicklook%20NuSTAR%20data%20with%20Stingray.html" title="Quicklook NuSTAR data with Stingray">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../dataexplo.html" accesskey="U">More Data Exploration</a> &#187;</li>
+      
+      <li>Imports</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <p>In this sample analysis notebook, we will analysis the data from the Crab pulsar as observed with LAXPC We will extract the lightcurves, powerspectrum and pulse profile of the pulsar.</p>
+<p>A typical LAXPC observation has data from 3 detectors LAXPC 1-3 and for each detector (also called units), the photons are detected on multiple layers. For faint sources, it is advisable to extract data from layer 1 as it has the least contribution from the background events.</p>
+<p>The notebook is designed for LAXPC observation processed using Format (A) software as available on <a class="reference external" href="http://astrosat-ssc.iucaa.in/laxpcData">AstroSat Science support cell</a>. A tutorial for processing the LAXPC data can be found <a class="reference external" href="http://astrosat-ssc.iucaa.in/uploads/threadsPageNew_SXT.html">here</a></p>
+<section id="Imports">
+<h1>Imports<a class="headerlink" href="#Imports" title="Link to this heading">¶</a></h1>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">stingray</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventList</span><span class="p">,</span> <span class="n">Powerspectrum</span><span class="p">,</span> <span class="n">AveragedPowerspectrum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">fits</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">stingray.pulse</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">stp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Loading-the-event-file.">
+<h1>Loading the event file.<a class="headerlink" href="#Loading-the-event-file." title="Link to this heading">¶</a></h1>
+<p>To proceed further, download the data set from <a class="reference external" href="https://zenodo.org/records/15920843">Zenodo</a> and unzip the files. There should be two files: 1. Event file and 2. GTI</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fpath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>         <span class="c1"># Update this path to the directory where the downloaded and extracted files are kept.</span>
+<span class="n">evt_fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fpath</span><span class="p">,</span> <span class="s2">&quot;level2.event.fits&quot;</span><span class="p">)</span>
+<span class="n">gti_fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fpath</span><span class="p">,</span> <span class="s2">&quot;usergti.fits&quot;</span><span class="p">)</span>
+<span class="n">ev</span> <span class="o">=</span> <span class="n">EventList</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">evt_fname</span><span class="p">,</span> <span class="s1">&#39;hea&#39;</span><span class="p">,</span> <span class="n">additional_columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Layer&quot;</span><span class="p">])</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/home/yash/1.Cagliari/stingray_dev/stingray_git/stingray/io.py:959: UserWarning: HDU EVENTS not found. Trying first extension
+  warnings.warn(f&#34;HDU {hduname} not found. Trying first extension&#34;)
+/home/yash/1.Cagliari/stingray_dev/stingray_git/stingray/io.py:1060: UserWarning: No valid GTI extensions found.
+Error: list index out of range
+GTIs will be set to the entire time series.
+  warnings.warn(
+</pre></div></div>
+</div>
+<p>Oops. There are some warnings due to differences in the inherent data structure of the LAXPC event file but it seems to be have read correctly. One of the errors was the absence of the GTI extension, so we load the GTI manually, as follows.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">gti</span> <span class="o">=</span> <span class="n">stingray</span><span class="o">.</span><span class="n">gti</span><span class="o">.</span><span class="n">load_gtis</span><span class="p">(</span><span class="n">gti_fname</span><span class="p">)</span>
+<span class="n">ev</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">(</span><span class="n">new_gti</span><span class="o">=</span><span class="n">gti</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;stingray.events.EventList at 0x7d023a9c2590&gt;
+</pre></div></div>
+</div>
+</section>
+<section id="Filtering-based-on-Units">
+<h1>Filtering based on Units<a class="headerlink" href="#Filtering-based-on-Units" title="Link to this heading">¶</a></h1>
+<p>In this exercise, we will extract events from individual units, generate lightcurves and plot them.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Filtering the events based on the detector ID</span>
+<span class="n">unit1</span> <span class="o">=</span> <span class="n">ev</span><span class="o">.</span><span class="n">filter_detector_id</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">unit2</span> <span class="o">=</span> <span class="n">ev</span><span class="o">.</span><span class="n">filter_detector_id</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">unit3</span> <span class="o">=</span> <span class="n">ev</span><span class="o">.</span><span class="n">filter_detector_id</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+
+<span class="n">lc_unit1</span> <span class="o">=</span> <span class="n">unit1</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">lc_unit1</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">()</span>
+<span class="n">lc_unit2</span> <span class="o">=</span> <span class="n">unit2</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">lc_unit2</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">()</span>
+<span class="n">lc_unit3</span> <span class="o">=</span> <span class="n">unit3</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">lc_unit3</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">()</span>
+
+
+<span class="n">lc_unit1</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<span class="n">lc_unit2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">plot_btis</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">lc_unit3</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">plot_btis</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="c1"># plt.show()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/home/yash/1.Cagliari/stingray_dev/stingray_git/stingray/events.py:696: UserWarning: The input event list has a time resolution of 9.99999975e-06. Using a multiple of that as dt (0.999999975).
+  warnings.warn(
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;Axes: xlabel=&#39;Time (s)&#39;, ylabel=&#39;counts&#39;&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LAXPC_analysis_laxpc_analysis_8_2.png" src="../../_images/notebooks_LAXPC_analysis_laxpc_analysis_8_2.png" />
+</div>
+</div>
+<div class="line-block">
+<div class="line">Crab is known to be a stable source. So the dip in the lightcurve should be a data drop.</div>
+<div class="line">Let’s use stingray to set the minimum count rate and create a new GTI.</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">min_counts</span> <span class="o">=</span> <span class="mi">2500</span>
+<span class="n">new_gti</span> <span class="o">=</span> <span class="n">stingray</span><span class="o">.</span><span class="n">gti</span><span class="o">.</span><span class="n">create_gti_from_condition</span><span class="p">(</span><span class="n">lc_unit1</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">lc_unit1</span><span class="o">.</span><span class="n">counts</span><span class="o">&gt;</span><span class="n">min_counts</span><span class="p">)</span>
+<span class="n">merged_gti</span> <span class="o">=</span> <span class="n">stingray</span><span class="o">.</span><span class="n">gti</span><span class="o">.</span><span class="n">cross_two_gtis</span><span class="p">(</span><span class="n">new_gti</span><span class="p">,</span> <span class="n">gti</span><span class="p">)</span>
+<span class="c1"># print (new_gti, gti, merged_gti)</span>
+
+<span class="n">unit1</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">(</span><span class="n">merged_gti</span><span class="p">)</span>
+<span class="n">lc_unit1</span> <span class="o">=</span> <span class="n">unit1</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">lc_unit1</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">()</span>
+<span class="n">lc_unit1</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<span class="n">unit2</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">(</span><span class="n">merged_gti</span><span class="p">)</span>
+<span class="n">lc_unit2</span> <span class="o">=</span> <span class="n">unit2</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">lc_unit2</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">()</span>
+<span class="n">lc_unit2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">plot_btis</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">unit3</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">(</span><span class="n">merged_gti</span><span class="p">)</span>
+<span class="n">lc_unit3</span> <span class="o">=</span> <span class="n">unit3</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">lc_unit3</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">()</span>
+<span class="nb">print</span> <span class="p">(</span><span class="n">lc_unit3</span><span class="o">.</span><span class="n">gti</span><span class="p">)</span>
+<span class="n">lc_unit3</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">plot_btis</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[[1.97149389e+08 1.97150455e+08]
+ [1.97152699e+08 1.97152763e+08]
+ [1.97152768e+08 1.97153530e+08]
+ [1.97155643e+08 1.97156299e+08]]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;Axes: xlabel=&#39;Time (s)&#39;, ylabel=&#39;counts&#39;&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LAXPC_analysis_laxpc_analysis_10_2.png" src="../../_images/notebooks_LAXPC_analysis_laxpc_analysis_10_2.png" />
+</div>
+</div>
+<p>Now the light curve for each Unit is well behaved. We also see slightly different count rates in each unit.</p>
+</section>
+<section id="Filtering-based-on-layer">
+<h1>Filtering based on layer<a class="headerlink" href="#Filtering-based-on-layer" title="Link to this heading">¶</a></h1>
+<p>In this we will extract based on a single layer and all layers for a particular unit and compare the lightcurves</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">unit2_layer1</span> <span class="o">=</span> <span class="n">unit2</span><span class="o">.</span><span class="n">apply_mask</span><span class="p">((</span><span class="n">unit2</span><span class="o">.</span><span class="n">layer</span><span class="o">==</span><span class="mi">1</span><span class="p">))</span>
+<span class="n">lc_unit2_layer1</span> <span class="o">=</span> <span class="n">unit2_layer1</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">lc_unit2_layer1</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lc_unit2</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">lc_unit2</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;All layers&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lc_unit2_layer1</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">lc_unit2_layer1</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Layer 1&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.legend.Legend at 0x7d023a8ae590&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LAXPC_analysis_laxpc_analysis_13_1.png" src="../../_images/notebooks_LAXPC_analysis_laxpc_analysis_13_1.png" />
+</div>
+</div>
+</section>
+<section id="Energy-dependent-lightcurves">
+<h1>Energy dependent lightcurves<a class="headerlink" href="#Energy-dependent-lightcurves" title="Link to this heading">¶</a></h1>
+<p>Here we will extract energy dependent lightcurves</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">unit2_layer1_soft</span> <span class="o">=</span> <span class="n">unit2_layer1</span><span class="o">.</span><span class="n">filter_energy_range</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span><span class="mi">10</span><span class="p">])</span>
+<span class="n">unit2_layer1_hard</span> <span class="o">=</span> <span class="n">unit2_layer1</span><span class="o">.</span><span class="n">filter_energy_range</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span><span class="mi">20</span><span class="p">])</span>
+<span class="n">unit2_layer1_full</span> <span class="o">=</span> <span class="n">unit2_layer1</span><span class="o">.</span><span class="n">filter_energy_range</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span><span class="mi">20</span><span class="p">])</span>
+
+
+<span class="n">soft_lc</span> <span class="o">=</span> <span class="n">unit2_layer1_soft</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">hard_lc</span> <span class="o">=</span> <span class="n">unit2_layer1_hard</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">full_lc</span> <span class="o">=</span> <span class="n">unit2_layer1_full</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">soft_lc</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">()</span>
+<span class="n">hard_lc</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">()</span>
+<span class="n">full_lc</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">full_lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">full_lc</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;3-20 keV&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">soft_lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">soft_lc</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;3-10 keV&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">hard_lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">hard_lc</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;10-20 keV&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.legend.Legend at 0x7d023a7985d0&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LAXPC_analysis_laxpc_analysis_15_1.png" src="../../_images/notebooks_LAXPC_analysis_laxpc_analysis_15_1.png" />
+</div>
+</div>
+</section>
+<section id="Search-of-pulsations-and-folding">
+<h1>Search of pulsations and folding<a class="headerlink" href="#Search-of-pulsations-and-folding" title="Link to this heading">¶</a></h1>
+<p>Since the source we are analysing is a pulsar, we can search for pulsations. Here are some steps for the same</p>
+<ol class="arabic simple">
+<li><p>Generate a power-density spectrum and look for peaks.</p></li>
+<li><p>Epoch fold search on the data</p></li>
+<li><p>Epoch folding of the best-fit period.</p></li>
+</ol>
+<section id="Power-spectrum">
+<h2>Power spectrum<a class="headerlink" href="#Power-spectrum" title="Link to this heading">¶</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">avg_pds</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">unit2</span><span class="p">,</span> <span class="n">dt</span> <span class="o">=</span> <span class="mf">0.001</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="mf">1.024</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="n">merged_gti</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;leahy&quot;</span><span class="p">)</span>
+<span class="n">pds</span> <span class="o">=</span>  <span class="n">Powerspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">unit2</span><span class="p">,</span> <span class="n">dt</span> <span class="o">=</span> <span class="mf">0.001</span><span class="p">,</span>  <span class="n">gti</span><span class="o">=</span><span class="n">merged_gti</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;leahy&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/home/yash/1.Cagliari/stingray_dev/stingray_git/stingray/events.py:696: UserWarning: The input event list has a time resolution of 9.99999975e-06. Using a multiple of that as dt (0.0009999999750000001).
+  warnings.warn(
+2486it [00:00, 5320.14it/s]
+/home/yash/1.Cagliari/stingray_dev/stingray_git/stingray/events.py:696: UserWarning: The input event list has a time resolution of 9.99999975e-06. Using a multiple of that as dt (0.0009999999750000001).
+  warnings.warn(
+/home/yash/1.Cagliari/stingray_dev/stingray_git/stingray/utils.py:2158: UserWarning: Cannot calculate the histogram with the numba implementation. Trying standard numpy.
+  warnings.warn(
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pds</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s1">&#39;C0&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;PDS&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">avg_pds</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">avg_pds</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;PDS after averaging&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LAXPC_analysis_laxpc_analysis_19_0.png" src="../../_images/notebooks_LAXPC_analysis_laxpc_analysis_19_0.png" />
+</div>
+</div>
+<p>We can see there are a plethora of peaks. Most of them are harmonics peaks due to the non-sinusoidal nature of the pulse profile. And the effect of averaging the PDS is also evident. The noise reduces, but the peaks broaden as we are increasing the frequency resolution, leading to a broader peak.</p>
+<p>The spin frequency of Crab is ~29 Hz and therefore to get an accurate period, we can use epoch folding search</p>
+</section>
+<section id="Epoch-folding-search">
+<h2>Epoch folding search<a class="headerlink" href="#Epoch-folding-search" title="Link to this heading">¶</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># To determine the guess period, lets take the central frequency of the peak in the PDS</span>
+
+<span class="n">short_freq_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">pds</span><span class="o">.</span><span class="n">freq</span><span class="o">&gt;</span><span class="mi">25</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">pds</span><span class="o">.</span><span class="n">freq</span><span class="o">&lt;</span><span class="mi">35</span><span class="p">))</span>
+
+<span class="n">initial_guess_freq</span> <span class="o">=</span> <span class="n">pds</span><span class="o">.</span><span class="n">freq</span><span class="p">[</span><span class="n">short_freq_indices</span><span class="p">][</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">pds</span><span class="o">.</span><span class="n">power</span><span class="p">[</span><span class="n">short_freq_indices</span><span class="p">])]</span>
+<span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Initial guess frequency:&quot;</span><span class="p">,</span> <span class="n">initial_guess_freq</span><span class="p">)</span>
+
+
+<span class="c1"># We search a grid of frequencies around the guess frequency.</span>
+<span class="n">df_min</span> <span class="o">=</span> <span class="mf">2e-3</span>
+<span class="n">oversampling</span><span class="o">=</span><span class="mi">15</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">df_min</span> <span class="o">/</span> <span class="n">oversampling</span>
+<span class="n">n_freq</span> <span class="o">=</span> <span class="mi">256</span>
+<span class="n">frequencies</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">initial_guess_freq</span> <span class="o">-</span> <span class="n">n_freq</span> <span class="o">*</span> <span class="n">df</span><span class="p">,</span> <span class="n">initial_guess_freq</span> <span class="o">+</span> <span class="n">n_freq</span> <span class="o">*</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
+<span class="n">nbin</span> <span class="o">=</span> <span class="mi">32</span>
+
+<span class="n">freq</span><span class="p">,</span> <span class="n">efstat</span> <span class="o">=</span> <span class="n">stp</span><span class="o">.</span><span class="n">search</span><span class="o">.</span><span class="n">epoch_folding_search</span><span class="p">(</span><span class="n">unit2</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">frequencies</span><span class="p">,</span> <span class="n">nbin</span><span class="o">=</span><span class="n">nbin</span><span class="p">)</span>
+
+<span class="n">best_estimate_freq</span> <span class="o">=</span> <span class="n">freq</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">efstat</span><span class="p">)]</span>
+<span class="nb">print</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Best fitting period: </span><span class="si">{</span><span class="n">best_estimate_freq</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">efstat</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;EF statistics&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">nbin</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;n - 1&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">initial_guess_freq</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Initial guess frequency&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (Hz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;EF Statistics&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Initial guess frequency: 29.652533302818394
+Best fitting period: 29.651866636151947
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.legend.Legend at 0x7d02399b5610&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LAXPC_analysis_laxpc_analysis_22_2.png" src="../../_images/notebooks_LAXPC_analysis_laxpc_analysis_22_2.png" />
+</div>
+</div>
+</section>
+<section id="Folding-on-the-guess-and-best-period">
+<h2>Folding on the guess and best period<a class="headerlink" href="#Folding-on-the-guess-and-best-period" title="Link to this heading">¶</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">nbin</span><span class="o">=</span><span class="mi">32</span>
+<span class="n">ph</span><span class="p">,</span> <span class="n">profile</span><span class="p">,</span> <span class="n">profile_err</span> <span class="o">=</span> <span class="n">stp</span><span class="o">.</span><span class="n">pulsar</span><span class="o">.</span><span class="n">fold_events</span><span class="p">(</span><span class="n">unit2_layer1</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">initial_guess_freq</span><span class="p">,</span> <span class="n">nbin</span><span class="o">=</span><span class="n">nbin</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">stp</span><span class="o">.</span><span class="n">search</span><span class="o">.</span><span class="n">plot_profile</span><span class="p">(</span><span class="n">ph</span><span class="p">,</span> <span class="n">profile</span><span class="p">)</span>
+
+<span class="n">ph_best</span><span class="p">,</span> <span class="n">profile_best</span><span class="p">,</span> <span class="n">profile_err</span> <span class="o">=</span> <span class="n">stp</span><span class="o">.</span><span class="n">pulsar</span><span class="o">.</span><span class="n">fold_events</span><span class="p">(</span><span class="n">unit2_layer1</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">best_estimate_freq</span><span class="p">,</span> <span class="n">nbin</span><span class="o">=</span><span class="n">nbin</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">stp</span><span class="o">.</span><span class="n">search</span><span class="o">.</span><span class="n">plot_profile</span><span class="p">(</span><span class="n">ph_best</span><span class="p">,</span> <span class="n">profile_best</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LAXPC_analysis_laxpc_analysis_24_0.png" src="../../_images/notebooks_LAXPC_analysis_laxpc_analysis_24_0.png" />
+</div>
+</div>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Imports</a></li>
+<li><a class="reference internal" href="#Loading-the-event-file.">Loading the event file.</a></li>
+<li><a class="reference internal" href="#Filtering-based-on-Units">Filtering based on Units</a></li>
+<li><a class="reference internal" href="#Filtering-based-on-layer">Filtering based on layer</a></li>
+<li><a class="reference internal" href="#Energy-dependent-lightcurves">Energy dependent lightcurves</a></li>
+<li><a class="reference internal" href="#Search-of-pulsations-and-folding">Search of pulsations and folding</a><ul>
+<li><a class="reference internal" href="#Power-spectrum">Power spectrum</a></li>
+<li><a class="reference internal" href="#Epoch-folding-search">Epoch folding search</a></li>
+<li><a class="reference internal" href="#Folding-on-the-guess-and-best-period">Folding on the guess and best period</a></li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/LAXPC analysis/laxpc_analysis.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

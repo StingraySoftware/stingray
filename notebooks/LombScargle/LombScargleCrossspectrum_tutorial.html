@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Lomb Scargle Cross Spectra &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Lomb Scargle Power Spectra" href="LombScarglePowerspectrum_tutorial.html" />
+    <link rel="prev" title="Install Stingray in colab" href="../Multitaper/multitaper_example.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="LombScarglePowerspectrum_tutorial.html" title="Lomb Scargle Power Spectra">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="../Multitaper/multitaper_example.html" title="Install Stingray in colab">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../core.html" accesskey="U">Core Stingray Functionality</a> &#187;</li>
+      
+      <li>Lomb Scargle Cross Spectra</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="Lomb-Scargle-Cross-Spectra">
+<h1>Lomb Scargle Cross Spectra<a class="headerlink" href="#Lomb-Scargle-Cross-Spectra" title="Link to this heading">¶</a></h1>
+<p>This tutorial shows how to make and manipulate a Lomb Scargle cross spectrum of two light curves using Stingray.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.lightcurve</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.lombscargle</span><span class="w"> </span><span class="kn">import</span> <span class="n">LombScargleCrossspectrum</span><span class="p">,</span> <span class="n">LombScarglePowerspectrum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.interpolate</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_interp_spline</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.font_manager</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">font_manager</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">style</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;seaborn-v0_8-talk&#39;</span><span class="p">)</span>
+<span class="o">%</span><span class="k">matplotlib</span> inline
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.font_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">FontProperties</span>
+<span class="n">font_prop</span> <span class="o">=</span> <span class="n">font_manager</span><span class="o">.</span><span class="n">FontProperties</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="1.-Create-two-light-curves">
+<h1>1. Create two light curves<a class="headerlink" href="#1.-Create-two-light-curves" title="Link to this heading">¶</a></h1>
+<p>There are two ways to make <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> objects. We’ll show one way here. Check out <a class="reference external" href="https://docs.stingray.science/en/stable/core.html#working-with-lightcurves">Lightcurve</a> for more examples.</p>
+<p>Make two signals in units of counts. The first is a sine wave with random normal noise, frequency of 3 and at random times, and the second is another sine wave with frequency of 3, phase shift of 0.01/2pi and make their counts non-negative by subtracting its least value.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rand</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">n</span> <span class="o">=</span> <span class="mi">100</span>
+<span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">rand</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">n</span><span class="p">))</span> <span class="o">*</span> <span class="mi">10</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mf">3.0</span> <span class="o">*</span> <span class="n">t</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">rand</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+<span class="n">y2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mf">3.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">t</span><span class="o">+</span><span class="mf">0.3</span><span class="p">))</span> <span class="o">+</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">rand</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+<span class="n">sub</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">y2</span><span class="p">))</span>
+<span class="n">y</span> <span class="o">-=</span> <span class="n">sub</span>
+<span class="n">y2</span> <span class="o">-=</span> <span class="n">sub</span>
+</pre></div>
+</div>
+</div>
+<p>Lets convert them into <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> objects</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc1</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<span class="n">lc2</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">y2</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Let us plot them to see how they look</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">t0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">1000</span><span class="p">)</span>
+<span class="n">y01</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mf">3.0</span> <span class="o">*</span> <span class="n">t0</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">rand</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">(</span><span class="n">t0</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+<span class="n">y01</span> <span class="o">-=</span> <span class="n">sub</span>
+<span class="n">y02</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mf">3.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">t0</span><span class="o">+</span><span class="mf">0.3</span><span class="p">))</span> <span class="o">+</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">rand</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">(</span><span class="n">t0</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+<span class="n">y02</span> <span class="o">-=</span> <span class="n">sub</span>
+
+<span class="n">spline1</span> <span class="o">=</span> <span class="n">make_interp_spline</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">y01</span><span class="p">)</span>
+<span class="n">spline2</span> <span class="o">=</span> <span class="n">make_interp_spline</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">y02</span><span class="p">)</span>
+<span class="n">t01</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">1000</span><span class="p">)</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">12</span><span class="p">))</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">lc1</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">lc1</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;lc1&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Time (s)&quot;</span><span class="p">,</span> <span class="n">fontproperties</span><span class="o">=</span><span class="n">font_prop</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Counts (cts)&quot;</span><span class="p">,</span> <span class="n">fontproperties</span><span class="o">=</span><span class="n">font_prop</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">labelsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">labelsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">which</span><span class="o">=</span><span class="s1">&#39;major&#39;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">which</span><span class="o">=</span><span class="s1">&#39;minor&#39;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t01</span><span class="p">,</span><span class="n">spline1</span><span class="p">(</span><span class="n">t01</span><span class="p">),</span><span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;lightblue&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;source of lc1&#39;</span><span class="p">)</span>
+
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">lc1</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">lc2</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;lc2&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Time (s)&quot;</span><span class="p">,</span> <span class="n">fontproperties</span><span class="o">=</span><span class="n">font_prop</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Counts (cts)&quot;</span><span class="p">,</span> <span class="n">fontproperties</span><span class="o">=</span><span class="n">font_prop</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">labelsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">labelsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">which</span><span class="o">=</span><span class="s1">&#39;major&#39;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">which</span><span class="o">=</span><span class="s1">&#39;minor&#39;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t01</span><span class="p">,</span><span class="n">spline2</span><span class="p">(</span><span class="n">t01</span><span class="p">),</span><span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;orange&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;source of lc2&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LombScargle_LombScargleCrossspectrum_tutorial_7_0.png" src="../../_images/notebooks_LombScargle_LombScargleCrossspectrum_tutorial_7_0.png" />
+</div>
+</div>
+<section id="2.-Pass-both-of-the-light-curves-to-the-LombScargleCrossspectrum-class-to-create-a-LombScargleCrossspectrum-object.">
+<h2>2. Pass both of the light curves to the <code class="docutils literal notranslate"><span class="pre">LombScargleCrossspectrum</span></code> class to create a <code class="docutils literal notranslate"><span class="pre">LombScargleCrossspectrum</span></code> object.<a class="headerlink" href="#2.-Pass-both-of-the-light-curves-to-the-LombScargleCrossspectrum-class-to-create-a-LombScargleCrossspectrum-object." title="Link to this heading">¶</a></h2>
+<p>The first <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> passed is the channel of interest or interest band, and the second <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> passed is the reference band. You can also specify the optional attribute <code class="docutils literal notranslate"><span class="pre">norm</span></code> if you wish to normalize the real part of the cross spectrum to squared fractional rms, Leahy, or squared absolute normalization. The default normalization is ‘none’.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lcs</span> <span class="o">=</span> <span class="n">LombScargleCrossspectrum</span><span class="p">(</span>
+    <span class="n">lc1</span><span class="p">,</span>
+    <span class="n">lc2</span><span class="p">,</span>
+    <span class="n">min_freq</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">max_freq</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">method</span><span class="o">=</span><span class="s2">&quot;fast&quot;</span><span class="p">,</span>
+    <span class="n">power_type</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">,</span>
+    <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>We can print the first five values in the arrays of the positive Fourier frequencies and the power. The power has a real and an imaginary component.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">lcs</span><span class="o">.</span><span class="n">freq</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">5</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">lcs</span><span class="o">.</span><span class="n">power</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">5</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[0.05163902 0.15491705 0.25819509 0.36147313 0.46475116]
+[  6.31032111 +4.52192914j  63.18701964+17.6050907j
+ 118.96655765-28.2054288j   84.8747486 -42.95292067j
+  -5.16601064+18.1110093j ]
+</pre></div></div>
+</div>
+</section>
+<section id="Properties">
+<h2>Properties<a class="headerlink" href="#Properties" title="Link to this heading">¶</a></h2>
+<section id="Parameters">
+<h3>Parameters<a class="headerlink" href="#Parameters" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">data1</span></code>: This parameter allows you to provide the dataset for the first channel or band of interest. It can be either a <code class="docutils literal notranslate"><span class="pre">`stingray.lightcurve.Lightcurve</span></code> &lt;<a class="reference external" href="https://docs.stingray.science/en/stable/core.html#working-with-lightcurves">https://docs.stingray.science/en/stable/core.html#working-with-lightcurves</a>&gt;`__ or <code class="docutils literal notranslate"><span class="pre">`stingray.events.EventList</span></code> &lt;<a class="reference external" href="https://docs.stingray.science/en/stable/core.html#working-with-event-data">https://docs.stingray.science/en/stable/core.html#working-with-event-data</a>&gt;`__ object. It is optional, and the default value is <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">data2</span></code>: Similar to <code class="docutils literal notranslate"><span class="pre">data1</span></code>, this parameter represents the dataset for the second channel or “reference” band. It follows the same format as <code class="docutils literal notranslate"><span class="pre">data1</span></code> and is also optional with a default value of <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">norm</span></code>: This parameter defines the normalization of the cross spectrum. It takes string values from the set {<code class="docutils literal notranslate"><span class="pre">frac</span></code>, <code class="docutils literal notranslate"><span class="pre">abs</span></code>, <code class="docutils literal notranslate"><span class="pre">leahy</span></code>, <code class="docutils literal notranslate"><span class="pre">none</span></code>}. The default normalization is set to <code class="docutils literal notranslate"><span class="pre">none</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">power_type</span></code>: This parameter allows you to specify the type of cross spectral power you want to compute. The options are: <code class="docutils literal notranslate"><span class="pre">real</span></code> for the real part, <code class="docutils literal notranslate"><span class="pre">absolute</span></code> for the magnitude, and <code class="docutils literal notranslate"><span class="pre">all</span></code> to compute both real part and magnitude. The default is <code class="docutils literal notranslate"><span class="pre">all</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fullspec</span></code>: This is a boolean parameter that determines whether to keep only the positive frequencies or include both positive and negative frequencies in the cross spectrum. When set to <code class="docutils literal notranslate"><span class="pre">False</span></code> (default), only positive frequencies are kept; when set to <code class="docutils literal notranslate"><span class="pre">True</span></code>, both positive and negative frequencies are included.</p></li>
+</ul>
+</section>
+<section id="Other-Parameters">
+<h3>Other Parameters<a class="headerlink" href="#Other-Parameters" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">dt</span></code>: When constructing light curves using <code class="docutils literal notranslate"><span class="pre">`stingray.events.EventList</span></code> &lt;<a class="reference external" href="https://docs.stingray.science/en/stable/core.html#working-with-event-data">https://docs.stingray.science/en/stable/core.html#working-with-event-data</a>&gt;`__ objects, the <code class="docutils literal notranslate"><span class="pre">dt</span></code> parameter represents the time resolution of the light curve. It is a float value that needs to be provided.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">skip_checks</span></code>: This is a boolean parameter that, when set to <code class="docutils literal notranslate"><span class="pre">True</span></code>, skips initial checks for speed or other reasons. It’s useful when you have confidence in the inputs and want to improve processing speed.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">min_freq</span></code>: This parameter specifies the minimum frequency at which the Lomb-Scargle Fourier Transform should be computed.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">max_freq</span></code>: Similarly, the <code class="docutils literal notranslate"><span class="pre">max_freq</span></code> parameter sets the maximum frequency for the Lomb-Scargle Fourier Transform.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">df</span></code>: The <code class="docutils literal notranslate"><span class="pre">df</span></code> parameter, a float, represents the frequency resolution. It’s relevant when constructing light curves using <code class="docutils literal notranslate"><span class="pre">`stingray.events.EventList</span></code> &lt;<a class="reference external" href="https://docs.stingray.science/en/stable/core.html#working-with-event-data">https://docs.stingray.science/en/stable/core.html#working-with-event-data</a>&gt;`__ objects.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">method</span></code>: The <code class="docutils literal notranslate"><span class="pre">method</span></code> parameter determines the method used by the Lomb-Scargle Fourier Transformation function. The allowed values are <code class="docutils literal notranslate"><span class="pre">fast</span></code> and <code class="docutils literal notranslate"><span class="pre">slow</span></code>, with the default being <code class="docutils literal notranslate"><span class="pre">fast</span></code>. The <code class="docutils literal notranslate"><span class="pre">fast</span></code> method uses the optimized Press and Rybicki O(n*log(n)) algorithm.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">oversampling</span></code>: This optional float parameter represents the interpolation oversampling factor. It is applicable when using the fast algorithm for the Lomb-Scargle Fourier Transform. The default value is 5.</p></li>
+</ul>
+</section>
+<section id="Attributes">
+<h3>Attributes<a class="headerlink" href="#Attributes" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">freq</span></code>: The <code class="docutils literal notranslate"><span class="pre">freq</span></code> attribute is a numpy array that contains the mid-bin frequencies at which the Fourier transform samples the cross spectrum.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">power</span></code>: The <code class="docutils literal notranslate"><span class="pre">power</span></code> attribute is a numpy array that contains the complex numbers representing the cross spectra.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">power_err</span></code>: The <code class="docutils literal notranslate"><span class="pre">power_err</span></code> attribute is a numpy array that provides the uncertainties associated with the <code class="docutils literal notranslate"><span class="pre">power</span></code>. The uncertainties are approximated using the formula <code class="docutils literal notranslate"><span class="pre">power_err</span> <span class="pre">=</span> <span class="pre">power</span> <span class="pre">/</span> <span class="pre">sqrt(m)</span></code>, where <code class="docutils literal notranslate"><span class="pre">m</span></code> is the number of power values averaged in each bin. For a single realization (<code class="docutils literal notranslate"><span class="pre">m=1</span></code>), the error is equal to the power.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">df</span></code>: The <code class="docutils literal notranslate"><span class="pre">df</span></code> attribute is a float that indicates the frequency resolution.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">m</span></code>: The <code class="docutils literal notranslate"><span class="pre">m</span></code> attribute is an integer representing the number of averaged cross-spectra amplitudes in each bin.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">n</span></code>: The <code class="docutils literal notranslate"><span class="pre">n</span></code> attribute is an integer indicating the number of data points or time bins in one segment of the light curves.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">k</span></code>: The <code class="docutils literal notranslate"><span class="pre">k</span></code> attribute is an array of integers indicating the rebinning scheme. If the object has been rebinned, the attribute holds the rebinning scheme; otherwise, it is set to 1.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">nphots1</span></code>: The <code class="docutils literal notranslate"><span class="pre">nphots1</span></code> attribute is a float representing the total number of photons in light curve 1.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">nphots2</span></code>: The <code class="docutils literal notranslate"><span class="pre">nphots2</span></code> attribute is a float representing the total number of photons in light curve 2.</p></li>
+</ul>
+<p>We can plot the cross spectrum by using the plot function or manually taking the <code class="docutils literal notranslate"><span class="pre">freq</span></code> and <code class="docutils literal notranslate"><span class="pre">power</span></code> attributes</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span><span class="mi">6</span><span class="p">),</span><span class="n">sharey</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">lcs</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency (Hz)&quot;</span><span class="p">,</span> <span class="n">fontproperties</span><span class="o">=</span><span class="n">font_prop</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Power&quot;</span><span class="p">,</span> <span class="n">fontproperties</span><span class="o">=</span><span class="n">font_prop</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lcs</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">lcs</span><span class="o">.</span><span class="n">power</span><span class="o">.</span><span class="n">real</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency (Hz)&quot;</span><span class="p">,</span> <span class="n">fontproperties</span><span class="o">=</span><span class="n">font_prop</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Power(Real Component)&quot;</span><span class="p">,</span> <span class="n">fontproperties</span><span class="o">=</span><span class="n">font_prop</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lcs</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">lcs</span><span class="o">.</span><span class="n">power</span><span class="o">.</span><span class="n">imag</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency (Hz)&quot;</span><span class="p">,</span> <span class="n">fontproperties</span><span class="o">=</span><span class="n">font_prop</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Power(Imaginary Component)&quot;</span><span class="p">,</span> <span class="n">fontproperties</span><span class="o">=</span><span class="n">font_prop</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0, 0.5, &#39;Power(Imaginary Component)&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_LombScargle_LombScargleCrossspectrum_tutorial_14_1.png" src="../../_images/notebooks_LombScargle_LombScargleCrossspectrum_tutorial_14_1.png" />
+</div>
+</div>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Lomb Scargle Cross Spectra</a></li>
+<li><a class="reference internal" href="#1.-Create-two-light-curves">1. Create two light curves</a><ul>
+<li><a class="reference internal" href="#2.-Pass-both-of-the-light-curves-to-the-LombScargleCrossspectrum-class-to-create-a-LombScargleCrossspectrum-object.">2. Pass both of the light curves to the <code class="docutils literal notranslate"><span class="pre">LombScargleCrossspectrum</span></code> class to create a <code class="docutils literal notranslate"><span class="pre">LombScargleCrossspectrum</span></code> object.</a></li>
+<li><a class="reference internal" href="#Properties">Properties</a><ul>
+<li><a class="reference internal" href="#Parameters">Parameters</a></li>
+<li><a class="reference internal" href="#Other-Parameters">Other Parameters</a></li>
+<li><a class="reference internal" href="#Attributes">Attributes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/LombScargle/LombScargleCrossspectrum_tutorial.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

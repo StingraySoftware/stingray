@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>stingray.pulse.modeling &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script type="text/javascript" src="../../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for stingray.pulse.modeling</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.modeling</span><span class="w"> </span><span class="kn">import</span> <span class="n">models</span><span class="p">,</span> <span class="n">fitting</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;sinc_square_model&quot;</span><span class="p">,</span> <span class="s2">&quot;sinc_square_deriv&quot;</span><span class="p">,</span> <span class="s2">&quot;fit_sinc&quot;</span><span class="p">,</span> <span class="s2">&quot;fit_gaussian&quot;</span><span class="p">,</span> <span class="s2">&quot;SincSquareModel&quot;</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">sinc</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate a sinc function.</span>
+
+<span class="sd">    sinc(x)=sin(x)/x</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : array-like</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    values : array-like</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sinc</span><span class="p">(</span><span class="n">x</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">values</span>
+
+
+<div class="viewcode-block" id="sinc_square_model">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.sinc_square_model">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">sinc_square_model</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">amplitude</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate a sinc-squared function.</span>
+
+<span class="sd">    (sin(x)/x)**2</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x: array-like</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    amplitude : float</span>
+<span class="sd">        the value for x=mean</span>
+<span class="sd">    mean : float</span>
+<span class="sd">        mean of the sinc function</span>
+<span class="sd">    width : float</span>
+<span class="sd">        width of the sinc function</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    sqvalues : array-like</span>
+<span class="sd">         Return square of sinc function</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; assert np.isclose(sinc_square_model(0, amplitude=2.), 2.0)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sqvalues</span> <span class="o">=</span> <span class="n">amplitude</span> <span class="o">*</span> <span class="n">sinc</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">width</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="k">return</span> <span class="n">sqvalues</span></div>
+
+
+
+<div class="viewcode-block" id="sinc_square_deriv">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.sinc_square_deriv">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">sinc_square_deriv</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">amplitude</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate partial derivatives of sinc-squared.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x: array-like</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    amplitude : float</span>
+<span class="sd">        the value for x=mean</span>
+<span class="sd">    mean : float</span>
+<span class="sd">        mean of the sinc function</span>
+<span class="sd">    width : float</span>
+<span class="sd">        width of the sinc function</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    d_amplitude : array-like</span>
+<span class="sd">         partial derivative of sinc-squared function</span>
+<span class="sd">         with respect to the amplitude</span>
+<span class="sd">    d_mean : array-like</span>
+<span class="sd">         partial derivative of sinc-squared function</span>
+<span class="sd">         with respect to the mean</span>
+<span class="sd">    d_width : array-like</span>
+<span class="sd">         partial derivative of sinc-squared function</span>
+<span class="sd">         with respect to the width</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(sinc_square_deriv(0, amplitude=2.), [1., 0., 0.])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x_is_zero</span> <span class="o">=</span> <span class="n">x</span> <span class="o">==</span> <span class="n">mean</span>
+
+    <span class="n">d_x</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="mi">2</span>
+        <span class="o">*</span> <span class="n">amplitude</span>
+        <span class="o">*</span> <span class="n">sinc</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">width</span><span class="p">)</span>
+        <span class="o">*</span> <span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">width</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">width</span><span class="p">))</span>
+        <span class="o">/</span> <span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">width</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="p">)</span>
+    <span class="n">d_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">(</span><span class="n">d_x</span><span class="p">)</span>
+    <span class="n">d_amplitude</span> <span class="o">=</span> <span class="n">sinc</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">width</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="n">d_x</span><span class="p">[</span><span class="n">x_is_zero</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">d_mean</span> <span class="o">=</span> <span class="n">d_x</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span> <span class="o">/</span> <span class="n">width</span><span class="p">)</span>
+    <span class="n">d_width</span> <span class="o">=</span> <span class="n">d_x</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">width</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">[</span><span class="n">d_amplitude</span><span class="p">,</span> <span class="n">d_mean</span><span class="p">,</span> <span class="n">d_width</span><span class="p">]</span></div>
+
+
+
+<span class="n">_SincSquareModel</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">custom_model</span><span class="p">(</span><span class="n">sinc_square_model</span><span class="p">,</span> <span class="n">fit_deriv</span><span class="o">=</span><span class="n">sinc_square_deriv</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="SincSquareModel">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.SincSquareModel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SincSquareModel</span><span class="p">(</span><span class="n">_SincSquareModel</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__reduce__</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="n">members</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">cls</span><span class="p">),</span> <span class="p">(),</span> <span class="n">members</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="fit_sinc">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.fit_sinc">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fit_sinc</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">amp</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">tied</span><span class="o">=</span><span class="p">{},</span> <span class="n">fixed</span><span class="o">=</span><span class="p">{},</span> <span class="n">bounds</span><span class="o">=</span><span class="p">{},</span> <span class="n">obs_length</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Fit a sinc function to x,y values.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : array-like</span>
+<span class="sd">    y : array-like</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    amp : float</span>
+<span class="sd">        The initial value for the amplitude</span>
+
+<span class="sd">    mean : float</span>
+<span class="sd">        The initial value for the mean of the sinc</span>
+
+<span class="sd">    obs_length : float</span>
+<span class="sd">        The length of the observation. Default None. If it&#39;s defined, it</span>
+<span class="sd">        fixes width to 1/(pi*obs_length), as expected from epoch folding</span>
+<span class="sd">        periodograms</span>
+
+<span class="sd">    width : float</span>
+<span class="sd">        The initial value for the width of the sinc. Only valid if</span>
+<span class="sd">        obs_length is 0</span>
+
+<span class="sd">    tied : dict</span>
+
+<span class="sd">    fixed : dict</span>
+
+<span class="sd">    bounds : dict</span>
+<span class="sd">        Parameters to be passed to the [astropy models]_</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    sincfit : function</span>
+<span class="sd">        The best-fit function, accepting x as input</span>
+<span class="sd">        and returning the best-fit model as output</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [astropy models] http://docs.astropy.org/en/stable/api/astropy.modeling.functional_models.Gaussian1D.html</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">obs_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">obs_length</span><span class="p">)</span>
+        <span class="n">fixed</span><span class="p">[</span><span class="s2">&quot;width&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="n">sinc_in</span> <span class="o">=</span> <span class="n">SincSquareModel</span><span class="p">(</span>
+        <span class="n">amplitude</span><span class="o">=</span><span class="n">amp</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="n">mean</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">width</span><span class="p">,</span> <span class="n">tied</span><span class="o">=</span><span class="n">tied</span><span class="p">,</span> <span class="n">fixed</span><span class="o">=</span><span class="n">fixed</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span>
+    <span class="p">)</span>
+    <span class="n">fit_s</span> <span class="o">=</span> <span class="n">fitting</span><span class="o">.</span><span class="n">LevMarLSQFitter</span><span class="p">()</span>
+    <span class="n">sincfit</span> <span class="o">=</span> <span class="n">fit_s</span><span class="p">(</span><span class="n">sinc_in</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">sincfit</span></div>
+
+
+
+<div class="viewcode-block" id="fit_gaussian">
+<a class="viewcode-back" href="../../../api.html#stingray.pulse.fit_gaussian">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fit_gaussian</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">amplitude</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">stddev</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">tied</span><span class="o">=</span><span class="p">{},</span> <span class="n">fixed</span><span class="o">=</span><span class="p">{},</span> <span class="n">bounds</span><span class="o">=</span><span class="p">{}):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Fit a gaussian function to x,y values.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : array-like</span>
+<span class="sd">    y : array-like</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    amplitude : float</span>
+<span class="sd">        The initial value for the amplitude</span>
+<span class="sd">    mean : float</span>
+<span class="sd">        The initial value for the mean of the gaussian function</span>
+<span class="sd">    stddev : float</span>
+<span class="sd">        The initial value for the standard deviation of the gaussian function</span>
+<span class="sd">    tied : dict</span>
+<span class="sd">    fixed : dict</span>
+<span class="sd">    bounds : dict</span>
+<span class="sd">        Parameters to be passed to the [astropy models]_</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    g : function</span>
+<span class="sd">        The best-fit function, accepting x as input</span>
+<span class="sd">        and returning the best-fit model as output</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">g_in</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Gaussian1D</span><span class="p">(</span>
+        <span class="n">amplitude</span><span class="o">=</span><span class="n">amplitude</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="n">mean</span><span class="p">,</span> <span class="n">stddev</span><span class="o">=</span><span class="n">stddev</span><span class="p">,</span> <span class="n">tied</span><span class="o">=</span><span class="n">tied</span><span class="p">,</span> <span class="n">fixed</span><span class="o">=</span><span class="n">fixed</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span>
+    <span class="p">)</span>
+    <span class="n">fit_g</span> <span class="o">=</span> <span class="n">fitting</span><span class="o">.</span><span class="n">LevMarLSQFitter</span><span class="p">()</span>
+    <span class="n">g</span> <span class="o">=</span> <span class="n">fit_g</span><span class="p">(</span><span class="n">g_in</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">g</span></div>
+
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Quicklook NuSTAR data with Stingray &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Imports" href="../LAXPC%20analysis/laxpc_analysis.html" />
+    <link rel="prev" title="More Data Exploration" href="../../dataexplo.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="../LAXPC%20analysis/laxpc_analysis.html" title="Imports">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="../../dataexplo.html" title="More Data Exploration">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../dataexplo.html" accesskey="U">More Data Exploration</a> &#187;</li>
+      
+      <li>Quicklook NuSTAR data with Stingray</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <p>In this notebook, we will analyze a NuSTAR data of the black hole X-ray binary H1743-322 with Stingray. Here we assume that the user has already reduced the data with the official pipeline and ran <code class="docutils literal notranslate"><span class="pre">barycorr</span></code> or other tools to refer the event times to the solar system barycenter.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">load_ext</span> autoreload
+<span class="o">%</span><span class="k">autoreload</span> 2
+<span class="o">%</span><span class="k">matplotlib</span> inline
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.powerspectrum</span><span class="w"> </span><span class="kn">import</span> <span class="n">AveragedPowerspectrum</span><span class="p">,</span> <span class="n">DynamicalPowerspectrum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.crossspectrum</span><span class="w"> </span><span class="kn">import</span> <span class="n">AveragedCrossspectrum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.events</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventList</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.lightcurve</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.gti</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_gti_from_condition</span>
+</pre></div>
+</div>
+</div>
+<section id="Quicklook-NuSTAR-data-with-Stingray">
+<h1>Quicklook NuSTAR data with Stingray<a class="headerlink" href="#Quicklook-NuSTAR-data-with-Stingray" title="Link to this heading">¶</a></h1>
+<p>Let us load the data from two event lists corresponding to the two detectors onboard NuSTAR. <code class="docutils literal notranslate"><span class="pre">fmt='hea'</span></code> indicates event data produced by HEAsoft tools or compatible (e.g. XMM-Newton).</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">evA</span> <span class="o">=</span> <span class="n">EventList</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;nustar_A_src.evt&#39;</span><span class="p">,</span> <span class="s1">&#39;hea&#39;</span><span class="p">)</span>
+<span class="n">evB</span> <span class="o">=</span> <span class="n">EventList</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;nustar_B_src.evt&#39;</span><span class="p">,</span> <span class="s1">&#39;hea&#39;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<p>For the sake of a quicklook, let us join the two event lists</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">all_ev</span> <span class="o">=</span> <span class="n">evA</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">evB</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<p>Let us calculate the light curve and plot it.</p>
+<p>In red, we show the bad time intervals, when the satellite was not acquiring valid data due to Earth occultation, SAA passages, or other issues.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span> <span class="o">=</span> <span class="n">all_ev</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">)</span>
+<span class="n">bad_time_intervals</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">gti</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">lc</span><span class="o">.</span><span class="n">gti</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="mi">0</span><span class="p">]))</span>
+<span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bad_time_intervals</span><span class="p">:</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axvspan</span><span class="p">(</span><span class="n">b</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">b</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">([</span><span class="mi">5000</span><span class="p">,</span> <span class="mi">6500</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(5000.0, 6500.0)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_DataQuickLook_Quicklook_NuSTAR_data_with_Stingray_9_1.png" src="../../_images/notebooks_DataQuickLook_Quicklook_NuSTAR_data_with_Stingray_9_1.png" />
+</div>
+</div>
+<p>The light curve shows some long-term variability. Let us look at the colors. First of all, let us check that the events contain the energy of each photon. This should be the case, because NuSTAR data, together with XMM and NICER, are very well understood by Stingray and the calibration is done straight away.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">all_ev</span><span class="o">.</span><span class="n">energy</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([ 6.24     ,  3.4      , 14.4800005, ...,  9.64     ,  8.76     ,
+        4.2      ], dtype=float32)
+</pre></div></div>
+</div>
+<p>Other missions might have all_ev.energy set to None. In which case, one needs to use all_ev.pi and express the energy through the PI channels (See the HENDRICS documentation for more advanced calibration using the rmf files).</p>
+<p>Also, we notice that some GTIs do not catch all bad intervals (see how the light curve drops close to GTI borders). We make a more aggressive GTI filtering now:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">new_gti</span> <span class="o">=</span> <span class="n">create_gti_from_condition</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">lc</span><span class="o">.</span><span class="n">counts</span> <span class="o">&gt;</span> <span class="mi">5200</span><span class="p">)</span>
+<span class="n">all_ev</span><span class="o">.</span><span class="n">gti</span> <span class="o">=</span> <span class="n">new_gti</span>
+<span class="n">evA</span><span class="o">.</span><span class="n">gti</span> <span class="o">=</span> <span class="n">new_gti</span>
+<span class="n">evB</span><span class="o">.</span><span class="n">gti</span> <span class="o">=</span> <span class="n">new_gti</span>
+<span class="n">lc</span><span class="o">.</span><span class="n">gti</span> <span class="o">=</span> <span class="n">new_gti</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">hard</span> <span class="o">=</span> <span class="p">(</span><span class="n">all_ev</span><span class="o">.</span><span class="n">energy</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">all_ev</span><span class="o">.</span><span class="n">energy</span> <span class="o">&lt;</span> <span class="mi">79</span><span class="p">)</span>
+<span class="n">soft</span> <span class="o">=</span> <span class="p">(</span><span class="n">all_ev</span><span class="o">.</span><span class="n">energy</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">all_ev</span><span class="o">.</span><span class="n">energy</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">)</span>
+
+<span class="n">hard_ev</span> <span class="o">=</span> <span class="n">all_ev</span><span class="o">.</span><span class="n">apply_mask</span><span class="p">(</span><span class="n">hard</span><span class="p">)</span>
+<span class="n">soft_ev</span> <span class="o">=</span> <span class="n">all_ev</span><span class="o">.</span><span class="n">apply_mask</span><span class="p">(</span><span class="n">soft</span><span class="p">)</span>
+
+<span class="n">hard_lc</span> <span class="o">=</span> <span class="n">hard_ev</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+<span class="n">soft_lc</span> <span class="o">=</span> <span class="n">soft_ev</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+
+<span class="n">hard_lc</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">()</span>
+<span class="n">soft_lc</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">()</span>
+
+<span class="n">hardness_ratio</span> <span class="o">=</span> <span class="n">hard_lc</span><span class="o">.</span><span class="n">counts</span> <span class="o">/</span> <span class="n">soft_lc</span><span class="o">.</span><span class="n">counts</span>
+<span class="n">intensity</span> <span class="o">=</span> <span class="n">hard_lc</span><span class="o">.</span><span class="n">counts</span> <span class="o">+</span> <span class="n">soft_lc</span><span class="o">.</span><span class="n">counts</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">hardness_ratio</span><span class="p">,</span> <span class="n">intensity</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Hardness&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Counts&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0, 0.5, &#39;Counts&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_DataQuickLook_Quicklook_NuSTAR_data_with_Stingray_15_1.png" src="../../_images/notebooks_DataQuickLook_Quicklook_NuSTAR_data_with_Stingray_15_1.png" />
+</div>
+</div>
+<p>Despite some light curve variability, the hardness ratio seems pretty stable during the observation.</p>
+<p>Let us now look at the power density spectrum. Notice that we are using a sampling time of 0.001 s, meaning that we will investigate the power spectrum up to 500 Hz</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pds</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">all_ev</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s1">&#39;leahy&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+238it [00:01, 177.96it/s]
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">7</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="n">pds</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">pds</span><span class="o">.</span><span class="n">power</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Power (Leahy)&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0, 0.5, &#39;Power (Leahy)&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_DataQuickLook_Quicklook_NuSTAR_data_with_Stingray_19_1.png" src="../../_images/notebooks_DataQuickLook_Quicklook_NuSTAR_data_with_Stingray_19_1.png" />
+</div>
+</div>
+<p>Nice Quasi-periodic oscillations there! Note that at high frequencies the white noise level increases. This is not real variability, but an effect of <strong>dead time</strong>. The easiest way to get a flat periodogram at high frequencies is using the <strong>cospectrum</strong> instead of the power density spectrum. For this, we use separately the events from the two detectors. The cospectrum calculation is slightly slower than the power spectrum.</p>
+<p>For an accurate way to correct the power density spectrum from dead time, see the documentation of <code class="docutils literal notranslate"><span class="pre">stingray.deadtime</span></code> and the Frequency Amplitude Difference (FAD) correction.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cs</span> <span class="o">=</span> <span class="n">AveragedCrossspectrum</span><span class="o">.</span><span class="n">from_events</span><span class="p">(</span><span class="n">evA</span><span class="p">,</span> <span class="n">evB</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s1">&#39;leahy&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+238it [00:03, 78.00it/s]
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">7</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">semilogx</span><span class="p">(</span><span class="n">cs</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">cs</span><span class="o">.</span><span class="n">power</span><span class="o">.</span><span class="n">real</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[&lt;matplotlib.lines.Line2D at 0x7fe8c0e7d8b0&gt;]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_DataQuickLook_Quicklook_NuSTAR_data_with_Stingray_22_1.png" src="../../_images/notebooks_DataQuickLook_Quicklook_NuSTAR_data_with_Stingray_22_1.png" />
+</div>
+</div>
+<p>To improve the plot, we can rebin the data logarithmically</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cs_reb</span> <span class="o">=</span> <span class="n">cs</span><span class="o">.</span><span class="n">rebin_log</span><span class="p">(</span><span class="mf">0.02</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">7</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="n">cs_reb</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">cs_reb</span><span class="o">.</span><span class="n">power</span><span class="o">.</span><span class="n">real</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">([</span><span class="mf">1e-3</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Cospectrum Power&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0, 0.5, &#39;Cospectrum Power&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_DataQuickLook_Quicklook_NuSTAR_data_with_Stingray_25_1.png" src="../../_images/notebooks_DataQuickLook_Quicklook_NuSTAR_data_with_Stingray_25_1.png" />
+</div>
+</div>
+<p>For deeper analysis (e.g. time lags and other products), please refer to the relevant notebooks</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Quicklook NuSTAR data with Stingray</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/DataQuickLook/Quicklook NuSTAR data with Stingray.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

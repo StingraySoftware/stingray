@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Phase Dispersion Minimization in Stingray &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="The Stingray Modelling Interface" href="../../modeling.html" />
+    <link rel="prev" title="Simulate a dataset" href="Pulsar%20search%20with%20epoch%20folding%20and%20Z%20squared.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="../../modeling.html" title="The Stingray Modelling Interface">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="Pulsar%20search%20with%20epoch%20folding%20and%20Z%20squared.html" title="Simulate a dataset">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../pulsar.html" accesskey="U">Analysing Pulsar Data</a> &#187;</li>
+      
+      <li>Phase Dispersion Minimization in Stingray</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># %load_ext autoreload</span>
+<span class="c1"># %autoreload 2</span>
+<span class="c1"># %matplotlib notebook</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.pulse.search</span><span class="w"> </span><span class="kn">import</span> <span class="n">phase_dispersion_search</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">seaborn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sb</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mpl</span>
+<span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;figure.figsize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<section id="Phase-Dispersion-Minimization-in-Stingray">
+<h1>Phase Dispersion Minimization in Stingray<a class="headerlink" href="#Phase-Dispersion-Minimization-in-Stingray" title="Link to this heading">¶</a></h1>
+<p>Phase dispersion minimization (PDM; Stellingwerf (1978)) is a method to search for strictly periodic signals in constant light curves (white noise only). Like Epoch Folding, it relies in folding a light curve at a given trial period, splitting the folded light curve into phase bins, and evaluating the resulting profile.</p>
+<p>Epoch Folding evaluates how much the means in each phase bin deviate from the global sample mean, given the variance of the measurements. A periodic signal will generate a maximum in the Epoch Folding periodogram across many trial periods. In contrast, Phase Dispersion Minimization evaluates the <em>variance</em> in each phase bin and compares this to the global sample variance <span class="math notranslate nohighlight">\(\hat{\sigma}\)</span>:</p>
+<p><span class="math">\begin{equation}
+\theta_{\mathrm{PDM}} = \frac{1}{\hat{\sigma}} \frac{\sum_{ij}(x_{ij} - \bar{x}_j)^2}{N - M} \;
+\end{equation}</span></p>
+<p>for <span class="math notranslate nohighlight">\(N\)</span> measurements in the light curve split into <span class="math notranslate nohighlight">\(M\)</span> bins, and <span class="math notranslate nohighlight">\(\bar{x}_j\)</span> the mean of measurements in bin <span class="math notranslate nohighlight">\(j\)</span>.</p>
+<p>If a periodic signal is present in the data at a given trial period, the PDM statistic should have a <em>minimum</em> at that period.</p>
+<section id="Simulate-a-dataset">
+<h2>Simulate a dataset<a class="headerlink" href="#Simulate-a-dataset" title="Link to this heading">¶</a></h2>
+<p>Let us simulate a simple data set: we create a sinusoidal light curve and add Poisson noise:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">sinusoid</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">amplitude</span><span class="p">,</span> <span class="n">phase</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">baseline</span> <span class="o">+</span> <span class="n">amplitude</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="p">(</span><span class="n">frequency</span> <span class="o">*</span> <span class="n">times</span> <span class="o">+</span> <span class="n">phase</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span>
+
+<span class="n">period</span> <span class="o">=</span> <span class="mf">1.203501</span>
+<span class="n">mean_countrate</span> <span class="o">=</span> <span class="mi">50</span>
+<span class="n">pulsed_fraction</span> <span class="o">=</span> <span class="mf">0.2</span>
+<span class="n">bin_time</span> <span class="o">=</span> <span class="mf">0.01</span>
+<span class="n">obs_length</span> <span class="o">=</span> <span class="mi">300</span>
+
+<span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">obs_length</span><span class="p">,</span> <span class="n">bin_time</span><span class="p">)</span>
+
+<span class="c1"># The continuous light curve</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">sinusoid</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">period</span><span class="p">,</span> <span class="n">mean_countrate</span><span class="p">,</span>
+                  <span class="mf">0.5</span> <span class="o">*</span> <span class="n">mean_countrate</span> <span class="o">*</span> <span class="n">pulsed_fraction</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="n">bin_time</span>
+
+<span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span>
+
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="p">[[</span><span class="o">-</span><span class="n">bin_time</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">obs_length</span> <span class="o">+</span> <span class="n">bin_time</span> <span class="o">/</span> <span class="mi">2</span><span class="p">]],</span>
+                <span class="n">dt</span><span class="o">=</span><span class="n">bin_time</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Pulsation-search-with-Phase-Dispersion-Minimization">
+<h2>Pulsation search with Phase Dispersion Minimization<a class="headerlink" href="#Pulsation-search-with-Phase-Dispersion-Minimization" title="Link to this heading">¶</a></h2>
+<p>Let us assume we have already an estimate of the true period, for example because we found a candidate in the power density spectrum with a period of ~1.2. We search around that period with the phase dispersion minimization.</p>
+<p>The first thing we need to do is <em>fold</em> the light curve: for every data point, we convert the time of that bin to its corresponding phase. We then split the resulting phase-folded light curve into <span class="math notranslate nohighlight">\(M\)</span> phase bins, where <span class="math notranslate nohighlight">\(M\)</span> should strike a balance between generating enough bins to accurately represent the structure in the phase curve, but also few enough bins that the number of measurements in each bin is meaningful.</p>
+<p>In regular epoch folding, we calculate the mean flux (or counts) within each bin as a useful statistic. Let’s do that first, because it gives us a nice visual representation. Note that when using a light curve (rather than event arrival times) in <code class="docutils literal notranslate"><span class="pre">fold_events</span></code>, you need to use set the <code class="docutils literal notranslate"><span class="pre">weights</span></code> keyword to the array of fluxes or counts:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.pulse.pulsar</span><span class="w"> </span><span class="kn">import</span> <span class="n">fold_events</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.pulse.search</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_profile</span>
+<span class="n">nbin</span> <span class="o">=</span> <span class="mi">16</span>
+
+<span class="n">ph</span><span class="p">,</span> <span class="n">profile</span><span class="p">,</span> <span class="n">profile_err</span> <span class="o">=</span> <span class="n">fold_events</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="n">period</span><span class="p">,</span> <span class="n">nbin</span><span class="o">=</span><span class="n">nbin</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">plot_profile</span><span class="p">(</span><span class="n">ph</span><span class="p">,</span> <span class="n">profile</span><span class="p">)</span>
+
+<span class="n">ph</span><span class="p">,</span> <span class="n">profile</span><span class="p">,</span> <span class="n">profile_err</span> <span class="o">=</span> <span class="n">fold_events</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="mf">1.1</span><span class="p">,</span> <span class="n">nbin</span><span class="o">=</span><span class="n">nbin</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">plot_profile</span><span class="p">(</span><span class="n">ph</span><span class="p">,</span> <span class="n">profile</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Pulsar_Phase_Dispersion_Minimization_5_0.png" src="../../_images/notebooks_Pulsar_Phase_Dispersion_Minimization_5_0.png" />
+</div>
+</div>
+<p>As you can see, folding at the correct period (blue line) generates a profile that looks approximately sinusoidal, whereas folding at a different period (orange line) does not.</p>
+<p>For Phase Dispersion Minimization, we are not interested in the <em>mean</em> in each phase bin, but rather the <em>variance</em> in each phase bin, which we’d like to <em>minimize</em>, not maximize. We can also calculate that using <code class="docutils literal notranslate"><span class="pre">fold_profile</span></code>, using <code class="docutils literal notranslate"><span class="pre">mode=&quot;pdm&quot;</span></code> (the default is Epoch Folding, <code class="docutils literal notranslate"><span class="pre">mode=&quot;ef&quot;</span></code>):</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ph</span><span class="p">,</span> <span class="n">profile</span><span class="p">,</span> <span class="n">profile_err</span> <span class="o">=</span> <span class="n">fold_events</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="n">period</span><span class="p">,</span> <span class="n">nbin</span><span class="o">=</span><span class="n">nbin</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;pdm&quot;</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">plot_profile</span><span class="p">(</span><span class="n">ph</span><span class="p">,</span> <span class="n">profile</span><span class="p">)</span>
+
+<span class="n">ph</span><span class="p">,</span> <span class="n">profile</span><span class="p">,</span> <span class="n">profile_err</span> <span class="o">=</span> <span class="n">fold_events</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="mf">1.1</span><span class="p">,</span> <span class="n">nbin</span><span class="o">=</span><span class="n">nbin</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;pdm&quot;</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">plot_profile</span><span class="p">(</span><span class="n">ph</span><span class="p">,</span> <span class="n">profile</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Pulsar_Phase_Dispersion_Minimization_7_0.png" src="../../_images/notebooks_Pulsar_Phase_Dispersion_Minimization_7_0.png" />
+</div>
+</div>
+<p>As you can see, this looks very different, and not quite as easily recognizeable. What you see here is the nominator of the second term in the PDM Equation written in the introduction.</p>
+<p>We’d now like to try calculating this profile for a number of trial periods, and then calculate <span class="math notranslate nohighlight">\(\theta_\mathrm{PDM}\)</span>. Our null hypothesis is that there is no variation in the data except for measurement noise (e.g. Poisson statistics as we have here, or Gaussian noise). This is implemenented in <code class="docutils literal notranslate"><span class="pre">stingray.pulse.search.phase_dispersion_search</span></code>.</p>
+<p>For the frequency resolution of the periodogram, one usually chooses <em>at least</em> the same frequency resolution of the FFT, i. e., <span class="math notranslate nohighlight">\(df_{\rm min}=1/(t_1 - t_0)\)</span>. In most cases, a certain degree of oversampling is used.</p>
+<p>Let’s do that:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># We will search for pulsations over a range of frequencies around the known pulsation period.</span>
+<span class="n">df_min</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="n">obs_length</span>
+<span class="n">oversampling</span><span class="o">=</span><span class="mi">15</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">df_min</span> <span class="o">/</span> <span class="n">oversampling</span>
+<span class="n">frequencies</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">period</span> <span class="o">-</span> <span class="mi">200</span> <span class="o">*</span> <span class="n">df</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="n">period</span> <span class="o">+</span> <span class="mi">200</span> <span class="o">*</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
+
+<span class="n">freq</span><span class="p">,</span> <span class="n">pdmstat</span> <span class="o">=</span> <span class="n">phase_dispersion_search</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">frequencies</span><span class="p">,</span> <span class="n">nbin</span><span class="o">=</span><span class="n">nbin</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ---- PLOTTING --------</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">pdmstat</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;PDM statistic&#39;</span><span class="p">)</span>
+<span class="c1">#plt.axhline(nbin - 1, ls=&#39;--&#39;, lw=3, color=&#39;k&#39;, label=&#39;n - 1&#39;)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">period</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Correct frequency&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (Hz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;PDM Statistics&#39;</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Pulsar_Phase_Dispersion_Minimization_10_0.png" src="../../_images/notebooks_Pulsar_Phase_Dispersion_Minimization_10_0.png" />
+</div>
+</div>
+<p>A dip is definitely there at the frequency we expect it to be.</p>
+<p>Unlike the Epoch Folding statistic, which follows approximately a <span class="math notranslate nohighlight">\(\chi^2\)</span> distribution, the PDM statistic was shown to follow a beta-distribution (Schwarzenberg-Czerny, 1997).</p>
+<p>We can use this beta-distribution to calculate the significance of a peak found in the PDM periodogram, or to set a detection threshold. In stingray, this is implemented in the <code class="docutils literal notranslate"><span class="pre">stingray.stats</span></code> module, using <code class="docutils literal notranslate"><span class="pre">stingray.stats.phase_dispersion_detection_level</span></code> and <code class="docutils literal notranslate"><span class="pre">stingray.stats.phase_dispersion_probability</span></code>:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">phase_dispersion_detection_level</span><span class="p">,</span> <span class="n">phase_dispersion_probability</span>
+
+<span class="c1"># number of trials (the number of independent frequencies)</span>
+<span class="c1"># we searched over</span>
+<span class="n">ntrial</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">frequencies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">frequencies</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="n">df_min</span><span class="p">)</span>
+
+<span class="c1"># number of time bins in the light curve</span>
+<span class="n">nsamples</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
+
+<span class="n">pdm_det_level</span> <span class="o">=</span> <span class="n">phase_dispersion_detection_level</span><span class="p">(</span><span class="n">nsamples</span><span class="p">,</span> <span class="n">nbin</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="n">ntrial</span><span class="p">)</span>
+
+<span class="c1"># ---- PLOTTING --------</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">pdm_det_level</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;PDM det. lev.&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">pdmstat</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;PDM statistics&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+
+<span class="c1">#for c in cand_freqs_ef:</span>
+<span class="c1">#    plt.axvline(c, ls=&#39;-.&#39;, label=&#39;EF Candidate&#39;, zorder=10)</span>
+<span class="c1">#for c in cand_freqs_z:</span>
+<span class="c1">#    plt.axvline(c, ls=&#39;--&#39;, label=&#39;$Z^2_1$ Candidate&#39;, zorder=10)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">period</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Correct frequency&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">([</span><span class="n">frequencies</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">frequencies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Frequency (Hz)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;PDM Statistics&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.legend.Legend at 0x7f8680267130&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Pulsar_Phase_Dispersion_Minimization_12_1.png" src="../../_images/notebooks_Pulsar_Phase_Dispersion_Minimization_12_1.png" />
+</div>
+</div>
+<p>Let’s also calculate the significance of the deepest dip:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">min_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">pdmstat</span><span class="p">)</span>
+
+<span class="n">pval</span> <span class="o">=</span> <span class="n">phase_dispersion_probability</span><span class="p">(</span><span class="n">pdmstat</span><span class="p">[</span><span class="n">min_idx</span><span class="p">],</span> <span class="n">nsamples</span><span class="p">,</span> <span class="n">nbin</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="n">ntrial</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;The probability of the minimum at </span><span class="si">{</span><span class="n">freq</span><span class="p">[</span><span class="n">min_idx</span><span class="p">]</span><span class="si">}</span><span class="s2"> Hz is: p = </span><span class="si">{</span><span class="n">pval</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+The probability of the minimum at 0.8313536003155265 Hz is: p = 4.221416326686607e-15
+</pre></div></div>
+</div>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Phase Dispersion Minimization in Stingray</a><ul>
+<li><a class="reference internal" href="#Simulate-a-dataset">Simulate a dataset</a></li>
+<li><a class="reference internal" href="#Pulsation-search-with-Phase-Dispersion-Minimization">Pulsation search with Phase Dispersion Minimization</a></li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/Pulsar/Phase Dispersion Minimization.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

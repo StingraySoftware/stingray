@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Dealing with dead time &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=17ab1725" />
+    
+    <script src="_static/jquery.js?v=5d32c60e"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="_static/sidebar.js"></script>
+    <script type="text/javascript" src="_static/copybutton.js"></script>
+    <link rel="icon" href="_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Stingray’s dead time models" href="notebooks/Deadtime/Dead%20time%20model%20in%20Stingray.html" />
+    <link rel="prev" title="Window functions" href="notebooks/Window%20Functions/window_functions.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="genindex.html">Index</a></li>
+    <li><a title="Module Index" href="py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="notebooks/Deadtime/Dead%20time%20model%20in%20Stingray.html" title="Stingray’s dead time models">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="notebooks/Window%20Functions/window_functions.html" title="Window functions">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      
+      <li>Dealing with dead time</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="dealing-with-dead-time">
+<h1>Dealing with dead time<a class="headerlink" href="#dealing-with-dead-time" title="Link to this heading">¶</a></h1>
+<p>Stingray implements a few features to deal with instrumental dead time.
+This is particularly useful in missions with long dead time, such as NuSTAR or IXPE.
+In this tutorial, we will show the effects of dead time on X-ray observations, and explain how Stingray can help model it and, under some conditions, even correct for it.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Deadtime/Dead%20time%20model%20in%20Stingray.html">Stingray’s dead time models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Deadtime/Dead%20time%20model%20in%20Stingray.html#Non-paralyzable-dead-time">Non-paralyzable dead time</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Deadtime/Dead%20time%20model%20in%20Stingray.html#Paralyzable-dead-time">Paralyzable dead time</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Deadtime/Dead%20time%20model%20in%20Stingray.html#Periodogram---non-paralyzable">Periodogram - non-paralyzable</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Deadtime/Dead%20time%20model%20in%20Stingray.html#Reproduce-Zhang+95-power-spectrum?-(extra-check)">Reproduce Zhang+95 power spectrum? (extra check)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Deadtime/Dead%20time%20model%20in%20Stingray.html#New-dead-time-model-function">New dead time model function</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Deadtime/FAD%20correction%20in%20Stingray.html">Fourier Amplitude Difference correction in Stingray</a></li>
+</ul>
+</div>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Dealing with dead time</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="_sources/deadtime.rst.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

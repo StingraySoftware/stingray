@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Gaussian Processes Inferencing in Stingray &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="Working with large data sets" href="../../../largedata.html" />
+    <link rel="prev" title="Why using weights?" href="../../StingrayTimeseries/Working%20with%20weights%20and%20polarization.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="../../../largedata.html" title="Working with large data sets">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="../../StingrayTimeseries/Working%20with%20weights%20and%20polarization.html" title="Why using weights?">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../../timeseries.html" accesskey="U">Working with more generic time series</a> &#187;</li>
+      
+      <li>Gaussian Processes Inferencing in Stingray</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="Gaussian-Processes-Inferencing-in-Stingray">
+<h1>Gaussian Processes Inferencing in Stingray<a class="headerlink" href="#Gaussian-Processes-Inferencing-in-Stingray" title="Link to this heading">¶</a></h1>
+<section id="Gaussian-Processes-in-Astronomy">
+<h2>Gaussian Processes in Astronomy<a class="headerlink" href="#Gaussian-Processes-in-Astronomy" title="Link to this heading">¶</a></h2>
+<p>Please Note: this functionality is still under development. Testing and comments are welcome!</p>
+<p>Gaussian Processes (GPs) are a powerful class of Statistical Models, that help us model both the deterministic and stochastic part of a random process. We model the covaraince between pairs of samples (using the kernel function) and the underlying deterministic function (using the mean function) and fit or infer from the data set.</p>
+<p>GP Regression and inferencing (GPR) has become increasingly popular in the astronomical community over the last decade as it can model non-trivial random or unkown signals. Sometimes, we are interested in the stochastic behaviour itself, and we can infer its characteristics or predict its behaviour using Gaussian Processes.</p>
+<p>While we can use GP’s to produce models for various signals, we often have to identify if the particular time-series has a particular signal and we resort to Bayesian Model Comparison. We compare the two models by the Bayes factor, which is the ratio of the evidences of two comparing models. Since Evidence Calculation is a difficult problem, we will use Nested Sampling, with the Jaxns library to get the Bayes Factor.</p>
+</section>
+<hr class="docutils" />
+<section id="Sample-Lightcurve">
+<h2>Sample Lightcurve<a class="headerlink" href="#Sample-Lightcurve" title="Link to this heading">¶</a></h2>
+<p>As an example demonstrating the use of gpmodeling in Stingray, we will make a sample lightcurve based on a QPO (quasi periodic signal), and use the ratio of Evidence of the following two models to identify whether the signal contains a Quasi-Periodic Signal or not.</p>
+<p>The two models being:</p>
+<ol class="arabic simple">
+<li><p>A RN (Red-Noise) model, which has a Red noise kernel and Gaussian function for its mean.</p></li>
+<li><p>A QPO_plus_Rn (QPO + RN) model, which uses a QPO kernel and a double skew gaussian function for its mean.</p></li>
+</ol>
+<p><strong>Note:</strong> It is important to enable 64 bit precision for the Jaxns sampling to work properly.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Importing the necessary libraries</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">seaborn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sns</span>
+<span class="n">sns</span><span class="o">.</span><span class="n">set_style</span><span class="p">(</span><span class="s1">&#39;whitegrid&#39;</span><span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">tinygp</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianProcess</span><span class="p">,</span> <span class="n">kernels</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span>
+
+<span class="c1"># suppress warnings</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+
+<span class="c1"># Important to enable 64-bit precision</span>
+<span class="n">jax</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="s2">&quot;jax_enable_x64&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>For making the <strong>Toy Lightcurve</strong>, we will use a GP with a QPO_plus_RN kernel, and a Skew-Gaussian Mean function and take a sample from it. We will also add a jitter term to introduce some noise into the sample.</p>
+<p>We will need a kernel and a mean function to make the GP. We can either make our own kernels using Tinygp or we can get some useful kernels using the <code class="docutils literal notranslate"><span class="pre">gpmodeling.get_kernel</span></code> function.</p>
+<p><strong>``get_kernel``</strong> function takes the kernel type (QPO_plus_RN and RN), and the kernel parameters and returns a TinyGp kernel for it.</p>
+<p>Similarly for the mean function, we can make our own or use <code class="docutils literal notranslate"><span class="pre">gpmodeling.get_mean</span></code> function.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.modeling.gpmodeling</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_kernel</span><span class="p">,</span> <span class="n">get_mean</span>
+
+<span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">256</span><span class="p">)</span>
+
+<span class="c1"># We will take suitable parameters for a high amplitude QPO with a double skew gaussian mean</span>
+<span class="n">kernel_params</span>  <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;arn&quot;</span> <span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mf">1.5</span><span class="p">),</span>    <span class="s2">&quot;crn&quot;</span> <span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span>
+                  <span class="s2">&quot;aqpo&quot;</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.4</span><span class="p">),</span>    <span class="s2">&quot;cqpo&quot;</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>    <span class="s2">&quot;freq&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,}</span>
+<span class="n">kernel</span> <span class="o">=</span> <span class="n">get_kernel</span><span class="p">(</span><span class="n">kernel_type</span> <span class="o">=</span> <span class="s2">&quot;QPO_plus_RN&quot;</span><span class="p">,</span> <span class="n">kernel_params</span> <span class="o">=</span> <span class="n">kernel_params</span><span class="p">)</span>
+
+<span class="n">mean_params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;A&quot;</span> <span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">]),</span> <span class="s2">&quot;t0&quot;</span> <span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">]),</span>
+               <span class="s2">&quot;sig1&quot;</span> <span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">]),</span> <span class="s2">&quot;sig2&quot;</span> <span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">]),</span>  <span class="p">}</span>
+
+<span class="n">mean</span> <span class="o">=</span> <span class="n">get_mean</span><span class="p">(</span><span class="n">mean_type</span> <span class="o">=</span> <span class="s2">&quot;skew_gaussian&quot;</span><span class="p">,</span>  <span class="n">mean_params</span> <span class="o">=</span> <span class="n">mean_params</span><span class="p">)</span>
+
+<span class="n">jit</span> <span class="o">=</span> <span class="mf">1e-1</span>
+<span class="n">gp</span> <span class="o">=</span> <span class="n">GaussianProcess</span><span class="p">(</span><span class="n">kernel</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">,</span> <span class="n">X</span> <span class="o">=</span> <span class="n">times</span><span class="p">,</span> <span class="n">mean_value</span> <span class="o">=</span> <span class="n">mean</span><span class="p">(</span><span class="n">times</span><span class="p">),</span> <span class="n">diag</span> <span class="o">=</span> <span class="n">jit</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<section id="Plotting-the-Sample-Lightcurve">
+<h3>Plotting the Sample Lightcurve<a class="headerlink" href="#Plotting-the-Sample-Lightcurve" title="Link to this heading">¶</a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Sampling out a lightcurve from the GP</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">gp</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">key</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">PRNGKey</span><span class="p">(</span><span class="mi">6</span><span class="p">))</span>
+<span class="n">yerr</span> <span class="o">=</span> <span class="p">(</span><span class="n">jit</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">times</span><span class="p">)</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">14</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">counts</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">yerr</span><span class="o">=</span><span class="n">yerr</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;.k&quot;</span><span class="p">,</span> <span class="n">capsize</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;data&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">mean</span><span class="p">(</span><span class="n">times</span><span class="p">),</span> <span class="n">color</span> <span class="o">=</span> <span class="s2">&quot;orange&quot;</span> <span class="p">,</span><span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;Mean&quot;</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;Sample GP&quot;</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Time&quot;</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Counts&quot;</span><span class="p">)</span>
+
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">time</span> <span class="o">=</span> <span class="n">times</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span> <span class="o">=</span> <span class="n">times</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span> <span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">skip_checks</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/notebooks_Modeling_GP_Modeling_GP_modeling_tutorial_7_0.png" src="../../../_images/notebooks_Modeling_GP_Modeling_GP_modeling_tutorial_7_0.png" />
+</div>
+</div>
+</section>
+</section>
+<section id="Parameter-Posterior-Analysis">
+<h2>Parameter Posterior Analysis<a class="headerlink" href="#Parameter-Posterior-Analysis" title="Link to this heading">¶</a></h2>
+<p>We will now make our two differing model and then compare the evidences (log evidences $log(p(D|M)) $ ) of fitting the data to the model to check which one fits better.</p>
+<p>The main function that we will use will be:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">gpmodeling.get_gp_params</span></code>: This function gives us a list of the parameters of the model based on the kernel and mean type we select.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gpmodeling.get_prior_dict</span></code>: This function will be can be used to get a suitable generater prior function for a jaxns model. We have to give it our parameter list, and a dictionary with suitable tfpd distributions for the priors.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gpmodeling.get_log_likelihood</span></code>: This function will give us a log_likelihood function which calculates the log likelihood probabilty of the data for the given parameter <span class="math notranslate nohighlight">\(p(D|\theta, M)\)</span>. Here we will have to provide the parameters list, the kernel and mean type of the GP model, as well as the Times and counts of the lightcurve.</p></li>
+</ul>
+<hr class="docutils" />
+<section id="Model-1">
+<h3>Model 1<a class="headerlink" href="#Model-1" title="Link to this heading">¶</a></h3>
+<p>The first model which we will make will be a Red-Noise model ,we will use the get_prior and get_likelihood functions to make a suitable prior and log_likelihood function for our Inference.</p>
+<p>The model will have a Red Noise kernel</p>
+<div class="math notranslate nohighlight">
+\[k_{rn}(\tau) = a \; exp(-c\tau)\]</div>
+<p>where <span class="math notranslate nohighlight">\(\tau = |x_i - x_j|\)</span> and the mean function as a gaussian distribution.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">tensorflow_probability.substrates.jax</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tfp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.modeling.gpmodeling</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_prior</span><span class="p">,</span> <span class="n">get_log_likelihood</span><span class="p">,</span> <span class="n">get_gp_params</span>
+<span class="n">tfpd</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span>
+<span class="n">tfpb</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">bijectors</span>
+
+<span class="n">params_list</span> <span class="o">=</span> <span class="n">get_gp_params</span><span class="p">(</span><span class="n">kernel_type</span><span class="o">=</span> <span class="s2">&quot;RN&quot;</span><span class="p">,</span> <span class="n">mean_type</span> <span class="o">=</span> <span class="s2">&quot;gaussian&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;parameters list&quot;</span><span class="p">,</span> <span class="n">params_list</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+parameters list [&#39;log_arn&#39;, &#39;log_crn&#39;, &#39;log_A&#39;, &#39;t0&#39;, &#39;log_sig&#39;]
+</pre></div></div>
+</div>
+<p>We make a parameter list as jaxns requires the parameters in the prior function and log likelihood to be of the same order. Thus if one is using the standard kernel and means then parameter list comes handy, otherwise one can make our own prior and likelihood function.</p>
+</section>
+<section id="Prior-and-log-likelihood">
+<h3>Prior and log likelihood<a class="headerlink" href="#Prior-and-log-likelihood" title="Link to this heading">¶</a></h3>
+<p>We use Tensorflow_probility to make the parameter priors and put them into the prior_dictionary. The prior types and bounds can be set according to the user discretion.</p>
+<p><strong>Note</strong> : The priors can be Tfp priors or bijected priors, but we cannot use tfp.joint_distributions in our priors. To make multi-parameter priors or conditioned parameter priors, one can use the priors in <code class="docutils literal notranslate"><span class="pre">jaxns.special_priors</span></code>.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">total_time</span> <span class="o">=</span> <span class="n">times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">f</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="n">times</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span> <span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">span</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span> <span class="o">-</span> <span class="n">jnp</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span>
+
+<span class="c1"># The prior dictionary, with suitable tfpd prior distributions</span>
+<span class="n">prior_dict</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;log_A&quot;</span><span class="p">:</span> <span class="n">tfpd</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="n">low</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">0.1</span> <span class="o">*</span> <span class="n">span</span><span class="p">),</span> <span class="n">high</span><span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">span</span><span class="p">)),</span>
+    <span class="s2">&quot;t0&quot;</span><span class="p">:</span> <span class="n">tfpd</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="n">low</span> <span class="o">=</span> <span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.1</span><span class="o">*</span><span class="n">total_time</span><span class="p">,</span> <span class="n">high</span> <span class="o">=</span> <span class="n">times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mf">0.1</span><span class="o">*</span><span class="n">total_time</span><span class="p">),</span>
+    <span class="s2">&quot;log_sig&quot;</span><span class="p">:</span> <span class="n">tfpd</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="n">low</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">f</span><span class="p">),</span> <span class="n">high</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">total_time</span><span class="p">)),</span>
+    <span class="s2">&quot;log_arn&quot;</span><span class="p">:</span> <span class="n">tfpd</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="n">low</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">0.1</span> <span class="o">*</span> <span class="n">span</span><span class="p">),</span> <span class="n">high</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">span</span><span class="p">)),</span>
+    <span class="s2">&quot;log_crn&quot;</span><span class="p">:</span> <span class="n">tfpd</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="n">low</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">total_time</span><span class="p">),</span> <span class="n">high</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">f</span><span class="p">)),</span>
+<span class="p">}</span>
+
+<span class="n">params_list2</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;log_arn&quot;</span><span class="p">,</span> <span class="s2">&quot;log_crn&quot;</span><span class="p">,</span> <span class="s2">&quot;log_A&quot;</span><span class="p">,</span> <span class="s2">&quot;t0&quot;</span><span class="p">,</span> <span class="s2">&quot;log_sig&quot;</span><span class="p">]</span>
+
+<span class="n">prior_model</span> <span class="o">=</span> <span class="n">get_prior</span><span class="p">(</span><span class="n">params_list2</span><span class="p">,</span> <span class="n">prior_dict</span><span class="p">)</span>
+
+<span class="n">log_likelihood_model</span> <span class="o">=</span> <span class="n">get_log_likelihood</span><span class="p">(</span><span class="n">params_list2</span><span class="p">,</span> <span class="n">kernel_type</span><span class="o">=</span> <span class="s2">&quot;RN&quot;</span><span class="p">,</span> <span class="n">mean_type</span> <span class="o">=</span> <span class="s2">&quot;gaussian&quot;</span><span class="p">,</span> <span class="n">times</span> <span class="o">=</span> <span class="n">times</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="n">counts</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Sampling-Model-1">
+<h3>Sampling Model 1<a class="headerlink" href="#Sampling-Model-1" title="Link to this heading">¶</a></h3>
+<p>We can initialise the GPResult class using a stingray lightcurve, and then perform a Nested Sampling for the given prior_model and likelihood_model.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray.modeling.gpmodeling</span><span class="w"> </span><span class="kn">import</span> <span class="n">GPResult</span>
+
+<span class="n">gpresult</span> <span class="o">=</span> <span class="n">GPResult</span><span class="p">(</span><span class="n">lc</span> <span class="o">=</span> <span class="n">lc</span><span class="p">)</span>
+<span class="n">gpresult</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">prior_model</span> <span class="o">=</span> <span class="n">prior_model</span><span class="p">,</span> <span class="n">likelihood_model</span> <span class="o">=</span> <span class="n">log_likelihood_model</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+INFO[2023-10-19 22:11:44,231]: Sanity check...
+INFO[2023-10-19 22:11:44,432]: Sanity check passed
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Simulation Complete
+</pre></div></div>
+</div>
+<p>We can check the Evidence for the data given the model <span class="math notranslate nohighlight">\(Z = p(D|M_1)\)</span>, as well see the sampling outcomes for the used parameters.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;log Evidence: &quot;</span><span class="p">,</span> <span class="n">gpresult</span><span class="o">.</span><span class="n">get_evidence</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+log Evidence:  -252.0393784723225
+</pre></div></div>
+</div>
+<p>Using the plotting functionality of the GPResult class, we can visualise the posterior distributions of our parameters, look at sampling run summaries and diagnostics.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plot</span> <span class="o">=</span> <span class="n">gpresult</span><span class="o">.</span><span class="n">posterior_plot</span><span class="p">(</span><span class="s2">&quot;log_A&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/notebooks_Modeling_GP_Modeling_GP_modeling_tutorial_19_0.png" src="../../../_images/notebooks_Modeling_GP_Modeling_GP_modeling_tutorial_19_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">gpresult</span><span class="o">.</span><span class="n">print_summary</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+--------
+Termination Conditions:
+Small remaining evidence
+--------
+# likelihood evals: 309792
+# samples: 7500
+# slices: 75000.0
+# slices / acceptance: 15.0
+# likelihood evals / sample: 41.3
+# likelihood evals / slice: 3.9
+--------
+logZ=-252.04 +- 0.12
+H=250.0
+ESS=1590
+--------
+log_A: mean +- std.dev. | 10%ile / 50%ile / 90%ile | MAP est. | max(L) est.
+log_A: 0.99 +- 0.15 | 0.82 / 0.99 / 1.16 | 1.13 | 1.13
+--------
+log_arn: mean +- std.dev. | 10%ile / 50%ile / 90%ile | MAP est. | max(L) est.
+log_arn: 0.39 +- 0.32 | 0.06 / 0.33 / 0.75 | 0.14 | 0.14
+--------
+log_crn: mean +- std.dev. | 10%ile / 50%ile / 90%ile | MAP est. | max(L) est.
+log_crn: 3.69 +- 0.34 | 3.29 / 3.75 / 4.05 | 3.95 | 3.95
+--------
+log_sig: mean +- std.dev. | 10%ile / 50%ile / 90%ile | MAP est. | max(L) est.
+log_sig: -0.15 +- 0.54 | -0.81 / -0.11 / 0.51 | -0.84 | -0.84
+--------
+t0: mean +- std.dev. | 10%ile / 50%ile / 90%ile | MAP est. | max(L) est.
+t0: 0.63 +- 0.27 | 0.22 / 0.65 / 0.97 | 0.63 | 0.63
+--------
+</pre></div></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="Model-2">
+<h3>Model 2<a class="headerlink" href="#Model-2" title="Link to this heading">¶</a></h3>
+<p>For the second model, we will make a QPO_plus_RN kernel</p>
+<div class="math notranslate nohighlight">
+\[k_{qpo+rn}(\tau) = a_{qpo} \; exp(-c_{qpo} \tau) \; cos(2\pi f\tau) + a_{rn} \; exp(-c_{rn} \tau)\]</div>
+<p>We will also use a gaussian mean function with two modes as the mean function.</p>
+<p>For this model, we will be making the prior and log_likelihood function on our own instead of using the <code class="docutils literal notranslate"><span class="pre">get_prior</span></code> and <code class="docutils literal notranslate"><span class="pre">get_likelihood</span></code> functions. This will give us more flexibility.</p>
+<p>The prior function must be a jaxns compatible prior function. It is quite similar to making the prior_dictionary, just that here, we will wrap each parameters (tfp) prior into the <code class="docutils literal notranslate"><span class="pre">jaxns.prior</span></code> function and use yield to make it a generator function. Then we will return all the parameters in a specific order.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Prior Function</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxns</span><span class="w"> </span><span class="kn">import</span> <span class="n">Prior</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxns.special_priors</span><span class="w"> </span><span class="kn">import</span> <span class="n">ForcedIdentifiability</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxns.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">float_type</span>
+
+<span class="n">params_list2</span> <span class="o">=</span> <span class="n">get_gp_params</span><span class="p">(</span><span class="n">kernel_type</span><span class="o">=</span> <span class="s2">&quot;QPO_plus_RN&quot;</span><span class="p">,</span> <span class="n">mean_type</span> <span class="o">=</span> <span class="s2">&quot;gaussian&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">params_list2</span><span class="p">)</span>
+
+<span class="n">total_time</span> <span class="o">=</span> <span class="n">times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">f</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="n">times</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span> <span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">span</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span> <span class="o">-</span> <span class="n">jnp</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span>
+
+<span class="c1"># Here, we have made mutiple mean function with 2 gaussians.</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">prior_model2</span><span class="p">():</span>
+    <span class="n">log_arn</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">Prior</span><span class="p">(</span><span class="n">tfpd</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="n">low</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">0.1</span> <span class="o">*</span> <span class="n">span</span><span class="p">),</span> <span class="n">high</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">span</span><span class="p">)),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;log_arn&#39;</span><span class="p">)</span>
+    <span class="n">log_crn</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">Prior</span><span class="p">(</span><span class="n">tfpd</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="n">low</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">total_time</span><span class="p">),</span> <span class="n">high</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">f</span><span class="p">)),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;log_crn&#39;</span><span class="p">)</span>
+    <span class="n">log_aqpo</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">Prior</span><span class="p">(</span><span class="n">tfpd</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="n">low</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">0.1</span> <span class="o">*</span> <span class="n">span</span><span class="p">),</span> <span class="n">high</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">span</span><span class="p">)),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;log_aqpo&#39;</span><span class="p">)</span>
+    <span class="n">log_cqpo</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">Prior</span><span class="p">(</span><span class="n">tfpd</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="n">low</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="mi">10</span><span class="o">/</span><span class="n">total_time</span><span class="p">),</span> <span class="n">high</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">f</span><span class="p">)),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;log_cqpo&#39;</span><span class="p">)</span>
+    <span class="n">log_freq</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">Prior</span><span class="p">(</span><span class="n">tfpd</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="n">low</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="p">,</span> <span class="n">high</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">f</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span> <span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;log_freq&#39;</span><span class="p">)</span>
+
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">log_A</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">Prior</span><span class="p">(</span><span class="n">tfpd</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="n">low</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">0.1</span> <span class="o">*</span> <span class="n">span</span><span class="p">)</span><span class="o">*</span><span class="n">jnp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">),</span> <span class="n">high</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">span</span><span class="p">)</span><span class="o">*</span><span class="n">jnp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">)),</span>
+                            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;log_A&#39;</span><span class="p">)</span>
+
+    <span class="c1"># This is special conditional beta function for the peak times of gaussians which prevents degeneracies</span>
+    <span class="n">t0</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">scale_bij</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">bijectors</span><span class="o">.</span><span class="n">Scale</span><span class="p">(</span><span class="n">scale</span> <span class="o">=</span> <span class="n">times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">shift_bij</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">bijectors</span><span class="o">.</span><span class="n">Shift</span><span class="p">(</span><span class="n">shift</span><span class="o">=</span> <span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="n">underlying_beta</span> <span class="o">=</span> <span class="n">tfpd</span><span class="o">.</span><span class="n">Beta</span><span class="p">(</span>
+            <span class="n">concentration1</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span> <span class="n">float_type</span><span class="p">),</span>
+            <span class="n">concentration0</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="n">i</span><span class="p">,</span> <span class="n">float_type</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">Prior</span><span class="p">(</span><span class="n">shift_bij</span><span class="p">(</span><span class="n">scale_bij</span><span class="p">(</span><span class="n">underlying_beta</span><span class="p">)),</span> <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;t</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># Updating the shift and scale here</span>
+        <span class="n">scale_bij</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">bijectors</span><span class="o">.</span><span class="n">Scale</span><span class="p">(</span><span class="n">scale</span><span class="o">=</span> <span class="n">times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">t</span><span class="p">)</span>
+        <span class="n">shift_bij</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">bijectors</span><span class="o">.</span><span class="n">Shift</span><span class="p">(</span><span class="n">shift</span><span class="o">=</span><span class="n">t</span><span class="p">)</span>
+        <span class="n">t0</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+    <span class="n">t0</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">t0</span><span class="p">)</span>
+
+    <span class="n">log_sig</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">Prior</span><span class="p">(</span><span class="n">tfpd</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="n">low</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">f</span><span class="p">)</span> <span class="o">*</span><span class="n">jnp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">),</span> <span class="n">high</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">total_time</span><span class="p">)</span> <span class="o">*</span><span class="n">jnp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">)),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;log_sig&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">log_arn</span><span class="p">,</span> <span class="n">log_crn</span><span class="p">,</span> <span class="n">log_aqpo</span><span class="p">,</span> <span class="n">log_cqpo</span><span class="p">,</span> <span class="n">log_freq</span><span class="p">,</span> <span class="n">log_A</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">log_sig</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[&#39;log_arn&#39;, &#39;log_crn&#39;, &#39;log_aqpo&#39;, &#39;log_cqpo&#39;, &#39;log_freq&#39;, &#39;log_A&#39;, &#39;t0&#39;, &#39;log_sig&#39;]
+</pre></div></div>
+</div>
+<p>For the log_likelihood function, we have to take the paremeters (same order), and return $log(p(D|M)) $ the log probability of fitting the data to the model. This can be done by making the suitable Gaussian process and returning the <code class="docutils literal notranslate"><span class="pre">gp.log_probability(lightcurve_counts)</span></code></p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">log_likelihood_model2</span><span class="p">(</span> <span class="n">log_arn</span><span class="p">,</span> <span class="n">log_crn</span><span class="p">,</span> <span class="n">log_aqpo</span><span class="p">,</span> <span class="n">log_cqpo</span><span class="p">,</span> <span class="n">log_freq</span><span class="p">,</span> <span class="n">log_A</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">log_sig</span> <span class="p">):</span>
+
+    <span class="n">kernel_params</span> <span class="o">=</span> <span class="p">{</span> <span class="s2">&quot;arn&quot;</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_arn</span><span class="p">),</span> <span class="s2">&quot;crn&quot;</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_crn</span><span class="p">),</span> <span class="s2">&quot;aqpo&quot;</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_aqpo</span><span class="p">),</span>
+                    <span class="s2">&quot;cqpo&quot;</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_cqpo</span><span class="p">),</span> <span class="s2">&quot;freq&quot;</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_freq</span><span class="p">)}</span>
+    <span class="n">mean_params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;A&quot;</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_A</span><span class="p">),</span> <span class="s2">&quot;t0&quot;</span><span class="p">:</span> <span class="n">t0</span><span class="p">,</span> <span class="s2">&quot;sig&quot;</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_sig</span><span class="p">)}</span>
+
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">get_kernel</span><span class="p">(</span><span class="n">kernel_type</span><span class="o">=</span><span class="s2">&quot;QPO_plus_RN&quot;</span><span class="p">,</span> <span class="n">kernel_params</span><span class="o">=</span><span class="n">kernel_params</span><span class="p">)</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">get_mean</span><span class="p">(</span><span class="n">mean_type</span><span class="o">=</span><span class="s2">&quot;gaussian&quot;</span><span class="p">,</span> <span class="n">mean_params</span><span class="o">=</span><span class="n">mean_params</span><span class="p">)</span>
+    <span class="n">gp</span> <span class="o">=</span> <span class="n">GaussianProcess</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">mean_value</span><span class="o">=</span><span class="n">mean</span><span class="p">(</span><span class="n">times</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">gp</span><span class="o">.</span><span class="n">log_probability</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Sampling-Model-2">
+<h3>Sampling Model 2<a class="headerlink" href="#Sampling-Model-2" title="Link to this heading">¶</a></h3>
+<p>Similar to the previous case, we will make a GPresult object by initialising with the lightcurve. Then we will sample the posterior using the prior and log_likelihood model.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">gpresult2</span> <span class="o">=</span> <span class="n">GPResult</span><span class="p">(</span><span class="n">lc</span> <span class="o">=</span> <span class="n">lc</span><span class="p">)</span>
+<span class="n">gpresult2</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">prior_model</span> <span class="o">=</span> <span class="n">prior_model2</span><span class="p">,</span> <span class="n">likelihood_model</span> <span class="o">=</span> <span class="n">log_likelihood_model2</span><span class="p">,</span> <span class="n">max_samples</span> <span class="o">=</span> <span class="mf">2e4</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+INFO[2023-10-19 22:13:04,424]: Sanity check...
+INFO[2023-10-19 22:13:04,601]: Sanity check passed
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Simulation Complete
+</pre></div></div>
+</div>
+<p>This time we get a lower log evidence than the previous model.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;log Evidence: &quot;</span><span class="p">,</span> <span class="n">gpresult2</span><span class="o">.</span><span class="n">get_evidence</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+log Evidence:  -241.34533744186058
+</pre></div></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="Evidence-Comparison">
+<h2>Evidence Comparison<a class="headerlink" href="#Evidence-Comparison" title="Link to this heading">¶</a></h2>
+<p>On comapring the evidences of the two model we get the Bayes Factor.</p>
+<p>For <span class="math notranslate nohighlight">\(M_1\)</span> being QPO_plus_RN model and <span class="math notranslate nohighlight">\(M_2\)</span> being the plain RN model.</p>
+<div class="math notranslate nohighlight">
+\[ln(BF) = ln(Z_1) - ln(Z_2) = -245.70 - (-251.77) = 6.06\]</div>
+<p>As BF is greater than 5.0, this gives us a strong indication that the time series has a Quasi Oscillatory behaviour.</p>
+<p>Also, as we can see in the weighted posterior plot for the frequency, We had used a frequency of 20 Hz for our sample and this has been captured very well by the Nested Sampling Inference.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plot</span> <span class="o">=</span> <span class="n">gpresult2</span><span class="o">.</span><span class="n">weighted_posterior_plot</span><span class="p">(</span><span class="s2">&quot;log_freq&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Mean of freq:&quot;</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mf">2.963</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Mean of freq: 19.35595259854821
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/notebooks_Modeling_GP_Modeling_GP_modeling_tutorial_30_1.png" src="../../../_images/notebooks_Modeling_GP_Modeling_GP_modeling_tutorial_30_1.png" />
+</div>
+</div>
+<p>For more information on the posterior, we can see a comparison plot between two parameters. (Here the peak times of the gaussian means, which we had conditioned as <span class="math notranslate nohighlight">\(t_1&gt;t_0\)</span>)</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Corner Plot between the two peak times</span>
+<span class="n">plot</span> <span class="o">=</span> <span class="n">gpresult2</span><span class="o">.</span><span class="n">comparison_plot</span><span class="p">(</span><span class="s2">&quot;t0&quot;</span><span class="p">,</span> <span class="s2">&quot;t1&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/notebooks_Modeling_GP_Modeling_GP_modeling_tutorial_32_0.png" src="../../../_images/notebooks_Modeling_GP_Modeling_GP_modeling_tutorial_32_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">gpresult2</span><span class="o">.</span><span class="n">print_summary</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+--------
+Termination Conditions:
+Small remaining evidence
+--------
+# likelihood evals: 1317371
+# samples: 14500
+# slices: 396000.0
+# slices / acceptance: 33.0
+# likelihood evals / sample: 90.9
+# likelihood evals / slice: 3.3
+--------
+logZ=-241.35 +- 0.19
+H=240.0
+ESS=2411
+--------
+log_A[#]: mean +- std.dev. | 10%ile / 50%ile / 90%ile | MAP est. | max(L) est.
+log_A[0]: 0.81 +- 0.25 | 0.57 / 0.81 / 1.12 | 0.87 | 0.87
+log_A[1]: 0.89 +- 0.25 | 0.62 / 0.89 / 1.19 | 0.99 | 0.99
+--------
+log_aqpo: mean +- std.dev. | 10%ile / 50%ile / 90%ile | MAP est. | max(L) est.
+log_aqpo: 0.23 +- 0.47 | -0.26 / 0.11 / 0.86 | 0.19 | 0.19
+--------
+log_arn: mean +- std.dev. | 10%ile / 50%ile / 90%ile | MAP est. | max(L) est.
+log_arn: -0.23 +- 0.11 | -0.33 / -0.27 / -0.1 | -0.33 | -0.33
+--------
+log_cqpo: mean +- std.dev. | 10%ile / 50%ile / 90%ile | MAP est. | max(L) est.
+log_cqpo: -0.69 +- 0.76 | -1.75 / -0.71 / 0.32 | -0.48 | -0.48
+--------
+log_crn: mean +- std.dev. | 10%ile / 50%ile / 90%ile | MAP est. | max(L) est.
+log_crn: 4.21 +- 0.17 | 4.0 / 4.23 / 4.41 | 4.34 | 4.34
+--------
+log_freq: mean +- std.dev. | 10%ile / 50%ile / 90%ile | MAP est. | max(L) est.
+log_freq: 2.967 +- 0.024 | 2.935 / 2.968 / 2.998 | 2.954 | 2.954
+--------
+log_sig[#]: mean +- std.dev. | 10%ile / 50%ile / 90%ile | MAP est. | max(L) est.
+log_sig[0]: -1.1 +- 1.5 | -3.2 / -0.4 / 0.5 | -0.4 | -0.4
+log_sig[1]: -1.8 +- 1.6 | -3.3 / -2.7 / 0.4 | -3.3 | -3.3
+--------
+t0: mean +- std.dev. | 10%ile / 50%ile / 90%ile | MAP est. | max(L) est.
+t0: 0.56 +- 0.16 | 0.33 / 0.6 / 0.7 | 0.58 | 0.58
+--------
+t1: mean +- std.dev. | 10%ile / 50%ile / 90%ile | MAP est. | max(L) est.
+t1: 0.751 +- 0.097 | 0.678 / 0.702 / 0.928 | 0.691 | 0.691
+--------
+</pre></div></div>
+</div>
+</section>
+<section id="Credits:">
+<h2>Credits:<a class="headerlink" href="#Credits:" title="Link to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p><a class="reference external" href="https://arxiv.org/pdf/2209.08940">Gaussian Process regression for astronomical time-series</a>, Suzanne Aigrain, Daniel Foreman-Mackey</p></li>
+<li><p><a class="reference external" href="https://ned.ipac.caltech.edu/level5/Sept13/Trotta/Trotta4.html">Bayesian Model Comparison</a>, Roberto Trotta</p></li>
+<li><p><a class="reference external" href="https://arxiv.org/abs/2205.12716">Searching for quasi-periodic oscillations in astrophysical transients using Gaussian processes</a>, Moritz Hubner et al.</p></li>
+</ol>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Gaussian Processes Inferencing in Stingray</a><ul>
+<li><a class="reference internal" href="#Gaussian-Processes-in-Astronomy">Gaussian Processes in Astronomy</a></li>
+<li><a class="reference internal" href="#Sample-Lightcurve">Sample Lightcurve</a><ul>
+<li><a class="reference internal" href="#Plotting-the-Sample-Lightcurve">Plotting the Sample Lightcurve</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Parameter-Posterior-Analysis">Parameter Posterior Analysis</a><ul>
+<li><a class="reference internal" href="#Model-1">Model 1</a></li>
+<li><a class="reference internal" href="#Prior-and-log-likelihood">Prior and log likelihood</a></li>
+<li><a class="reference internal" href="#Sampling-Model-1">Sampling Model 1</a></li>
+<li><a class="reference internal" href="#Model-2">Model 2</a></li>
+<li><a class="reference internal" href="#Sampling-Model-2">Sampling Model 2</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Evidence-Comparison">Evidence Comparison</a></li>
+<li><a class="reference internal" href="#Credits:">Credits:</a></li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../../_sources/notebooks/Modeling/GP_Modeling/GP_modeling_tutorial.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

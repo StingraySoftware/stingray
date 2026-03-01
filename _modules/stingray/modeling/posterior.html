@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>stingray.modeling.posterior &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script type="text/javascript" src="../../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for stingray.modeling.posterior</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">abc</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span>
+
+<span class="n">np</span><span class="o">.</span><span class="n">seterr</span><span class="p">(</span><span class="s2">&quot;warn&quot;</span><span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.special</span><span class="w"> </span><span class="kn">import</span> <span class="n">gamma</span> <span class="k">as</span> <span class="n">scipy_gamma</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.special</span><span class="w"> </span><span class="kn">import</span> <span class="n">gammaln</span> <span class="k">as</span> <span class="n">scipy_gammaln</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">astropy.modeling.fitting</span><span class="w"> </span><span class="kn">import</span> <span class="n">fitter_to_model_params</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">astropy.modeling.fitting</span><span class="w"> </span><span class="kn">import</span> <span class="n">_fitter_to_model_params</span> <span class="k">as</span> <span class="n">fitter_to_model_params</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.modeling</span><span class="w"> </span><span class="kn">import</span> <span class="n">models</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span><span class="p">,</span> <span class="n">Powerspectrum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">assign_if_not_finite</span>
+
+
+<span class="c1"># TODO: Add checks and balances to code</span>
+
+<span class="c1"># from stingray.modeling.parametricmodels import logmin</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;set_logprior&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Posterior&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PSDPosterior&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;LogLikelihood&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PoissonLogLikelihood&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PSDLogLikelihood&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;GaussianLogLikelihood&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;LaplaceLogLikelihood&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PoissonPosterior&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;GaussianPosterior&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;LaplacePosterior&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PriorUndefinedError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;LikelihoodUndefinedError&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">logmin</span> <span class="o">=</span> <span class="o">-</span><span class="mf">10000000000000000.0</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PriorUndefinedError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">LikelihoodUndefinedError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">IncorrectParameterError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<div class="viewcode-block" id="set_logprior">
+<a class="viewcode-back" href="../../../api.html#stingray.modeling.set_logprior">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">set_logprior</span><span class="p">(</span><span class="n">lpost</span><span class="p">,</span> <span class="n">priors</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function constructs the ``logprior`` method required to successfully</span>
+<span class="sd">    use a :class:`Posterior` object.</span>
+
+<span class="sd">    All instances of class :class:`Posterior` and its subclasses require to implement a</span>
+<span class="sd">    ``logprior`` methods. However, priors are strongly problem-dependent and</span>
+<span class="sd">    therefore usually user-defined.</span>
+
+<span class="sd">    This function allows for setting the ``logprior`` method on any instance</span>
+<span class="sd">    of class :class:`Posterior` efficiently by allowing the user to pass a</span>
+<span class="sd">    dictionary of priors and an instance of class :class:`Posterior`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    lpost : :class:`Posterior` object</span>
+<span class="sd">        An instance of class :class:`Posterior` or any of its subclasses</span>
+
+<span class="sd">    priors : dict</span>
+<span class="sd">        A dictionary containing the prior definitions. Keys are parameter</span>
+<span class="sd">        names as defined by the ``astropy.models.FittableModel`` instance supplied</span>
+<span class="sd">        to the ``model`` parameter in :class:`Posterior`. Items are functions</span>
+<span class="sd">        that take a parameter as input and return the log-prior probability</span>
+<span class="sd">        of that parameter.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">        logprior : function</span>
+<span class="sd">            The function definition for the prior</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Make a light curve and power spectrum</span>
+
+<span class="sd">    &gt;&gt;&gt; photon_arrivals = np.sort(np.random.uniform(0,1000, size=10000))</span>
+<span class="sd">    &gt;&gt;&gt; lc = Lightcurve.make_lightcurve(photon_arrivals, dt=1.0)</span>
+<span class="sd">    &gt;&gt;&gt; ps = Powerspectrum(lc, norm=&quot;frac&quot;)</span>
+
+<span class="sd">    Define the model</span>
+
+<span class="sd">    &gt;&gt;&gt; pl = models.PowerLaw1D()</span>
+<span class="sd">    &gt;&gt;&gt; pl.x_0.fixed = True</span>
+
+<span class="sd">    Instantiate the posterior:</span>
+
+<span class="sd">    &gt;&gt;&gt; lpost = PSDPosterior(ps.freq, ps.power, pl, m=ps.m)</span>
+
+<span class="sd">    Define the priors:</span>
+
+<span class="sd">    &gt;&gt;&gt; p_alpha = lambda alpha: ((-1. &lt;= alpha) &amp; (alpha &lt;= 5.))</span>
+<span class="sd">    &gt;&gt;&gt; p_amplitude = lambda amplitude: ((-10 &lt;= np.log(amplitude)) &amp;</span>
+<span class="sd">    ...                                 ((np.log(amplitude) &lt;= 10.0)))</span>
+<span class="sd">    &gt;&gt;&gt; priors = {&quot;alpha&quot;:p_alpha, &quot;amplitude&quot;:p_amplitude}</span>
+
+<span class="sd">    Set the logprior method in the lpost object:</span>
+
+<span class="sd">    &gt;&gt;&gt; lpost.logprior = set_logprior(lpost, priors)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># get the number of free parameters in the model</span>
+    <span class="c1"># free_params = [p for p in lpost.model.param_names if not</span>
+    <span class="c1">#                getattr(lpost.model, p).fixed]</span>
+    <span class="n">free_params</span> <span class="o">=</span> <span class="p">[</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">lpost</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fixed</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">l</span><span class="p">]</span>
+
+    <span class="c1"># define the logprior</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">logprior</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">neg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The logarithm of the prior distribution for the</span>
+<span class="sd">        model defined in self.model.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        t0 : {list | numpy.ndarray}</span>
+<span class="sd">            The list with parameters for the model</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        logp : float</span>
+<span class="sd">            The logarithm of the prior distribution for the model and</span>
+<span class="sd">            parameters given.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">t0</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">free_params</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">IncorrectParameterError</span><span class="p">(</span>
+                <span class="s2">&quot;The number of parameters passed into &quot;</span>
+                <span class="s2">&quot;the prior does not match the number &quot;</span>
+                <span class="s2">&quot;of parameters in the model.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">logp</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># initialize log-prior</span>
+        <span class="n">ii</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># counter for the variable parameter</span>
+
+        <span class="c1"># loop through all parameter names, but only compute</span>
+        <span class="c1"># prior for those that are not fixed</span>
+        <span class="c1"># Note: need to do it this way to preserve order of parameters</span>
+        <span class="c1"># correctly!</span>
+        <span class="k">for</span> <span class="n">pname</span> <span class="ow">in</span> <span class="n">lpost</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">param_names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">lpost</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fixed</span><span class="p">[</span><span class="n">pname</span><span class="p">]:</span>
+                <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">(</span><span class="n">record</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">out</span><span class="p">:</span>
+                    <span class="n">logp</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">priors</span><span class="p">[</span><span class="n">pname</span><span class="p">](</span><span class="n">t0</span><span class="p">[</span><span class="n">ii</span><span class="p">]))</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">out</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="p">,</span> <span class="ne">RuntimeWarning</span><span class="p">):</span>
+                            <span class="n">logp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+                <span class="n">ii</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="n">logp</span> <span class="o">=</span> <span class="n">assign_if_not_finite</span><span class="p">(</span><span class="n">logp</span><span class="p">,</span> <span class="n">logmin</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">neg</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="n">logp</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">logp</span>
+
+    <span class="k">return</span> <span class="n">logprior</span></div>
+
+
+
+<div class="viewcode-block" id="LogLikelihood">
+<a class="viewcode-back" href="../../../api.html#stingray.modeling.LogLikelihood">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LogLikelihood</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">metaclass</span><span class="o">=</span><span class="n">abc</span><span class="o">.</span><span class="n">ABCMeta</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    Abstract Base Class defining the structure of a :class:`LogLikelihood` object.</span>
+<span class="sd">    This class cannot be called itself, since each statistical distribution</span>
+<span class="sd">    has its own definition for the likelihood, which should occur in subclasses.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : iterable</span>
+<span class="sd">        x-coordinate of the data. Could be multi-dimensional.</span>
+
+<span class="sd">    y : iterable</span>
+<span class="sd">        y-coordinate of the data. Could be multi-dimensional.</span>
+
+<span class="sd">    model : an ``astropy.modeling.FittableModel`` instance</span>
+<span class="sd">        Your model</span>
+
+<span class="sd">    kwargs :</span>
+<span class="sd">        keyword arguments specific to the individual sub-classes. For</span>
+<span class="sd">        details, see the respective docstrings for each subclass</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">y</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+
+<div class="viewcode-block" id="LogLikelihood.evaluate">
+<a class="viewcode-back" href="../../../api.html#stingray.modeling.LogLikelihood.evaluate">[docs]</a>
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This is where you define your log-likelihood. Do this, but do it in a subclass!</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">neg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">neg</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="GaussianLogLikelihood">
+<a class="viewcode-back" href="../../../api.html#stingray.modeling.GaussianLogLikelihood">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GaussianLogLikelihood</span><span class="p">(</span><span class="n">LogLikelihood</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Likelihood for data with Gaussian uncertainties.</span>
+<span class="sd">    Astronomers also call this likelihood *Chi-Squared*, but be aware</span>
+<span class="sd">    that this has *nothing* to do with the likelihood based on the</span>
+<span class="sd">    Chi-square distribution, which is also defined as in of</span>
+<span class="sd">    :class:`PSDLogLikelihood` in this module!</span>
+
+<span class="sd">    Use this class here whenever your data has Gaussian uncertainties.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : iterable</span>
+<span class="sd">        x-coordinate of the data</span>
+
+<span class="sd">    y : iterable</span>
+<span class="sd">        y-coordinte of the data</span>
+
+<span class="sd">    yerr : iterable</span>
+<span class="sd">        the uncertainty on the data, as standard deviation</span>
+
+<span class="sd">    model : an ``astropy.modeling.FittableModel`` instance</span>
+<span class="sd">        The model to use in the likelihood.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : iterable</span>
+<span class="sd">        x-coordinate of the data</span>
+
+<span class="sd">    y : iterable</span>
+<span class="sd">        y-coordinte of the data</span>
+
+<span class="sd">    yerr : iterable</span>
+<span class="sd">        the uncertainty on the data, as standard deviation</span>
+
+<span class="sd">    model : an Astropy Model instance</span>
+<span class="sd">        The model to use in the likelihood.</span>
+
+<span class="sd">    npar : int</span>
+<span class="sd">        The number of free parameters in the model</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">yerr</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">y</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">yerr</span> <span class="o">=</span> <span class="n">yerr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">npar</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">pname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">param_names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fixed</span><span class="p">[</span><span class="n">pname</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">npar</span> <span class="o">+=</span> <span class="mi">1</span>
+
+<div class="viewcode-block" id="GaussianLogLikelihood.evaluate">
+<a class="viewcode-back" href="../../../api.html#stingray.modeling.GaussianLogLikelihood.evaluate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pars</span><span class="p">,</span> <span class="n">neg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate the Gaussian log-likelihood for a given set of parameters.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        pars : numpy.ndarray</span>
+<span class="sd">            An array of parameters at which to evaluate the model</span>
+<span class="sd">            and subsequently the log-likelihood. Note that the</span>
+<span class="sd">            length of this array must match the free parameters in</span>
+<span class="sd">            ``model``, i.e. ``npar``</span>
+
+<span class="sd">        neg : bool, optional, default ``False``</span>
+<span class="sd">            If ``True``, return the *negative* log-likelihood, i.e.</span>
+<span class="sd">            ``-loglike``, rather than ``loglike``. This is useful e.g.</span>
+<span class="sd">            for optimization routines, which generally minimize</span>
+<span class="sd">            functions.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        loglike : float</span>
+<span class="sd">            The log(likelihood) value for the data and model.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">pars</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">npar</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">IncorrectParameterError</span><span class="p">(</span><span class="s2">&quot;Input parameters must&quot;</span> <span class="o">+</span> <span class="s2">&quot; match model parameters!&quot;</span><span class="p">)</span>
+
+        <span class="n">fitter_to_model_params</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">pars</span><span class="p">)</span>
+
+        <span class="n">mean_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="n">loglike</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+            <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+            <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">yerr</span><span class="p">)</span>
+            <span class="o">-</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">-</span> <span class="n">mean_model</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">yerr</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">loglike</span> <span class="o">=</span> <span class="n">assign_if_not_finite</span><span class="p">(</span><span class="n">loglike</span><span class="p">,</span> <span class="n">logmin</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">neg</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="n">loglike</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">loglike</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="PoissonLogLikelihood">
+<a class="viewcode-back" href="../../../api.html#stingray.modeling.PoissonLogLikelihood">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PoissonLogLikelihood</span><span class="p">(</span><span class="n">LogLikelihood</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Likelihood for data with uncertainties following a Poisson distribution.</span>
+<span class="sd">    This is useful e.g. for (binned) photon count data.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : iterable</span>
+<span class="sd">        x-coordinate of the data</span>
+
+<span class="sd">    y : iterable</span>
+<span class="sd">        y-coordinte of the data</span>
+
+<span class="sd">    model : an ``astropy.modeling.FittableModel`` instance</span>
+<span class="sd">        The model to use in the likelihood.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : iterable</span>
+<span class="sd">        x-coordinate of the data</span>
+
+<span class="sd">    y : iterable</span>
+<span class="sd">        y-coordinte of the data</span>
+
+<span class="sd">    yerr : iterable</span>
+<span class="sd">        the uncertainty on the data, as standard deviation</span>
+
+<span class="sd">    model : an ``astropy.modeling.FittableModel`` instance</span>
+<span class="sd">        The model to use in the likelihood.</span>
+
+<span class="sd">    npar : int</span>
+<span class="sd">        The number of free parameters in the model</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">y</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">npar</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">pname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">param_names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fixed</span><span class="p">[</span><span class="n">pname</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">npar</span> <span class="o">+=</span> <span class="mi">1</span>
+
+<div class="viewcode-block" id="PoissonLogLikelihood.evaluate">
+<a class="viewcode-back" href="../../../api.html#stingray.modeling.PoissonLogLikelihood.evaluate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pars</span><span class="p">,</span> <span class="n">neg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate the log-likelihood for a given set of parameters.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        pars : numpy.ndarray</span>
+<span class="sd">            An array of parameters at which to evaluate the model</span>
+<span class="sd">            and subsequently the log-likelihood. Note that the</span>
+<span class="sd">            length of this array must match the free parameters in</span>
+<span class="sd">            ``model``, i.e. ``npar``</span>
+
+<span class="sd">        neg : bool, optional, default ``False``</span>
+<span class="sd">            If ``True``, return the *negative* log-likelihood, i.e.</span>
+<span class="sd">            ``-loglike``, rather than ``loglike``. This is useful e.g.</span>
+<span class="sd">            for optimization routines, which generally minimize</span>
+<span class="sd">            functions.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        loglike : float</span>
+<span class="sd">            The log(likelihood) value for the data and model.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">pars</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">npar</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">IncorrectParameterError</span><span class="p">(</span><span class="s2">&quot;Input parameters must&quot;</span> <span class="o">+</span> <span class="s2">&quot; match model parameters!&quot;</span><span class="p">)</span>
+
+        <span class="n">fitter_to_model_params</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">pars</span><span class="p">)</span>
+
+        <span class="n">mean_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="n">loglike</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="n">mean_model</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">mean_model</span><span class="p">)</span> <span class="o">-</span> <span class="n">scipy_gammaln</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">))</span>
+
+        <span class="n">loglike</span> <span class="o">=</span> <span class="n">assign_if_not_finite</span><span class="p">(</span><span class="n">loglike</span><span class="p">,</span> <span class="n">logmin</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">neg</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="n">loglike</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">loglike</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="PSDLogLikelihood">
+<a class="viewcode-back" href="../../../api.html#stingray.modeling.PSDLogLikelihood">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PSDLogLikelihood</span><span class="p">(</span><span class="n">LogLikelihood</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A likelihood based on the Chi-square distribution, appropriate for modelling</span>
+<span class="sd">    (averaged) power spectra. Note that this is *not* the same as the statistic</span>
+<span class="sd">    astronomers commonly call *Chi-Square*, which is a fit statistic derived from</span>
+<span class="sd">    the Gaussian log-likelihood, defined elsewhere in this module.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    freq : iterable</span>
+<span class="sd">        Array with frequencies</span>
+
+<span class="sd">    power : iterable</span>
+<span class="sd">        Array with (averaged/singular) powers corresponding to the</span>
+<span class="sd">        frequencies in ``freq``</span>
+
+<span class="sd">    model : an ``astropy.modeling.FittableModel`` instance</span>
+<span class="sd">        The model to use in the likelihood.</span>
+
+<span class="sd">    m : int</span>
+<span class="sd">        1/2 of the degrees of freedom</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : iterable</span>
+<span class="sd">        x-coordinate of the data</span>
+
+<span class="sd">    y : iterable</span>
+<span class="sd">        y-coordinte of the data</span>
+
+<span class="sd">    yerr : iterable</span>
+<span class="sd">        the uncertainty on the data, as standard deviation</span>
+
+<span class="sd">    model : an ``astropy.modeling.FittableModel`` instance</span>
+<span class="sd">        The model to use in the likelihood.</span>
+
+<span class="sd">    npar : int</span>
+<span class="sd">        The number of free parameters in the model</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">freq</span><span class="p">,</span> <span class="n">power</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">LogLikelihood</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">freq</span><span class="p">,</span> <span class="n">power</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">m</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">npar</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">pname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">param_names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fixed</span><span class="p">[</span><span class="n">pname</span><span class="p">]</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">tied</span><span class="p">[</span><span class="n">pname</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">npar</span> <span class="o">+=</span> <span class="mi">1</span>
+
+<div class="viewcode-block" id="PSDLogLikelihood.evaluate">
+<a class="viewcode-back" href="../../../api.html#stingray.modeling.PSDLogLikelihood.evaluate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pars</span><span class="p">,</span> <span class="n">neg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate the log-likelihood for a given set of parameters.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        pars : numpy.ndarray</span>
+<span class="sd">            An array of parameters at which to evaluate the model</span>
+<span class="sd">            and subsequently the log-likelihood. Note that the</span>
+<span class="sd">            length of this array must match the free parameters in</span>
+<span class="sd">            ``model``, i.e. ``npar``</span>
+
+<span class="sd">        neg : bool, optional, default ``False``</span>
+<span class="sd">            If ``True``, return the *negative* log-likelihood, i.e.</span>
+<span class="sd">            ``-loglike``, rather than ``loglike``. This is useful e.g.</span>
+<span class="sd">            for optimization routines, which generally minimize</span>
+<span class="sd">            functions.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        loglike : float</span>
+<span class="sd">            The log(likelihood) value for the data and model.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">pars</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">npar</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">IncorrectParameterError</span><span class="p">(</span><span class="s2">&quot;Input parameters must&quot;</span> <span class="o">+</span> <span class="s2">&quot; match model parameters!&quot;</span><span class="p">)</span>
+
+        <span class="n">fitter_to_model_params</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">pars</span><span class="p">)</span>
+
+        <span class="n">mean_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">(</span><span class="n">record</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">out</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">loglike</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">mean_model</span><span class="p">))</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">/</span> <span class="n">mean_model</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">dof</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span>
+                <span class="n">loglike</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dof</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">mean_model</span><span class="p">))</span>
+                    <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dof</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">/</span> <span class="n">mean_model</span><span class="p">)</span>
+                    <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dof</span> <span class="o">*</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">/</span> <span class="n">dof</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">))</span>
+                <span class="p">)</span>
+
+        <span class="n">loglike</span> <span class="o">=</span> <span class="n">assign_if_not_finite</span><span class="p">(</span><span class="n">loglike</span><span class="p">,</span> <span class="n">logmin</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">neg</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="n">loglike</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">loglike</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="LaplaceLogLikelihood">
+<a class="viewcode-back" href="../../../api.html#stingray.modeling.LaplaceLogLikelihood">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LaplaceLogLikelihood</span><span class="p">(</span><span class="n">LogLikelihood</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A Laplace likelihood for the cospectrum.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : iterable</span>
+<span class="sd">        Array with independent variable</span>
+
+<span class="sd">    y : iterable</span>
+<span class="sd">        Array with dependent variable</span>
+
+<span class="sd">    model : an ``astropy.modeling.FittableModel`` instance</span>
+<span class="sd">        The model to use in the likelihood.</span>
+
+<span class="sd">    yerr : iterable</span>
+<span class="sd">        Array with the uncertainties on ``y``, in standard deviation</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : iterable</span>
+<span class="sd">        x-coordinate of the data</span>
+
+<span class="sd">    y : iterable</span>
+<span class="sd">        y-coordinte of the data</span>
+
+<span class="sd">    yerr : iterable</span>
+<span class="sd">        the uncertainty on the data, as standard deviation</span>
+
+<span class="sd">    model : an ``astropy.modeling.FittableModel`` instance</span>
+<span class="sd">        The model to use in the likelihood.</span>
+
+<span class="sd">    npar : int</span>
+<span class="sd">        The number of free parameters in the model</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">yerr</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+        <span class="n">LogLikelihood</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">yerr</span> <span class="o">=</span> <span class="n">yerr</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">npar</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">pname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">param_names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fixed</span><span class="p">[</span><span class="n">pname</span><span class="p">]</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">tied</span><span class="p">[</span><span class="n">pname</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">npar</span> <span class="o">+=</span> <span class="mi">1</span>
+
+<div class="viewcode-block" id="LaplaceLogLikelihood.evaluate">
+<a class="viewcode-back" href="../../../api.html#stingray.modeling.LaplaceLogLikelihood.evaluate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pars</span><span class="p">,</span> <span class="n">neg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate the log-likelihood for a given set of parameters.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        pars : numpy.ndarray</span>
+<span class="sd">            An array of parameters at which to evaluate the model</span>
+<span class="sd">            and subsequently the log-likelihood. Note that the</span>
+<span class="sd">            length of this array must match the free parameters in</span>
+<span class="sd">            ``model``, i.e. ``npar``</span>
+
+<span class="sd">        neg : bool, optional, default ``False``</span>
+<span class="sd">            If ``True``, return the *negative* log-likelihood, i.e.</span>
+<span class="sd">            ``-loglike``, rather than ``loglike``. This is useful e.g.</span>
+<span class="sd">            for optimization routines, which generally minimize</span>
+<span class="sd">            functions.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        loglike : float</span>
+<span class="sd">            The log(likelihood) value for the data and model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">pars</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">npar</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">IncorrectParameterError</span><span class="p">(</span><span class="s2">&quot;Input parameters must&quot;</span> <span class="o">+</span> <span class="s2">&quot; match model parameters!&quot;</span><span class="p">)</span>
+
+        <span class="n">fitter_to_model_params</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">pars</span><span class="p">)</span>
+
+        <span class="n">mean_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">(</span><span class="n">record</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">out</span><span class="p">:</span>
+            <span class="n">loglike</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">yerr</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">-</span> <span class="n">mean_model</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">yerr</span><span class="p">))</span>
+
+        <span class="n">loglike</span> <span class="o">=</span> <span class="n">assign_if_not_finite</span><span class="p">(</span><span class="n">loglike</span><span class="p">,</span> <span class="n">logmin</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">neg</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="n">loglike</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">loglike</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="Posterior">
+<a class="viewcode-back" href="../../../api.html#stingray.modeling.Posterior">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Posterior</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Define a :class:`Posterior` object.</span>
+
+<span class="sd">    The :class:`Posterior` describes the Bayesian probability distribution of</span>
+<span class="sd">    a set of parameters :math:`\\theta` given some observed data :math:`D` and</span>
+<span class="sd">    some prior assumptions :math:`I`.</span>
+
+<span class="sd">    It is defined as</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        p(\\theta | D, I) = p(D | \\theta, I) p(\\theta | I)/p(D| I)</span>
+
+<span class="sd">    where :math:`p(D | \\theta, I)` describes the likelihood, i.e. the</span>
+<span class="sd">    sampling distribution of the data and the (parametric) model, and</span>
+<span class="sd">    :math:`p(\\theta | I)` describes the prior distribution, i.e. our information</span>
+<span class="sd">    about the parameters :math:`\\theta` before we gathered the data.</span>
+<span class="sd">    The marginal likelihood :math:`p(D| I)` describes the probability of</span>
+<span class="sd">    observing the data given the model assumptions, integrated over the</span>
+<span class="sd">    space of all parameters.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : iterable</span>
+<span class="sd">        The abscissa or independent variable of the data. This could</span>
+<span class="sd">        in principle be a multi-dimensional array.</span>
+
+<span class="sd">    y : iterable</span>
+<span class="sd">        The ordinate or dependent variable of the data.</span>
+
+<span class="sd">    model : ``astropy.modeling.models`` instance</span>
+<span class="sd">        The parametric model supposed to represent the data. For details</span>
+<span class="sd">        see the ``astropy.modeling`` documentation</span>
+
+<span class="sd">    kwargs :</span>
+<span class="sd">        keyword arguments related to the subclasses of :class:`Posterior`. For</span>
+<span class="sd">        details, see the documentation of the individual subclasses</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    * Sivia, D. S., and J. Skilling. &quot;Data Analysis: \</span>
+<span class="sd">        A Bayesian Tutorial. 2006.&quot;</span>
+<span class="sd">    * Gelman, Andrew, et al. Bayesian data analysis. Vol. 2. Boca Raton, \</span>
+<span class="sd">        FL, USA: Chapman &amp; Hall/CRC, 2014.</span>
+<span class="sd">    * von Toussaint, Udo. &quot;Bayesian inference in physics.&quot; \</span>
+<span class="sd">        Reviews of Modern Physics 83.3 (2011): 943.</span>
+<span class="sd">    * Hogg, David W. &quot;Probability Calculus for inference&quot;. \</span>
+<span class="sd">        arxiv: 1205.4446</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">y</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">npar</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">pname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">param_names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fixed</span><span class="p">[</span><span class="n">pname</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">npar</span> <span class="o">+=</span> <span class="mi">1</span>
+
+<div class="viewcode-block" id="Posterior.logposterior">
+<a class="viewcode-back" href="../../../api.html#stingray.modeling.Posterior.logposterior">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">logposterior</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">neg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Definition of the log-posterior.</span>
+<span class="sd">        Requires methods ``loglikelihood`` and ``logprior`` to both</span>
+<span class="sd">        be defined.</span>
+
+<span class="sd">        Note that ``loglikelihood`` is set in the subclass of :class:`Posterior`</span>
+<span class="sd">        appropriate for your problem at hand, as is ``logprior``.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        t0 : numpy.ndarray</span>
+<span class="sd">            An array of parameters at which to evaluate the model</span>
+<span class="sd">            and subsequently the log-posterior. Note that the</span>
+<span class="sd">            length of this array must match the free parameters in</span>
+<span class="sd">            ``model``, i.e. ``npar``</span>
+
+<span class="sd">        neg : bool, optional, default ``False``</span>
+<span class="sd">            If ``True``, return the *negative* log-posterior, i.e.</span>
+<span class="sd">            ``-lpost``, rather than ``lpost``. This is useful e.g.</span>
+<span class="sd">            for optimization routines, which generally minimize</span>
+<span class="sd">            functions.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        lpost : float</span>
+<span class="sd">            The value of the log-posterior for the given parameters ``t0``</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;logprior&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">PriorUndefinedError</span><span class="p">(</span>
+                <span class="s2">&quot;There is no prior implemented. &quot;</span> <span class="o">+</span> <span class="s2">&quot;Cannot calculate posterior!&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;loglikelihood&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">LikelihoodUndefinedError</span><span class="p">(</span>
+                <span class="s2">&quot;There is no likelihood implemented. &quot;</span> <span class="o">+</span> <span class="s2">&quot;Cannot calculate posterior!&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">logpr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">logprior</span><span class="p">(</span><span class="n">t0</span><span class="p">)</span>
+        <span class="n">loglike</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loglikelihood</span><span class="p">(</span><span class="n">t0</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">logpr</span><span class="p">,</span> <span class="n">logmin</span><span class="p">):</span>
+            <span class="n">lpost</span> <span class="o">=</span> <span class="n">logmin</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lpost</span> <span class="o">=</span> <span class="n">logpr</span> <span class="o">+</span> <span class="n">loglike</span>
+
+        <span class="k">if</span> <span class="n">neg</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="n">lpost</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">lpost</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">neg</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">logposterior</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">neg</span><span class="o">=</span><span class="n">neg</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="PSDPosterior">
+<a class="viewcode-back" href="../../../api.html#stingray.modeling.PSDPosterior">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PSDPosterior</span><span class="p">(</span><span class="n">Posterior</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :class:`Posterior` distribution for power spectra.</span>
+<span class="sd">    Uses an exponential distribution for the errors in the likelihood,</span>
+<span class="sd">    or a :math:`\\chi^2` distribution with :math:`2M` degrees of freedom, where</span>
+<span class="sd">    :math:`M` is the number of frequency bins or power spectra averaged in each bin.</span>
+
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ps : {:class:`stingray.Powerspectrum` | :class:`stingray.AveragedPowerspectrum`} instance</span>
+<span class="sd">        the :class:`stingray.Powerspectrum` object containing the data</span>
+
+<span class="sd">    model : instance of any subclass of ``astropy.modeling.FittableModel``</span>
+<span class="sd">        The model for the power spectrum.</span>
+
+<span class="sd">    priors : dict of form ``{&quot;parameter name&quot;: function}``, optional</span>
+<span class="sd">        A dictionary with the definitions for the prior probabilities.</span>
+<span class="sd">        For each parameter in ``model``, there must be a prior defined with</span>
+<span class="sd">        a key of the exact same name as stored in ``model.param_names``.</span>
+<span class="sd">        The item for each key is a function definition defining the prior</span>
+<span class="sd">        (e.g. a lambda function or a ``scipy.stats.distribution.pdf``.</span>
+<span class="sd">        If ``priors = None``, then no prior is set. This means priors need</span>
+<span class="sd">        to be added by hand using the :func:`set_logprior` function defined in</span>
+<span class="sd">        this module. Note that it is impossible to call a :class:`Posterior` object</span>
+<span class="sd">        itself or the ``self.logposterior`` method without defining a prior.</span>
+
+<span class="sd">    m : int, default ``1``</span>
+<span class="sd">        The number of averaged periodograms or frequency bins in ``ps``.</span>
+<span class="sd">        Useful for binned/averaged periodograms, since the value of</span>
+<span class="sd">        m will change the likelihood function!</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ps : {:class:`stingray.Powerspectrum` | :class:`stingray.AveragedPowerspectrum`} instance</span>
+<span class="sd">        the :class:`stingray.Powerspectrum` object containing the data</span>
+
+<span class="sd">    x : numpy.ndarray</span>
+<span class="sd">        The independent variable (list of frequencies) stored in ``ps.freq``</span>
+
+<span class="sd">    y : numpy.ndarray</span>
+<span class="sd">        The dependent variable (list of powers) stored in ``ps.power``</span>
+
+<span class="sd">    model : instance of any subclass of ``astropy.modeling.FittableModel``</span>
+<span class="sd">        The model for the power spectrum.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">freq</span><span class="p">,</span> <span class="n">power</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">priors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loglikelihood</span> <span class="o">=</span> <span class="n">PSDLogLikelihood</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">power</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">m</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">m</span>
+        <span class="n">Posterior</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">freq</span><span class="p">,</span> <span class="n">power</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">priors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logprior</span> <span class="o">=</span> <span class="n">set_logprior</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">priors</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="PoissonPosterior">
+<a class="viewcode-back" href="../../../api.html#stingray.modeling.PoissonPosterior">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PoissonPosterior</span><span class="p">(</span><span class="n">Posterior</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :class:`Posterior` for Poisson light curve data. Primary intended use is for</span>
+<span class="sd">    modelling X-ray light curves, but alternative uses are conceivable.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : numpy.ndarray</span>
+<span class="sd">        The independent variable (e.g. time stamps of a light curve)</span>
+
+<span class="sd">    y : numpy.ndarray</span>
+<span class="sd">        The dependent variable (e.g. counts per bin of a light curve)</span>
+
+<span class="sd">    model : instance of any subclass of ``astropy.modeling.FittableModel``</span>
+<span class="sd">        The model for the power spectrum.</span>
+
+<span class="sd">    priors : dict of form ``{&quot;parameter name&quot;: function}``, optional</span>
+<span class="sd">        A dictionary with the definitions for the prior probabilities.</span>
+<span class="sd">        For each parameter in ``model``, there must be a prior defined with</span>
+<span class="sd">        a key of the exact same name as stored in ``model.param_names``.</span>
+<span class="sd">        The item for each key is a function definition defining the prior</span>
+<span class="sd">        (e.g. a lambda function or a ``scipy.stats.distribution.pdf``.</span>
+<span class="sd">        If ``priors = None``, then no prior is set. This means priors need</span>
+<span class="sd">        to be added by hand using the :func:`set_logprior` function defined in</span>
+<span class="sd">        this module. Note that it is impossible to call a :class:`Posterior` object</span>
+<span class="sd">        itself or the ``self.logposterior`` method without defining a prior.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : numpy.ndarray</span>
+<span class="sd">        The independent variable (list of frequencies) stored in ps.freq</span>
+
+<span class="sd">    y : numpy.ndarray</span>
+<span class="sd">        The dependent variable (list of powers) stored in ps.power</span>
+
+<span class="sd">    model : instance of any subclass of ``astropy.modeling.FittableModel``</span>
+<span class="sd">        The model for the power spectrum.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">priors</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">y</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">loglikelihood</span> <span class="o">=</span> <span class="n">PoissonLogLikelihood</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+        <span class="n">Posterior</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">priors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logprior</span> <span class="o">=</span> <span class="n">set_logprior</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">priors</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="GaussianPosterior">
+<a class="viewcode-back" href="../../../api.html#stingray.modeling.GaussianPosterior">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GaussianPosterior</span><span class="p">(</span><span class="n">Posterior</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A general class for two-dimensional data following a Gaussian</span>
+<span class="sd">    sampling distribution.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : numpy.ndarray</span>
+<span class="sd">        independent variable</span>
+
+<span class="sd">    y : numpy.ndarray</span>
+<span class="sd">        dependent variable</span>
+
+<span class="sd">    yerr : numpy.ndarray</span>
+<span class="sd">        measurement uncertainties for y</span>
+
+<span class="sd">    model : instance of any subclass of ``astropy.modeling.FittableModel``</span>
+<span class="sd">        The model for the power spectrum.</span>
+
+<span class="sd">    priors : dict of form ``{&quot;parameter name&quot;: function}``, optional</span>
+<span class="sd">        A dictionary with the definitions for the prior probabilities.</span>
+<span class="sd">        For each parameter in ``model``, there must be a prior defined with</span>
+<span class="sd">        a key of the exact same name as stored in ``model.param_names``.</span>
+<span class="sd">        The item for each key is a function definition defining the prior</span>
+<span class="sd">        (e.g. a lambda function or a ``scipy.stats.distribution.pdf``.</span>
+<span class="sd">        If ``priors = None``, then no prior is set. This means priors need</span>
+<span class="sd">        to be added by hand using the :func:`set_logprior` function defined in</span>
+<span class="sd">        this module. Note that it is impossible to call a :class:`Posterior` object</span>
+<span class="sd">        itself or the ``self.logposterior`` method without defining a prior.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">yerr</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">priors</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loglikelihood</span> <span class="o">=</span> <span class="n">GaussianLogLikelihood</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">yerr</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+        <span class="n">Posterior</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">yerr</span> <span class="o">=</span> <span class="n">yerr</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">priors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logprior</span> <span class="o">=</span> <span class="n">set_logprior</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">priors</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="LaplacePosterior">
+<a class="viewcode-back" href="../../../api.html#stingray.modeling.LaplacePosterior">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LaplacePosterior</span><span class="p">(</span><span class="n">Posterior</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A general class for two-dimensional data following a Gaussian</span>
+<span class="sd">    sampling distribution.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : numpy.ndarray</span>
+<span class="sd">        independent variable</span>
+
+<span class="sd">    y : numpy.ndarray</span>
+<span class="sd">        dependent variable</span>
+
+<span class="sd">    yerr : numpy.ndarray</span>
+<span class="sd">        measurement uncertainties for y, in standard deviation</span>
+
+<span class="sd">    model : instance of any subclass of ``astropy.modeling.FittableModel``</span>
+<span class="sd">        The model for the power spectrum.</span>
+
+<span class="sd">    priors : dict of form ``{&quot;parameter name&quot;: function}``, optional</span>
+<span class="sd">        A dictionary with the definitions for the prior probabilities.</span>
+<span class="sd">        For each parameter in ``model``, there must be a prior defined with</span>
+<span class="sd">        a key of the exact same name as stored in ``model.param_names``.</span>
+<span class="sd">        The item for each key is a function definition defining the prior</span>
+<span class="sd">        (e.g. a lambda function or a ``scipy.stats.distribution.pdf``.</span>
+<span class="sd">        If ``priors = None``, then no prior is set. This means priors need</span>
+<span class="sd">        to be added by hand using the :func:`set_logprior` function defined in</span>
+<span class="sd">        this module. Note that it is impossible to call a :class:`Posterior` object</span>
+<span class="sd">        itself or the ``self.logposterior`` method without defining a prior.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">yerr</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">priors</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loglikelihood</span> <span class="o">=</span> <span class="n">LaplaceLogLikelihood</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">yerr</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+        <span class="n">Posterior</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">yerr</span> <span class="o">=</span> <span class="n">yerr</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">priors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logprior</span> <span class="o">=</span> <span class="n">set_logprior</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">priors</span><span class="p">)</span></div>
+
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

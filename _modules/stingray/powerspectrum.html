@@ -1,0 +1,1968 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>stingray.powerspectrum &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for stingray.powerspectrum</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Generator</span><span class="p">,</span> <span class="n">Iterable</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.optimize</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.stats</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.crossspectrum</span><span class="w"> </span><span class="kn">import</span> <span class="n">AveragedCrossspectrum</span><span class="p">,</span> <span class="n">Crossspectrum</span><span class="p">,</span> <span class="n">DynamicalCrossspectrum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">pds_probability</span><span class="p">,</span> <span class="n">amplitude_upper_limit</span><span class="p">,</span> <span class="n">pds_detection_level</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.events</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventList</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.gti</span><span class="w"> </span><span class="kn">import</span> <span class="n">cross_two_gtis</span><span class="p">,</span> <span class="n">time_intervals_from_gtis</span><span class="p">,</span> <span class="n">create_gti_mask</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.lightcurve</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.fourier</span><span class="w"> </span><span class="kn">import</span> <span class="n">avg_pds_from_iterable</span><span class="p">,</span> <span class="n">unnormalize_periodograms</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.fourier</span><span class="w"> </span><span class="kn">import</span> <span class="n">avg_pds_from_timeseries</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.fourier</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_flux_iterable_from_segments</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.fourier</span><span class="w"> </span><span class="kn">import</span> <span class="n">poisson_level</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.fourier</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_rms_from_unnorm_periodogram</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Powerspectrum&quot;</span><span class="p">,</span> <span class="s2">&quot;AveragedPowerspectrum&quot;</span><span class="p">,</span> <span class="s2">&quot;DynamicalPowerspectrum&quot;</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="Powerspectrum">
+<a class="viewcode-back" href="../../api.html#stingray.Powerspectrum">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Powerspectrum</span><span class="p">(</span><span class="n">Crossspectrum</span><span class="p">):</span>
+    <span class="nb">type</span> <span class="o">=</span> <span class="s2">&quot;powerspectrum&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Make a :class:`Powerspectrum` (also called periodogram) from a (binned)</span>
+<span class="sd">    light curve. Periodograms can be normalized by either Leahy normalization,</span>
+<span class="sd">    fractional rms normalization, absolute rms normalization, or not at all.</span>
+
+<span class="sd">    You can also make an empty :class:`Powerspectrum` object to populate with</span>
+<span class="sd">    your own fourier-transformed data (this can sometimes be useful when making</span>
+<span class="sd">    binned power spectra).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data: :class:`stingray.Lightcurve` object, optional, default ``None``</span>
+<span class="sd">        The light curve data to be Fourier-transformed.</span>
+
+<span class="sd">    norm: {&quot;leahy&quot; | &quot;frac&quot; | &quot;abs&quot; | &quot;none&quot; }, optional, default &quot;frac&quot;</span>
+<span class="sd">        The normaliation of the power spectrum to be used. Options are</span>
+<span class="sd">        &quot;leahy&quot;, &quot;frac&quot;, &quot;abs&quot; and &quot;none&quot;, default is &quot;frac&quot;.</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    gti: 2-d float array</span>
+<span class="sd">        ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]`` -- Good Time intervals.</span>
+<span class="sd">        This choice overrides the GTIs in the single light curves. Use with</span>
+<span class="sd">        care, especially if these GTIs have overlaps with the input</span>
+<span class="sd">        object GTIs! If you&#39;re getting errors regarding your GTIs, don&#39;t</span>
+<span class="sd">        use this and only give GTIs to the input object before making</span>
+<span class="sd">        the power spectrum.</span>
+
+<span class="sd">    skip_checks: bool</span>
+<span class="sd">        Skip initial checks, for speed or other reasons (you need to trust your</span>
+<span class="sd">        inputs!).</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    norm: {&quot;leahy&quot; | &quot;frac&quot; | &quot;abs&quot; | &quot;none&quot; }</span>
+<span class="sd">        The normalization of the power spectrum.</span>
+
+<span class="sd">    freq: numpy.ndarray</span>
+<span class="sd">        The array of mid-bin frequencies that the Fourier transform samples.</span>
+
+<span class="sd">    power: numpy.ndarray</span>
+<span class="sd">        The array of normalized squared absolute values of Fourier</span>
+<span class="sd">        amplitudes.</span>
+
+<span class="sd">    power_err: numpy.ndarray</span>
+<span class="sd">        The uncertainties of ``power``.</span>
+<span class="sd">        An approximation for each bin given by ``power_err= power/sqrt(m)``.</span>
+<span class="sd">        Where ``m`` is the number of power averaged in each bin (by frequency</span>
+<span class="sd">        binning, or averaging power spectra of segments of a light curve).</span>
+<span class="sd">        Note that for a single realization (``m=1``) the error is equal to the</span>
+<span class="sd">        power.</span>
+
+<span class="sd">    unnorm_power: numpy.ndarray</span>
+<span class="sd">        The array of unnormalized powers</span>
+
+<span class="sd">    unnorm_power_err: numpy.ndarray</span>
+<span class="sd">        The uncertainties of ``unnorm_power``.</span>
+
+<span class="sd">    df: float</span>
+<span class="sd">        The frequency resolution.</span>
+
+<span class="sd">    m: int</span>
+<span class="sd">        The number of averaged powers in each bin.</span>
+
+<span class="sd">    n: int</span>
+<span class="sd">        The number of data points in the light curve.</span>
+
+<span class="sd">    nphots: float</span>
+<span class="sd">        The total number of photons in the light curve.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;frac&quot;</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_type</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">lc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;The lc keyword is now deprecated. Use data &quot;</span> <span class="s2">&quot;instead&quot;</span><span class="p">,</span> <span class="ne">DeprecationWarning</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">lc</span>
+
+        <span class="n">good_input</span> <span class="o">=</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">good_input</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">skip_checks</span><span class="p">:</span>
+            <span class="n">good_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_checks</span><span class="p">(</span>
+                <span class="n">data1</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">data2</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="n">gti</span><span class="p">,</span> <span class="n">lc1</span><span class="o">=</span><span class="n">lc</span><span class="p">,</span> <span class="n">lc2</span><span class="o">=</span><span class="n">lc</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span>
+            <span class="p">)</span>
+
+        <span class="n">norm</span> <span class="o">=</span> <span class="n">norm</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">norm</span> <span class="o">=</span> <span class="n">norm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="n">dt</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">good_input</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_empty</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_from_any_input</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Powerspectrum.rebin">
+<a class="viewcode-back" href="../../api.html#stingray.Powerspectrum.rebin">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">rebin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;mean&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Rebin the power spectrum.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        df: float</span>
+<span class="sd">            The new frequency resolution.</span>
+
+<span class="sd">        Other Parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        f: float</span>
+<span class="sd">            The rebin factor. If specified, it substitutes ``df`` with</span>
+<span class="sd">            ``f*self.df``, so ``f&gt;1`` is recommended.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        bin_cs = :class:`Powerspectrum` object</span>
+<span class="sd">            The newly binned power spectrum.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">bin_ps</span> <span class="o">=</span> <span class="n">Crossspectrum</span><span class="o">.</span><span class="n">rebin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="n">f</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">)</span>
+        <span class="n">bin_ps</span><span class="o">.</span><span class="n">nphots</span> <span class="o">=</span> <span class="n">bin_ps</span><span class="o">.</span><span class="n">nphots1</span>
+
+        <span class="k">return</span> <span class="n">bin_ps</span></div>
+
+
+<div class="viewcode-block" id="Powerspectrum.compute_rms">
+<a class="viewcode-back" href="../../api.html#stingray.Powerspectrum.compute_rms">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_rms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_freq</span><span class="p">,</span> <span class="n">max_freq</span><span class="p">,</span> <span class="n">poisson_noise_level</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the fractional rms amplitude in the power spectrum</span>
+<span class="sd">        between two frequencies.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        min_freq: float</span>
+<span class="sd">            The lower frequency bound for the calculation.</span>
+
+<span class="sd">        max_freq: float</span>
+<span class="sd">            The upper frequency bound for the calculation.</span>
+
+<span class="sd">        Other parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        poisson_noise_level : float, default is None</span>
+<span class="sd">            This is the Poisson noise level of the PDS with same</span>
+<span class="sd">            normalization as the PDS. If poissoin_noise_level is None,</span>
+<span class="sd">            the Poisson noise is calculated in the idealcase</span>
+<span class="sd">            e.g. 2./&lt;countrate&gt; for fractional rms normalisation</span>
+<span class="sd">            Dead time and other instrumental effects can alter it.</span>
+<span class="sd">            The user can fit the Poisson noise level outside</span>
+<span class="sd">            this function using the same normalisation of the PDS</span>
+<span class="sd">            and it will get subtracted from powers here.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        rms: float</span>
+<span class="sd">            The fractional rms amplitude contained between ``min_freq`` and</span>
+<span class="sd">            ``max_freq``.</span>
+
+<span class="sd">        rms_err: float</span>
+<span class="sd">            The error on the fractional rms amplitude.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">good</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">freq</span> <span class="o">&gt;=</span> <span class="n">min_freq</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">freq</span> <span class="o">&lt;=</span> <span class="n">max_freq</span><span class="p">)</span>
+
+        <span class="n">M_freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span>
+        <span class="n">K_freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">):</span>
+            <span class="n">K_freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">[</span><span class="n">good</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">):</span>
+            <span class="n">M_freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">[</span><span class="n">good</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">poisson_noise_level</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">poisson_noise_unnorm</span> <span class="o">=</span> <span class="n">poisson_level</span><span class="p">(</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">n_ph</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nphots</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">poisson_noise_unnorm</span> <span class="o">=</span> <span class="n">unnormalize_periodograms</span><span class="p">(</span>
+                <span class="n">poisson_noise_level</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nphots</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">norm</span>
+            <span class="p">)</span>
+
+        <span class="n">rms</span><span class="p">,</span> <span class="n">rmse</span> <span class="o">=</span> <span class="n">get_rms_from_unnorm_periodogram</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">unnorm_power</span><span class="p">[</span><span class="n">good</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">nphots</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">*</span> <span class="n">K_freq</span><span class="p">,</span>
+            <span class="n">M</span><span class="o">=</span><span class="n">M_freq</span><span class="p">,</span>
+            <span class="n">poisson_noise_unnorm</span><span class="o">=</span><span class="n">poisson_noise_unnorm</span><span class="p">,</span>
+            <span class="n">segment_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">,</span>
+            <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;frac&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">rms</span><span class="p">,</span> <span class="n">rmse</span></div>
+
+
+<div class="viewcode-block" id="Powerspectrum._rms_error">
+<a class="viewcode-back" href="../../api.html#stingray.Powerspectrum._rms_error">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_rms_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">powers</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the error on the fractional rms amplitude using error</span>
+<span class="sd">        propagation.</span>
+<span class="sd">        Note: this uses the actual measured powers, which is not</span>
+<span class="sd">        strictly correct. We should be using the underlying power spectrum,</span>
+<span class="sd">        but in the absence of an estimate of that, this will have to do.</span>
+
+<span class="sd">        .. math::</span>
+
+<span class="sd">           r = \sqrt{P}</span>
+
+<span class="sd">        .. math::</span>
+
+<span class="sd">           \delta r = \\frac{1}{2 * \sqrt{P}} \delta P</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        powers: iterable</span>
+<span class="sd">            The list of powers used to compute the fractional rms amplitude.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        delta_rms: float</span>
+<span class="sd">            The error on the fractional rms amplitude.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">nphots</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nphots</span>
+        <span class="n">p_err</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">)</span><span class="o">.</span><span class="n">var</span><span class="p">()</span> <span class="o">*</span> <span class="n">powers</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">/</span> <span class="n">nphots</span>
+
+        <span class="n">rms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">powers</span><span class="p">)</span> <span class="o">/</span> <span class="n">nphots</span>
+        <span class="nb">pow</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">rms</span><span class="p">)</span>
+
+        <span class="n">drms_dp</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="nb">pow</span><span class="p">)</span>
+
+        <span class="n">sq_sum_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">p_err</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">delta_rms</span> <span class="o">=</span> <span class="n">sq_sum_err</span> <span class="o">*</span> <span class="n">drms_dp</span>
+        <span class="k">return</span> <span class="n">delta_rms</span></div>
+
+
+<div class="viewcode-block" id="Powerspectrum.classical_significances">
+<a class="viewcode-back" href="../../api.html#stingray.Powerspectrum.classical_significances">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">classical_significances</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">trial_correction</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the classical significances for the powers in the power</span>
+<span class="sd">        spectrum, assuming an underlying noise distribution that follows a</span>
+<span class="sd">        chi-square distributions with 2M degrees of freedom, where M is the</span>
+<span class="sd">        number of powers averaged in each bin.</span>
+
+<span class="sd">        Note that this function will *only* produce correct results when the</span>
+<span class="sd">        following underlying assumptions are fulfilled:</span>
+
+<span class="sd">        1. The power spectrum is Leahy-normalized</span>
+<span class="sd">        2. There is no source of variability in the data other than the</span>
+<span class="sd">           periodic signal to be determined with this method. This is</span>
+<span class="sd">           important! If there are other sources of (aperiodic) variability in</span>
+<span class="sd">           the data, this method will *not* produce correct results, but</span>
+<span class="sd">           instead produce a large number of spurious false positive</span>
+<span class="sd">           detections!</span>
+<span class="sd">        3. There are no significant instrumental effects changing the</span>
+<span class="sd">           statistical distribution of the powers (e.g. pile-up or dead time)</span>
+
+<span class="sd">        By default, the method produces ``(index,p-values)`` for all powers in</span>
+<span class="sd">        the power spectrum, where index is the numerical index of the power in</span>
+<span class="sd">        question. If a ``threshold`` is set, then only powers with p-values</span>
+<span class="sd">        *below* that threshold with their respective indices. If</span>
+<span class="sd">        ``trial_correction`` is set to ``True``, then the threshold will be</span>
+<span class="sd">        corrected for the number of trials (frequencies) in the power spectrum</span>
+<span class="sd">        before being used.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        threshold : float, optional, default ``1``</span>
+<span class="sd">            The threshold to be used when reporting p-values of potentially</span>
+<span class="sd">            significant powers. Must be between 0 and 1.</span>
+<span class="sd">            Default is ``1`` (all p-values will be reported).</span>
+
+<span class="sd">        trial_correction : bool, optional, default ``False``</span>
+<span class="sd">            A Boolean flag that sets whether the ``threshold`` will be</span>
+<span class="sd">            corrected by the number of frequencies before being applied. This</span>
+<span class="sd">            decreases the ``threshold`` (p-values need to be lower to count as</span>
+<span class="sd">            significant). Default is ``False`` (report all powers) though for</span>
+<span class="sd">            any application where `threshold`` is set to something meaningful,</span>
+<span class="sd">            this should also be applied!</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pvals : iterable</span>
+<span class="sd">            A list of ``(p-value, index)`` tuples for all powers that have</span>
+<span class="sd">            p-values lower than the threshold specified in ``threshold``.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm</span> <span class="o">==</span> <span class="s2">&quot;leahy&quot;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;This method only works on &quot;</span> <span class="s2">&quot;Leahy-normalized power spectra!&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">trial_correction</span><span class="p">:</span>
+            <span class="n">ntrial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">power</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ntrial</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># calculate p-values for all powers</span>
+            <span class="c1"># leave out zeroth power since it just encodes the number of</span>
+            <span class="c1"># photons!</span>
+            <span class="n">pv</span> <span class="o">=</span> <span class="n">pds_probability</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">n_summed_spectra</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="n">ntrial</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                <span class="p">[</span>
+                    <span class="n">pds_probability</span><span class="p">(</span><span class="n">power</span><span class="p">,</span> <span class="n">n_summed_spectra</span><span class="o">=</span><span class="n">m</span><span class="p">,</span> <span class="n">ntrial</span><span class="o">=</span><span class="n">ntrial</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">power</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+                <span class="p">]</span>
+            <span class="p">)</span>
+
+        <span class="c1"># need to add 1 to the indices to make up for the fact that</span>
+        <span class="c1"># we left out the first power above!</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">pv</span> <span class="o">&lt;</span> <span class="n">threshold</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">pvals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">pv</span><span class="p">[</span><span class="n">indices</span><span class="p">],</span> <span class="n">indices</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">pvals</span></div>
+
+
+<div class="viewcode-block" id="Powerspectrum.modulation_upper_limit">
+<a class="viewcode-back" href="../../api.html#stingray.Powerspectrum.modulation_upper_limit">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">modulation_upper_limit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fmin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fmax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="mf">0.95</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Upper limit on a sinusoidal modulation.</span>
+
+<span class="sd">        To understand the meaning of this amplitude: if the modulation is</span>
+<span class="sd">        described by:</span>
+
+<span class="sd">        ..math:: p = \overline{p} (1 + a * \sin(x))</span>
+
+<span class="sd">        this function returns a.</span>
+
+<span class="sd">        If it is a sum of sinusoidal harmonics instead</span>
+<span class="sd">        ..math:: p = \overline{p} (1 + \sum_l a_l * \sin(lx))</span>
+<span class="sd">        a is equivalent to :math:`\sqrt(\sum_l a_l^2)`.</span>
+
+<span class="sd">        See `stingray.stats.power_upper_limit`,</span>
+<span class="sd">        `stingray.stats.amplitude_upper_limit`</span>
+<span class="sd">        for more information.</span>
+
+<span class="sd">        The formula used to calculate the upper limit assumes the Leahy</span>
+<span class="sd">        normalization.</span>
+<span class="sd">        If the periodogram is in another normalization, we will internally</span>
+<span class="sd">        convert it to Leahy before calculating the upper limit.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        fmin: float</span>
+<span class="sd">            The minimum frequency to search (defaults to the first nonzero bin)</span>
+
+<span class="sd">        fmax: float</span>
+<span class="sd">            The maximum frequency to search (defaults to the Nyquist frequency)</span>
+
+<span class="sd">        Other Parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        c: float</span>
+<span class="sd">            The confidence value for the upper limit (e.g. 0.95 = 95%)</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        a: float</span>
+<span class="sd">            The modulation amplitude that could produce P&gt;pmeas with 1 - c</span>
+<span class="sd">            probability.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &gt;&gt;&gt; pds = Powerspectrum()</span>
+<span class="sd">        &gt;&gt;&gt; pds.norm = &quot;leahy&quot;</span>
+<span class="sd">        &gt;&gt;&gt; pds.freq = np.arange(0., 5.)</span>
+<span class="sd">        &gt;&gt;&gt; # Note: this pds has 40 as maximum value between 2 and 5 Hz</span>
+<span class="sd">        &gt;&gt;&gt; pds.power = np.array([100000, 1, 1, 40, 1])</span>
+<span class="sd">        &gt;&gt;&gt; pds.m = 1</span>
+<span class="sd">        &gt;&gt;&gt; pds.nphots = 30000</span>
+<span class="sd">        &gt;&gt;&gt; assert np.isclose(</span>
+<span class="sd">        ...     pds.modulation_upper_limit(fmin=2, fmax=5, c=0.99),</span>
+<span class="sd">        ...     0.10164,</span>
+<span class="sd">        ...     atol=0.0001)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">pds</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm</span> <span class="o">!=</span> <span class="s2">&quot;leahy&quot;</span><span class="p">:</span>
+            <span class="n">pds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_norm</span><span class="p">(</span><span class="s2">&quot;leahy&quot;</span><span class="p">)</span>
+
+        <span class="n">freq</span> <span class="o">=</span> <span class="n">pds</span><span class="o">.</span><span class="n">freq</span>
+        <span class="n">fnyq</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">freq</span><span class="p">)</span>
+        <span class="n">power</span> <span class="o">=</span> <span class="n">pds</span><span class="o">.</span><span class="n">power</span>
+        <span class="n">freq_mask</span> <span class="o">=</span> <span class="n">freq</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">fmin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">fmax</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">fmin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">freq_mask</span><span class="p">[</span><span class="n">freq</span> <span class="o">&lt;</span> <span class="n">fmin</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">fmax</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">freq_mask</span><span class="p">[</span><span class="n">freq</span> <span class="o">&gt;</span> <span class="n">fmax</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">freq</span> <span class="o">=</span> <span class="n">freq</span><span class="p">[</span><span class="n">freq_mask</span><span class="p">]</span>
+        <span class="n">power</span> <span class="o">=</span> <span class="n">power</span><span class="p">[</span><span class="n">freq_mask</span><span class="p">]</span>
+
+        <span class="n">maximum_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">power</span><span class="p">)</span>
+        <span class="n">nyq_ratio</span> <span class="o">=</span> <span class="n">freq</span><span class="p">[</span><span class="n">maximum_val</span><span class="p">]</span> <span class="o">/</span> <span class="n">fnyq</span>
+
+        <span class="c1"># Since we have averaged powerspectra of segments, we need to set summed_flag to False.</span>
+        <span class="c1"># Check power_upper_limit/amplitude_upper_limit functions for more details.</span>
+        <span class="k">return</span> <span class="n">amplitude_upper_limit</span><span class="p">(</span>
+            <span class="n">power</span><span class="p">[</span><span class="n">maximum_val</span><span class="p">],</span>
+            <span class="n">pds</span><span class="o">.</span><span class="n">nphots</span><span class="p">,</span>
+            <span class="n">n</span><span class="o">=</span><span class="n">pds</span><span class="o">.</span><span class="n">m</span><span class="p">,</span>
+            <span class="n">c</span><span class="o">=</span><span class="n">c</span><span class="p">,</span>
+            <span class="n">nyq_ratio</span><span class="o">=</span><span class="n">nyq_ratio</span><span class="p">,</span>
+            <span class="n">fft_corr</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">summed_flag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Powerspectrum.from_time_array">
+<a class="viewcode-back" href="../../api.html#stingray.Powerspectrum.from_time_array">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_time_array</span><span class="p">(</span>
+        <span class="n">times</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;frac&quot;</span><span class="p">,</span> <span class="n">silent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_common_mean</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate an average power spectrum from an array of event times.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        times : `np.array`</span>
+<span class="sd">            Event arrival times.</span>
+<span class="sd">        dt : float</span>
+<span class="sd">            The time resolution of the intermediate light curves</span>
+<span class="sd">            (sets the Nyquist frequency).</span>
+
+<span class="sd">        Other parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        segment_size : float</span>
+<span class="sd">            The length, in seconds, of the light curve segments that will be</span>
+<span class="sd">            averaged. Only relevant (and required) for</span>
+<span class="sd">            ``AveragedPowerspectrum``.</span>
+<span class="sd">        gti: ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``</span>
+<span class="sd">            Additional, optional Good Time intervals that get intersected with</span>
+<span class="sd">            the GTIs of the input object. Can cause errors if there are</span>
+<span class="sd">            overlaps between these GTIs and the input object GTIs. If that</span>
+<span class="sd">            happens, assign the desired GTIs to the input object.</span>
+<span class="sd">        norm : str, default &quot;frac&quot;</span>
+<span class="sd">            The normalization of the periodogram. `abs` is absolute rms, `frac`</span>
+<span class="sd">            is fractional rms, `leahy` is Leahy+83 normalization, and `none` is</span>
+<span class="sd">            the unnormalized periodogram.</span>
+<span class="sd">        use_common_mean : bool, default True</span>
+<span class="sd">            The mean of the light curve can be estimated in each interval, or</span>
+<span class="sd">            on the full light curve. This gives different results</span>
+<span class="sd">            (Alston+2013). By default, we assume the mean is calculated on the</span>
+<span class="sd">            full light curve, but the user can set ``use_common_mean`` to False</span>
+<span class="sd">            to calculate it on a per-segment basis.</span>
+<span class="sd">        silent : bool, default False</span>
+<span class="sd">            Silence the progress bars.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">powerspectrum_from_time_array</span><span class="p">(</span>
+            <span class="n">times</span><span class="p">,</span>
+            <span class="n">dt</span><span class="p">,</span>
+            <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span>
+            <span class="n">gti</span><span class="o">=</span><span class="n">gti</span><span class="p">,</span>
+            <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+            <span class="n">silent</span><span class="o">=</span><span class="n">silent</span><span class="p">,</span>
+            <span class="n">use_common_mean</span><span class="o">=</span><span class="n">use_common_mean</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Powerspectrum.from_events">
+<a class="viewcode-back" href="../../api.html#stingray.Powerspectrum.from_events">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_events</span><span class="p">(</span>
+        <span class="n">events</span><span class="p">,</span>
+        <span class="n">dt</span><span class="p">,</span>
+        <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;frac&quot;</span><span class="p">,</span>
+        <span class="n">silent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">use_common_mean</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">save_all</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate an average power spectrum from an event list.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        events : `stingray.EventList`</span>
+<span class="sd">            Event list to be analyzed.</span>
+<span class="sd">        dt : float</span>
+<span class="sd">            The time resolution of the intermediate light curves</span>
+<span class="sd">            (sets the Nyquist frequency).</span>
+
+<span class="sd">        Other parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        segment_size : float</span>
+<span class="sd">            The length, in seconds, of the light curve segments that will be</span>
+<span class="sd">            averaged. Only relevant (and required) for</span>
+<span class="sd">            ``AveragedPowerspectrum``.</span>
+<span class="sd">        gti: ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``</span>
+<span class="sd">            Additional, optional Good Time intervals that get intersected with</span>
+<span class="sd">            the GTIs of the input object. Can cause errors if there are</span>
+<span class="sd">            overlaps between these GTIs and the input object GTIs. If that</span>
+<span class="sd">            happens, assign the desired GTIs to the input object.</span>
+<span class="sd">        norm : str, default &quot;frac&quot;</span>
+<span class="sd">            The normalization of the periodogram. `abs` is absolute rms, `frac`</span>
+<span class="sd">            is fractional rms, `leahy` is Leahy+83 normalization, and `none` is</span>
+<span class="sd">            the unnormalized periodogram.</span>
+<span class="sd">        use_common_mean : bool, default True</span>
+<span class="sd">            The mean of the light curve can be estimated in each interval, or</span>
+<span class="sd">            on the full light curve. This gives different results</span>
+<span class="sd">            (Alston+2013). By default, we assume the mean is calculated on the</span>
+<span class="sd">            full light curve, but the user can set ``use_common_mean`` to False</span>
+<span class="sd">            to calculate it on a per-segment basis.</span>
+<span class="sd">        silent : bool, default False</span>
+<span class="sd">            Silence the progress bars.</span>
+<span class="sd">        save_all : bool, default False</span>
+<span class="sd">            Save all intermediate PDSs used for the final average.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">gti</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">gti</span> <span class="o">=</span> <span class="n">events</span><span class="o">.</span><span class="n">gti</span>
+        <span class="k">return</span> <span class="n">powerspectrum_from_events</span><span class="p">(</span>
+            <span class="n">events</span><span class="p">,</span>
+            <span class="n">dt</span><span class="p">,</span>
+            <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span>
+            <span class="n">gti</span><span class="o">=</span><span class="n">gti</span><span class="p">,</span>
+            <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+            <span class="n">silent</span><span class="o">=</span><span class="n">silent</span><span class="p">,</span>
+            <span class="n">use_common_mean</span><span class="o">=</span><span class="n">use_common_mean</span><span class="p">,</span>
+            <span class="n">save_all</span><span class="o">=</span><span class="n">save_all</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Powerspectrum.from_stingray_timeseries">
+<a class="viewcode-back" href="../../api.html#stingray.Powerspectrum.from_stingray_timeseries">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_stingray_timeseries</span><span class="p">(</span>
+        <span class="n">ts</span><span class="p">,</span>
+        <span class="n">flux_attr</span><span class="p">,</span>
+        <span class="n">error_flux_attr</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span>
+        <span class="n">silent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">use_common_mean</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">save_all</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate AveragedPowerspectrum from a time series.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        ts : `stingray.Timeseries`</span>
+<span class="sd">            Input Time Series</span>
+<span class="sd">        flux_attr : `str`</span>
+<span class="sd">            What attribute of the time series will be used.</span>
+
+<span class="sd">        Other parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        error_flux_attr : `str`</span>
+<span class="sd">            What attribute of the time series will be used as error bar.</span>
+<span class="sd">        segment_size : float</span>
+<span class="sd">            The length, in seconds, of the light curve segments that will be averaged.</span>
+<span class="sd">            Only relevant (and required) for AveragedCrossspectrum</span>
+<span class="sd">        norm : str, default &quot;frac&quot;</span>
+<span class="sd">            The normalization of the periodogram. &quot;abs&quot; is absolute rms, &quot;frac&quot; is</span>
+<span class="sd">            fractional rms, &quot;leahy&quot; is Leahy+83 normalization, and &quot;none&quot; is the</span>
+<span class="sd">            unnormalized periodogram</span>
+<span class="sd">        use_common_mean : bool, default True</span>
+<span class="sd">            The mean of the light curve can be estimated in each interval, or on</span>
+<span class="sd">            the full light curve. This gives different results (Alston+2013).</span>
+<span class="sd">            Here we assume the mean is calculated on the full light curve, but</span>
+<span class="sd">            the user can set ``use_common_mean`` to False to calculate it on a</span>
+<span class="sd">            per-segment basis.</span>
+<span class="sd">        silent : bool, default False</span>
+<span class="sd">            Silence the progress bars</span>
+<span class="sd">        gti: [[gti0_0, gti0_1], [gti1_0, gti1_1], ...]</span>
+<span class="sd">            Good Time intervals. Defaults to the common GTIs from the two input</span>
+<span class="sd">            objects. Could throw errors if these GTIs have overlaps with the</span>
+<span class="sd">            input object GTIs! If you&#39;re getting errors regarding your GTIs,</span>
+<span class="sd">            don&#39;t  use this and only give GTIs to the input objects before</span>
+<span class="sd">            making the cross spectrum.</span>
+<span class="sd">        save_all : bool, default False</span>
+<span class="sd">            Save all intermediate PDSs used for the final average.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">powerspectrum_from_timeseries</span><span class="p">(</span>
+            <span class="n">ts</span><span class="p">,</span>
+            <span class="n">flux_attr</span><span class="o">=</span><span class="n">flux_attr</span><span class="p">,</span>
+            <span class="n">error_flux_attr</span><span class="o">=</span><span class="n">error_flux_attr</span><span class="p">,</span>
+            <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span>
+            <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+            <span class="n">silent</span><span class="o">=</span><span class="n">silent</span><span class="p">,</span>
+            <span class="n">use_common_mean</span><span class="o">=</span><span class="n">use_common_mean</span><span class="p">,</span>
+            <span class="n">gti</span><span class="o">=</span><span class="n">gti</span><span class="p">,</span>
+            <span class="n">save_all</span><span class="o">=</span><span class="n">save_all</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Powerspectrum.from_lightcurve">
+<a class="viewcode-back" href="../../api.html#stingray.Powerspectrum.from_lightcurve">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_lightcurve</span><span class="p">(</span>
+        <span class="n">lc</span><span class="p">,</span>
+        <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;frac&quot;</span><span class="p">,</span>
+        <span class="n">silent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">use_common_mean</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">save_all</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate a power spectrum from a light curve.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        events : `stingray.Lightcurve`</span>
+<span class="sd">            Light curve to be analyzed.</span>
+<span class="sd">        dt : float</span>
+<span class="sd">            The time resolution of the intermediate light curves</span>
+<span class="sd">            (sets the Nyquist frequency).</span>
+
+<span class="sd">        Other parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        segment_size : float</span>
+<span class="sd">            The length, in seconds, of the light curve segments that will be</span>
+<span class="sd">            averaged. Only relevant (and required) for</span>
+<span class="sd">            ``AveragedPowerspectrum``.</span>
+<span class="sd">        gti: ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``</span>
+<span class="sd">            Additional, optional Good Time intervals that get intersected with</span>
+<span class="sd">            the GTIs of the input object. Can cause errors if there are</span>
+<span class="sd">            overlaps between these GTIs and the input object GTIs. If that</span>
+<span class="sd">            happens, assign the desired GTIs to the input object.</span>
+<span class="sd">        norm : str, default &quot;frac&quot;</span>
+<span class="sd">            The normalization of the periodogram. `abs` is absolute rms, `frac`</span>
+<span class="sd">            is fractional rms, `leahy` is Leahy+83 normalization, and `none` is</span>
+<span class="sd">            the unnormalized periodogram.</span>
+<span class="sd">        use_common_mean : bool, default True</span>
+<span class="sd">            The mean of the light curve can be estimated in each interval, or</span>
+<span class="sd">            on the full light curve. This gives different results</span>
+<span class="sd">            (Alston+2013). By default, we assume the mean is calculated on the</span>
+<span class="sd">            full light curve, but the user can set ``use_common_mean`` to False</span>
+<span class="sd">            to calculate it on a per-segment basis.</span>
+<span class="sd">        silent : bool, default False</span>
+<span class="sd">            Silence the progress bars.</span>
+<span class="sd">        save_all : bool, default False</span>
+<span class="sd">            Save all intermediate PDSs used for the final average.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">gti</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">gti</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">gti</span>
+        <span class="k">return</span> <span class="n">powerspectrum_from_lightcurve</span><span class="p">(</span>
+            <span class="n">lc</span><span class="p">,</span>
+            <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span>
+            <span class="n">gti</span><span class="o">=</span><span class="n">gti</span><span class="p">,</span>
+            <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+            <span class="n">silent</span><span class="o">=</span><span class="n">silent</span><span class="p">,</span>
+            <span class="n">use_common_mean</span><span class="o">=</span><span class="n">use_common_mean</span><span class="p">,</span>
+            <span class="n">save_all</span><span class="o">=</span><span class="n">save_all</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Powerspectrum.from_lc_iterable">
+<a class="viewcode-back" href="../../api.html#stingray.Powerspectrum.from_lc_iterable">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_lc_iterable</span><span class="p">(</span>
+        <span class="n">iter_lc</span><span class="p">,</span>
+        <span class="n">dt</span><span class="p">,</span>
+        <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;frac&quot;</span><span class="p">,</span>
+        <span class="n">silent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">use_common_mean</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">save_all</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the average power spectrum of an iterable collection of</span>
+<span class="sd">        light curves.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        iter_lc : iterable of `stingray.Lightcurve` objects or `np.array`</span>
+<span class="sd">            Light curves. If arrays, use them as counts.</span>
+<span class="sd">        dt : float</span>
+<span class="sd">            The time resolution of the light curves</span>
+<span class="sd">            (sets the Nyquist frequency)</span>
+
+<span class="sd">        Other parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        segment_size : float</span>
+<span class="sd">            The length, in seconds, of the light curve segments that will be</span>
+<span class="sd">            averaged. Only relevant (and required) for</span>
+<span class="sd">            ``AveragedPowerspectrum``.</span>
+<span class="sd">        gti: ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``</span>
+<span class="sd">            Additional, optional Good Time intervals that get intersected with</span>
+<span class="sd">            the GTIs of the input object. Can cause errors if there are</span>
+<span class="sd">            overlaps between these GTIs and the input object GTIs. If that</span>
+<span class="sd">            happens, assign the desired GTIs to the input object.</span>
+<span class="sd">        norm : str, default &quot;frac&quot;</span>
+<span class="sd">            The normalization of the periodogram. `abs` is absolute rms, `frac`</span>
+<span class="sd">            is fractional rms, `leahy` is Leahy+83 normalization, and `none` is</span>
+<span class="sd">            the unnormalized periodogram.</span>
+<span class="sd">        use_common_mean : bool, default True</span>
+<span class="sd">            The mean of the light curve can be estimated in each interval, or</span>
+<span class="sd">            on the full light curve. This gives different results</span>
+<span class="sd">            (Alston+2013). By default, we assume the mean is calculated on the</span>
+<span class="sd">            full light curve, but the user can set ``use_common_mean`` to False</span>
+<span class="sd">            to calculate it on a per-segment basis.</span>
+<span class="sd">        silent : bool, default False</span>
+<span class="sd">            Silence the progress bars.</span>
+<span class="sd">        save_all : bool, default False</span>
+<span class="sd">            Save all intermediate PDSs used for the final average.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">powerspectrum_from_lc_iterable</span><span class="p">(</span>
+            <span class="n">iter_lc</span><span class="p">,</span>
+            <span class="n">dt</span><span class="p">,</span>
+            <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span>
+            <span class="n">gti</span><span class="o">=</span><span class="n">gti</span><span class="p">,</span>
+            <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+            <span class="n">silent</span><span class="o">=</span><span class="n">silent</span><span class="p">,</span>
+            <span class="n">use_common_mean</span><span class="o">=</span><span class="n">use_common_mean</span><span class="p">,</span>
+            <span class="n">save_all</span><span class="o">=</span><span class="n">save_all</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Powerspectrum._initialize_from_any_input">
+<a class="viewcode-back" href="../../api.html#stingray.Powerspectrum._initialize_from_any_input">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_from_any_input</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">,</span>
+        <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;frac&quot;</span><span class="p">,</span>
+        <span class="n">silent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">use_common_mean</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">save_all</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the class, trying to understand the input types.</span>
+
+<span class="sd">        The input arguments are the same as ``__init__()``. Based on the type</span>
+<span class="sd">        of ``data``, this method will call the appropriate</span>
+<span class="sd">        ``powerspectrum_from_XXXX`` function, and initialize ``self`` with</span>
+<span class="sd">        the correct attributes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">EventList</span><span class="p">):</span>
+            <span class="n">spec</span> <span class="o">=</span> <span class="n">powerspectrum_from_events</span><span class="p">(</span>
+                <span class="n">data</span><span class="p">,</span>
+                <span class="n">dt</span><span class="p">,</span>
+                <span class="n">segment_size</span><span class="p">,</span>
+                <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span>
+                <span class="n">silent</span><span class="o">=</span><span class="n">silent</span><span class="p">,</span>
+                <span class="n">use_common_mean</span><span class="o">=</span><span class="n">use_common_mean</span><span class="p">,</span>
+                <span class="n">gti</span><span class="o">=</span><span class="n">gti</span><span class="p">,</span>
+                <span class="n">save_all</span><span class="o">=</span><span class="n">save_all</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">Lightcurve</span><span class="p">):</span>
+            <span class="n">spec</span> <span class="o">=</span> <span class="n">powerspectrum_from_lightcurve</span><span class="p">(</span>
+                <span class="n">data</span><span class="p">,</span>
+                <span class="n">segment_size</span><span class="p">,</span>
+                <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+                <span class="n">silent</span><span class="o">=</span><span class="n">silent</span><span class="p">,</span>
+                <span class="n">use_common_mean</span><span class="o">=</span><span class="n">use_common_mean</span><span class="p">,</span>
+                <span class="n">gti</span><span class="o">=</span><span class="n">gti</span><span class="p">,</span>
+                <span class="n">save_all</span><span class="o">=</span><span class="n">save_all</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">spec</span><span class="o">.</span><span class="n">lc1</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">Lightcurve</span><span class="p">):</span>  <span class="c1"># pragma: no cover</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Bad inputs to Powerspectrum: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">dt</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dt</span>
+            <span class="c1"># This is a list of light curves.</span>
+            <span class="n">spec</span> <span class="o">=</span> <span class="n">powerspectrum_from_lc_iterable</span><span class="p">(</span>
+                <span class="n">data</span><span class="p">,</span>
+                <span class="n">dt</span><span class="p">,</span>
+                <span class="n">segment_size</span><span class="p">,</span>
+                <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+                <span class="n">silent</span><span class="o">=</span><span class="n">silent</span><span class="p">,</span>
+                <span class="n">use_common_mean</span><span class="o">=</span><span class="n">use_common_mean</span><span class="p">,</span>
+                <span class="n">gti</span><span class="o">=</span><span class="n">gti</span><span class="p">,</span>
+                <span class="n">save_all</span><span class="o">=</span><span class="n">save_all</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Bad inputs to Powerspectrum: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">spec</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+        <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="Powerspectrum._initialize_empty">
+<a class="viewcode-back" href="../../api.html#stingray.Powerspectrum._initialize_empty">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_empty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set all attributes to None.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">freq</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">power</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">power_err</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unnorm_power</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unnorm_power_err</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nphots1</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">return</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="AveragedPowerspectrum">
+<a class="viewcode-back" href="../../api.html#stingray.AveragedPowerspectrum">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AveragedPowerspectrum</span><span class="p">(</span><span class="n">AveragedCrossspectrum</span><span class="p">,</span> <span class="n">Powerspectrum</span><span class="p">):</span>
+    <span class="nb">type</span> <span class="o">=</span> <span class="s2">&quot;powerspectrum&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Make an averaged periodogram from a light curve by segmenting the light</span>
+<span class="sd">    curve, Fourier-transforming each segment and then averaging the</span>
+<span class="sd">    resulting periodograms.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data: :class:`stingray.Lightcurve`object OR iterable of :class:`stingray.Lightcurve` objects OR :class:`stingray.EventList` object</span>
+<span class="sd">        The light curve data to be Fourier-transformed.</span>
+
+<span class="sd">    segment_size: float</span>
+<span class="sd">        The size of each segment to average. Note that if the total</span>
+<span class="sd">        duration of each :class:`Lightcurve` object in lc is not an integer</span>
+<span class="sd">        multiple of the ``segment_size``, then any fraction left-over at the</span>
+<span class="sd">        end of the time series will be lost.</span>
+
+<span class="sd">    norm: {&quot;leahy&quot; | &quot;frac&quot; | &quot;abs&quot; | &quot;none&quot; }, optional, default &quot;frac&quot;</span>
+<span class="sd">        The normalization of the periodogram to be used.</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    gti: 2-d float array</span>
+<span class="sd">        ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]`` -- Good Time intervals.</span>
+<span class="sd">        This choice overrides the GTIs in the single light curves. Use with</span>
+<span class="sd">        care, especially if these GTIs have overlaps with the input</span>
+<span class="sd">        object GTIs! If you&#39;re getting errors regarding your GTIs, don&#39;t</span>
+<span class="sd">        use this and only give GTIs to the input object before making</span>
+<span class="sd">        the power spectrum.</span>
+
+<span class="sd">    silent : bool, default False</span>
+<span class="sd">         Do not show a progress bar when generating an averaged cross spectrum.</span>
+<span class="sd">         Useful for the batch execution of many spectra.</span>
+
+<span class="sd">    dt: float</span>
+<span class="sd">        The time resolution of the light curve. Only needed when constructing</span>
+<span class="sd">        light curves in the case where data is of :class:EventList.</span>
+
+<span class="sd">    save_all : bool, default False</span>
+<span class="sd">        Save all intermediate PDSs used for the final average. Use with care.</span>
+<span class="sd">        This is likely to fill up your RAM on medium-sized datasets, and to</span>
+<span class="sd">        slow down the computation when rebinning.</span>
+
+<span class="sd">    skip_checks: bool</span>
+<span class="sd">        Skip initial checks, for speed or other reasons (you need to trust your</span>
+<span class="sd">        inputs!).</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    norm: {``leahy`` | ``frac`` | ``abs`` | ``none`` }</span>
+<span class="sd">        The normalization of the periodogram.</span>
+
+<span class="sd">    freq: numpy.ndarray</span>
+<span class="sd">        The array of mid-bin frequencies that the Fourier transform samples.</span>
+
+<span class="sd">    power: numpy.ndarray</span>
+<span class="sd">        The array of normalized powers</span>
+
+<span class="sd">    power_err: numpy.ndarray</span>
+<span class="sd">        The uncertainties of ``power``.</span>
+<span class="sd">        An approximation for each bin given by ``power_err= power/sqrt(m)``.</span>
+<span class="sd">        Where ``m`` is the number of power averaged in each bin (by frequency</span>
+<span class="sd">        binning, or averaging power spectra of segments of a light curve).</span>
+<span class="sd">        Note that for a single realization (``m=1``) the error is equal to the</span>
+<span class="sd">        power.</span>
+
+<span class="sd">    unnorm_power: numpy.ndarray</span>
+<span class="sd">        The array of unnormalized powers</span>
+
+<span class="sd">    unnorm_power_err: numpy.ndarray</span>
+<span class="sd">        The uncertainties of ``unnorm_power``.</span>
+
+<span class="sd">    df: float</span>
+<span class="sd">        The frequency resolution.</span>
+
+<span class="sd">    m: int</span>
+<span class="sd">        The number of averaged periodograms.</span>
+
+<span class="sd">    n: int</span>
+<span class="sd">        The number of data points in the light curve.</span>
+
+<span class="sd">    nphots: float</span>
+<span class="sd">        The total number of photons in the light curve.</span>
+
+<span class="sd">    cs_all: list of :class:`Powerspectrum` objects</span>
+<span class="sd">        The list of all periodograms used to calculate the average periodogram.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;frac&quot;</span><span class="p">,</span>
+        <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">silent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">lc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">large_data</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">save_all</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">skip_checks</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">use_common_mean</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_type</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">lc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;The lc keyword is now deprecated. Use data &quot;</span> <span class="s2">&quot;instead&quot;</span><span class="p">,</span> <span class="ne">DeprecationWarning</span>
+            <span class="p">)</span>
+        <span class="c1"># Backwards compatibility: user might have supplied lc instead</span>
+        <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">lc</span>
+
+        <span class="n">good_input</span> <span class="o">=</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">good_input</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">skip_checks</span><span class="p">:</span>
+            <span class="n">good_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_checks</span><span class="p">(</span>
+                <span class="n">data1</span><span class="o">=</span><span class="n">data</span><span class="p">,</span>
+                <span class="n">data2</span><span class="o">=</span><span class="n">data</span><span class="p">,</span>
+                <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+                <span class="n">gti</span><span class="o">=</span><span class="n">gti</span><span class="p">,</span>
+                <span class="n">lc1</span><span class="o">=</span><span class="n">lc</span><span class="p">,</span>
+                <span class="n">lc2</span><span class="o">=</span><span class="n">lc</span><span class="p">,</span>
+                <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+                <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="n">norm</span> <span class="o">=</span> <span class="n">norm</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">norm</span> <span class="o">=</span> <span class="n">norm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="n">dt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_all</span> <span class="o">=</span> <span class="n">save_all</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span> <span class="o">=</span> <span class="n">segment_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">show_progress</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">silent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">good_input</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_empty</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">Generator</span><span class="p">):</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;The averaged power spectrum from a generator of &quot;</span>
+                <span class="s2">&quot;light curves pre-allocates the full list of light &quot;</span>
+                <span class="s2">&quot;curves, losing all advantage of lazy loading. If it &quot;</span>
+                <span class="s2">&quot;is important for you, use the &quot;</span>
+                <span class="s2">&quot;AveragedPowerspectrum.from_lc_iterable static &quot;</span>
+                <span class="s2">&quot;method, specifying the sampling time `dt`.&quot;</span>
+            <span class="p">)</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_from_any_input</span><span class="p">(</span>
+            <span class="n">data</span><span class="p">,</span>
+            <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+            <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span>
+            <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+            <span class="n">silent</span><span class="o">=</span><span class="n">silent</span><span class="p">,</span>
+            <span class="n">use_common_mean</span><span class="o">=</span><span class="n">use_common_mean</span><span class="p">,</span>
+            <span class="n">save_all</span><span class="o">=</span><span class="n">save_all</span><span class="p">,</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="AveragedPowerspectrum.initial_checks">
+<a class="viewcode-back" href="../../api.html#stingray.AveragedPowerspectrum.initial_checks">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">initial_checks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">AveragedCrossspectrum</span><span class="o">.</span><span class="n">initial_checks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="DynamicalPowerspectrum">
+<a class="viewcode-back" href="../../api.html#stingray.DynamicalPowerspectrum">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DynamicalPowerspectrum</span><span class="p">(</span><span class="n">DynamicalCrossspectrum</span><span class="p">):</span>
+    <span class="nb">type</span> <span class="o">=</span> <span class="s2">&quot;powerspectrum&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a dynamical power spectrum, also often called a *spectrogram*.</span>
+
+<span class="sd">    This class will divide a :class:`Lightcurve` object into segments of</span>
+<span class="sd">    length ``segment_size``, create a power spectrum for each segment and store</span>
+<span class="sd">    all powers in a matrix as a function of both time (using the mid-point of</span>
+<span class="sd">    each segment) and frequency.</span>
+
+<span class="sd">    This is often used to trace changes in period of a (quasi-)periodic signal</span>
+<span class="sd">    over time.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    lc : :class:`stingray.Lightcurve` or :class:`stingray.EventList` object</span>
+<span class="sd">        The time series or event list of which the dynamical power spectrum is</span>
+<span class="sd">        to be calculated. If :class:`stingray.EventList`, ``dt`` must be specified as well.</span>
+
+<span class="sd">    segment_size : float, default 1</span>
+<span class="sd">         Length of the segment of light curve, default value is 1 (in whatever</span>
+<span class="sd">         units the ``time`` array in the :class:`Lightcurve`` object uses).</span>
+
+<span class="sd">    norm: {&quot;leahy&quot; | &quot;frac&quot; | &quot;abs&quot; | &quot;none&quot; }, optional, default &quot;frac&quot;</span>
+<span class="sd">        The normaliation of the periodogram to be used.</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    gti: 2-d float array</span>
+<span class="sd">        ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]`` -- Good Time intervals.</span>
+<span class="sd">        This choice overrides the GTIs in the single light curves. Use with</span>
+<span class="sd">        care, especially if these GTIs have overlaps with the input</span>
+<span class="sd">        object GTIs! If you&#39;re getting errors regarding your GTIs, don&#39;t</span>
+<span class="sd">        use this and only give GTIs to the input object before making</span>
+<span class="sd">        the power spectrum.</span>
+
+<span class="sd">    sample_time: float</span>
+<span class="sd">        Compulsory for input :class:`stingray.EventList` data. The time resolution of the</span>
+<span class="sd">        lightcurve that is created internally from the input event lists. Drives the</span>
+<span class="sd">        Nyquist frequency.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    segment_size: float</span>
+<span class="sd">        The size of each segment to average. Note that if the total</span>
+<span class="sd">        duration of each input object in lc is not an integer multiple</span>
+<span class="sd">        of the ``segment_size``, then any fraction left-over at the end of the</span>
+<span class="sd">        time series will be lost.</span>
+
+<span class="sd">    dyn_ps : np.ndarray</span>
+<span class="sd">        The matrix of normalized squared absolute values of Fourier</span>
+<span class="sd">        amplitudes. The axis are given by the ``freq``</span>
+<span class="sd">        and ``time`` attributes.</span>
+
+<span class="sd">    norm: {``leahy`` | ``frac`` | ``abs`` | ``none``}</span>
+<span class="sd">        The normalization of the periodogram.</span>
+
+<span class="sd">    freq: numpy.ndarray</span>
+<span class="sd">        The array of mid-bin frequencies that the Fourier transform samples.</span>
+
+<span class="sd">    time: numpy.ndarray</span>
+<span class="sd">        The array of mid-point times of each interval used for the dynamical</span>
+<span class="sd">        power spectrum.</span>
+
+<span class="sd">    df: float</span>
+<span class="sd">        The frequency resolution.</span>
+
+<span class="sd">    dt: float</span>
+<span class="sd">        The time resolution of the dynamical spectrum. It is **not** the time resolution of the</span>
+<span class="sd">        input light curve. It is the integration time of each line of the dynamical power</span>
+<span class="sd">        spectrum (typically, an integer multiple of ``segment_size``).</span>
+
+<span class="sd">    m: int</span>
+<span class="sd">        The number of averaged cross spectra.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;frac&quot;</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sample_time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span> <span class="o">=</span> <span class="n">segment_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_time</span> <span class="o">=</span> <span class="n">sample_time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gti</span> <span class="o">=</span> <span class="n">gti</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">norm</span> <span class="o">=</span> <span class="n">norm</span>
+
+        <span class="k">if</span> <span class="n">segment_size</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">lc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_empty</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dyn_ps</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">segment_size</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">lc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;lc and segment_size must all be specified&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">EventList</span><span class="p">)</span> <span class="ow">and</span> <span class="n">sample_time</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;To pass an input event lists, please specify sample_time&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">Lightcurve</span><span class="p">):</span>
+            <span class="n">sample_time</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">dt</span>
+            <span class="k">if</span> <span class="n">segment_size</span> <span class="o">&gt;</span> <span class="n">lc</span><span class="o">.</span><span class="n">tseg</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;Length of the segment is too long to create &quot;</span>
+                    <span class="s2">&quot;any segments of the light curve!&quot;</span>
+                <span class="p">)</span>
+        <span class="k">if</span> <span class="n">segment_size</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">sample_time</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Length of the segment is too short to form a light curve!&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_make_matrix</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DynamicalPowerspectrum.shift_and_add">
+<a class="viewcode-back" href="../../api.html#stingray.DynamicalPowerspectrum.shift_and_add">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">shift_and_add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f0_list</span><span class="p">,</span> <span class="n">nbins</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">rebin</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Shift-and-add the dynamical power spectrum.</span>
+
+<span class="sd">        This is the basic operation for the shift-and-add operation used to track</span>
+<span class="sd">        kHz QPOs in X-ray binaries (e.g. Méndez et al. 1998, ApJ, 494, 65).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        freqs : np.array</span>
+<span class="sd">            Array of frequencies, the same for all powers. Must be sorted and on a uniform</span>
+<span class="sd">            grid.</span>
+<span class="sd">        power_list : list of np.array</span>
+<span class="sd">            List of power spectra. Each power spectrum must have the same length</span>
+<span class="sd">            as the frequency array.</span>
+<span class="sd">        f0_list : list of float</span>
+<span class="sd">            List of central frequencies</span>
+
+<span class="sd">        Other parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        nbins : int, default 100</span>
+<span class="sd">            Number of bins to extract</span>
+<span class="sd">        rebin : int, default None</span>
+<span class="sd">            Rebin the final spectrum by this factor. At the moment, the rebinning</span>
+<span class="sd">            is linear.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        output: :class:`AveragedPowerspectrum`</span>
+<span class="sd">            The final averaged power spectrum.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &gt;&gt;&gt; power_list = [[2, 5, 2, 2, 2], [1, 1, 5, 1, 1], [3, 3, 3, 5, 3]]</span>
+<span class="sd">        &gt;&gt;&gt; power_list = np.array(power_list).T</span>
+<span class="sd">        &gt;&gt;&gt; freqs = np.arange(5) * 0.1</span>
+<span class="sd">        &gt;&gt;&gt; f0_list = [0.1, 0.2, 0.3, 0.4]</span>
+<span class="sd">        &gt;&gt;&gt; dps = DynamicalPowerspectrum()</span>
+<span class="sd">        &gt;&gt;&gt; dps.dyn_ps = power_list</span>
+<span class="sd">        &gt;&gt;&gt; dps.freq = freqs</span>
+<span class="sd">        &gt;&gt;&gt; dps.df = 0.1</span>
+<span class="sd">        &gt;&gt;&gt; dps.m = 1</span>
+<span class="sd">        &gt;&gt;&gt; output = dps.shift_and_add(f0_list, nbins=5)</span>
+<span class="sd">        &gt;&gt;&gt; assert isinstance(output, AveragedPowerspectrum)</span>
+<span class="sd">        &gt;&gt;&gt; assert np.array_equal(output.m, [2, 3, 3, 3, 2])</span>
+<span class="sd">        &gt;&gt;&gt; assert np.array_equal(output.power, [2. , 2. , 5. , 2. , 1.5])</span>
+<span class="sd">        &gt;&gt;&gt; assert np.allclose(output.freq, [0.05, 0.15, 0.25, 0.35, 0.45])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">shift_and_add</span><span class="p">(</span>
+            <span class="n">f0_list</span><span class="p">,</span> <span class="n">nbins</span><span class="o">=</span><span class="n">nbins</span><span class="p">,</span> <span class="n">output_obj_type</span><span class="o">=</span><span class="n">AveragedPowerspectrum</span><span class="p">,</span> <span class="n">rebin</span><span class="o">=</span><span class="n">rebin</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_make_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lc</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a matrix of powers for each time step and each frequency step.</span>
+
+<span class="sd">        Time increases with row index, frequency with column index.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        lc : :class:`Lightcurve` object</span>
+<span class="sd">            The :class:`Lightcurve` object from which to generate the dynamical</span>
+<span class="sd">            power spectrum.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">avg</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="p">(</span>
+            <span class="n">lc</span><span class="p">,</span>
+            <span class="n">dt</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_time</span><span class="p">,</span>
+            <span class="n">segment_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">,</span>
+            <span class="n">norm</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">norm</span><span class="p">,</span>
+            <span class="n">gti</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span>
+            <span class="n">save_all</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">conv</span> <span class="o">=</span> <span class="n">avg</span><span class="o">.</span><span class="n">cs_all</span> <span class="o">/</span> <span class="n">avg</span><span class="o">.</span><span class="n">unnorm_cs_all</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unnorm_conversion</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">conv</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dyn_ps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">avg</span><span class="o">.</span><span class="n">cs_all</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">freq</span> <span class="o">=</span> <span class="n">avg</span><span class="o">.</span><span class="n">freq</span>
+        <span class="n">current_gti</span> <span class="o">=</span> <span class="n">avg</span><span class="o">.</span><span class="n">gti</span>
+
+        <span class="n">tstart</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">time_intervals_from_gtis</span><span class="p">(</span><span class="n">current_gti</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">tstart</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="n">avg</span><span class="o">.</span><span class="n">df</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meanrate</span> <span class="o">=</span> <span class="n">avg</span><span class="o">.</span><span class="n">nphots</span> <span class="o">/</span> <span class="n">avg</span><span class="o">.</span><span class="n">n</span> <span class="o">/</span> <span class="n">avg</span><span class="o">.</span><span class="n">dt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nphots</span> <span class="o">=</span> <span class="n">avg</span><span class="o">.</span><span class="n">nphots</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="mi">1</span>
+
+<div class="viewcode-block" id="DynamicalPowerspectrum.power_colors">
+<a class="viewcode-back" href="../../api.html#stingray.DynamicalPowerspectrum.power_colors">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">power_colors</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">freq_edges</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span> <span class="o">/</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">1</span> <span class="o">/</span> <span class="mi">32</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">16.0</span><span class="p">],</span>
+        <span class="n">freqs_to_exclude</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">poisson_power</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the power colors of the dynamical power spectrum.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        freq_edges: iterable</span>
+<span class="sd">            The edges of the frequency bins to be used for the power colors.</span>
+
+<span class="sd">        freqs_to_exclude : 1-d or 2-d iterable, optional, default None</span>
+<span class="sd">            The ranges of frequencies to exclude from the calculation of the power color.</span>
+<span class="sd">            For example, the frequencies containing strong QPOs.</span>
+<span class="sd">            A 1-d iterable should contain two values for the edges of a single range. (E.g.</span>
+<span class="sd">            ``[0.1, 0.2]``). ``[[0.1, 0.2], [3, 4]]`` will exclude the ranges 0.1-0.2 Hz and</span>
+<span class="sd">            3-4 Hz.</span>
+
+<span class="sd">        poisson_level : float or iterable, optional</span>
+<span class="sd">            Defaults to the theoretical Poisson noise level (e.g. 2 for Leahy normalization).</span>
+<span class="sd">            The Poisson noise level of the power spectrum. If iterable, it should have the same</span>
+<span class="sd">            length as ``frequency``. (This might apply to the case of a power spectrum with a</span>
+<span class="sd">            strong dead time distortion)</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pc0: np.ndarray</span>
+<span class="sd">        pc0_err: np.ndarray</span>
+<span class="sd">        pc1: np.ndarray</span>
+<span class="sd">        pc1_err: np.ndarray</span>
+<span class="sd">            The power colors for each spectrum and their respective errors</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">poisson_power</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">poisson_power</span> <span class="o">=</span> <span class="n">poisson_level</span><span class="p">(</span>
+                <span class="n">norm</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">norm</span><span class="p">,</span>
+                <span class="n">meanrate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">meanrate</span><span class="p">,</span>
+                <span class="n">n_ph</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nphots</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">power_colors</span><span class="p">(</span>
+            <span class="n">freq_edges</span><span class="o">=</span><span class="n">freq_edges</span><span class="p">,</span>
+            <span class="n">freqs_to_exclude</span><span class="o">=</span><span class="n">freqs_to_exclude</span><span class="p">,</span>
+            <span class="n">poisson_power</span><span class="o">=</span><span class="n">poisson_power</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">GtiCorrPowerspectrum</span><span class="p">(</span><span class="n">Powerspectrum</span><span class="p">):</span>
+    <span class="n">main_array_attr</span> <span class="o">=</span> <span class="s2">&quot;freq&quot;</span>
+    <span class="nb">type</span> <span class="o">=</span> <span class="s2">&quot;powerspectrum&quot;</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate the power spectrum of gappy light curves.</span>
+
+<span class="sd">    GtiCorrPowerspectrum computes the power spectrum of gappy light curves,</span>
+<span class="sd">    cleaning up the frequencies that are more affected by gaps.</span>
+<span class="sd">    Optionally, it fills bad time intervals (BTIs) with the mean count rate from</span>
+<span class="sd">    good time intervals (GTIs), mitigating window-induced features in the periodogram.</span>
+<span class="sd">    By analyzing the visibility light curve (synthetic light curve with constant mean</span>
+<span class="sd">    counts in GTIs), the class identifies strong peaks in the periodogram that correspond to</span>
+<span class="sd">    the missing data and applies notch filtering to the power spectrum to remove these</span>
+<span class="sd">    frequencies.</span>
+<span class="sd">    Additionally, it rescales the power spectrum to account for the number of bins in and out GTIs,</span>
+<span class="sd">    ensuring accurate white noise and rms estimation.</span>
+
+<span class="sd">    The detailed explanation of the method is given in</span>
+<span class="sd">    `El Byad et al. 2025 &lt;https://arxiv.org/pdf/2505.16921&gt;`__</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    *args:</span>
+<span class="sd">        Any arguments that can be passed to ``Powerspectrum``</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    fill_lc: boolean, optional, default ``True``</span>
+<span class="sd">        If True, fill the BTIs of the light curve with the mean value of the counts in the GTIs.</span>
+<span class="sd">        Recommended.</span>
+
+<span class="sd">    sigma_threshold: float, optional, default ``3``</span>
+<span class="sd">        The sigma threshold for the detection of features in the power spectrum of the observing</span>
+<span class="sd">        window.</span>
+
+<span class="sd">    **kwargs:</span>
+<span class="sd">        Any other keyword arguments that can be passed to ``Powerspectrum``</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    freq: numpy.ndarray</span>
+<span class="sd">        The array of mid-bin frequencies that the Fourier transform samples</span>
+
+<span class="sd">    power: numpy.ndarray</span>
+<span class="sd">        The array of power values</span>
+
+<span class="sd">    power_err: numpy.ndarray</span>
+<span class="sd">        The uncertainties of ``power``.</span>
+<span class="sd">        An approximation for each bin given by ``power_err= power/sqrt(m)``.</span>
+<span class="sd">        Where ``m`` is the number of power averaged in each bin (by frequency</span>
+<span class="sd">        binning, or averaging more than one spectra). Note that for a single</span>
+<span class="sd">        realization (``m=1``) the error is equal to the power.</span>
+
+<span class="sd">    df: float</span>
+<span class="sd">        The frequency resolution</span>
+
+<span class="sd">    m: int</span>
+<span class="sd">        The number of averaged cross-spectra amplitudes in each bin.</span>
+
+<span class="sd">    n: int</span>
+<span class="sd">        The number of data points/time bins in one segment of the light</span>
+<span class="sd">        curves.</span>
+
+<span class="sd">    k: array of int</span>
+<span class="sd">        The rebinning scheme if the object has been rebinned otherwise is set to 1.</span>
+
+<span class="sd">    nphots: float</span>
+<span class="sd">        The total number of photons in light curve</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">fill_lc</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sigma_threshold</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;dt&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">skip_checks</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;skip_checks&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lc</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">EventList</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lc</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lc</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">dt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">dt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span>
+
+        <span class="k">if</span> <span class="n">fill_lc</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fill_lc_with_mean</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_threshold</span> <span class="o">=</span> <span class="n">sigma_threshold</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">skip_checks</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">initial_checks</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lc</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mjdref</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lc</span><span class="p">,</span> <span class="s2">&quot;mjdref&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mjdref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lc</span><span class="o">.</span><span class="n">mjdref</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mask</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">fill_lc</span><span class="p">:</span>
+            <span class="n">lc_mask</span> <span class="o">=</span> <span class="n">create_gti_mask</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lc</span><span class="o">.</span><span class="n">gti</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">power</span> <span class="o">*=</span> <span class="n">lc_mask</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">lc_mask</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">power</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">initial_checks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;The time array in the light curve is not evenly spaced. &quot;</span>
+                <span class="s2">&quot;This is not supported by GtiCorrPowerspectrum.&quot;</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">fill_lc_with_mean</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">create_gti_mask</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lc</span><span class="o">.</span><span class="n">gti</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">[</span><span class="o">~</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">[</span><span class="n">mask</span><span class="p">])</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">clean_gti_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">figname</span><span class="o">=</span><span class="s2">&quot;gti_features&quot;</span><span class="p">):</span>
+        <span class="n">gti</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;gti&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">gti</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;GTI attribute is not set for this object.&quot;</span><span class="p">)</span>
+        <span class="n">exposure</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">gti</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">gti</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
+        <span class="n">ref_ctrate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nphots</span> <span class="o">/</span> <span class="n">exposure</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">exposure</span> <span class="o">=</span> <span class="n">exposure</span>
+
+        <span class="n">lc</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lc</span><span class="p">)</span>
+        <span class="n">lc</span><span class="o">.</span><span class="n">gti</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">gti</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">gti</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]])</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">create_gti_mask</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">gti</span><span class="p">)</span>
+        <span class="n">lc</span><span class="o">.</span><span class="n">counts</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">[</span><span class="o">~</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">ref_ctrate</span> <span class="o">*</span> <span class="n">lc</span><span class="o">.</span><span class="n">dt</span>
+
+        <span class="n">ps_gti</span> <span class="o">=</span> <span class="n">Powerspectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;leahy&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Correct the PS level to overcome the Nph from filling the lc with mean</span>
+        <span class="n">prob</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma_threshold</span><span class="p">)</span>
+        <span class="n">thresh</span> <span class="o">=</span> <span class="n">pds_detection_level</span><span class="p">(</span><span class="n">prob</span><span class="p">)</span>
+
+        <span class="n">bad</span> <span class="o">=</span> <span class="n">ps_gti</span><span class="o">.</span><span class="n">power</span> <span class="o">&gt;</span> <span class="n">thresh</span>
+        <span class="k">if</span> <span class="n">plot</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_plot_gti_features</span><span class="p">(</span><span class="n">ps_gti</span><span class="p">,</span> <span class="n">thresh</span><span class="p">,</span> <span class="n">figname</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">bad</span>
+        <span class="n">newpow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_mask</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">newpow</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_plot_gti_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ps_gti</span><span class="p">,</span> <span class="n">thresh</span><span class="p">,</span> <span class="n">figname</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot the features in the power spectrum of the GTI-corrected light curve.</span>
+
+<span class="sd">        This method generates a log-log plot of the power spectrum and saves it as a JPEG file.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        ps_gti : Powerspectrum</span>
+<span class="sd">            The power spectrum of the synthetic light curve having the mean counts inside GTIs</span>
+<span class="sd">            and 0 outside.</span>
+<span class="sd">        thresh : float</span>
+<span class="sd">            The threshold value for the power spectrum, above which features are considered significant.</span>
+<span class="sd">        figname : str</span>
+<span class="sd">            The name of the figure file to be saved (without extension).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figname</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="n">ps_gti</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">ps_gti</span><span class="o">.</span><span class="n">power</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">thresh</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Frequency (Hz)&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Power </span><span class="si">{</span><span class="n">ps_gti</span><span class="o">.</span><span class="n">norm</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">figname</span> <span class="o">+</span> <span class="s2">&quot;.jpg&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">rebin_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Rebin the power spectrum logarithmically and filter out NaN values.</span>
+
+<span class="sd">        This method overrides the parent class&#39;s `rebin_log` method by applying a mask</span>
+<span class="sd">        to remove any bins where the rebinned power is NaN.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        *args : tuple</span>
+<span class="sd">            Positional arguments passed to the parent class&#39;s `rebin_log` method.</span>
+<span class="sd">        **kwargs : dict</span>
+<span class="sd">            Keyword arguments passed to the parent class&#39;s `rebin_log` method.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        GtiCorrPowerspectrum</span>
+<span class="sd">            A new power spectrum object with rebinned frequencies and powers,</span>
+<span class="sd">            with NaN values filtered out.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">new_ps</span> <span class="o">=</span> <span class="n">Powerspectrum</span><span class="o">.</span><span class="n">rebin_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">new_ps</span><span class="o">.</span><span class="n">power</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_ps</span><span class="o">.</span><span class="n">apply_mask</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">powerspectrum_from_time_array</span><span class="p">(</span>
+    <span class="n">times</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">,</span>
+    <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;frac&quot;</span><span class="p">,</span>
+    <span class="n">silent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">use_common_mean</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">save_all</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate a power spectrum from an array of event times.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    times : `np.array`</span>
+<span class="sd">        Event arrival times.</span>
+<span class="sd">    dt : float</span>
+<span class="sd">        The time resolution of the intermediate light curves</span>
+<span class="sd">        (sets the Nyquist frequency).</span>
+
+<span class="sd">    Other parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    segment_size : float</span>
+<span class="sd">        The length, in seconds, of the light curve segments that will be</span>
+<span class="sd">        averaged. Only required (and used) for ``AveragedPowerspectrum``.</span>
+<span class="sd">    gti : ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``</span>
+<span class="sd">        Additional, optional Good Time intervals that get intersected with</span>
+<span class="sd">        the GTIs of the input object. Can cause errors if there are</span>
+<span class="sd">        overlaps between these GTIs and the input object GTIs. If that</span>
+<span class="sd">        happens, assign the desired GTIs to the input object.</span>
+<span class="sd">    norm : str, default &quot;frac&quot;</span>
+<span class="sd">        The normalization of the periodogram. `abs` is absolute rms, `frac`</span>
+<span class="sd">        is fractional rms, `leahy` is Leahy+83 normalization, and `none` is</span>
+<span class="sd">        the unnormalized periodogram.</span>
+<span class="sd">    use_common_mean : bool, default True</span>
+<span class="sd">        The mean of the light curve can be estimated in each interval, or</span>
+<span class="sd">        on the full light curve. This gives different results</span>
+<span class="sd">        (Alston+2013). By default, we assume the mean is calculated on the</span>
+<span class="sd">        full light curve, but the user can set ``use_common_mean`` to False</span>
+<span class="sd">        to calculate it on a per-segment basis.</span>
+<span class="sd">    silent : bool, default False</span>
+<span class="sd">        Silence the progress bars.</span>
+<span class="sd">    save_all : bool, default False</span>
+<span class="sd">        Save all intermediate PDSs used for the final average. Use with care.</span>
+<span class="sd">        This is likely to fill up your RAM on medium-sized datasets, and to</span>
+<span class="sd">        slow down the computation when rebinning.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    spec : `AveragedPowerspectrum` or `Powerspectrum`</span>
+<span class="sd">        The output periodogram.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">force_averaged</span> <span class="o">=</span> <span class="n">segment_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="c1"># Suppress progress bar for single periodogram</span>
+    <span class="n">silent</span> <span class="o">=</span> <span class="n">silent</span> <span class="ow">or</span> <span class="p">(</span><span class="n">segment_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">table</span> <span class="o">=</span> <span class="n">avg_pds_from_timeseries</span><span class="p">(</span>
+        <span class="n">times</span><span class="p">,</span>
+        <span class="n">gti</span><span class="p">,</span>
+        <span class="n">segment_size</span><span class="p">,</span>
+        <span class="n">dt</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+        <span class="n">use_common_mean</span><span class="o">=</span><span class="n">use_common_mean</span><span class="p">,</span>
+        <span class="n">silent</span><span class="o">=</span><span class="n">silent</span><span class="p">,</span>
+        <span class="n">return_subcs</span><span class="o">=</span><span class="n">save_all</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">_create_powerspectrum_from_result_table</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">force_averaged</span><span class="o">=</span><span class="n">force_averaged</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">powerspectrum_from_events</span><span class="p">(</span>
+    <span class="n">events</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">,</span>
+    <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;frac&quot;</span><span class="p">,</span>
+    <span class="n">silent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">use_common_mean</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">save_all</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate a power spectrum from an event list.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    events : `stingray.EventList`</span>
+<span class="sd">        Event list to be analyzed.</span>
+<span class="sd">    dt : float</span>
+<span class="sd">        The time resolution of the intermediate light curves</span>
+<span class="sd">        (sets the Nyquist frequency)</span>
+
+<span class="sd">    Other parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    segment_size : float</span>
+<span class="sd">        The length, in seconds, of the light curve segments that will be</span>
+<span class="sd">        averaged. Only required (and used) for ``AveragedPowerspectrum``.</span>
+<span class="sd">    gti : ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``</span>
+<span class="sd">        Additional, optional Good Time intervals that get intersected with</span>
+<span class="sd">        the GTIs of the input object. Can cause errors if there are</span>
+<span class="sd">        overlaps between these GTIs and the input object GTIs. If that</span>
+<span class="sd">        happens, assign the desired GTIs to the input object.</span>
+<span class="sd">    norm : str, default &quot;frac&quot;</span>
+<span class="sd">        The normalization of the periodogram. `abs` is absolute rms, `frac`</span>
+<span class="sd">        is fractional rms, `leahy` is Leahy+83 normalization, and `none` is</span>
+<span class="sd">        the unnormalized periodogram.</span>
+<span class="sd">    use_common_mean : bool, default True</span>
+<span class="sd">        The mean of the light curve can be estimated in each interval, or</span>
+<span class="sd">        on the full light curve. This gives different results</span>
+<span class="sd">        (Alston+2013). By default, we assume the mean is calculated on the</span>
+<span class="sd">        full light curve, but the user can set ``use_common_mean`` to False</span>
+<span class="sd">        to calculate it on a per-segment basis.</span>
+<span class="sd">    silent : bool, default False</span>
+<span class="sd">        Silence the progress bars.</span>
+<span class="sd">    save_all : bool, default False</span>
+<span class="sd">        Save all intermediate PDSs used for the final average. Use with care.</span>
+<span class="sd">        This is likely to fill up your RAM on medium-sized datasets, and to</span>
+<span class="sd">        slow down the computation when rebinning.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    spec : `AveragedPowerspectrum` or `Powerspectrum`</span>
+<span class="sd">        The output periodogram.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">gti</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">gti</span> <span class="o">=</span> <span class="n">events</span><span class="o">.</span><span class="n">gti</span>
+
+    <span class="n">dt</span> <span class="o">=</span> <span class="n">events</span><span class="o">.</span><span class="n">suggest_compatible_dt</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">powerspectrum_from_time_array</span><span class="p">(</span>
+        <span class="n">events</span><span class="o">.</span><span class="n">time</span><span class="p">,</span>
+        <span class="n">dt</span><span class="p">,</span>
+        <span class="n">segment_size</span><span class="p">,</span>
+        <span class="n">gti</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+        <span class="n">silent</span><span class="o">=</span><span class="n">silent</span><span class="p">,</span>
+        <span class="n">use_common_mean</span><span class="o">=</span><span class="n">use_common_mean</span><span class="p">,</span>
+        <span class="n">save_all</span><span class="o">=</span><span class="n">save_all</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">powerspectrum_from_lightcurve</span><span class="p">(</span>
+    <span class="n">lc</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;frac&quot;</span><span class="p">,</span> <span class="n">silent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_common_mean</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">save_all</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate a power spectrum from a light curve</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    lc : `stingray.Lightcurve`</span>
+<span class="sd">        Light curve to be analyzed.</span>
+
+<span class="sd">    Other parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    segment_size : float</span>
+<span class="sd">        The length, in seconds, of the light curve segments that will be</span>
+<span class="sd">        averaged. Only required (and used) for ``AveragedPowerspectrum``.</span>
+<span class="sd">    gti : ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``</span>
+<span class="sd">        Additional, optional Good Time intervals that get intersected with</span>
+<span class="sd">        the GTIs of the input object. Can cause errors if there are</span>
+<span class="sd">        overlaps between these GTIs and the input object GTIs. If that</span>
+<span class="sd">        happens, assign the desired GTIs to the input object.</span>
+<span class="sd">    norm : str, default &quot;frac&quot;</span>
+<span class="sd">        The normalization of the periodogram. `abs` is absolute rms, `frac`</span>
+<span class="sd">        is fractional rms, `leahy` is Leahy+83 normalization, and `none` is</span>
+<span class="sd">        the unnormalized periodogram.</span>
+<span class="sd">    use_common_mean : bool, default True</span>
+<span class="sd">        The mean of the light curve can be estimated in each interval, or</span>
+<span class="sd">        on the full light curve. This gives different results</span>
+<span class="sd">        (Alston+2013). By default, we assume the mean is calculated on the</span>
+<span class="sd">        full light curve, but the user can set ``use_common_mean`` to False</span>
+<span class="sd">        to calculate it on a per-segment basis.</span>
+<span class="sd">    silent : bool, default False</span>
+<span class="sd">        Silence the progress bars.</span>
+<span class="sd">    save_all : bool, default False</span>
+<span class="sd">        Save all intermediate PDSs used for the final average. Use with care.</span>
+<span class="sd">        This is likely to fill up your RAM on medium-sized datasets, and to</span>
+<span class="sd">        slow down the computation when rebinning.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    spec : `AveragedPowerspectrum` or `Powerspectrum`</span>
+<span class="sd">        The output periodogram.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">force_averaged</span> <span class="o">=</span> <span class="n">segment_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="c1"># Suppress progress bar for single periodogram</span>
+    <span class="n">silent</span> <span class="o">=</span> <span class="n">silent</span> <span class="ow">or</span> <span class="p">(</span><span class="n">segment_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">err</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">lc</span><span class="o">.</span><span class="n">err_dist</span> <span class="o">==</span> <span class="s2">&quot;gauss&quot;</span><span class="p">:</span>
+        <span class="n">err</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">counts_err</span>
+    <span class="k">if</span> <span class="n">gti</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">gti</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">gti</span>
+
+    <span class="n">table</span> <span class="o">=</span> <span class="n">avg_pds_from_timeseries</span><span class="p">(</span>
+        <span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span>
+        <span class="n">gti</span><span class="p">,</span>
+        <span class="n">segment_size</span><span class="p">,</span>
+        <span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+        <span class="n">use_common_mean</span><span class="o">=</span><span class="n">use_common_mean</span><span class="p">,</span>
+        <span class="n">silent</span><span class="o">=</span><span class="n">silent</span><span class="p">,</span>
+        <span class="n">fluxes</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span>
+        <span class="n">errors</span><span class="o">=</span><span class="n">err</span><span class="p">,</span>
+        <span class="n">return_subcs</span><span class="o">=</span><span class="n">save_all</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">_create_powerspectrum_from_result_table</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">force_averaged</span><span class="o">=</span><span class="n">force_averaged</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">powerspectrum_from_timeseries</span><span class="p">(</span>
+    <span class="n">ts</span><span class="p">,</span>
+    <span class="n">flux_attr</span><span class="p">,</span>
+    <span class="n">error_flux_attr</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span>
+    <span class="n">silent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">use_common_mean</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">save_all</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate power spectrum from a time series</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ts : `stingray.StingrayTimeseries`</span>
+<span class="sd">        Input time series</span>
+<span class="sd">    flux_attr : `str`</span>
+<span class="sd">        What attribute of the time series will be used.</span>
+
+<span class="sd">    Other parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    error_flux_attr : `str`</span>
+<span class="sd">        What attribute of the time series will be used as error bar.</span>
+<span class="sd">    segment_size : float</span>
+<span class="sd">        The length, in seconds, of the light curve segments that will be</span>
+<span class="sd">        averaged. Only required (and used) for ``AveragedPowerspectrum``.</span>
+<span class="sd">    gti : ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``</span>
+<span class="sd">        Additional, optional Good Time intervals that get intersected with</span>
+<span class="sd">        the GTIs of the input object. Can cause errors if there are</span>
+<span class="sd">        overlaps between these GTIs and the input object GTIs. If that</span>
+<span class="sd">        happens, assign the desired GTIs to the input object.</span>
+<span class="sd">    norm : str, default &quot;frac&quot;</span>
+<span class="sd">        The normalization of the periodogram. `abs` is absolute rms, `frac`</span>
+<span class="sd">        is fractional rms, `leahy` is Leahy+83 normalization, and `none` is</span>
+<span class="sd">        the unnormalized periodogram.</span>
+<span class="sd">    use_common_mean : bool, default True</span>
+<span class="sd">        The mean of the light curve can be estimated in each interval, or</span>
+<span class="sd">        on the full light curve. This gives different results</span>
+<span class="sd">        (Alston+2013). By default, we assume the mean is calculated on the</span>
+<span class="sd">        full light curve, but the user can set ``use_common_mean`` to False</span>
+<span class="sd">        to calculate it on a per-segment basis.</span>
+<span class="sd">    silent : bool, default False</span>
+<span class="sd">        Silence the progress bars.</span>
+<span class="sd">    save_all : bool, default False</span>
+<span class="sd">        Save all intermediate PDSs used for the final average. Use with care.</span>
+<span class="sd">        This is likely to fill up your RAM on medium-sized datasets, and to</span>
+<span class="sd">        slow down the computation when rebinning.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    spec : `AveragedCrossspectrum` or `Crossspectrum`</span>
+<span class="sd">        The output cross spectrum.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">force_averaged</span> <span class="o">=</span> <span class="n">segment_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="c1"># Suppress progress bar for single periodogram</span>
+    <span class="n">silent</span> <span class="o">=</span> <span class="n">silent</span> <span class="ow">or</span> <span class="p">(</span><span class="n">segment_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">gti</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">gti</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">gti</span>
+
+    <span class="n">err</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">error_flux_attr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">err</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">error_flux_attr</span><span class="p">)</span>
+
+    <span class="n">results</span> <span class="o">=</span> <span class="n">avg_pds_from_timeseries</span><span class="p">(</span>
+        <span class="n">ts</span><span class="o">.</span><span class="n">time</span><span class="p">,</span>
+        <span class="n">gti</span><span class="p">,</span>
+        <span class="n">segment_size</span><span class="p">,</span>
+        <span class="n">ts</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+        <span class="n">use_common_mean</span><span class="o">=</span><span class="n">use_common_mean</span><span class="p">,</span>
+        <span class="n">silent</span><span class="o">=</span><span class="n">silent</span><span class="p">,</span>
+        <span class="n">fluxes</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">flux_attr</span><span class="p">),</span>
+        <span class="n">errors</span><span class="o">=</span><span class="n">err</span><span class="p">,</span>
+        <span class="n">return_subcs</span><span class="o">=</span><span class="n">save_all</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">_create_powerspectrum_from_result_table</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">force_averaged</span><span class="o">=</span><span class="n">force_averaged</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">powerspectrum_from_lc_iterable</span><span class="p">(</span>
+    <span class="n">iter_lc</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">,</span>
+    <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">norm</span><span class="o">=</span><span class="s2">&quot;frac&quot;</span><span class="p">,</span>
+    <span class="n">silent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">use_common_mean</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">save_all</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate an average power spectrum from an iterable collection of light</span>
+<span class="sd">    curves.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    iter_lc : iterable of `stingray.Lightcurve` objects or `np.array`</span>
+<span class="sd">        Light curves. If arrays, use them as counts.</span>
+<span class="sd">    dt : float</span>
+<span class="sd">        The time resolution of the light curves</span>
+<span class="sd">        (sets the Nyquist frequency).</span>
+
+<span class="sd">    Other parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    segment_size : float, default None</span>
+<span class="sd">        The length, in seconds, of the light curve segments that will be</span>
+<span class="sd">        averaged. If not ``None``, it will be used to check the segment size of</span>
+<span class="sd">         the output.</span>
+<span class="sd">    gti : ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``</span>
+<span class="sd">        Additional, optional Good Time intervals that get intersected with</span>
+<span class="sd">        the GTIs of the input object. Can cause errors if there are</span>
+<span class="sd">        overlaps between these GTIs and the input object GTIs. If that</span>
+<span class="sd">        happens, assign the desired GTIs to the input object.</span>
+<span class="sd">    norm : str, default &quot;frac&quot;</span>
+<span class="sd">        The normalization of the periodogram. `abs` is absolute rms, `frac`</span>
+<span class="sd">        is fractional rms, `leahy` is Leahy+83 normalization, and `none` is</span>
+<span class="sd">        the unnormalized periodogram.</span>
+<span class="sd">    use_common_mean : bool, default True</span>
+<span class="sd">        The mean of the light curve can be estimated in each interval, or</span>
+<span class="sd">        on the full light curve. This gives different results</span>
+<span class="sd">        (Alston+2013). By default, we assume the mean is calculated on the</span>
+<span class="sd">        full light curve, but the user can set ``use_common_mean`` to False</span>
+<span class="sd">        to calculate it on a per-segment basis.</span>
+<span class="sd">    silent : bool, default False</span>
+<span class="sd">        Silence the progress bars.</span>
+<span class="sd">    save_all : bool, default False</span>
+<span class="sd">        Save all intermediate PDSs used for the final average. Use with care.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    spec : `AveragedPowerspectrum` or `Powerspectrum`</span>
+<span class="sd">        The output periodogram.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">force_averaged</span> <span class="o">=</span> <span class="n">segment_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="c1"># Suppress progress bar for single periodogram</span>
+    <span class="n">silent</span> <span class="o">=</span> <span class="n">silent</span> <span class="ow">or</span> <span class="p">(</span><span class="n">segment_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span>
+
+    <span class="n">common_gti</span> <span class="o">=</span> <span class="n">gti</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">iterate_lc_counts</span><span class="p">(</span><span class="n">iter_lc</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">lc</span> <span class="ow">in</span> <span class="n">iter_lc</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="s2">&quot;counts&quot;</span><span class="p">):</span>
+                <span class="n">n_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">rint</span><span class="p">(</span><span class="n">segment_size</span> <span class="o">/</span> <span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+                <span class="n">gti</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">gti</span>
+                <span class="k">if</span> <span class="n">common_gti</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">gti</span> <span class="o">=</span> <span class="n">cross_two_gtis</span><span class="p">(</span><span class="n">common_gti</span><span class="p">,</span> <span class="n">lc</span><span class="o">.</span><span class="n">gti</span><span class="p">)</span>
+                <span class="n">err</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">if</span> <span class="n">lc</span><span class="o">.</span><span class="n">err_dist</span> <span class="o">==</span> <span class="s2">&quot;gauss&quot;</span><span class="p">:</span>
+                    <span class="n">err</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">counts_err</span>
+
+                <span class="n">flux_iterable</span> <span class="o">=</span> <span class="n">get_flux_iterable_from_segments</span><span class="p">(</span>
+                    <span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">gti</span><span class="p">,</span> <span class="n">segment_size</span><span class="p">,</span> <span class="n">n_bin</span><span class="p">,</span> <span class="n">fluxes</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="n">err</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">out</span> <span class="ow">in</span> <span class="n">flux_iterable</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="n">out</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="n">lc</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="s2">&quot;The inputs to `powerspectrum_from_lc_iterable`&quot;</span>
+                    <span class="s2">&quot; must be Lightcurve objects or arrays&quot;</span>
+                <span class="p">)</span>
+
+    <span class="n">table</span> <span class="o">=</span> <span class="n">avg_pds_from_iterable</span><span class="p">(</span>
+        <span class="n">iterate_lc_counts</span><span class="p">(</span><span class="n">iter_lc</span><span class="p">),</span>
+        <span class="n">dt</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+        <span class="n">use_common_mean</span><span class="o">=</span><span class="n">use_common_mean</span><span class="p">,</span>
+        <span class="n">silent</span><span class="o">=</span><span class="n">silent</span><span class="p">,</span>
+        <span class="n">return_subcs</span><span class="o">=</span><span class="n">save_all</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">_create_powerspectrum_from_result_table</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">force_averaged</span><span class="o">=</span><span class="n">force_averaged</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_create_powerspectrum_from_result_table</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">force_averaged</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Copy the columns and metadata from the results of</span>
+<span class="sd">    ``stingray.fourier.avg_pds_from_XX`` functions into</span>
+<span class="sd">    `AveragedPowerspectrum` or `Powerspectrum` objects.</span>
+
+<span class="sd">    By default, allocates a Powerspectrum object if the number of</span>
+<span class="sd">    averaged spectra is 1, otherwise an AveragedPowerspectrum.</span>
+<span class="sd">    If the user specifies ``force_averaged=True``, it always allocates</span>
+<span class="sd">    an AveragedPowerspectrum.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    table : `astropy.table.Table`</span>
+<span class="sd">        results of `avg_cs_from_iterables` or `avg_cs_from_iterables_quick`</span>
+
+<span class="sd">    Other parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    force_averaged : bool, default False</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    spec : `AveragedPowerspectrum` or `Powerspectrum`</span>
+<span class="sd">        The output periodogram.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">table</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;m&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">force_averaged</span><span class="p">:</span>
+        <span class="n">cs</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">cs</span> <span class="o">=</span> <span class="n">Powerspectrum</span><span class="p">()</span>
+
+    <span class="n">cs</span><span class="o">.</span><span class="n">freq</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">table</span><span class="p">[</span><span class="s2">&quot;freq&quot;</span><span class="p">])</span>
+    <span class="n">cs</span><span class="o">.</span><span class="n">power</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">table</span><span class="p">[</span><span class="s2">&quot;power&quot;</span><span class="p">])</span>
+    <span class="n">cs</span><span class="o">.</span><span class="n">unnorm_power</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">table</span><span class="p">[</span><span class="s2">&quot;unnorm_power&quot;</span><span class="p">])</span>
+
+    <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">cs</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s2">&quot;subcs&quot;</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">meta</span><span class="p">:</span>
+        <span class="n">cs</span><span class="o">.</span><span class="n">cs_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;subcs&quot;</span><span class="p">])</span>
+        <span class="n">cs</span><span class="o">.</span><span class="n">unnorm_cs_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;unnorm_subcs&quot;</span><span class="p">])</span>
+
+    <span class="n">cs</span><span class="o">.</span><span class="n">err_dist</span> <span class="o">=</span> <span class="s2">&quot;poisson&quot;</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">cs</span><span class="p">,</span> <span class="s2">&quot;variance&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">cs</span><span class="o">.</span><span class="n">variance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cs</span><span class="o">.</span><span class="n">err_dist</span> <span class="o">=</span> <span class="s2">&quot;gauss&quot;</span>
+
+    <span class="n">cs</span><span class="o">.</span><span class="n">power_err</span> <span class="o">=</span> <span class="n">cs</span><span class="o">.</span><span class="n">power</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">cs</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+    <span class="n">cs</span><span class="o">.</span><span class="n">unnorm_power_err</span> <span class="o">=</span> <span class="n">cs</span><span class="o">.</span><span class="n">unnorm_power</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">cs</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+    <span class="n">cs</span><span class="o">.</span><span class="n">nphots1</span> <span class="o">=</span> <span class="n">cs</span><span class="o">.</span><span class="n">nphots</span>
+    <span class="k">return</span> <span class="n">cs</span>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

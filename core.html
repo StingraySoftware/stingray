@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Core Stingray Functionality &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=17ab1725" />
+    
+    <script src="_static/jquery.js?v=5d32c60e"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="_static/sidebar.js"></script>
+    <script type="text/javascript" src="_static/copybutton.js"></script>
+    <link rel="icon" href="_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Contents" href="notebooks/EventList/EventList%20Tutorial.html" />
+    <link rel="prev" title="Introduction" href="notebooks/Spectral%20Timing/Spectral%20Timing%20Exploration.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="genindex.html">Index</a></li>
+    <li><a title="Module Index" href="py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="notebooks/EventList/EventList%20Tutorial.html" title="Contents">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="notebooks/Spectral%20Timing/Spectral%20Timing%20Exploration.html" title="Introduction">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      
+      <li>Core Stingray Functionality</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="core-stingray-functionality">
+<h1>Core Stingray Functionality<a class="headerlink" href="#core-stingray-functionality" title="Link to this heading">¶</a></h1>
+<p>Here we show how many of the core Stingray classes and methods
+work in practice. We start with basic data constructs for
+event data and light curve data, and then show how to produce
+various Fourier products from these data sets.</p>
+<section id="working-with-event-data">
+<h2>Working with Event Data<a class="headerlink" href="#working-with-event-data" title="Link to this heading">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/EventList/EventList%20Tutorial.html">Contents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/EventList/EventList%20Tutorial.html#Setup">Setup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/EventList/EventList%20Tutorial.html#Creating-EventList-from-Photon-Arrival-Times">Creating EventList from Photon Arrival Times</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/EventList/EventList%20Tutorial.html#Roundtrip-to-Astropy-compatible-formats">Roundtrip to Astropy-compatible formats</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/EventList/EventList%20Tutorial.html#Loading-and-writing-EventList-objects">Loading and writing EventList objects</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/EventList/EventList%20Tutorial.html#Loading-an-EventList-from-an-X-ray-observation-in-HEASoft-compatible-format">Loading an EventList from an X-ray observation in HEASoft-compatible format</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/EventList/EventList%20Tutorial.html#Roundtrip-to-pickle-objects">Roundtrip to pickle objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/EventList/EventList%20Tutorial.html#id1">Roundtrip to Astropy-compatible formats</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/EventList/EventList%20Tutorial.html#Transforming-a-Lightcurve-into-an-EventList.">Transforming a Lightcurve into an EventList.</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/EventList/EventList%20Tutorial.html#Simulating-EventList-from-Lightcurve">Simulating EventList from Lightcurve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/EventList/EventList%20Tutorial.html#Creating-a-light-curve-from-an-EventList-object">Creating a light curve from an EventList object</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/EventList/EventList%20Tutorial.html#Simulating-Energies">Simulating Energies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/EventList/EventList%20Tutorial.html#Joining-EventLists">Joining EventLists</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="working-with-lightcurves">
+<h2>Working with Lightcurves<a class="headerlink" href="#working-with-lightcurves" title="Link to this heading">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html">Creating a light curve</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#1.-Array-of-time-stamps-and-counts">1. Array of time stamps and counts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#2.-Photon-Arrival-Times">2. Photon Arrival Times</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Properties">Properties</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Error-Distributions-in-stingray.Lightcurve">Error Distributions in <code class="docutils literal notranslate"><span class="pre">stingray.Lightcurve</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Good-Time-Intervals">Good Time Intervals</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Operations">Operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Addition/Subtraction">Addition/Subtraction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Negation">Negation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Indexing">Indexing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Methods">Methods</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Concatenation">Concatenation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Truncation">Truncation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Re-binning">Re-binning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Sorting">Sorting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Plotting">Plotting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Sample-Data">Sample Data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Checking-the-Light-Curve-for-Irregularities">Checking the Light Curve for Irregularities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#MJDREF-and-Shifting-Times">MJDREF and Shifting Times</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Calculating-a-baseline">Calculating a baseline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Working-with-GTIs-and-Splitting-Light-Curves">Working with GTIs and Splitting Light Curves</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Analyzing-Light-Curve-Segments">Analyzing Light Curve Segments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Compatibility-with-Lightkurve">Compatibility with <code class="docutils literal notranslate"><span class="pre">Lightkurve</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Lightcurve%20tutorial.html#Reading/Writing-Lightcurves-to/from-files">Reading/Writing Lightcurves to/from files</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Lightcurve/Analyze%20light%20curves%20chunk%20by%20chunk%20-%20an%20example.html">R.m.s. - intensity diagram</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Analyze%20light%20curves%20chunk%20by%20chunk%20-%20an%20example.html#Setup:-simulate-a-light-curve-with-a-variable-rms-and-rate">Setup: simulate a light curve with a variable rms and rate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Lightcurve/Analyze%20light%20curves%20chunk%20by%20chunk%20-%20an%20example.html#id1">R.m.s. - intensity diagram</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="fourier-analysis">
+<h2>Fourier Analysis<a class="headerlink" href="#fourier-analysis" title="Link to this heading">¶</a></h2>
+<section id="powerspectra">
+<h3>Powerspectra<a class="headerlink" href="#powerspectra" title="Link to this heading">¶</a></h3>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Powerspectrum/Powerspectrum_tutorial.html">Power spectrum example</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Powerspectrum/Powerspectrum_tutorial.html#1.-Create-a-light-curve">1. Create a light curve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Powerspectrum/Powerspectrum_tutorial.html#2.-Pass-the-light-curve-to-the-Powerspectrum-class-to-create-a-Powerspectrum-object.">2. Pass the light curve to the <code class="docutils literal notranslate"><span class="pre">Powerspectrum</span></code> class to create a <code class="docutils literal notranslate"><span class="pre">Powerspectrum</span></code> object.</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Powerspectrum/Powerspectrum_tutorial.html#Properties">Properties</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Powerspectrum/Powerspectrum_tutorial.html#2.-Pass-the-light-curve-to-the-AveragedPowerspectrum-class-with-a-specified-segment_size.">2. Pass the light curve to the <code class="docutils literal notranslate"><span class="pre">AveragedPowerspectrum</span></code> class with a specified <code class="docutils literal notranslate"><span class="pre">segment_size</span></code>.</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Powerspectrum/Powerspectrum_tutorial.html#Normalizating-the-power-spectrum">Normalizating the power spectrum</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Powerspectrum/Powerspectrum_tutorial.html#Re-binning-a-power-spectrum-in-frequency">Re-binning a power spectrum in frequency</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Powerspectrum/Powerspectrum_tutorial.html#2.-And-we-can-logarithmically/geometrically-re-bin-a-power-spectrum">2. And we can logarithmically/geometrically re-bin a power spectrum</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Powerspectrum/Powerspectrum_tutorial.html#Power-spectra-of-normal-distributed-light-curves">Power spectra of normal-distributed light curves</a></li>
+</ul>
+</div>
+</section>
+<section id="dynamical-power-spectra">
+<h3>Dynamical Power Spectra<a class="headerlink" href="#dynamical-power-spectra" title="Link to this heading">¶</a></h3>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/DynamicalPowerspectrum/DynamicalPowerspectrum_tutorial_%5Bfake_data%5D.html">Dynamical Power Spectra (on fake data)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/DynamicalPowerspectrum/DynamicalPowerspectrum_tutorial_%5Bfake_data%5D.html#Generate-a-fake-lightcurve">Generate a fake lightcurve</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/DynamicalPowerspectrum/DynamicalPowerspectrum_tutorial_%5Bfake_data%5D.html#A-power-spectrum-of-this-lightcurve..">A power spectrum of this lightcurve..</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/DynamicalPowerspectrum/DynamicalPowerspectrum_tutorial_%5Bfake_data%5D.html#It-looks-like-we-have-at-least-2-frequencies.">It looks like we have at least 2 frequencies.</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/DynamicalPowerspectrum/DynamicalPowerspectrum_tutorial_%5Bfake_data%5D.html#Let's-look-at-the-Dynamic-Powerspectrum..">Let’s look at the Dynamic Powerspectrum..</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/DynamicalPowerspectrum/DynamicalPowerspectrum_tutorial_%5Bfake_data%5D.html#It-is-actually-only-one-feature-drifiting-along-time">It is actually only one feature drifiting along time</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/DynamicalPowerspectrum/DynamicalPowerspectrum_tutorial_%5Bfake_data%5D.html#Rebin-time">Rebin time</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/DynamicalPowerspectrum/DynamicalPowerspectrum_tutorial_%5Bfake_data%5D.html#Let's-trace-that-drifiting-feature.">Let’s trace that drifiting feature.</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/DynamicalPowerspectrum/DynamicalPowerspectrum_tutorial_%5Bfake_data%5D.html#Overlaying-this-traced-function-with-the-Dynamical-Powerspectrum">Overlaying this traced function with the Dynamical Powerspectrum</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/DynamicalPowerspectrum/DynamicalPowerspectrum_tutorial_%5Bfake_data%5D.html#Shifting-and-adding">Shifting-and-adding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/DynamicalPowerspectrum/DynamicalPowerspectrum_tutorial_%5Breal_data%5D.html">Dynamical Power Spectra (on real data)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/DynamicalPowerspectrum/DynamicalPowerspectrum_tutorial_%5Breal_data%5D.html#All-starts-with-a-lightcurve..">All starts with a lightcurve..</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/DynamicalPowerspectrum/DynamicalPowerspectrum_tutorial_%5Breal_data%5D.html#DynamicPowerspectrum">DynamicPowerspectrum</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/DynamicalPowerspectrum/DynamicalPowerspectrum_tutorial_%5Breal_data%5D.html#Rebin-time">Rebin time</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/DynamicalPowerspectrum/DynamicalPowerspectrum_tutorial_%5Breal_data%5D.html#Trace-maximun">Trace maximun</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/DynamicalPowerspectrum/DynamicalPowerspectrum_tutorial_%5Breal_data%5D.html#Shifting-and-adding">Shifting-and-adding</a></li>
+</ul>
+</div>
+</section>
+<section id="cross-spectra">
+<h3>Cross Spectra<a class="headerlink" href="#cross-spectra" title="Link to this heading">¶</a></h3>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Crossspectrum/Crossspectrum_tutorial.html">Cross Spectra</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Crossspectrum/Crossspectrum_tutorial.html#1.-Create-two-light-curves">1. Create two light curves</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Crossspectrum/Crossspectrum_tutorial.html#2.-Pass-both-of-the-light-curves-to-the-Crossspectrum-class-to-create-a-Crossspectrum-object.">2. Pass both of the light curves to the <code class="docutils literal notranslate"><span class="pre">Crossspectrum</span></code> class to create a <code class="docutils literal notranslate"><span class="pre">Crossspectrum</span></code> object.</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Crossspectrum/Crossspectrum_tutorial.html#Properties">Properties</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Crossspectrum/Crossspectrum_tutorial.html#2.-Pass-both-light-curves-to-the-AveragedCrossspectrum-class-with-a-specified-segment_size.">2. Pass both light curves to the <code class="docutils literal notranslate"><span class="pre">AveragedCrossspectrum</span></code> class with a specified <code class="docutils literal notranslate"><span class="pre">segment_size</span></code>.</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Crossspectrum/Crossspectrum_tutorial.html#id1">Properties</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Crossspectrum/Crossspectrum_tutorial.html#Normalizating-the-cross-spectrum">Normalizating the cross spectrum</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Crossspectrum/Crossspectrum_tutorial.html#Re-binning-a-cross-spectrum-in-frequency">Re-binning a cross spectrum in frequency</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Crossspectrum/Crossspectrum_tutorial.html#2.-And-we-can-logarithmically/geometrically-re-bin-a-cross-spectrum">2. And we can logarithmically/geometrically re-bin a cross spectrum</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Crossspectrum/Crossspectrum_tutorial.html#Time-lags-/-phase-lags">Time lags / phase lags</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Crossspectrum/Crossspectrum_tutorial.html#1.-Frequency-dependent-lags">1. Frequency-dependent lags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Crossspectrum/Crossspectrum_tutorial.html#2.-Energy-dependent-lags">2. Energy-dependent lags</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Crossspectrum/Crossspectrum_tutorial.html#Coherence">Coherence</a></li>
+</ul>
+</div>
+</section>
+<section id="cross-and-autocorrelations">
+<h3>Cross- and Autocorrelations<a class="headerlink" href="#cross-and-autocorrelations" title="Link to this heading">¶</a></h3>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/CrossCorrelation/cross_correlation_notebook.html">CrossCorrelation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/CrossCorrelation/cross_correlation_notebook.html#CrossCorrelation-Example">CrossCorrelation Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/CrossCorrelation/cross_correlation_notebook.html#1.-Create-two-light-curves">1. Create two light curves</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/CrossCorrelation/cross_correlation_notebook.html#2.-Create-a-CrossCorrelation-Object-from-two-Light-curves-created-above">2. Create a CrossCorrelation Object from two Light curves created above</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/CrossCorrelation/cross_correlation_notebook.html#3.-Plot-Cross-Correlation-for-Different-lags">3. Plot Cross Correlation for Different lags</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/CrossCorrelation/cross_correlation_notebook.html#Modes-of-Correlation">Modes of Correlation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/CrossCorrelation/cross_correlation_notebook.html#Another-Example">Another Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/CrossCorrelation/cross_correlation_notebook.html#Yet-another-Example-with-longer-Lightcurve">Yet another Example with longer Lightcurve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/CrossCorrelation/cross_correlation_notebook.html#AutoCorrelation">AutoCorrelation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/CrossCorrelation/cross_correlation_notebook.html#id1">Another Example</a></li>
+</ul>
+</div>
+</section>
+<section id="bispectra">
+<h3>Bispectra<a class="headerlink" href="#bispectra" title="Link to this heading">¶</a></h3>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Bispectrum/bispectrum_tutorial.html">Bispectrum Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Bispectrum/bispectrum_tutorial.html#Plots">Plots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Bispectrum/bispectrum_tutorial.html#Another-Example">Another Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Bispectrum/bispectrum_tutorial.html#Window-Functions-for-Bispectrum">Window Functions for Bispectrum</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Bispectrum/bispectrum_tutorial.html#Plot-Window">Plot Window</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Bispectrum/bispectrum_tutorial.html#Another-Window-demonstrated">Another Window demonstrated</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="bayesian-excess-variance">
+<h3>Bayesian Excess Variance<a class="headerlink" href="#bayesian-excess-variance" title="Link to this heading">¶</a></h3>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Bexvar/Bexvar%20tutorial.html">Baysian Excess Variance (Bexvar)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Bexvar/Bexvar%20tutorial.html#Bexvar:-Theoretical-background">Bexvar: Theoretical background</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="multi-taper-periodogram">
+<h3>Multi-taper Periodogram<a class="headerlink" href="#multi-taper-periodogram" title="Link to this heading">¶</a></h3>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html">Install Stingray in colab</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#Multitaper-Spectral-Estimator-Example">Multitaper Spectral Estimator Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html####-Creating-a-light-curve">### Creating a light curve</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#The-Multitaper-Periodogram">The Multitaper Periodogram</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#Summary-of-Multitaper-Spectral-Estimation">Summary of Multitaper Spectral Estimation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#Creating-a-Multitaper-object">Creating a <code class="docutils literal notranslate"><span class="pre">Multitaper</span></code> object</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#The-results">The results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#While-it-seems-decent,-lets-compare-with-Powerspectrum">While it seems decent, lets compare with <code class="docutils literal notranslate"><span class="pre">Powerspectrum</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#Attributes-of-the-Multitaper-object">Attributes of the Multitaper object</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#A-look-at-the-values-contained-in-these-attributes.">A look at the values contained in these attributes.</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#A-look-at-the-different-normalizations">A look at the different normalizations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#Other-attributes-with-the-S(f)-estimates">Other attributes with the S(f) estimates</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#A-summary-of-the-jackknife-variance-estimate">A summary of the jackknife variance estimate</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#A-look-at-jk_var_deg_freedom">A look at <code class="docutils literal notranslate"><span class="pre">jk_var_deg_freedom</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#Linearly-re-binning-a-power-spectrum-in-frequency">Linearly re-binning a power spectrum in frequency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#Poisson-distributed-lightcurve">Poisson distributed lightcurve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#Comparing-Powerspectrum-and-Multitaper-on-poisson-distributed-lightcurve">Comparing Powerspectrum and Multitaper on poisson-distributed lightcurve</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#Time-series-with-uneven-temporal-sampling:-Multitaper-Lomb-Scargle">Time series with uneven temporal sampling: Multitaper Lomb-Scargle</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#Testing-the-Multitaper-Lomb-Scargle-on-a-Kepler-dataset-(used-in-A.-Springford-et-al.-(2020)-)">Testing the Multitaper Lomb-Scargle on a Kepler dataset (used in A. Springford et al. (2020) )</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/Multitaper/multitaper_example.html#References">References</a></li>
+</ul>
+</div>
+</section>
+<section id="lomb-scargle-crossspectrum">
+<h3>Lomb Scargle Crossspectrum<a class="headerlink" href="#lomb-scargle-crossspectrum" title="Link to this heading">¶</a></h3>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/LombScargle/LombScargleCrossspectrum_tutorial.html">Lomb Scargle Cross Spectra</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/LombScargle/LombScargleCrossspectrum_tutorial.html#1.-Create-two-light-curves">1. Create two light curves</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/LombScargle/LombScargleCrossspectrum_tutorial.html#2.-Pass-both-of-the-light-curves-to-the-LombScargleCrossspectrum-class-to-create-a-LombScargleCrossspectrum-object.">2. Pass both of the light curves to the <code class="docutils literal notranslate"><span class="pre">LombScargleCrossspectrum</span></code> class to create a <code class="docutils literal notranslate"><span class="pre">LombScargleCrossspectrum</span></code> object.</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/LombScargle/LombScargleCrossspectrum_tutorial.html#Properties">Properties</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="lomb-scargle-powerspectrum">
+<h3>Lomb Scargle Powerspectrum<a class="headerlink" href="#lomb-scargle-powerspectrum" title="Link to this heading">¶</a></h3>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/LombScargle/LombScarglePowerspectrum_tutorial.html">Lomb Scargle Power Spectra</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/LombScargle/LombScarglePowerspectrum_tutorial.html#1.-Create-a-light-curve">1. Create a light curve</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/LombScargle/LombScarglePowerspectrum_tutorial.html#2.-Pass-the-light-curve-to-the-LombScarglePowerspectrum-class-to-create-a-LombScarglePowerspectrum-object.">2. Pass the light curve to the <code class="docutils literal notranslate"><span class="pre">LombScarglePowerspectrum</span></code> class to create a <code class="docutils literal notranslate"><span class="pre">LombScarglePowerspectrum</span></code> object.</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/LombScargle/LombScarglePowerspectrum_tutorial.html#Attributes">Attributes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Core Stingray Functionality</a><ul>
+<li><a class="reference internal" href="#working-with-event-data">Working with Event Data</a></li>
+<li><a class="reference internal" href="#working-with-lightcurves">Working with Lightcurves</a></li>
+<li><a class="reference internal" href="#fourier-analysis">Fourier Analysis</a><ul>
+<li><a class="reference internal" href="#powerspectra">Powerspectra</a></li>
+<li><a class="reference internal" href="#dynamical-power-spectra">Dynamical Power Spectra</a></li>
+<li><a class="reference internal" href="#cross-spectra">Cross Spectra</a></li>
+<li><a class="reference internal" href="#cross-and-autocorrelations">Cross- and Autocorrelations</a></li>
+<li><a class="reference internal" href="#bispectra">Bispectra</a></li>
+<li><a class="reference internal" href="#bayesian-excess-variance">Bayesian Excess Variance</a></li>
+<li><a class="reference internal" href="#multi-taper-periodogram">Multi-taper Periodogram</a></li>
+<li><a class="reference internal" href="#lomb-scargle-crossspectrum">Lomb Scargle Crossspectrum</a></li>
+<li><a class="reference internal" href="#lomb-scargle-powerspectrum">Lomb Scargle Powerspectrum</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="_sources/core.rst.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

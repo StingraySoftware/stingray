@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Bispectrum Tutorial &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Baysian Excess Variance (Bexvar)" href="../Bexvar/Bexvar%20tutorial.html" />
+    <link rel="prev" title="CrossCorrelation" href="../CrossCorrelation/cross_correlation_notebook.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="../Bexvar/Bexvar%20tutorial.html" title="Baysian Excess Variance (Bexvar)">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="../CrossCorrelation/cross_correlation_notebook.html" title="CrossCorrelation">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../core.html" accesskey="U">Core Stingray Functionality</a> &#187;</li>
+      
+      <li>Bispectrum Tutorial</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="Bispectrum-Tutorial">
+<h1>Bispectrum Tutorial<a class="headerlink" href="#Bispectrum-Tutorial" title="Link to this heading">¶</a></h1>
+<p>This tutorial is intended to demonstrate bispectrum Analysis on Lightcurve data.</p>
+<p>The Bispectrum is an example of a Higher Order Spectrum (HOS) and contains more information that simple Powerspectrum or non-ploy spectra. For detailed information on Bispectra visit : <a class="reference external" href="https://arxiv.org/pdf/1308.3150">https://arxiv.org/pdf/1308.3150</a></p>
+<p>In Stingray, Bispectrum can be created from a Lightcurve(For more information on Lightcurve, visit Lightcurve Notebook).</p>
+<p>First we import relevant classes.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">lightcurve</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.bispectrum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Bispectrum</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="o">%</span><span class="k">matplotlib</span> inline
+</pre></div>
+</div>
+</div>
+<p>Lightcurve Object can be created from an array of time stamps and an array of counts. Creating a simple lightcurve to demonstrate Bispectrum.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">11</span><span class="p">)</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">lightcurve</span><span class="o">.</span><span class="n">Lightcurve</span><span class="p">(</span><span class="n">times</span><span class="p">,</span><span class="n">counts</span><span class="p">)</span>
+
+<span class="n">lc</span><span class="o">.</span><span class="n">counts</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([2, 1, 3, 4, 2, 5, 1, 0, 2, 3])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;times&#39;</span><span class="p">,</span><span class="s1">&#39;counts&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_6_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_6_0.png" />
+</div>
+</div>
+<p>A <code class="docutils literal notranslate"><span class="pre">Bispectrum</span></code> Object takes 4 parameter.</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">lc</span></code> : The light curve (lc).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">maxlag</span></code> : Maximum lag on both positive and negative sides of 3rd order cumulant (Similar to lags in correlation).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">window</span></code> : Specifies the type of window to apply as as string</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scale</span></code> : ‘biased’ or ‘unbiased’ for normalization</p></li>
+</ol>
+<p>Arguments 2 and 3 are optional. If <code class="docutils literal notranslate"><span class="pre">maxlag</span></code> is not specified, it is set to no. of observations in lightcurve divided by 2. i.e <code class="docutils literal notranslate"><span class="pre">lc.n/2</span></code> .</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span> <span class="o">=</span> <span class="n">Bispectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Different attribute values can be observed by calling relevant properties. Most common are:</p>
+<ol class="arabic simple">
+<li><p>self.freq - Frequencies against which Bispectrum is calculated.</p></li>
+<li><p>self.lags - Time lags in lightcurve against which 3rd order cumulant is calculated.</p></li>
+<li><p>self.cum3 - 3rd Order cumulant function</p></li>
+<li><p>self.bispec_mag - Magnitude of Bispectrum</p></li>
+<li><p>self.bispecphase - Phase of Bispectrum</p></li>
+</ol>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">freq</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([-0.5, -0.4, -0.3, -0.2, -0.1,  0. ,  0.1,  0.2,  0.3,  0.4,  0.5])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">lags</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([-5., -4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.,  5.])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">cum3</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([[-0.3885, -0.0915,  0.1685, -0.5085,  0.8135, -0.0675, -0.2708,
+         0.0229,  0.1426, -0.0567,  0.    ],
+       [-0.0915,  0.2328, -0.5162, -2.0652,  0.3058,  0.1968,  0.8135,
+         0.5492,  0.0209, -0.2484,  0.0063],
+       [ 0.1685, -0.5162, -0.3999,  0.9821, -0.4989,  0.5011,  0.3058,
+        -0.5085, -0.2348,  0.2379,  0.0426],
+       [-0.5085, -2.0652,  0.9821, -0.3096,  0.5704,  2.1084, -0.4989,
+        -2.0652,  0.1685,  0.8632,  0.0999],
+       [ 0.8135,  0.3058, -0.4989,  0.5704, -1.3613, -0.3823,  0.5704,
+         0.9821, -0.5162, -0.0915,  0.0872],
+       [-0.0675,  0.1968,  0.5011,  2.1084, -0.3823,  0.864 , -1.3613,
+        -0.3096, -0.3999,  0.2328, -0.3885],
+       [-0.2708,  0.8135,  0.3058, -0.4989,  0.5704, -1.3613, -0.3823,
+         0.5704,  0.9821, -0.5162, -0.0915],
+       [ 0.0229,  0.5492, -0.5085, -2.0652,  0.9821, -0.3096,  0.5704,
+         2.1084, -0.4989, -2.0652,  0.1685],
+       [ 0.1426,  0.0209, -0.2348,  0.1685, -0.5162, -0.3999,  0.9821,
+        -0.4989,  0.5011,  0.3058, -0.5085],
+       [-0.0567, -0.2484,  0.2379,  0.8632, -0.0915,  0.2328, -0.5162,
+        -2.0652,  0.3058,  0.1968,  0.8135],
+       [ 0.    ,  0.0063,  0.0426,  0.0999,  0.0872, -0.3885, -0.0915,
+         0.1685, -0.5085,  0.8135, -0.0675]])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">bispec_mag</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([[  6.1870122 ,   9.78649295,   6.29941723,   8.10990858,
+          3.90975859,   1.49707597,  10.53408125,   8.44275685,
+          7.73419771,   7.91909148,   3.40576093],
+       [  9.78649295,  12.99063169,  11.9523207 ,  12.31681   ,
+          7.34404789,   1.93438197,   5.05536311,  15.92827099,
+          6.61153784,   3.09535492,   7.91909148],
+       [  6.29941723,  11.9523207 ,   4.84009298,   8.98535468,
+          5.6746004 ,   1.71227576,   9.35566037,  12.00797853,
+          1.60576409,   6.61153784,   7.73419771],
+       [  8.10990858,  12.31681   ,   8.98535468,  18.69373893,
+          9.83780286,   2.72630968,   7.87985137,   5.32007463,
+         12.00797853,  15.92827099,   8.44275685],
+       [  3.90975859,   7.34404789,   5.6746004 ,   9.83780286,
+          5.93123174,   1.60598497,   0.51743271,   7.87985137,
+          9.35566037,   5.05536311,  10.53408125],
+       [  1.49707597,   1.93438197,   1.71227576,   2.72630968,
+          1.60598497,   1.262     ,   1.60598497,   2.72630968,
+          1.71227576,   1.93438197,   1.49707597],
+       [ 10.53408125,   5.05536311,   9.35566037,   7.87985137,
+          0.51743271,   1.60598497,   5.93123174,   9.83780286,
+          5.6746004 ,   7.34404789,   3.90975859],
+       [  8.44275685,  15.92827099,  12.00797853,   5.32007463,
+          7.87985137,   2.72630968,   9.83780286,  18.69373893,
+          8.98535468,  12.31681   ,   8.10990858],
+       [  7.73419771,   6.61153784,   1.60576409,  12.00797853,
+          9.35566037,   1.71227576,   5.6746004 ,   8.98535468,
+          4.84009298,  11.9523207 ,   6.29941723],
+       [  7.91909148,   3.09535492,   6.61153784,  15.92827099,
+          5.05536311,   1.93438197,   7.34404789,  12.31681   ,
+         11.9523207 ,  12.99063169,   9.78649295],
+       [  3.40576093,   7.91909148,   7.73419771,   8.44275685,
+         10.53408125,   1.49707597,   3.90975859,   8.10990858,
+          6.29941723,   9.78649295,   6.1870122 ]])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">bispec_phase</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([[ -7.65814471e-01,  -8.39758950e-01,   7.49083269e-01,
+         -9.35797260e-01,  -1.22623935e+00,  -3.13514588e+00,
+          4.35308043e-01,   6.65460441e-01,   6.17269495e-01,
+          4.39881603e-01,  -3.14159265e+00],
+       [ -8.39758950e-01,   1.84719564e+00,   1.70902436e+00,
+         -6.50042861e-01,  -5.76818268e-01,  -9.16177187e-02,
+          1.76512372e+00,   2.97853199e+00,   1.45401552e+00,
+          0.00000000e+00,  -4.39881603e-01],
+       [  7.49083269e-01,   1.70902436e+00,   1.64851065e+00,
+         -5.51373516e-01,  -1.32816666e+00,   2.45429375e-01,
+          2.86246989e+00,   3.08272440e+00,  -1.10623774e-15,
+         -1.45401552e+00,  -6.17269495e-01],
+       [ -9.35797260e-01,  -6.50042861e-01,  -5.51373516e-01,
+         -2.97776986e+00,  -2.96295975e+00,  -4.83162811e-01,
+          1.34000660e+00,   0.00000000e+00,  -3.08272440e+00,
+         -2.97853199e+00,  -6.65460441e-01],
+       [ -1.22623935e+00,  -5.76818268e-01,  -1.32816666e+00,
+         -2.96295975e+00,  -1.30996608e+00,  -1.24358981e-01,
+         -3.14159265e+00,  -1.34000660e+00,  -2.86246989e+00,
+         -1.76512372e+00,  -4.35308043e-01],
+       [ -3.13514588e+00,  -9.16177187e-02,   2.45429375e-01,
+         -4.83162811e-01,  -1.24358981e-01,   3.14159265e+00,
+          1.24358981e-01,   4.83162811e-01,  -2.45429375e-01,
+          9.16177187e-02,   3.13514588e+00],
+       [  4.35308043e-01,   1.76512372e+00,   2.86246989e+00,
+          1.34000660e+00,   3.14159265e+00,   1.24358981e-01,
+          1.30996608e+00,   2.96295975e+00,   1.32816666e+00,
+          5.76818268e-01,   1.22623935e+00],
+       [  6.65460441e-01,   2.97853199e+00,   3.08272440e+00,
+          0.00000000e+00,  -1.34000660e+00,   4.83162811e-01,
+          2.96295975e+00,   2.97776986e+00,   5.51373516e-01,
+          6.50042861e-01,   9.35797260e-01],
+       [  6.17269495e-01,   1.45401552e+00,   1.10623774e-15,
+         -3.08272440e+00,  -2.86246989e+00,  -2.45429375e-01,
+          1.32816666e+00,   5.51373516e-01,  -1.64851065e+00,
+         -1.70902436e+00,  -7.49083269e-01],
+       [  4.39881603e-01,   0.00000000e+00,  -1.45401552e+00,
+         -2.97853199e+00,  -1.76512372e+00,   9.16177187e-02,
+          5.76818268e-01,   6.50042861e-01,  -1.70902436e+00,
+         -1.84719564e+00,   8.39758950e-01],
+       [  3.14159265e+00,  -4.39881603e-01,  -6.17269495e-01,
+         -6.65460441e-01,  -4.35308043e-01,   3.13514588e+00,
+          1.22623935e+00,   9.35797260e-01,  -7.49083269e-01,
+          8.39758950e-01,   7.65814471e-01]])
+</pre></div></div>
+</div>
+</section>
+<section id="Plots">
+<h1>Plots<a class="headerlink" href="#Plots" title="Link to this heading">¶</a></h1>
+<p>Bispectrum in stingray also provides functionality for contour plots of:</p>
+<ol class="arabic simple">
+<li><p>3rd Order Cumulant function</p></li>
+<li><p>Magnitude Bispectrum</p></li>
+<li><p>Phase Bispectrum</p></li>
+</ol>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">p</span> <span class="o">=</span> <span class="n">bs</span><span class="o">.</span><span class="n">plot_cum3</span><span class="p">()</span>
+<span class="n">p</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_17_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_17_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">p</span> <span class="o">=</span> <span class="n">bs</span><span class="o">.</span><span class="n">plot_mag</span><span class="p">()</span>
+<span class="n">p</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_18_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_18_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">p</span> <span class="o">=</span> <span class="n">bs</span><span class="o">.</span><span class="n">plot_phase</span><span class="p">()</span>
+<span class="n">p</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_19_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_19_0.png" />
+</div>
+</div>
+</section>
+<section id="Another-Example">
+<h1>Another Example<a class="headerlink" href="#Another-Example" title="Link to this heading">¶</a></h1>
+<p>Another example is demostrated here for a periodic lighturve with poisson noise.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dt</span> <span class="o">=</span> <span class="mf">0.0001</span>  <span class="c1"># seconds</span>
+<span class="n">freq</span> <span class="o">=</span> <span class="mi">1</span> <span class="c1">#Hz</span>
+<span class="n">exposure</span> <span class="o">=</span> <span class="mf">50.</span>  <span class="c1"># seconds</span>
+<span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">exposure</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span>  <span class="c1"># seconds</span>
+
+<span class="n">signal</span> <span class="o">=</span> <span class="mi">300</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">freq</span><span class="o">*</span><span class="n">times</span><span class="o">/</span><span class="mf">0.5</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1000</span>  <span class="c1"># counts/s</span>
+<span class="n">noisy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">signal</span><span class="o">*</span><span class="n">dt</span><span class="p">)</span>  <span class="c1"># counts</span>
+
+<span class="n">lc</span> <span class="o">=</span> <span class="n">lightcurve</span><span class="o">.</span><span class="n">Lightcurve</span><span class="p">(</span><span class="n">times</span><span class="p">,</span><span class="n">noisy</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span><span class="o">.</span><span class="n">n</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+500000
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_23_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_23_0.png" />
+</div>
+</div>
+<p>In this example, ‘unbiased’ scaled Bispectrum is calculated.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span> <span class="o">=</span> <span class="n">Bispectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">maxlag</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="s1">&#39;unbiased&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">freq</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([-5000.00000001, -4800.00000001, -4600.00000001, -4400.00000001,
+       -4200.00000001])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">lags</span><span class="p">[</span><span class="o">-</span><span class="mi">5</span><span class="p">:]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([ 0.0021,  0.0022,  0.0023,  0.0024,  0.0025])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">n</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+500000
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">cum3</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([  4.16469688e-04,  -1.15175317e-06,  -1.07527932e-05,
+         3.12465067e-05,  -1.49891250e-05,  -1.13491830e-05,
+        -3.01378025e-05,   8.84909091e-06,  -9.76499980e-06,
+        -4.03093430e-05,  -1.39169834e-05,  -1.06733571e-05,
+        -3.56900080e-05,  -4.36904080e-05,  -1.64739272e-05,
+        -6.07642325e-06,  -9.40724231e-05,   3.20972054e-05,
+         1.10825598e-06,   1.57445478e-05,   1.50738698e-04,
+        -1.53088049e-05,  -1.06758132e-05,  -8.50761732e-05,
+        -2.70732731e-05,   5.15575763e-04,  -2.26276548e-06,
+        -5.46966498e-05,  -3.49049233e-05,   6.93111630e-05,
+        -1.96629892e-05,  -4.00897434e-05,  -5.37940654e-07,
+        -1.25908665e-04,  -4.04722751e-05,  -1.95122973e-05,
+         7.48985545e-06,  -1.59418559e-05,  -3.40950546e-07,
+        -5.28946188e-05,  -6.77547458e-05,  -2.58282563e-06,
+        -2.16597857e-05,   2.08264564e-05,   1.62145798e-05,
+         6.20770115e-05,   5.74011370e-05,   3.04301082e-05,
+         5.42455829e-05,   6.16520488e-05,   5.25699675e-05])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">bispec_mag</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([ 0.10270301,  0.09674684,  0.1026435 ,  0.10278492,  0.09607422,
+        0.09961388,  0.10090391,  0.10316149,  0.09881147,  0.10027435,
+        0.09052907,  0.10086312,  0.09964639,  0.09224589,  0.10189853,
+        0.09783874,  0.1029246 ,  0.10003251,  0.1003841 ,  0.09654483,
+        0.10021589,  0.10265071,  0.09913028,  0.10406698,  0.10248613,
+        0.12079938,  0.10038381,  0.09376602,  0.09916139,  0.10218425,
+        0.09798569,  0.10296954,  0.10377357,  0.10144925,  0.09848511,
+        0.09731673,  0.10031293,  0.09733791,  0.10085873,  0.09769191,
+        0.10021328,  0.1000008 ,  0.10362033,  0.10352851,  0.09763424,
+        0.10249754,  0.09752426,  0.09520164,  0.09959243,  0.12395456,
+        0.10188173])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">bispec_phase</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([ -1.44942123e-02,   1.67988284e-02,  -3.06544878e-03,
+         1.24304742e-02,  -4.69267453e-04,   1.80410887e-02,
+         1.18875941e-03,  -1.85154750e-03,   2.17338081e-02,
+         1.03821918e-02,  -7.09489717e-03,   1.05358508e-02,
+         4.01625879e-03,  -2.05403388e-02,   1.17686452e-03,
+         2.56746832e-02,   2.17353559e-02,  -7.69020683e-03,
+         1.54447950e-02,  -9.03814639e-04,   3.43660863e-03,
+        -5.37971533e-04,   9.42017522e-03,   1.42720920e-03,
+         1.17025084e-03,  -5.00982277e-03,  -1.53439701e-02,
+        -7.63874625e-04,  -4.10637611e-02,   2.41131565e-02,
+        -1.95500843e-02,  -2.98681684e-02,   1.23914953e-03,
+        -2.75100800e-02,  -3.88428578e-03,  -7.87537903e-03,
+        -1.53613857e-03,   1.47624077e-02,  -4.86162981e-03,
+        -2.76731089e-03,   9.30828311e-03,  -2.86531767e-02,
+        -1.16465064e-02,  -2.30165990e-02,  -7.71187242e-03,
+         2.00694116e-02,  -5.16511843e-02,  -1.98737477e-03,
+        -9.87738671e-03,  -2.09922507e-17,   1.39146079e-02])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">p</span> <span class="o">=</span> <span class="n">bs</span><span class="o">.</span><span class="n">plot_cum3</span><span class="p">()</span>
+<span class="n">p</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_32_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_32_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">p</span> <span class="o">=</span> <span class="n">bs</span><span class="o">.</span><span class="n">plot_mag</span><span class="p">()</span>
+<span class="n">p</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_33_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_33_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[26]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">p</span> <span class="o">=</span> <span class="n">bs</span><span class="o">.</span><span class="n">plot_phase</span><span class="p">()</span>
+<span class="n">p</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_34_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_34_0.png" />
+</div>
+</div>
+</section>
+<section id="Window-Functions-for-Bispectrum">
+<h1>Window Functions for Bispectrum<a class="headerlink" href="#Window-Functions-for-Bispectrum" title="Link to this heading">¶</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">Bispectrum</span></code> in <code class="docutils literal notranslate"><span class="pre">Stingray</span></code> now supports 2D windows to apply before calculating <code class="docutils literal notranslate"><span class="pre">Bispectrum</span></code>.</p>
+<p>Windows currently available in <code class="docutils literal notranslate"><span class="pre">Stingray</span></code> include:</p>
+<ol class="arabic simple">
+<li><p>Uniform or Rectangular window</p></li>
+<li><p>Parzen Window</p></li>
+<li><p>Hamming Window</p></li>
+<li><p>Hanning Window</p></li>
+<li><p>Triangular Window</p></li>
+<li><p>Blackmann’s Window</p></li>
+<li><p>Welch Window</p></li>
+<li><p>Flat-top Window</p></li>
+</ol>
+<p>Windows are available in <code class="docutils literal notranslate"><span class="pre">stingray.utils</span></code> package and can be used by calling <code class="docutils literal notranslate"><span class="pre">create_window</span></code> function.</p>
+<p>Now, we demonstrate Bispectrum with windows applied. By default, now window is applied.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[29]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">window</span> <span class="o">=</span> <span class="s1">&#39;uniform&#39;</span>
+
+<span class="n">bs</span> <span class="o">=</span> <span class="n">Bispectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span><span class="n">maxlag</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span><span class="n">window</span> <span class="o">=</span> <span class="n">window</span><span class="p">,</span> <span class="n">scale</span> <span class="o">=</span><span class="s1">&#39;unbiased&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">window_name</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&#39;uniform&#39;
+</pre></div></div>
+</div>
+<section id="Plot-Window">
+<h2>Plot Window<a class="headerlink" href="#Plot-Window" title="Link to this heading">¶</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[32]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cont</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">contourf</span><span class="p">(</span><span class="n">bs</span><span class="o">.</span><span class="n">lags</span><span class="p">,</span> <span class="n">bs</span><span class="o">.</span><span class="n">lags</span><span class="p">,</span> <span class="n">bs</span><span class="o">.</span><span class="n">window</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">Spectral_r</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">cont</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;2D Uniform window&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[32]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.text.Text at 0x1ac8b7e8e80&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_40_1.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_40_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[34]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mag_plot</span> <span class="o">=</span> <span class="n">bs</span><span class="o">.</span><span class="n">plot_mag</span><span class="p">()</span>
+<span class="n">mag_plot</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_41_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_41_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[35]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">phase_plot</span> <span class="o">=</span> <span class="n">bs</span><span class="o">.</span><span class="n">plot_phase</span><span class="p">()</span>
+<span class="n">phase_plot</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_42_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_42_0.png" />
+</div>
+</div>
+<p>Now, let us try some more window functions.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[36]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span> <span class="o">=</span> <span class="n">Bispectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">maxlag</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span><span class="n">window</span> <span class="o">=</span> <span class="s1">&#39;hamming&#39;</span><span class="p">,</span><span class="n">scale</span><span class="o">=</span><span class="s1">&#39;biased&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[37]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">window_name</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[37]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&#39;hamming&#39;
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[38]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cont</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">contourf</span><span class="p">(</span><span class="n">bs</span><span class="o">.</span><span class="n">lags</span><span class="p">,</span> <span class="n">bs</span><span class="o">.</span><span class="n">lags</span><span class="p">,</span> <span class="n">bs</span><span class="o">.</span><span class="n">window</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">Spectral_r</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">cont</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;2D Hamming window&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[38]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.text.Text at 0x1ac8bbfe710&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_46_1.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_46_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[39]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mag_plot</span> <span class="o">=</span> <span class="n">bs</span><span class="o">.</span><span class="n">plot_mag</span><span class="p">()</span>
+<span class="n">mag_plot</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_47_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_47_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[40]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">phase_plot</span> <span class="o">=</span> <span class="n">bs</span><span class="o">.</span><span class="n">plot_phase</span><span class="p">()</span>
+<span class="n">phase_plot</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_48_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_48_0.png" />
+</div>
+</div>
+</section>
+<section id="Another-Window-demonstrated">
+<h2>Another Window demonstrated<a class="headerlink" href="#Another-Window-demonstrated" title="Link to this heading">¶</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[45]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span> <span class="o">=</span> <span class="n">Bispectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">maxlag</span> <span class="o">=</span> <span class="mi">25</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="s1">&#39;triangular&#39;</span><span class="p">,</span><span class="n">scale</span><span class="o">=</span><span class="s1">&#39;unbiased&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[46]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">window_name</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[46]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&#39;triangular&#39;
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[47]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cont</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">contourf</span><span class="p">(</span><span class="n">bs</span><span class="o">.</span><span class="n">lags</span><span class="p">,</span> <span class="n">bs</span><span class="o">.</span><span class="n">lags</span><span class="p">,</span> <span class="n">bs</span><span class="o">.</span><span class="n">window</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">Spectral_r</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">cont</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;2D Flat Top window&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[47]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.text.Text at 0x1ac8bdc15f8&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_52_1.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_52_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[48]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">plot_mag</span><span class="p">()</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_53_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_53_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[52]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">plot_phase</span><span class="p">()</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_54_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_54_0.png" />
+</div>
+</div>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Bispectrum Tutorial</a></li>
+<li><a class="reference internal" href="#Plots">Plots</a></li>
+<li><a class="reference internal" href="#Another-Example">Another Example</a></li>
+<li><a class="reference internal" href="#Window-Functions-for-Bispectrum">Window Functions for Bispectrum</a><ul>
+<li><a class="reference internal" href="#Plot-Window">Plot Window</a></li>
+<li><a class="reference internal" href="#Another-Window-demonstrated">Another Window demonstrated</a></li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/Bispectrum/bispectrum_tutorial.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

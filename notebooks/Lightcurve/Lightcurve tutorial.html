@@ -1,0 +1,1744 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Creating a light curve &#8212; stingray v2.3.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=177ce38d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=c3c8ae58"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="R.m.s. - intensity diagram" href="Analyze%20light%20curves%20chunk%20by%20chunk%20-%20an%20example.html" />
+    <link rel="prev" title="Contents" href="../EventList/EventList%20Tutorial.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="Analyze%20light%20curves%20chunk%20by%20chunk%20-%20an%20example.html" title="R.m.s. - intensity diagram">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="../EventList/EventList%20Tutorial.html" title="Contents">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.3.0</a>
+	 &#187;
+      </li>
+      <li><a href="../../core.html" accesskey="U">Core Stingray Functionality</a> &#187;</li>
+      
+      <li>Creating a light curve</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <p>Start here to begin with Stingray.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="o">%</span><span class="k">matplotlib</span> inline
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<section id="Creating-a-light-curve">
+<h1>Creating a light curve<a class="headerlink" href="#Creating-a-light-curve" title="Link to this heading">¶</a></h1>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span>
+</pre></div>
+</div>
+</div>
+<p>A <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> object is usually created in one of the following two ways:</p>
+<ol class="arabic">
+<li><p>From an array of time stamps and an array of counts.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>lc = Lightcurve(times, counts, **opts)
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">**opts</span></code> are any (optional) keyword arguments (e.g. <code class="docutils literal notranslate"><span class="pre">dt=0.1</span></code>, <code class="docutils literal notranslate"><span class="pre">mjdref=55000</span></code>, etc.)</p>
+</li>
+<li><p>From photon arrival times.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>lc = Lightcurve.make_lightcurve(event_arrival_times, dt=1, **opts)
+</pre></div>
+</div>
+</li>
+</ol>
+<p>as will be described in the next sections.</p>
+<p>An additional possibility is creating an empty <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> object, whose attributes will be filled in later:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>lc = Lightcurve()
+</pre></div>
+</div>
+<p>or, if one wants to specify any keyword arguments:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>lc = Lightcurve(**opts)
+</pre></div>
+</div>
+<p>This option is usually only relevant to advanced users, but we mention it here for reference</p>
+<section id="1.-Array-of-time-stamps-and-counts">
+<h2>1. Array of time stamps and counts<a class="headerlink" href="#1.-Array-of-time-stamps-and-counts" title="Link to this heading">¶</a></h2>
+<p>Create 1000 time stamps</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
+<span class="n">times</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+</pre></div></div>
+</div>
+<p>Create 1000 random Poisson-distributed counts:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">))</span>
+<span class="n">counts</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([ 91,  98,  98,  98, 108,  86, 101, 114,  93,  95])
+</pre></div></div>
+</div>
+<p>Create a Lightcurve object with the times and counts array.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">counts</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+WARNING:root:Checking if light curve is well behaved. This can take time, so if you are sure it is already sorted, specify skip_checks=True at light curve creation.
+WARNING:root:Checking if light curve is sorted.
+WARNING:root:Computing the bin time ``dt``. This can take time. If you know the bin time, please specify it at light curve creation
+</pre></div></div>
+</div>
+<p>The number of data points can be counted with the <code class="docutils literal notranslate"><span class="pre">len</span></code> function.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">len</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+1000
+</pre></div></div>
+</div>
+<p>Note the warnings thrown by the syntax above. By default, <code class="docutils literal notranslate"><span class="pre">stingray</span></code> does a number of checks on the data that is put into the <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> class. For example, it checks whether it’s evenly sampled. It also computes the time resolution <code class="docutils literal notranslate"><span class="pre">dt</span></code>. All of these checks take time. If you know the time resolution, it’s a good idea to put it in manually. If you know that your light curve is well-behaved (for example, because you know the data really well, or because you’ve generated it yourself, as
+we’ve done above), you can skip those checks and save a bit of time:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dt</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="2.-Photon-Arrival-Times">
+<h2>2. Photon Arrival Times<a class="headerlink" href="#2.-Photon-Arrival-Times" title="Link to this heading">¶</a></h2>
+<p>Often, you might have unbinned photon arrival times, rather than a light curve with time stamps and associated measurements. If this is the case, you can use the <code class="docutils literal notranslate"><span class="pre">make_lightcurve</span></code> method to turn these photon arrival times into a regularly binned light curve.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">arrivals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="s2">&quot;photon_arrivals.txt&quot;</span><span class="p">)</span>
+<span class="n">arrivals</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([1., 1., 2., 2., 2., 3., 3., 3., 3., 3.])
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_new</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="o">.</span><span class="n">make_lightcurve</span><span class="p">(</span><span class="n">arrivals</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>The time bins and respective counts can be seen with <code class="docutils literal notranslate"><span class="pre">lc.counts</span></code> and <code class="docutils literal notranslate"><span class="pre">lc.time</span></code></p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_new</span><span class="o">.</span><span class="n">counts</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([2, 3, 5, 1, 4, 1, 3, 1, 1])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_new</span><span class="o">.</span><span class="n">time</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5])
+</pre></div></div>
+</div>
+<p>One useful feature is that you can explicitly pass in the start time and the duration of the observation. This can be helpful because the chance that a photon will arrive exactly at the start of the observation and the end of the observation is very small. In practice, when making multiple light curves from the same observation (e.g. individual light curves of multiple detectors, of for different energy ranges) this can lead to the creation of light curves with time bins that are <em>slightly</em>
+offset from one another. Here, passing in the total duration of the observation and the start time can be helpful.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_new</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="o">.</span><span class="n">make_lightcurve</span><span class="p">(</span><span class="n">arrivals</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">tstart</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">tseg</span><span class="o">=</span><span class="mf">9.0</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+<section id="Properties">
+<h1>Properties<a class="headerlink" href="#Properties" title="Link to this heading">¶</a></h1>
+<p>A Lightcurve object has the following properties :</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">time</span></code> : numpy array of time values</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">counts</span></code> : numpy array of counts per bin values</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">counts_err</span></code>: numpy array with the uncertainties on the values in <code class="docutils literal notranslate"><span class="pre">counts</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">countrate</span></code> : numpy array of counts per second</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">countrate_err</span></code>: numpy array of the uncertainties on the values in <code class="docutils literal notranslate"><span class="pre">countrate</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">n</span></code> : Number of data points in the lightcurve</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dt</span></code> : Time resolution of the light curve</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tseg</span></code> : Total duration of the light curve</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tstart</span></code> : Start time of the light curve</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">meancounts</span></code>: The mean counts of the light curve</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">meanrate</span></code>: The mean count rate of the light curve</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mjdref</span></code>: MJD reference date (<code class="docutils literal notranslate"><span class="pre">tstart</span></code> / 86400 gives the date in MJD at the start of the observation)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gti</span></code>:Good Time Intervals. They indicate the “safe” time intervals to be used during the analysis of the light curve.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">err_dist</span></code>: Statistic of the Lightcurve, it is used to calculate the uncertainties and other statistical values appropriately. It propagates to Spectrum classes</p></li>
+</ol>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span><span class="o">.</span><span class="n">n</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+True
+</pre></div></div>
+</div>
+<p>Note that by default, <code class="docutils literal notranslate"><span class="pre">stingray</span></code> assumes that the user is passing a light curve in <strong>counts per bin</strong>. That is, the counts in bin <span class="math notranslate nohighlight">\(i\)</span> will be the number of photons that arrived in the interval <span class="math notranslate nohighlight">\(t_i - 0.5\Delta t\)</span> and <span class="math notranslate nohighlight">\(t_i + 0.5\Delta t\)</span>. Sometimes, data is given in <strong>count rate</strong>, i.e. the number of events that arrive within an interval of a <em>second</em>. The two will only be the same if the time resolution of the light curve is exactly 1 second.</p>
+<p>Whether the input data is in counts per bin or in count rate can be toggled via the boolean <code class="docutils literal notranslate"><span class="pre">input_counts</span></code> keyword argument. By default, this argument is set to <code class="docutils literal notranslate"><span class="pre">True</span></code>, and the code assumes the light curve passed into the object is in counts/bin. By setting it to <code class="docutils literal notranslate"><span class="pre">False</span></code>, the user can pass in count rates:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># times with a resolution of 0.1</span>
+<span class="n">dt</span> <span class="o">=</span> <span class="mf">0.1</span>
+<span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span>
+<span class="n">times</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([0. , 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mean_countrate</span> <span class="o">=</span> <span class="mf">100.0</span>
+<span class="n">countrate</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">mean_countrate</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">counts</span><span class="o">=</span><span class="n">countrate</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">input_counts</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Internally, both <code class="docutils literal notranslate"><span class="pre">counts</span></code> and <code class="docutils literal notranslate"><span class="pre">countrate</span></code> attribute will be defined no matter what the user passes in, since they’re trivially converted between each other through a multiplication/division with `dt:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">mean_countrate</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">countrate</span><span class="p">[:</span><span class="mi">10</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+100.0
+[113  92 110  97 101 102 103 101 124  89]
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mean_counts</span> <span class="o">=</span> <span class="n">mean_countrate</span> <span class="o">*</span> <span class="n">dt</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">mean_counts</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">[:</span><span class="mi">10</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+10.0
+[11.3  9.2 11.   9.7 10.1 10.2 10.3 10.1 12.4  8.9]
+</pre></div></div>
+</div>
+<section id="Error-Distributions-in-stingray.Lightcurve">
+<h2>Error Distributions in <code class="docutils literal notranslate"><span class="pre">stingray.Lightcurve</span></code><a class="headerlink" href="#Error-Distributions-in-stingray.Lightcurve" title="Link to this heading">¶</a></h2>
+<p>The instruments that record our data impose measurement noise on our measurements. Depending on the type of instrument, the statistical distribution of that noise can be different. <code class="docutils literal notranslate"><span class="pre">stingray</span></code> was originally developed with X-ray data in mind, where most data comes in the form of <em>photon arrival times</em>, which generate measurements distributed according to a Poisson distribution. By default, <code class="docutils literal notranslate"><span class="pre">err_dist</span></code> is assumed to Poisson, and this is the only statistical distribution currently fully
+supported. But you <em>can</em> put in your own errors (via <code class="docutils literal notranslate"><span class="pre">counts_err</span></code> or <code class="docutils literal notranslate"><span class="pre">countrate_err</span></code>). It’ll produce a warning, and be aware that some of the statistical assumptions made about downstream products (e.g. the normalization of periodograms) may not be correct:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
+
+<span class="n">mean_flux</span> <span class="o">=</span> <span class="mf">100.0</span> <span class="c1"># mean flux</span>
+<span class="n">std_flux</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="c1"># standard deviation on the flux</span>
+
+<span class="c1"># generate fluxes with a Gaussian distribution and</span>
+<span class="c1"># an array of associated uncertainties</span>
+<span class="n">flux</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="n">mean_flux</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">std_flux</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">))</span>
+<span class="n">flux_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">flux</span><span class="p">)</span> <span class="o">*</span> <span class="n">std_flux</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">flux</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">flux_err</span><span class="p">,</span> <span class="n">err_dist</span><span class="o">=</span><span class="s2">&quot;gauss&quot;</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Good-Time-Intervals">
+<h2>Good Time Intervals<a class="headerlink" href="#Good-Time-Intervals" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> (and most other core <code class="docutils literal notranslate"><span class="pre">stingray</span></code> classes) support the use of <em>Good Time Intervals</em> (or GTIs), which denote the parts of an observation that are reliable for scientific purposes. Often, GTIs introduce gaps (e.g. where the instrument was off, or affected by solar flares). By default. GTIs are passed and don’t apply to the data within a <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> object, but become relevant in a number of circumstances, such as when generating <code class="docutils literal notranslate"><span class="pre">Powerspectrum</span></code> objects.</p>
+<p>If no GTIs are given at instantiation of the <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> class, an artificial GTI will be created spanning the entire length of the data set being passed in:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">))</span>
+
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span><span class="o">.</span><span class="n">gti</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([[-5.000e-01,  9.995e+02]])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="c1"># first time stamp in the light curve</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="c1"># last time stamp in the light curve</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">gti</span><span class="p">)</span> <span class="c1"># the GTIs generated within Lightcurve</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+0
+999
+[[-5.000e-01  9.995e+02]]
+</pre></div></div>
+</div>
+GTIs are defined as a list of tuples:<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">gti</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">500</span><span class="p">),</span> <span class="p">(</span><span class="mi">600</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)]</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="n">gti</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[26]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">gti</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[[   0  500]
+ [ 600 1000]]
+</pre></div></div>
+</div>
+<p>We’ll get back to these when we talk more about some of the methods that apply GTIs to the data.</p>
+</section>
+</section>
+<section id="Operations">
+<h1>Operations<a class="headerlink" href="#Operations" title="Link to this heading">¶</a></h1>
+<section id="Addition/Subtraction">
+<h2>Addition/Subtraction<a class="headerlink" href="#Addition/Subtraction" title="Link to this heading">¶</a></h2>
+<p>Two light curves can be summed up or subtracted from each other if they have same time arrays.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[27]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">lc_rand</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1000</span><span class="p">),</span> <span class="p">[</span><span class="mi">500</span><span class="p">]</span><span class="o">*</span><span class="mi">1000</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[28]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_sum</span> <span class="o">=</span> <span class="n">lc</span> <span class="o">+</span> <span class="n">lc_rand</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[29]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Counts in light curve 1: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">[:</span><span class="mi">5</span><span class="p">]))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Counts in light curve 2: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lc_rand</span><span class="o">.</span><span class="n">counts</span><span class="p">[:</span><span class="mi">5</span><span class="p">]))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Counts in summed light curve: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lc_sum</span><span class="o">.</span><span class="n">counts</span><span class="p">[:</span><span class="mi">5</span><span class="p">]))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Counts in light curve 1: [103  99 102 109 104]
+Counts in light curve 2: [500 500 500 500 500]
+Counts in summed light curve: [603 599 602 609 604]
+</pre></div></div>
+</div>
+</section>
+<section id="Negation">
+<h2>Negation<a class="headerlink" href="#Negation" title="Link to this heading">¶</a></h2>
+<p>A negation operation on the lightcurve object inverts the count array from positive to negative values.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_neg</span> <span class="o">=</span> <span class="o">-</span><span class="n">lc</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[31]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_sum</span> <span class="o">=</span> <span class="n">lc</span> <span class="o">+</span> <span class="n">lc_neg</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[32]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">lc_sum</span><span class="o">.</span><span class="n">counts</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># All the points on lc and lc_neg cancel each other</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[32]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+True
+</pre></div></div>
+</div>
+</section>
+<section id="Indexing">
+<h2>Indexing<a class="headerlink" href="#Indexing" title="Link to this heading">¶</a></h2>
+<p>Count value at a particular time can be obtained using indexing.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[33]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span><span class="p">[</span><span class="mi">120</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[33]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+113
+</pre></div></div>
+</div>
+<p>A Lightcurve can also be sliced to generate a new object.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[34]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_sliced</span> <span class="o">=</span> <span class="n">lc</span><span class="p">[</span><span class="mi">100</span><span class="p">:</span><span class="mi">200</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[35]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">len</span><span class="p">(</span><span class="n">lc_sliced</span><span class="o">.</span><span class="n">counts</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[35]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+100
+</pre></div></div>
+</div>
+</section>
+</section>
+<section id="Methods">
+<h1>Methods<a class="headerlink" href="#Methods" title="Link to this heading">¶</a></h1>
+<section id="Concatenation">
+<h2>Concatenation<a class="headerlink" href="#Concatenation" title="Link to this heading">¶</a></h2>
+<p>Two light curves can be combined into a single object using the <code class="docutils literal notranslate"><span class="pre">join</span></code> method. Note that both of them must not have overlapping time arrays.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[36]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_1</span> <span class="o">=</span> <span class="n">lc</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[37]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_2</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">2000</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span><span class="o">*</span><span class="mi">1000</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[38]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_long</span> <span class="o">=</span> <span class="n">lc_1</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lc_2</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># Or vice-versa</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[39]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lc_long</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+2000
+</pre></div></div>
+</div>
+</section>
+<section id="Truncation">
+<h2>Truncation<a class="headerlink" href="#Truncation" title="Link to this heading">¶</a></h2>
+<p>A light curve can also be truncated.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[40]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_cut</span> <span class="o">=</span> <span class="n">lc_long</span><span class="o">.</span><span class="n">truncate</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[41]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">len</span><span class="p">(</span><span class="n">lc_cut</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[41]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+1000
+</pre></div></div>
+</div>
+<p><strong>Note</strong> : By default, the <code class="docutils literal notranslate"><span class="pre">start</span></code> and <code class="docutils literal notranslate"><span class="pre">stop</span></code> parameters are assumed to be given as <strong>indices</strong> of the time array. However, the <code class="docutils literal notranslate"><span class="pre">start</span></code> and <code class="docutils literal notranslate"><span class="pre">stop</span></code> values can also be given as time values in the same value as the time array.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[42]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_cut</span> <span class="o">=</span> <span class="n">lc_long</span><span class="o">.</span><span class="n">truncate</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="mi">1500</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;time&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[43]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_cut</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">lc_cut</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[43]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(500, 1499)
+</pre></div></div>
+</div>
+</section>
+<section id="Re-binning">
+<h2>Re-binning<a class="headerlink" href="#Re-binning" title="Link to this heading">¶</a></h2>
+<p>The time resolution (<code class="docutils literal notranslate"><span class="pre">dt</span></code>) can also be changed to a larger value.</p>
+<p><strong>Note</strong> : While the new resolution need not be an integer multiple of the previous time resolution, be aware that if it is not, the last bin will be cut off by the fraction left over by the integer division.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[44]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_rebinned</span> <span class="o">=</span> <span class="n">lc_long</span><span class="o">.</span><span class="n">rebin</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[45]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Old time resolution = &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lc_long</span><span class="o">.</span><span class="n">dt</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Number of data points = &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lc_long</span><span class="o">.</span><span class="n">n</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;New time resolution = &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lc_rebinned</span><span class="o">.</span><span class="n">dt</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Number of data points = &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lc_rebinned</span><span class="o">.</span><span class="n">n</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Old time resolution = 1
+Number of data points = 2000
+New time resolution = 2
+Number of data points = 1000
+</pre></div></div>
+</div>
+</section>
+<section id="Sorting">
+<h2>Sorting<a class="headerlink" href="#Sorting" title="Link to this heading">¶</a></h2>
+<p>A lightcurve can be sorted using the <code class="docutils literal notranslate"><span class="pre">sort</span></code> method. This function sorts <code class="docutils literal notranslate"><span class="pre">time</span></code> array and the <code class="docutils literal notranslate"><span class="pre">counts</span></code> array is changed accordingly.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[46]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">new_lc_long</span> <span class="o">=</span> <span class="n">lc_long</span><span class="p">[:]</span>  <span class="c1"># Copying into a new object</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[47]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">new_lc_long</span> <span class="o">=</span> <span class="n">new_lc_long</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[48]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">new_lc_long</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="nb">max</span><span class="p">(</span><span class="n">lc_long</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[48]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+True
+</pre></div></div>
+</div>
+<p>You can sort by the <code class="docutils literal notranslate"><span class="pre">counts</span></code> array using <code class="docutils literal notranslate"><span class="pre">sort_counts</span></code> method which changes <code class="docutils literal notranslate"><span class="pre">time</span></code> array accordingly:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[49]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">new_lc</span> <span class="o">=</span> <span class="n">lc_long</span><span class="p">[:]</span>
+<span class="n">new_lc</span> <span class="o">=</span> <span class="n">new_lc</span><span class="o">.</span><span class="n">sort_counts</span><span class="p">()</span>
+<span class="n">new_lc</span><span class="o">.</span><span class="n">counts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="nb">max</span><span class="p">(</span><span class="n">lc_long</span><span class="o">.</span><span class="n">counts</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[49]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+True
+</pre></div></div>
+</div>
+</section>
+<section id="Plotting">
+<h2>Plotting<a class="headerlink" href="#Plotting" title="Link to this heading">¶</a></h2>
+<p>A curve can be plotted with the <code class="docutils literal notranslate"><span class="pre">plot</span></code> method.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[50]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Lightcurve_Lightcurve_tutorial_89_0.png" src="../../_images/notebooks_Lightcurve_Lightcurve_tutorial_89_0.png" />
+</div>
+</div>
+<p>A plot can also be customized using several keyword arguments.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[51]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">labels</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;Time&#39;</span><span class="p">,</span> <span class="s2">&quot;Counts&quot;</span><span class="p">),</span>  <span class="c1"># (xlabel, ylabel)</span>
+        <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="o">-</span><span class="mi">50</span><span class="p">,</span> <span class="mi">150</span><span class="p">),</span>  <span class="c1"># (xmin, xmax, ymin, ymax)</span>
+        <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Random generated lightcurve&quot;</span><span class="p">,</span>
+        <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;c:&#39;</span><span class="p">)</span>  <span class="c1"># c is for cyan and : is the marker style</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Lightcurve_Lightcurve_tutorial_91_0.png" src="../../_images/notebooks_Lightcurve_Lightcurve_tutorial_91_0.png" />
+</div>
+</div>
+<p>The figure drawn can also be saved in a file using keywords arguments in the plot method itself.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[52]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">marker</span> <span class="o">=</span> <span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">save</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s2">&quot;lightcurve.png&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Lightcurve_Lightcurve_tutorial_93_0.png" src="../../_images/notebooks_Lightcurve_Lightcurve_tutorial_93_0.png" />
+</div>
+</div>
+<p><strong>Note</strong> : See <code class="docutils literal notranslate"><span class="pre">utils.savefig</span></code> function for more options on saving a file.</p>
+</section>
+</section>
+<section id="Sample-Data">
+<h1>Sample Data<a class="headerlink" href="#Sample-Data" title="Link to this heading">¶</a></h1>
+<p>Stingray also has a sample <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> data which can be imported from within the library.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[53]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">sampledata</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[54]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span> <span class="o">=</span> <span class="n">sampledata</span><span class="o">.</span><span class="n">sample_data</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+WARNING:root:Checking if light curve is well behaved. This can take time, so if you are sure it is already sorted, specify skip_checks=True at light curve creation.
+WARNING:root:Checking if light curve is sorted.
+WARNING:root:Computing the bin time ``dt``. This can take time. If you know the bin time, please specify it at light curve creation
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[55]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Lightcurve_Lightcurve_tutorial_99_0.png" src="../../_images/notebooks_Lightcurve_Lightcurve_tutorial_99_0.png" />
+</div>
+</div>
+<section id="Checking-the-Light-Curve-for-Irregularities">
+<h2>Checking the Light Curve for Irregularities<a class="headerlink" href="#Checking-the-Light-Curve-for-Irregularities" title="Link to this heading">¶</a></h2>
+<p>You can perform checks on the behaviour of the light curve, similar to what’s done when instantiating a <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> object when <code class="docutils literal notranslate"><span class="pre">skip_checks=False</span></code>, by calling the relevant method:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[56]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">)])</span> <span class="c1"># uneven time resolution</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">time</span><span class="p">))</span>
+
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[57]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span><span class="o">.</span><span class="n">check_lightcurve</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<p>Let’s add some badly formatted GTIs:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[58]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">gti</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">123</span><span class="p">),</span> <span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">40</span><span class="p">)]</span> <span class="c1"># not a well-behaved GTI</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="n">gti</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[59]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># This will fail</span>
+<span class="n">lc</span><span class="o">.</span><span class="n">check_lightcurve</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">TypeError</span>                                 Traceback (most recent call last)
+<span class="ansi-green-fg">&lt;ipython-input-59-7e2c226c1569&gt;</span> in <span class="ansi-cyan-fg">&lt;module&gt;</span>
+<span class="ansi-green-fg">----&gt; 1</span><span class="ansi-red-fg"> </span>lc<span class="ansi-blue-fg">.</span>check_lightcurve<span class="ansi-blue-fg">(</span><span class="ansi-blue-fg">)</span>
+
+<span class="ansi-green-fg">/opt/miniconda3/envs/stingraydev/lib/python3.8/site-packages/stingray-0.3.dev267+gc5fd28c.d20210122-py3.8.egg/stingray/lightcurve.py</span> in <span class="ansi-cyan-fg">check_lightcurve</span><span class="ansi-blue-fg">(self)</span>
+<span class="ansi-green-intense-fg ansi-bold">    418</span>         <span class="ansi-red-fg"># i.e. the bin sizes aren&#39;t equal throughout.</span>
+<span class="ansi-green-intense-fg ansi-bold">    419</span>
+<span class="ansi-green-fg">--&gt; 420</span><span class="ansi-red-fg">         </span>check_gtis<span class="ansi-blue-fg">(</span>self<span class="ansi-blue-fg">.</span>gti<span class="ansi-blue-fg">)</span>
+<span class="ansi-green-intense-fg ansi-bold">    421</span>
+<span class="ansi-green-intense-fg ansi-bold">    422</span>         idxs <span class="ansi-blue-fg">=</span> np<span class="ansi-blue-fg">.</span>searchsorted<span class="ansi-blue-fg">(</span>self<span class="ansi-blue-fg">.</span>time<span class="ansi-blue-fg">,</span> self<span class="ansi-blue-fg">.</span>gti<span class="ansi-blue-fg">)</span>
+
+<span class="ansi-green-fg">/opt/miniconda3/envs/stingraydev/lib/python3.8/site-packages/stingray-0.3.dev267+gc5fd28c.d20210122-py3.8.egg/stingray/gti.py</span> in <span class="ansi-cyan-fg">check_gtis</span><span class="ansi-blue-fg">(gti)</span>
+<span class="ansi-green-intense-fg ansi-bold">    225</span>     <span class="ansi-green-fg">if</span> len<span class="ansi-blue-fg">(</span>gti<span class="ansi-blue-fg">)</span> <span class="ansi-blue-fg">!=</span> gti<span class="ansi-blue-fg">.</span>shape<span class="ansi-blue-fg">[</span><span class="ansi-cyan-fg">0</span><span class="ansi-blue-fg">]</span> <span class="ansi-green-fg">or</span> len<span class="ansi-blue-fg">(</span>gti<span class="ansi-blue-fg">.</span>shape<span class="ansi-blue-fg">)</span> <span class="ansi-blue-fg">!=</span> <span class="ansi-cyan-fg">2</span> <span class="ansi-green-fg">or</span><span class="ansi-red-fg"> </span><span class="ansi-red-fg">\</span>
+<span class="ansi-green-intense-fg ansi-bold">    226</span>             len<span class="ansi-blue-fg">(</span>gti<span class="ansi-blue-fg">)</span> <span class="ansi-blue-fg">!=</span> gti<span class="ansi-blue-fg">.</span>shape<span class="ansi-blue-fg">[</span><span class="ansi-cyan-fg">0</span><span class="ansi-blue-fg">]</span><span class="ansi-blue-fg">:</span>
+<span class="ansi-green-fg">--&gt; 227</span><span class="ansi-red-fg">         raise TypeError(&#34;Please check formatting of GTIs. They need to be&#34;
+</span><span class="ansi-green-intense-fg ansi-bold">    228</span>                         &#34; provided as [[gti00, gti01], [gti10, gti11], ...]&#34;)
+<span class="ansi-green-intense-fg ansi-bold">    229</span>
+
+<span class="ansi-red-fg">TypeError</span>: Please check formatting of GTIs. They need to be provided as [[gti00, gti01], [gti10, gti11], ...]
+</pre></div></div>
+</div>
+</section>
+<section id="MJDREF-and-Shifting-Times">
+<h2>MJDREF and Shifting Times<a class="headerlink" href="#MJDREF-and-Shifting-Times" title="Link to this heading">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">mjdref</span></code> keyword argument defines a reference time in Modified Julian Date. Often, X-ray missions count their internal time in seconds from a given reference date and time (so that numbers don’t become arbitrarily large). The data is then in the format of Mission Elapsed Time (MET), or seconds since that reference time.</p>
+<p><code class="docutils literal notranslate"><span class="pre">mjdref</span></code> is generally passed into the <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> object at instantiation, but it can be changed later:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[60]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mjdref</span> <span class="o">=</span> <span class="mi">91254</span>
+<span class="n">time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">time</span><span class="p">))</span>
+
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">mjdref</span><span class="o">=</span><span class="n">mjdref</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">mjdref</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+91254
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[61]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mjdref_new</span> <span class="o">=</span> <span class="mi">91254</span> <span class="o">+</span> <span class="mi">20</span>
+<span class="n">lc_new</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">change_mjdref</span><span class="p">(</span><span class="n">mjdref_new</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">lc_new</span><span class="o">.</span><span class="n">mjdref</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+91274
+</pre></div></div>
+</div>
+<p>This change only affects the <em>reference time</em>, not the values given in the <code class="docutils literal notranslate"><span class="pre">time</span></code> attribute. However, it is also possible to shift the <em>entire light curve</em>, along with its GTIs:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[62]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">gti</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span><span class="mi">500</span><span class="p">),</span> <span class="p">(</span><span class="mi">600</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)]</span>
+<span class="n">lc</span><span class="o">.</span><span class="n">gti</span> <span class="o">=</span> <span class="n">gti</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[63]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;first three time bins: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">[:</span><span class="mi">3</span><span class="p">]))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;GTIs: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">gti</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+first three time bins: [0 1 2]
+GTIs: [[   0  500]
+ [ 600 1000]]
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[64]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">time_shift</span> <span class="o">=</span> <span class="mf">10.0</span>
+<span class="n">lc_shifted</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="n">time_shift</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[65]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Shifted first three time bins: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lc_shifted</span><span class="o">.</span><span class="n">time</span><span class="p">[:</span><span class="mi">3</span><span class="p">]))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Shifted GTIs: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lc_shifted</span><span class="o">.</span><span class="n">gti</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Shifted first three time bins: [10. 11. 12.]
+Shifted GTIs: [[  10.  510.]
+ [ 610. 1010.]]
+</pre></div></div>
+</div>
+</section>
+<section id="Calculating-a-baseline">
+<h2>Calculating a baseline<a class="headerlink" href="#Calculating-a-baseline" title="Link to this heading">¶</a></h2>
+<p><strong>TODO</strong>: Need to document this method</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Working-with-GTIs-and-Splitting-Light-Curves">
+<h2>Working with GTIs and Splitting Light Curves<a class="headerlink" href="#Working-with-GTIs-and-Splitting-Light-Curves" title="Link to this heading">¶</a></h2>
+<p>It is possible to split light curves into multiple segments. In particular, it can be useful to split light curves with large gaps into individual contiguous segments without gaps.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[66]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># make a time array with a big gap and a small gap</span>
+<span class="n">time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">17</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mi">20</span><span class="p">])</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">time</span><span class="p">))</span>
+
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+WARNING:root:Computing the bin time ``dt``. This can take time. If you know the bin time, please specify it at light curve creation
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[67]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span><span class="o">.</span><span class="n">gti</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[67]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([[ 0.5, 20.5]])
+</pre></div></div>
+</div>
+<p>This light curve has uneven bins. It has a large gap between 3 and 10, and a smaller gap between 14 and 17. We can use the <code class="docutils literal notranslate"><span class="pre">split</span></code> method to split it into three contiguous segments:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[68]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_split</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">min_gap</span><span class="o">=</span><span class="mi">2</span><span class="o">*</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[69]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">lc_tmp</span> <span class="ow">in</span> <span class="n">lc_split</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">lc_tmp</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[1 2 3]
+[10 11 12 13 14]
+[17 18 19 20]
+</pre></div></div>
+</div>
+<p>This has split the light curve into three contiguous segments. You can adjust the tolerance for the size of gap that’s acceptable via the <code class="docutils literal notranslate"><span class="pre">min_gap</span></code> attribute. You can also require a minimum number of data points in the output light curves. This is helpful when you’re only interested in contiguous segments of a certain length:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[70]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_split</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">min_gap</span><span class="o">=</span><span class="mf">6.0</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[71]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">lc_tmp</span> <span class="ow">in</span> <span class="n">lc_split</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">lc_tmp</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[1 2 3]
+[10 11 12 13 14 17 18 19 20]
+</pre></div></div>
+</div>
+<p>What if we only want the long segment?</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[72]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_split</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">min_gap</span><span class="o">=</span><span class="mf">6.0</span><span class="p">,</span> <span class="n">min_points</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[73]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">lc_tmp</span> <span class="ow">in</span> <span class="n">lc_split</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">lc_tmp</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[10 11 12 13 14 17 18 19 20]
+</pre></div></div>
+</div>
+<p>A special case of splitting your light curve object is to split by GTIs. This can be helpful if you want to look at individual contiguous segments separately:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[74]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># make a time array with a big gap and a small gap</span>
+<span class="n">time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">time</span><span class="p">))</span>
+<span class="n">gti</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span><span class="mi">8</span><span class="p">),</span> <span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">20</span><span class="p">)]</span>
+
+
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="n">gti</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[75]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_split</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">split_by_gti</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[76]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">lc_tmp</span> <span class="ow">in</span> <span class="n">lc_split</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">lc_tmp</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[1 2 3 4 5 6 7]
+[13 14 15 16 17 18 19]
+</pre></div></div>
+</div>
+<p>Because I’d passed in GTIs that define the range from 0-8 and from 12-20 as good time intervals, the light curve will be split into two individual ones containing all data points falling within these ranges.</p>
+<p>You can also apply the GTIs <em>directly</em> to the original light curve, which will filter <code class="docutils literal notranslate"><span class="pre">time</span></code>, <code class="docutils literal notranslate"><span class="pre">counts</span></code>, <code class="docutils literal notranslate"><span class="pre">countrate</span></code>, <code class="docutils literal notranslate"><span class="pre">counts_err</span></code> and <code class="docutils literal notranslate"><span class="pre">countrate_err</span></code> to only fall within the bounds of the GTIs:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[77]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># make a time array with a big gap and a small gap</span>
+<span class="n">time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">time</span><span class="p">))</span>
+<span class="n">gti</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span><span class="mi">8</span><span class="p">),</span> <span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">20</span><span class="p">)]</span>
+
+
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">gti</span><span class="o">=</span><span class="n">gti</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Caution</strong>: This is one of the few methods that change the original state of the object, rather than returning a new copy of it with the changes applied! So any events falling outside of the range of the GTIs will be lost:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[78]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># time array before applying GTIs:</span>
+<span class="n">lc</span><span class="o">.</span><span class="n">time</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[78]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16,
+       17, 18, 19])
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[79]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[80]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># time array after applying GTIs</span>
+<span class="n">lc</span><span class="o">.</span><span class="n">time</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[80]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([ 1,  2,  3,  4,  5,  6,  7, 13, 14, 15, 16, 17, 18, 19])
+</pre></div></div>
+</div>
+<p>As you can see, the time bins 8-12 have been dropped, since they fall outside of the GTIs.</p>
+</section>
+<section id="Analyzing-Light-Curve-Segments">
+<h2>Analyzing Light Curve Segments<a class="headerlink" href="#Analyzing-Light-Curve-Segments" title="Link to this heading">¶</a></h2>
+<p>There’s some functionality in <code class="docutils literal notranslate"><span class="pre">stingray</span></code> aimed at making analysis of individual light curve segments (or chunks, as they’re called throughout the code) efficient.</p>
+<p>One helpful function tells you the length that segments should have to satisfy two conditions: (1) the minimum number of time bins in the segment, and (2) the minimum total number of counts (or flux) in each segment.</p>
+<p>Let’s give this a try with an example:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[81]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dt</span><span class="o">=</span><span class="mf">1.0</span>
+<span class="n">time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">time</span><span class="p">))</span>
+
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[82]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">min_total_counts</span> <span class="o">=</span> <span class="mi">300</span>
+<span class="n">min_total_bins</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">estimated_chunk_length</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">estimate_chunk_length</span><span class="p">(</span><span class="n">min_total_counts</span><span class="p">,</span> <span class="n">min_total_bins</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The estimated length of each segment in seconds to satisfy both conditions is: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">estimated_chunk_length</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+The estimated length of each segment in seconds to satisfy both conditions is: 4.0
+</pre></div></div>
+</div>
+<p>So we have time bins of 1 second time resolution, each with an average of 100 counts/bin. We require at least 2 time bins in each segment, and also a minimum number of total counts in the segment of 300. In theory, you’d expect to need 3 time bins (so 3-second segments) to satisfy the condition above. However, the Poisson distribution is quite variable, so we cannot guarantee that all bins will have a total number of counts above 300. Hence, our segments need to be 4 seconds long.</p>
+<p>We can now use these segments to do some analysis, using the <code class="docutils literal notranslate"><span class="pre">analyze_by_chunks</span></code> method. In the simplest, case we can use a standard <code class="docutils literal notranslate"><span class="pre">numpy</span></code> operation to learn something about the properties of each segment:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[83]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">start_times</span><span class="p">,</span> <span class="n">stop_times</span><span class="p">,</span> <span class="n">lc_sums</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">analyze_lc_chunks</span><span class="p">(</span><span class="n">segment_size</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">,</span> <span class="n">func</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[84]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_sums</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[84]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([102. , 110. ,  92. ,  96.5,  99.5, 100. ,  95. ,  96.5, 100. ,
+       108. ])
+</pre></div></div>
+</div>
+<p>This splits the light curve into 10-second segments, and then finds the median number of counts/bin in each segment. For a flat light curve like the one we generated above, this isn’t super interesting, but this method can be helpful for more complex analyses. Instead of <code class="docutils literal notranslate"><span class="pre">np.median</span></code>, you can also pass in your own function:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[85]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">myfunc</span><span class="p">(</span><span class="n">lc</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Not a very interesting function</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">)</span> <span class="o">*</span> <span class="mf">10.0</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[86]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">start_times</span><span class="p">,</span> <span class="n">stop_times</span><span class="p">,</span> <span class="n">lc_result</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">analyze_lc_chunks</span><span class="p">(</span><span class="n">segment_size</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">func</span><span class="o">=</span><span class="n">myfunc</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[87]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_result</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[87]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([10090., 10830.,  9370., 10120., 10180., 10190.,  9910.,  9610.,
+        9880., 10600.])
+</pre></div></div>
+</div>
+</section>
+<section id="Compatibility-with-Lightkurve">
+<h2>Compatibility with <code class="docutils literal notranslate"><span class="pre">Lightkurve</span></code><a class="headerlink" href="#Compatibility-with-Lightkurve" title="Link to this heading">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">`Lightkurve</span></code> package &lt;<a class="reference external" href="https://lightkurve.github.io/lightkurve/">https://lightkurve.github.io/lightkurve/</a>&gt;`__ provides a large amount of complementary functionality to stingray, in particular for data observed with Kepler and TESS, stars and exoplanets, and unevenly sampled data. We have implemented a conversion method that converts to/from <code class="docutils literal notranslate"><span class="pre">stingray</span></code>’s native <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> object and <code class="docutils literal notranslate"><span class="pre">Lightkurve</span></code>’s native <code class="docutils literal notranslate"><span class="pre">LightCurve</span></code> object. Equivalent functionality exists in <code class="docutils literal notranslate"><span class="pre">Lightkurve</span></code>, too. The users who have not installed
+Lightkurve package should do so first by running <em>pip install lightkurve</em> in their terminal and then following with the next command.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[88]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">lightkurve</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[89]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_new</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">to_lightkurve</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[90]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">type</span><span class="p">(</span><span class="n">lc_new</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[90]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+lightkurve.lightcurve.LightCurve
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[91]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_new</span><span class="o">.</span><span class="n">time</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[91]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11., 12.,
+       13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23., 24., 25.,
+       26., 27., 28., 29., 30., 31., 32., 33., 34., 35., 36., 37., 38.,
+       39., 40., 41., 42., 43., 44., 45., 46., 47., 48., 49., 50., 51.,
+       52., 53., 54., 55., 56., 57., 58., 59., 60., 61., 62., 63., 64.,
+       65., 66., 67., 68., 69., 70., 71., 72., 73., 74., 75., 76., 77.,
+       78., 79., 80., 81., 82., 83., 84., 85., 86., 87., 88., 89., 90.,
+       91., 92., 93., 94., 95., 96., 97., 98., 99.])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[92]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_new</span><span class="o">.</span><span class="n">flux</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[92]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([110,  82,  94, 126, 102,  80, 102, 105, 106, 102, 119,  98, 112,
+        98, 119, 112, 119,  99,  99, 108,  91,  85,  93, 109,  97,  82,
+        87,  89,  96, 108, 120,  88,  97,  88, 109, 120,  94, 106,  94,
+        96, 120, 122,  92,  87, 113,  94, 100,  99, 105,  86, 107, 101,
+        94, 102,  96, 112,  93, 117,  99,  98,  91, 101,  94, 120, 105,
+        91,  91,  96,  85, 117, 104, 102,  91,  94, 100, 115,  98,  74,
+        95,  88, 100, 107, 102, 109, 109,  94,  86,  84,  97, 100, 110,
+       109, 117,  96, 108, 108, 110, 108,  97,  97])
+</pre></div></div>
+</div>
+<p>Let’s do the rountrip to stingray:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[93]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_back</span> <span class="o">=</span> <span class="n">lc_new</span><span class="o">.</span><span class="n">to_stingray</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+WARNING:root:Checking if light curve is well behaved. This can take time, so if you are sure it is already sorted, specify skip_checks=True at light curve creation.
+WARNING:root:Checking if light curve is sorted.
+WARNING:root:Computing the bin time ``dt``. This can take time. If you know the bin time, please specify it at light curve creation
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[94]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_back</span><span class="o">.</span><span class="n">time</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[94]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11., 12.,
+       13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23., 24., 25.,
+       26., 27., 28., 29., 30., 31., 32., 33., 34., 35., 36., 37., 38.,
+       39., 40., 41., 42., 43., 44., 45., 46., 47., 48., 49., 50., 51.,
+       52., 53., 54., 55., 56., 57., 58., 59., 60., 61., 62., 63., 64.,
+       65., 66., 67., 68., 69., 70., 71., 72., 73., 74., 75., 76., 77.,
+       78., 79., 80., 81., 82., 83., 84., 85., 86., 87., 88., 89., 90.,
+       91., 92., 93., 94., 95., 96., 97., 98., 99.])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[95]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc_back</span><span class="o">.</span><span class="n">counts</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[95]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([110.,  82.,  94., 126., 102.,  80., 102., 105., 106., 102., 119.,
+        98., 112.,  98., 119., 112., 119.,  99.,  99., 108.,  91.,  85.,
+        93., 109.,  97.,  82.,  87.,  89.,  96., 108., 120.,  88.,  97.,
+        88., 109., 120.,  94., 106.,  94.,  96., 120., 122.,  92.,  87.,
+       113.,  94., 100.,  99., 105.,  86., 107., 101.,  94., 102.,  96.,
+       112.,  93., 117.,  99.,  98.,  91., 101.,  94., 120., 105.,  91.,
+        91.,  96.,  85., 117., 104., 102.,  91.,  94., 100., 115.,  98.,
+        74.,  95.,  88., 100., 107., 102., 109., 109.,  94.,  86.,  84.,
+        97., 100., 110., 109., 117.,  96., 108., 108., 110., 108.,  97.,
+        97.])
+</pre></div></div>
+</div>
+<p>Similarly, we can transform <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> objects to and from <code class="docutils literal notranslate"><span class="pre">astropy.TimeSeries</span></code> objects:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[96]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dt</span><span class="o">=</span><span class="mf">1.0</span>
+<span class="n">time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">time</span><span class="p">))</span>
+
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># convet to astropy.TimeSeries object</span>
+<span class="n">ts</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">to_astropy_timeseries</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[97]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">type</span><span class="p">(</span><span class="n">ts</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[97]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+astropy.timeseries.sampled.TimeSeries
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[98]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ts</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[98]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<i>TimeSeries length=10</i>
+<table id="table140573414427472" class="table-striped table-bordered table-condensed">
+<thead><tr><th>time</th><th>counts</th></tr></thead>
+<thead><tr><th>object</th><th>int64</th></tr></thead>
+<tr><td>0.0</td><td>100</td></tr>
+<tr><td>1.1574074074074073e-05</td><td>92</td></tr>
+<tr><td>2.3148148148148147e-05</td><td>98</td></tr>
+<tr><td>3.472222222222222e-05</td><td>85</td></tr>
+<tr><td>4.6296296296296294e-05</td><td>113</td></tr>
+<tr><td>5.787037037037037e-05</td><td>94</td></tr>
+<tr><td>6.944444444444444e-05</td><td>99</td></tr>
+<tr><td>8.101851851851852e-05</td><td>108</td></tr>
+<tr><td>9.259259259259259e-05</td><td>101</td></tr>
+<tr><td>0.00010416666666666667</td><td>117</td></tr>
+</table></div>
+</div>
+<p>lc_back = Lightcurve.from_astropy_timeseries(ts)</p>
+</section>
+<section id="Reading/Writing-Lightcurves-to/from-files">
+<h2>Reading/Writing Lightcurves to/from files<a class="headerlink" href="#Reading/Writing-Lightcurves-to/from-files" title="Link to this heading">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> class has some rudimentary reading/writing capabilities via the <code class="docutils literal notranslate"><span class="pre">read</span></code> and <code class="docutils literal notranslate"><span class="pre">write</span></code> methods. For more information <code class="docutils literal notranslate"><span class="pre">stingray</span></code> inputs and outputs, please refer to the I/O tutorial.</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Creating a light curve</a><ul>
+<li><a class="reference internal" href="#1.-Array-of-time-stamps-and-counts">1. Array of time stamps and counts</a></li>
+<li><a class="reference internal" href="#2.-Photon-Arrival-Times">2. Photon Arrival Times</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Properties">Properties</a><ul>
+<li><a class="reference internal" href="#Error-Distributions-in-stingray.Lightcurve">Error Distributions in <code class="docutils literal notranslate"><span class="pre">stingray.Lightcurve</span></code></a></li>
+<li><a class="reference internal" href="#Good-Time-Intervals">Good Time Intervals</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Operations">Operations</a><ul>
+<li><a class="reference internal" href="#Addition/Subtraction">Addition/Subtraction</a></li>
+<li><a class="reference internal" href="#Negation">Negation</a></li>
+<li><a class="reference internal" href="#Indexing">Indexing</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Methods">Methods</a><ul>
+<li><a class="reference internal" href="#Concatenation">Concatenation</a></li>
+<li><a class="reference internal" href="#Truncation">Truncation</a></li>
+<li><a class="reference internal" href="#Re-binning">Re-binning</a></li>
+<li><a class="reference internal" href="#Sorting">Sorting</a></li>
+<li><a class="reference internal" href="#Plotting">Plotting</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Sample-Data">Sample Data</a><ul>
+<li><a class="reference internal" href="#Checking-the-Light-Curve-for-Irregularities">Checking the Light Curve for Irregularities</a></li>
+<li><a class="reference internal" href="#MJDREF-and-Shifting-Times">MJDREF and Shifting Times</a></li>
+<li><a class="reference internal" href="#Calculating-a-baseline">Calculating a baseline</a></li>
+<li><a class="reference internal" href="#Working-with-GTIs-and-Splitting-Light-Curves">Working with GTIs and Splitting Light Curves</a></li>
+<li><a class="reference internal" href="#Analyzing-Light-Curve-Segments">Analyzing Light Curve Segments</a></li>
+<li><a class="reference internal" href="#Compatibility-with-Lightkurve">Compatibility with <code class="docutils literal notranslate"><span class="pre">Lightkurve</span></code></a></li>
+<li><a class="reference internal" href="#Reading/Writing-Lightcurves-to/from-files">Reading/Writing Lightcurves to/from files</a></li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/Lightcurve/Lightcurve tutorial.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 8.1.3. &nbsp;
+    Last built 01 Mar 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>
