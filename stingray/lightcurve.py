@@ -7,6 +7,7 @@ or to save existing light curves in a class that's easy to use.
 
 import os
 import logging
+import copy
 import warnings
 from collections.abc import Iterable
 
@@ -1160,6 +1161,62 @@ class Lightcurve(StingrayTimeseries):
         """
 
         return super().truncate(start=start, stop=stop, method=method)
+
+    def smothen(self, n_knots=15, degree=3, alpha=0.1):
+        """
+        Smooths the light curve using a spline-based Poisson regression model.
+
+        This method fits a Poisson regression model with a spline transformer to the light curve data,
+        producing a smoothed version of the original light curve. The method retains the same time bins
+        while adjusting the counts to a smoother representation.
+
+        Parameters
+        ----------
+        n_knots : int, optional
+            The number of knots used for the spline transformation. More knots allow finer details
+            to be captured but may lead to overfitting. Default is 20.
+        degree : int, optional
+            The degree of the spline function. A higher degree allows for more flexibility in the
+            smoothing but may introduce unwanted oscillations. Default is 3.
+        alpha : float, optional
+            Regularization strength for the Poisson regression model. Higher values lead to stronger
+            smoothing. Default is 0.1.
+
+        Returns
+        -------
+        smoothed_lc : Lightcurve
+            A new Lightcurve object with the same time bins but with smoothed count values.
+
+        Notes
+        -----
+        - This method assumes that the light curve follows Poisson statistics and applies a
+        Poisson regression model for smoothing.
+        - The `SplineTransformer` is used to transform time data into a spline basis, which
+        allows flexible smoothing of the count rates.
+        """
+        try:
+            import sklearn
+        except ImportError:
+            raise ImportError(
+                "You need to install sickit-learn to use this method try pip install -U scikit-learn"
+            )
+
+        from sklearn.linear_model import PoissonRegressor
+        from sklearn.preprocessing import SplineTransformer
+        from sklearn.pipeline import make_pipeline
+
+        X = self.time.reshape(-1, 1)
+        spline = SplineTransformer(n_knots=n_knots, degree=degree, extrapolation="constant")
+        model = make_pipeline(spline, PoissonRegressor(alpha=alpha, max_iter=1000))
+        model.fit(X, self.counts)
+
+        smoothed_counts = model.predict(X)
+        smoothed_lc = copy.deepcopy(self)
+        smoothed_lc.counts = smoothed_counts
+        smoothed_lc.err_dist = "gauss"
+        smoothed_lc.err = smoothed_counts - self.counts
+
+        return smoothed_lc
 
     def split(self, min_gap, min_points=1):
         """
