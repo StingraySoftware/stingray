@@ -236,10 +236,6 @@ class TestCCF(object):
         assert np.all(np.isclose(ccf_norm, avg_seg_ccf, atol=0.01))
         assert np.all(np.isclose(error_ccf, np.zeros(shape=error_ccf.shape), atol=0.01))
 
-    def test_get_mean_phase_difference(self):
-        _, a, b, _ = spec.get_parameters(self.ref_aps.lc1.counts, self.ref_aps.lc1.dt, self.model)
-        assert a == b
-
 
 def test_load_lc_fits():
     dt = 0.1
@@ -395,3 +391,47 @@ def test_compute_rms():
 
     with pytest.raises(ValueError):
         spec.compute_rms(cs, model, criteria="filter")
+
+
+def test_get_mean_phase_difference():
+    dt = 0.01
+    time = np.arange(0, 100, dt)
+    qpo_freq = 0.1
+    harmonic_freq = 2 * qpo_freq
+    counts_qpo = 100 * np.sin(2 * np.pi * qpo_freq * time - np.pi / 4)
+    counts_harmonic = 50 * np.sin(2 * np.pi * harmonic_freq * time - np.pi / 4)
+    counts = counts_qpo + counts_harmonic
+
+    lc = Lightcurve(time, counts, dt=dt)
+    cs = Crossspectrum(lc, lc)
+
+    model = models.Lorentz1D(x_0=qpo_freq, amplitude=100) + models.Lorentz1D(
+        x_0=harmonic_freq, amplitude=50
+    )
+    avg_psi, stddev = spec.get_mean_phase_difference(cs, model)
+
+    assert np.isclose(avg_psi, np.pi / 2, 1e-5)
+    assert np.isclose(stddev, np.pi / 2, 1e-5)
+
+
+def test_get_phase_lag():
+    dt = 0.01
+    time = np.arange(0, 100, dt)
+    qpo_freq = 0.1
+    harmonic_freq = 2 * qpo_freq
+    counts_qpo = 100 * np.sin(2 * np.pi * qpo_freq * time + np.pi / 4)
+    counts_harmonic = 50 * np.sin(2 * np.pi * harmonic_freq * time + np.pi / 4)
+    counts = counts_qpo + counts_harmonic
+
+    lc = Lightcurve(time, counts, dt=dt)
+    cs = Crossspectrum(lc, lc)
+
+    qpo_phase = np.pi / 4
+    harmonic_phase = np.pi / 4
+    model = models.Lorentz1D(x_0=qpo_freq) + models.Lorentz1D(x_0=harmonic_freq)
+
+    cap_phi_1, cap_phi_2, small_psi = spec.get_phase_lag(cs, model)
+
+    assert np.isclose(cap_phi_1, np.pi / 2, atol=1e-2)
+    assert np.isclose(cap_phi_2, 2 * np.pi, atol=1e-2)
+    assert np.isclose(small_psi, np.pi / 2, atol=1e-2)
