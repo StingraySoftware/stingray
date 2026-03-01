@@ -197,8 +197,8 @@ class CrossCorrelation(object):
             # Note that self.corr is normalized so that the maximum is
             # proportional to the number of bins in the first input
             # light curve. Hence, the division by the lc size
-            variance1 = np.var(lc1.counts) - np.mean(lc1.counts_err) ** 2
-            variance2 = np.var(lc2.counts) - np.mean(lc2.counts_err) ** 2
+            variance1 = np.var(lc1.counts) - np.var(lc1.counts_err)
+            variance2 = np.var(lc2.counts) - np.var(lc2.counts_err)
             self.corr = self.corr / np.sqrt(variance1 * variance2) / lc1_counts.size
 
     def cal_timeshift(self, dt=1.0):
