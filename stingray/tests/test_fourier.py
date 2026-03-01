@@ -224,7 +224,20 @@ class TestCoherence(object):
         assert np.allclose(coh, 0.22, atol=0.01)
 
         coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=True)
+        assert np.shape(coh) == ()
         assert np.isclose(coh, 0.22, atol=0.01)
+
+    def test_intrinsic_coh_all_arrays(self):
+        # bsq = (8 * 8 - 6 * 6) / 2. = 14 for coherence = 1, 36 for coherence = 0
+        # C**2 = 36, so that C**2 - bsq is positive, but coherence is less than 1.
+        # This will trigger the iteration.
+
+        C, P1, P2 = np.array([6, 6]), np.array([8, 8]), np.array([8, 8])
+        P1n = np.array([2, 2])
+        P2n = np.array([2, 2])
+        n_ave = np.array([2, 2])
+        coh = intrinsic_coherence(C, P1, P2, P1n, P2n, n_ave, adjust_bias=True)
+        assert np.allclose(coh, 0.22, atol=0.01)
 
     def test_intrinsic_low_coh_many_iteration(self):
         # bsq = (8 * 8 - 6 * 6) / 2. = 14 for coherence = 1, 36 for coherence = 0
@@ -300,7 +313,7 @@ class TestCoherence(object):
         pow2_noise = 5
         n_ave = np.array([1, 10, 10])
         # Only one power is below the threshold, due to the low number of averaged powers.
-        res = check_powers_for_intrinsic_coherence(pow1, pow2, pow1_noise, pow2_noise, n_ave)
+        res = check_powers_for_intrinsic_coherence(pow1, pow2, pow1_noise, pow2_noise, n_ave, 3.0)
         assert np.all(res == np.array([True, False, False]))
 
 
