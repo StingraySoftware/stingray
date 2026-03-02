@@ -1,3 +1,12 @@
+v2.3.1 (2026-03-02)
+-------------------
+
+Bug Fixes
+^^^^^^^^^
+
+- Fix bug in intrinsic coherence functions that made Numba unavailable (`#970 <https://github.com/StingraySoftware/stingray/pull/970>`__)
+
+
 v2.3 (2026-02-27)
 -----------------
 
