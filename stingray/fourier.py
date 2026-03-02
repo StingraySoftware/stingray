@@ -38,7 +38,6 @@ __all__ = [
     "unnormalize_periodograms",
     "bias_term",
     "raw_coherence",
-    "coherence",
     "intrinsic_coherence",
 ]
 
@@ -1848,8 +1847,6 @@ def _which_segment_idx_fun(binned=False, dt=None):
     """
     # Make function interface equal (fluxes gets ignored)
     if not binned:
-        fun = generate_indices_of_segment_boundaries_unbinned
-
         # Define a new function, make sure that, by default, the sort check
         # is disabled.
         def fun(*args, **kwargs):
