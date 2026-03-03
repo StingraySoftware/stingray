@@ -23,3 +23,4 @@ if not _ASTROPY_SETUP_:
     from stingray.pulse.pulsar import *
     from stingray.pulse.search import *
     from stingray.pulse.modeling import *
+    from .periodogram import *
