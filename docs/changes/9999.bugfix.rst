@@ -1,0 +1,1 @@
+Lightcurve's shift method now properly updates the tstart attribute to remain consistent with the shifted time array.
