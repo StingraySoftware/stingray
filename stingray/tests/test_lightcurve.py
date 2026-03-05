@@ -418,7 +418,7 @@ class TestLightcurve(object):
         )
 
         with pytest.warns(UserWarning, match=warn_str):
-            _ = Lightcurve(times, counts, err_dist="poisson")
+            _ = Lightcurve(times, counts)
 
     def test_unrecognize_err_dist_warning(self):
         """
@@ -426,7 +426,7 @@ class TestLightcurve(object):
         """
         times = [1, 2, 3, 4, 5]
         counts = [2, 2, 2, 2, 2]
-        warn_str = "SIMON says: Stingray only uses poisson err_dist at " "the moment"
+        warn_str = "SIMON says: Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."
 
         with warnings.catch_warnings(record=True) as w:
             warnings.filterwarnings("always")
@@ -581,7 +581,7 @@ class TestLightcurve(object):
         mean_counts = 2.0
         times = np.arange(0 + dt / 2, 5 - dt / 2, dt)
         countrate = np.zeros_like(times) + mean_counts
-        lc = Lightcurve(times, countrate, input_counts=False)
+        lc = Lightcurve(times, countrate, input_counts=False, err_dist="poisson")
         assert np.allclose(lc.counts, np.zeros_like(countrate) + mean_counts * dt)
 
     def test_meanrate(self):
@@ -753,7 +753,7 @@ class TestLightcurve(object):
             dt=self.dt,
             gti=self.gti,
             err=self.counts / 10,
-            err_dist="gauss",
+            err_dist="poisson",
         )
         assert np.allclose(lc[1:3].counts, np.array([4, 6]))
         assert np.allclose(lc[:2].counts, np.array([2, 4]))
@@ -1376,14 +1376,14 @@ class TestLightcurve(object):
     def test_shift(self):
         times = [1, 2, 3, 4, 5, 6, 7, 8]
         counts = [1, 1, 1, 1, 2, 3, 3, 2]
-        lc = Lightcurve(times, counts, input_counts=True)
+        lc = Lightcurve(times, counts, input_counts=True, err_dist="poisson")
         lc2 = lc.shift(1)
         assert np.allclose(lc2.time - 1, times)
         lc2 = lc.shift(-1)
         assert np.allclose(lc2.time + 1, times)
         assert np.allclose(lc2.counts, lc.counts)
         assert np.allclose(lc2.countrate, lc.countrate)
-        lc = Lightcurve(times, counts, input_counts=False)
+        lc = Lightcurve(times, counts, input_counts=False, err_dist="poisson")
         lc2 = lc.shift(1)
         assert np.allclose(lc2.counts, lc.counts)
         assert np.allclose(lc2.countrate, lc.countrate)
@@ -1400,6 +1400,7 @@ class TestLightcurve(object):
             mission="BUBU",
             instr="BABA",
             mjdref=53467.0,
+            err_dist="poisson"
         )
 
         ts = lc.to_astropy_table()
@@ -1428,6 +1429,7 @@ class TestLightcurve(object):
             instr="BABA",
             mjdref=53467.0,
             input_counts=False,
+            err_dist="poisson"
         )
 
         ts = lc.to_astropy_table()
@@ -1443,7 +1445,7 @@ class TestLightcurve(object):
         wrong format is provided.
         """
         N = len(self.times)
-        lc = Lightcurve(self.times, self.counts, mission="BUBU", instr="BABA", mjdref=53467.0)
+        lc = Lightcurve(self.times, self.counts, mission="BUBU", instr="BABA", mjdref=53467.0, err_dist="poisson")
 
         ts = lc.to_astropy_timeseries()
         new_lc = lc.from_astropy_timeseries(ts)
@@ -1463,7 +1465,7 @@ class TestLightcurve(object):
         countrate = np.zeros_like(times) + mean_counts
 
         lc = Lightcurve(
-            times, countrate, mission="BUBU", instr="BABA", mjdref=53467.0, input_counts=False
+            times, countrate, mission="BUBU", instr="BABA", mjdref=53467.0, input_counts=False, err_dist="poisson"
         )
 
         ts = lc.to_astropy_timeseries()
@@ -1608,7 +1610,7 @@ class TestLightcurveRebin(object):
         time = np.arange(1, 10, dt)
         countrate = np.zeros_like(time) + 5
         # create the lightcurve from countrare
-        lc_rate = Lightcurve(time, counts=countrate, input_counts=False, gti=[[-0.5, 10.5]])
+        lc_rate = Lightcurve(time, counts=countrate, input_counts=False, gti=[[-0.5, 10.5]], err_dist="poisson")
         lc_rate.gti = [[-0.5, 2.5]]
         lc_rate_new = lc_rate.apply_gtis(inplace=inplace)
         if inplace:
