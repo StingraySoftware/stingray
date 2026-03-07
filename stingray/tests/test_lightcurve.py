@@ -1379,8 +1379,10 @@ class TestLightcurve(object):
         lc = Lightcurve(times, counts, input_counts=True)
         lc2 = lc.shift(1)
         assert np.allclose(lc2.time - 1, times)
+        assert lc2.tstart == lc.tstart + 1
         lc2 = lc.shift(-1)
         assert np.allclose(lc2.time + 1, times)
+        assert lc2.tstart == lc.tstart - 1
         assert np.allclose(lc2.counts, lc.counts)
         assert np.allclose(lc2.countrate, lc.countrate)
         lc = Lightcurve(times, counts, input_counts=False)
