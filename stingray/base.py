@@ -1554,7 +1554,7 @@ class StingrayTimeseries(StingrayObject):
         return ts
 
     def shift(self, time_shift: float, inplace=False) -> StingrayTimeseries:
-        """Shift the time and the GTIs by the same amount
+        """Shift the time, GTIs and tstart by the same amount
 
         Parameters
         ----------
@@ -1582,6 +1582,9 @@ class StingrayTimeseries(StingrayObject):
         # access the property,
         if ts._gti is not None:
             ts._gti = np.asanyarray(ts._gti) + time_shift  # type: ignore
+
+        if hasattr(ts, "tstart") and ts.tstart is not None:
+            ts.tstart += time_shift
 
         return ts
 
