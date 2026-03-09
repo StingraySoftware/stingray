@@ -252,6 +252,13 @@ Utilities
 Commonly used utility functionality, including Good Time Interval operations and input/output
 helper methods.
 
+Base Fourier methods
+--------------------
+
+.. automodule:: stingray.fourier
+   :members:
+   :imported-members:
+
 Statistical Functions
 ---------------------
 
