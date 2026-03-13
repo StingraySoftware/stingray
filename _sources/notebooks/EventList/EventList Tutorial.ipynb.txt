@@ -1,0 +1,2007 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Contents"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "This notebook covers the basics of creating an event list object and carrying out various operations such as simulating time and energies, joining, storing and retrieving event lists."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Setup"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Import some useful libraries."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import numpy as np\n",
+    "\n",
+    "from matplotlib import pyplot as plt\n",
+    "%matplotlib inline"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Import some relevant stingray classes."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from stingray import EventList, Lightcurve"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Creating EventList from Photon Arrival Times"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Given photon arrival times, an eventlist object can be created. Times are assumed to be seconds from a reference MJD, that can optionally be specified with the `mjdref` keyword and attribute."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "times = [0.5, 1.1, 2.2, 3.7]\n",
+    "mjdref=58000."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Create event list object by passing arrival times as argument."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([0.5, 1.1, 2.2, 3.7])"
+      ]
+     },
+     "execution_count": 4,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "ev = EventList(times, mjdref=mjdref)\n",
+    "ev.time"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "One can add all sorts of data to the `EventList` object, it is very flexible. In general, we suggest to stick with easily interpretable attributes, like `energy` or `pi`.\n",
+    "\n",
+    "```\n",
+    "ev.energy = [0., 3., 4., 20.]\n",
+    "```\n",
+    "\n",
+    "is the same as "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "energy = [0., 3., 4., 20.]\n",
+    "ev = EventList(times, energy=energy, mjdref=mjdref)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "It is always recommended to specify the good time intervals (GTIs) of the event list, as the time intervals where the instrument was fully operational. If not specified, GTIs are defined automatically as the first and the last event time."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "gti = [[0, 4]]\n",
+    "ev = EventList(times, gti=gti, energy=energy, mjdref=mjdref)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Roundtrip to Astropy-compatible formats\n",
+    "\n",
+    "`EventList` has the following methods that allow an easy roundtrip to Astropy objects: `to_astropy_table`, `to_astropy_timeseries`, `from_astropy_table`, `from_astropy_timeseries`\n",
+    "\n",
+    "This allows a better interoperability with the Astropy ecosystem. \n",
+    "\n",
+    "In this roundtrip, a `Table` or `Timeseries` object is created, having as columns `time` and all other attributes of the same size (e.g. `pi`, `energy`), and the rest of the attributes (e.g. `gti`, `mjdref`) in the table's metadata."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div><i>Table length=4</i>\n",
+       "<table id=\"table140353174047808\" class=\"table-striped table-bordered table-condensed\">\n",
+       "<thead><tr><th>energy</th><th>time</th></tr></thead>\n",
+       "<thead><tr><th>float64</th><th>float64</th></tr></thead>\n",
+       "<tr><td>0.0</td><td>0.5</td></tr>\n",
+       "<tr><td>3.0</td><td>1.1</td></tr>\n",
+       "<tr><td>4.0</td><td>2.2</td></tr>\n",
+       "<tr><td>20.0</td><td>3.7</td></tr>\n",
+       "</table></div>"
+      ],
+      "text/plain": [
+       "<Table length=4>\n",
+       " energy   time \n",
+       "float64 float64\n",
+       "------- -------\n",
+       "    0.0     0.5\n",
+       "    3.0     1.1\n",
+       "    4.0     2.2\n",
+       "   20.0     3.7"
+      ]
+     },
+     "execution_count": 7,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "table = ev.to_astropy_table()\n",
+    "table"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "When converting to `Timeseries`, times are transformed into `astropy.time.TimeDelta` objects."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div><i>TimeSeries length=4</i>\n",
+       "<table id=\"table140353071164624\" class=\"table-striped table-bordered table-condensed\">\n",
+       "<thead><tr><th>time</th><th>energy</th></tr></thead>\n",
+       "<thead><tr><th>object</th><th>float64</th></tr></thead>\n",
+       "<tr><td>5.787037037037037e-06</td><td>0.0</td></tr>\n",
+       "<tr><td>1.2731481481481482e-05</td><td>3.0</td></tr>\n",
+       "<tr><td>2.5462962962962965e-05</td><td>4.0</td></tr>\n",
+       "<tr><td>4.282407407407408e-05</td><td>20.0</td></tr>\n",
+       "</table></div>"
+      ],
+      "text/plain": [
+       "<TimeSeries length=4>\n",
+       "         time           energy\n",
+       "        object         float64\n",
+       "---------------------- -------\n",
+       " 5.787037037037037e-06     0.0\n",
+       "1.2731481481481482e-05     3.0\n",
+       "2.5462962962962965e-05     4.0\n",
+       " 4.282407407407408e-05    20.0"
+      ]
+     },
+     "execution_count": 8,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "timeseries = ev.to_astropy_timeseries()\n",
+    "timeseries"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "OrderedDict([('dt', 0),\n",
+       "             ('gti', array([[0, 4]])),\n",
+       "             ('mjdref', 58000.0),\n",
+       "             ('ncounts', 4),\n",
+       "             ('notes', '')])"
+      ]
+     },
+     "execution_count": 9,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "table.meta"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Of course, these objects can be converted back to event lists. The user should be careful in defining the proper column names and metadata so that the final object is a valid `EventList`"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "table_ev = EventList.from_astropy_table(table)\n",
+    "table_ts = EventList.from_astropy_timeseries(timeseries)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(array([0.5, 1.1, 2.2, 3.7]), array([0.5, 1.1, 2.2, 3.7]))"
+      ]
+     },
+     "execution_count": 11,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "table_ev.time, table_ts.time"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Loading and writing EventList objects\n",
+    "\n",
+    "We made it possible to save and load data in a number of different formats.\n",
+    "\n",
+    "The general syntax is\n",
+    "\n",
+    "```\n",
+    "ev = EventList.read(filename, format)\n",
+    "\n",
+    "ev.write(filename, format)\n",
+    "\n",
+    "```\n",
+    "\n",
+    "There are three main blocks of formats that might be useful:\n",
+    "\n",
+    "1. (read-only) HEASoft-compatible formats -> read event data from HEASOFT-supported missions\n",
+    "\n",
+    "2. `pickle`: reading and saving EventLists from/to Python pickle objects\n",
+    "\n",
+    "3. Any format compatible with `astropy.table.Table` objects."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Loading an EventList from an X-ray observation in HEASoft-compatible format\n",
+    "\n",
+    "Loading event data from HEASoft-supported missions in FITS format is easy. It's sufficient to use the `read` method with `hea` or, equivalently, `ogip`, as format. \n",
+    "\n",
+    "Beware: please use `hea` or `ogip`, not `fits`! It would make the roundrip to Astropy tables more complicated, as Astropy supports a generic FITS writer which is not necessarily compatible with HEASoft."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "ev = EventList.read('events.fits', 'ogip')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Times are saved to the `time` attribute, GTIs to the `gti` attribute, MJDREF to the `mjdref` attribute, etc. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([80000000.23635569, 80000001.47479323, 80000001.78458866,\n",
+       "       80000002.78943624, 80000003.42859936, 80000004.07943003,\n",
+       "       80000006.09310323, 80000007.18041813, 80000008.17602143,\n",
+       "       80000008.20403489], dtype=float128)"
+      ]
+     },
+     "execution_count": 13,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "ev.time[:10]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "55197.00076601852"
+      ]
+     },
+     "execution_count": 14,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "ev.mjdref"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([[80000000., 80001025.]], dtype=float128)"
+      ]
+     },
+     "execution_count": 15,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "ev.gti"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Roundtrip to pickle objects\n",
+    "\n",
+    "It is possible to save and load eventlist objects using `pickle`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(True, True)"
+      ]
+     },
+     "execution_count": 16,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "ev.write(\"events.p\", \"pickle\")\n",
+    "ev2 = EventList.read(\"events.p\", \"pickle\")\n",
+    "\n",
+    "np.allclose(ev2.time, ev.time), np.allclose(ev2.gti, ev.gti)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Roundtrip to Astropy-compatible formats\n",
+    "\n",
+    "If the `read` and `write` methods receive a format which is not `hea`, `ogip`, or `pickle`, the event list is transformed into an `Astropy` `Table` object with the methods described above, and the readers and writers from the `Table` class are used instead. This allows to extend the save/load operations to a large number of formats, including `hdf5` and enhanced CSV (`ascii.ecsv`).\n",
+    "\n",
+    "Note that columns coming from the `EVENTS` (or equivalent) fits extension, those having the same length as `time`, when converting to `astropy` tables they become columns of the table. All the others, including `gti`, are treated as metadata.\n",
+    "\n",
+    "Care should be used in selecting formats that preserve metadata. For example, simple CSV format loses all metadata, including MJDREF, GTIs etc."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([80000000.23635569, 80000001.47479323, 80000001.78458866,\n",
+       "       80000002.78943624, 80000003.42859936, 80000004.07943003,\n",
+       "       80000006.09310323, 80000007.18041813, 80000008.17602143,\n",
+       "       80000008.20403489], dtype=float128)"
+      ]
+     },
+     "execution_count": 17,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "ev.write(\"events.hdf5\", \"hdf5\")\n",
+    "ev3 = EventList.read(\"events.hdf5\", \"hdf5\")\n",
+    "ev3.time[:10]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "# %ECSV 1.0\r\n",
+      "# ---\r\n",
+      "# datatype:\r\n",
+      "# - {name: energy, datatype: float32}\r\n",
+      "# - {name: pi, datatype: float32}\r\n",
+      "# - {name: time, datatype: float128}\r\n",
+      "# meta: !!omap\r\n",
+      "# - {dt: 0}\r\n",
+      "# - gti: !numpy.ndarray\r\n",
+      "#     buffer: !!binary |\r\n",
+      "#       QUFBQUFBQ0FscGdaUURHRnBuOEFBQUFBQUFBZ0FKZVlHVUF4aGFaL0FBQT0=\r\n",
+      "#     dtype: float128\r\n",
+      "#     order: C\r\n",
+      "#     shape: !!python/tuple [1, 2]\r\n",
+      "# - {header: 'XTENSION= ''BINTABLE''           / binary table extension                         BITPIX  =                    8 / array\r\n",
+      "#     data type                                NAXIS   =                    2 / number of array dimensions                     NAXIS1  =                   12\r\n",
+      "#     / length of dimension 1                          NAXIS2  =                 1000 / length of dimension 2                          PCOUNT  =                    0\r\n",
+      "#     / number of group parameters                     GCOUNT  =                    1 / number of groups                               TFIELDS\r\n",
+      "#     =                    2 / number of table fields                         TTYPE1  = ''TIME    ''                                                            TFORM1  =\r\n",
+      "#     ''1D      ''                                                            TTYPE2  = ''PI      ''                                                            TFORM2  =\r\n",
+      "#     ''1J      ''                                                            EXTNAME = ''EVENTS  ''           / extension name                                 OBSERVER=\r\n",
+      "#     ''Edwige Bubble''                                                       TELESCOP= ''NuSTAR  ''           / Telescope (mission) name                       INSTRUME=\r\n",
+      "#     ''FPMA    ''           / Instrument name                                OBS_ID  = ''00000000001''        / Observation ID                                 TARG_ID\r\n",
+      "#     =                    0 / Target ID                                      OBJECT  = ''Fake X-1''           / Name of observed object                        RA_OBJ  =                  0.0\r\n",
+      "#     / [deg] R.A. Object                              DEC_OBJ =                  0.0 / [deg] Dec Object                               RA_NOM  =                  0.0\r\n",
+      "#     / Right Ascension used for barycenter correctionsDEC_NOM =                  0.0 / Declination used for barycenter corrections    RA_PNT  =                  0.0\r\n",
+      "#     / [deg] RA pointing                              DEC_PNT =                  0.0 / [deg] Dec pointing                             PA_PNT  =                  0.0\r\n",
+      "#     / [deg] Position angle (roll)                    EQUINOX =               2000.0 / Equinox of celestial coord system              RADECSYS=\r\n",
+      "#     ''FK5     ''           / Coordinate Reference System                    TASSIGN = ''SATELLITE''          / Time assigned by onboard\r\n",
+      "#     clock                 TIMESYS = ''TDB     ''           / All times in this file are TDB                 MJDREFI =                55197\r\n",
+      "#     / TDB time reference; Modified Julian Day (int)  MJDREFF =        0.00076601852 / TDB time reference; Modified Julian Day (frac)\r\n",
+      "#     TIMEREF = ''SOLARSYSTEM''        / Times are pathlength-corrected to barycenter   CLOCKAPP=                    F / TRUE if timestamps\r\n",
+      "#     corrected by gnd sware      TIMEUNIT= ''s       ''           / unit for time keywords                         TSTART  =           80000000.0\r\n",
+      "#     / Elapsed seconds since MJDREF at start of file  TSTOP   =           80001025.0 / Elapsed seconds since MJDREF at end of file    LIVETIME=               1025.0\r\n",
+      "#     / On-source time                                 TIMEZERO=                  0.0 / Time Zero                                      COMMENT\r\n",
+      "#     FITS (Flexible Image Transport System) format is defined in ''Astronomy aCOMMENT nd Astrophysics'', volume 376, page 359; bibcode:\r\n",
+      "#     2001A&A...376..359H    COMMENT MJDREFI+MJDREFF = epoch of Jan 1, 2010, in TT time system.              HISTORY File modified by\r\n",
+      "#     user ''meo'' with fv  on 2015-08-17T14:10:02             HISTORY File modified by user ''meo'' with fv  on 2015-08-17T14:48:52             END                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             '}\r\n",
+      "# - {instr: fpma}\r\n",
+      "# - {mission: nustar}\r\n",
+      "# - {mjdref: 55197.00076601852}\r\n",
+      "# - {ncounts: 1000}\r\n",
+      "# - {notes: ''}\r\n",
+      "# - {timeref: solarsystem}\r\n",
+      "# - {timesys: tdb}\r\n",
+      "# schema: astropy-2.0\r\n",
+      "energy pi time\r\n",
+      "8.56 174.0 80000000.23635569215\r\n",
+      "33.039997 786.0 80000001.47479322553\r\n",
+      "7.9999995 160.0 80000001.78458866477\r\n",
+      "27.84 656.0 80000002.789436236024\r\n",
+      "8.84 181.0 80000003.428599357605\r\n",
+      "13.92 308.0 80000004.079430028796\r\n",
+      "37.839996 906.0 80000006.09310323\r\n",
+      "40.559998 974.0 80000007.180418133736\r\n",
+      "5.8799996 107.0 80000008.176021426916\r\n",
+      "41.239998 991.0 80000008.204034894705\r\n",
+      "33.64 801.0 80000009.69214613736\r\n",
+      "8.72 178.0 80000010.36281684041\r\n",
+      "17.32 393.0 80000010.78324916959\r\n",
+      "6.56 124.0 80000011.8733625412\r\n",
+      "21.28 492.0 80000013.92633379996\r\n",
+      "10.24 216.0 80000014.204483643174\r\n",
+      "10.68 227.0 80000014.26073910296\r\n",
+      "26.68 627.0 80000015.256171390414\r\n",
+      "3.96 59.0 80000018.08373501897\r\n",
+      "13.96 309.0 80000018.83911728859\r\n",
+      "28.32 668.0 80000019.98157013953\r\n",
+      "38.319996 918.0 80000020.76013682783\r\n",
+      "17.76 404.0 80000021.14855520427\r\n",
+      "12.64 276.0 80000022.02460347116\r\n",
+      "29.76 704.0 80000023.50157275796\r\n",
+      "24.08 562.0 80000023.61806283891\r\n",
+      "10.400001 220.0 80000024.97833034396\r\n",
+      "41.519997 998.0 80000025.95996727049\r\n",
+      "4.24 66.0 80000026.16019311547\r\n",
+      "23.32 543.0 80000027.089139238\r\n",
+      "41.399998 995.0 80000028.596908301115\r\n",
+      "19.72 453.0 80000031.065731182694\r\n",
+      "36.559998 874.0 80000031.10555113852\r\n",
+      "38.399998 920.0 80000032.516511276364\r\n",
+      "24.28 567.0 80000032.808356150985\r\n",
+      "29.48 697.0 80000033.18797942996\r\n",
+      "36.76 879.0 80000033.85146795213\r\n",
+      "10.6 225.0 80000034.861510172486\r\n",
+      "20.0 460.0 80000038.22435864806\r\n",
+      "3.3600001 44.0 80000038.39090189338\r\n",
+      "15.08 337.0 80000042.41919325292\r\n",
+      "22.48 522.0 80000043.69195660949\r\n",
+      "4.24 66.0 80000045.52997684479\r\n",
+      "21.88 507.0 80000052.78282105923\r\n",
+      "39.6 950.0 80000052.919592529535\r\n",
+      "3.24 41.0 80000054.28180256486\r\n",
+      "14.32 318.0 80000056.48970986903\r\n",
+      "7.4399996 146.0 80000057.49698485434\r\n",
+      "7.9599996 159.0 80000058.55781446397\r\n",
+      "21.36 494.0 80000059.284333616495\r\n",
+      "35.159996 839.0 80000060.359298199415\r\n",
+      "21.64 501.0 80000063.666031733155\r\n",
+      "36.44 871.0 80000064.78927731514\r\n",
+      "35.319996 843.0 80000067.341705307364\r\n",
+      "26.08 612.0 80000068.267971634865\r\n",
+      "12.12 263.0 80000070.24889309704\r\n",
+      "11.400001 245.0 80000072.99266758561\r\n",
+      "35.839996 856.0 80000073.4422865361\r\n",
+      "6.68 127.0 80000073.81521306932\r\n",
+      "28.4 670.0 80000074.7710172981\r\n",
+      "22.08 512.0 80000076.15446573496\r\n",
+      "29.64 701.0 80000076.61943152547\r\n",
+      "34.319996 818.0 80000078.37191092968\r\n",
+      "9.04 186.0 80000079.364117503166\r\n",
+      "42.399998 1020.0 80000080.12182110548\r\n",
+      "14.08 312.0 80000080.4114151746\r\n",
+      "12.64 276.0 80000083.704568862915\r\n",
+      "26.16 614.0 80000084.38392549753\r\n",
+      "21.12 488.0 80000084.49645087123\r\n",
+      "7.7599998 154.0 80000084.73323458433\r\n",
+      "5.64 101.0 80000085.518022567034\r\n",
+      "4.2799997 67.0 80000086.06328216195\r\n",
+      "39.039997 936.0 80000087.00356020033\r\n",
+      "14.88 332.0 80000087.108956605196\r\n",
+      "11.24 241.0 80000087.3983823657\r\n",
+      "42.199997 1015.0 80000088.44739763439\r\n",
+      "28.16 664.0 80000088.72279639542\r\n",
+      "2.48 22.0 80000089.15565529466\r\n",
+      "42.28 1017.0 80000090.20357654989\r\n",
+      "5.32 93.0 80000090.7642698288\r\n",
+      "14.28 317.0 80000090.80305439234\r\n",
+      "40.319996 968.0 80000091.500082850456\r\n",
+      "18.44 421.0 80000092.158643990755\r\n",
+      "32.239998 766.0 80000092.89413803816\r\n",
+      "4.4 70.0 80000094.805209457874\r\n",
+      "38.879997 932.0 80000095.04941494763\r\n",
+      "32.199997 765.0 80000096.56686630845\r\n",
+      "30.4 720.0 80000096.91533789039\r\n",
+      "35.719997 853.0 80000098.67825654149\r\n",
+      "29.32 693.0 80000098.92884159088\r\n",
+      "17.199999 390.0 80000099.199268594384\r\n",
+      "37.92 908.0 80000100.14995288849\r\n",
+      "1.96 9.0 80000100.935947969556\r\n",
+      "13.12 288.0 80000102.76762147248\r\n",
+      "30.6 725.0 80000103.05724072456\r\n",
+      "34.239998 816.0 80000104.193173110485\r\n",
+      "8.88 182.0 80000107.33343601227\r\n",
+      "29.6 700.0 80000107.40127386153\r\n",
+      "8.24 166.0 80000107.56737007201\r\n",
+      "39.76 954.0 80000109.40503971279\r\n",
+      "41.399998 995.0 80000109.51361806691\r\n",
+      "32.399998 770.0 80000111.27798360586\r\n",
+      "20.2 465.0 80000112.93057106435\r\n",
+      "22.36 519.0 80000113.545409321785\r\n",
+      "41.559998 999.0 80000113.71510283649\r\n",
+      "36.64 876.0 80000115.363516911864\r\n",
+      "5.12 88.0 80000116.62624913454\r\n",
+      "24.32 568.0 80000117.5390470773\r\n",
+      "11.4800005 247.0 80000118.313546299934\r\n",
+      "10.0 210.0 80000118.64352825284\r\n",
+      "13.36 294.0 80000119.64161340892\r\n",
+      "4.48 72.0 80000119.70217871666\r\n",
+      "5.68 102.0 80000119.87085522711\r\n",
+      "25.76 604.0 80000120.67677563429\r\n",
+      "1.9200001 8.0 80000121.80093438923\r\n",
+      "2.92 33.0 80000122.09129279852\r\n",
+      "5.12 88.0 80000122.545517489314\r\n",
+      "33.32 793.0 80000122.93073017895\r\n",
+      "13.76 304.0 80000123.276563555\r\n",
+      "37.159996 889.0 80000125.506356075406\r\n",
+      "30.56 724.0 80000125.6568851918\r\n",
+      "37.079998 887.0 80000127.336458325386\r\n",
+      "6.4399996 121.0 80000127.45361994207\r\n",
+      "11.96 259.0 80000128.36573840678\r\n",
+      "14.08 312.0 80000129.43040788174\r\n",
+      "14.36 319.0 80000130.30537183583\r\n",
+      "34.239998 816.0 80000131.993975520134\r\n",
+      "29.92 708.0 80000132.51598034799\r\n",
+      "21.8 505.0 80000132.877141192555\r\n",
+      "10.84 231.0 80000134.958766937256\r\n",
+      "15.72 353.0 80000136.26415735483\r\n",
+      "9.32 193.0 80000136.271308645606\r\n",
+      "38.44 921.0 80000136.491618439555\r\n",
+      "34.559998 824.0 80000136.59682570398\r\n",
+      "29.64 701.0 80000136.81391918659\r\n",
+      "13.6 300.0 80000137.111403808\r\n",
+      "15.0 335.0 80000137.99286413193\r\n",
+      "8.2 165.0 80000140.02283409238\r\n",
+      "31.0 735.0 80000141.585879951715\r\n",
+      "18.12 413.0 80000141.88128243387\r\n",
+      "27.64 651.0 80000142.301297202706\r\n",
+      "29.44 696.0 80000144.258596763015\r\n",
+      "4.32 68.0 80000146.35952179134\r\n",
+      "9.92 208.0 80000146.431891173124\r\n",
+      "26.6 625.0 80000146.93531550467\r\n",
+      "32.719997 778.0 80000147.86272408068\r\n",
+      "4.4 70.0 80000148.20213320851\r\n",
+      "14.04 311.0 80000148.998638793826\r\n",
+      "10.76 229.0 80000150.13331639767\r\n",
+      "8.12 163.0 80000150.40001221001\r\n",
+      "31.96 759.0 80000150.51030369103\r\n",
+      "41.6 1000.0 80000158.27798460424\r\n",
+      "2.96 34.0 80000158.565826013684\r\n",
+      "19.76 454.0 80000160.18738743663\r\n",
+      "14.440001 321.0 80000162.67192919552\r\n",
+      "11.72 253.0 80000163.52692268789\r\n",
+      "37.44 896.0 80000164.03886182606\r\n",
+      "32.84 781.0 80000164.495729878545\r\n",
+      "17.24 391.0 80000165.17495532334\r\n",
+      "3.44 46.0 80000166.38718263805\r\n",
+      "25.76 604.0 80000168.38902553916\r\n",
+      "25.44 596.0 80000169.68685694039\r\n",
+      "23.56 549.0 80000169.713349059224\r\n",
+      "19.08 437.0 80000170.805011570454\r\n",
+      "41.039997 986.0 80000172.42077590525\r\n",
+      "2.16 14.0 80000172.43760578334\r\n",
+      "2.16 14.0 80000174.10814335942\r\n",
+      "37.28 892.0 80000174.15144339204\r\n",
+      "30.76 729.0 80000174.80246704817\r\n",
+      "28.24 666.0 80000174.83830589056\r\n",
+      "23.52 548.0 80000176.110384613276\r\n",
+      "33.399998 795.0 80000176.43801294267\r\n",
+      "7.08 137.0 80000177.71353569627\r\n",
+      "39.12 938.0 80000178.329968214035\r\n",
+      "9.44 196.0 80000180.91684667766\r\n",
+      "6.56 124.0 80000181.358734831214\r\n",
+      "24.96 584.0 80000182.17984089255\r\n",
+      "14.08 312.0 80000182.2385392189\r\n",
+      "29.92 708.0 80000183.21093174815\r\n",
+      "8.52 173.0 80000183.68284714222\r\n",
+      "23.92 558.0 80000184.32184153795\r\n",
+      "33.96 809.0 80000187.16848820448\r\n",
+      "13.0 285.0 80000188.89809964597\r\n",
+      "2.56 24.0 80000189.59268042445\r\n",
+      "8.52 173.0 80000190.39239893854\r\n",
+      "29.6 700.0 80000190.987773641944\r\n",
+      "8.04 161.0 80000191.39765946567\r\n",
+      "9.84 206.0 80000191.63218219578\r\n",
+      "37.399998 895.0 80000191.7998701334\r\n",
+      "37.48 897.0 80000194.591946706176\r\n",
+      "2.44 21.0 80000195.17524069548\r\n",
+      "22.72 528.0 80000195.27073279023\r",
+      "\r\n",
+      "33.039997 786.0 80000195.60482543707\r\n",
+      "15.4 345.0 80000197.01553657651\r\n",
+      "20.56 474.0 80000198.18857589364\r\n",
+      "12.8 280.0 80000199.30817961693\r\n",
+      "20.16 464.0 80000200.066078454256\r\n",
+      "1.6800001 2.0 80000201.68090777099\r\n",
+      "12.04 261.0 80000202.814891934395\r\n",
+      "18.32 418.0 80000203.25650832057\r\n",
+      "40.359997 969.0 80000203.48255087435\r\n",
+      "34.28 817.0 80000204.7061804533\r\n",
+      "34.64 826.0 80000207.248482748866\r\n",
+      "30.4 720.0 80000208.40996426344\r\n",
+      "28.76 679.0 80000208.54558329284\r\n",
+      "3.6 50.0 80000212.2733836025\r\n",
+      "39.399998 945.0 80000213.37501113117\r\n",
+      "23.64 551.0 80000214.05003093183\r\n",
+      "10.24 216.0 80000214.76189556718\r\n",
+      "15.440001 346.0 80000214.94751133025\r\n",
+      "33.839996 806.0 80000215.30322690308\r\n",
+      "2.88 32.0 80000215.606552898884\r\n",
+      "17.56 399.0 80000216.67295819521\r\n",
+      "17.199999 390.0 80000216.721879810095\r\n",
+      "22.0 510.0 80000217.02722400427\r\n",
+      "7.3199997 143.0 80000218.21801964939\r\n",
+      "6.3199997 118.0 80000223.690936505795\r\n",
+      "40.519997 973.0 80000224.71057784557\r\n",
+      "10.6 225.0 80000224.88408643007\r\n",
+      "31.08 737.0 80000225.81306296587\r\n",
+      "21.0 485.0 80000228.288003221154\r\n",
+      "15.64 351.0 80000229.47965101898\r\n",
+      "34.719997 828.0 80000229.982017084956\r\n",
+      "25.88 607.0 80000230.13939705491\r\n",
+      "16.52 373.0 80000230.207446575165\r\n",
+      "1.8 5.0 80000233.628895014524\r\n",
+      "33.0 785.0 80000233.858214601874\r\n",
+      "36.879997 882.0 80000235.58721217513\r\n",
+      "1.76 4.0 80000236.03008031845\r\n",
+      "42.239998 1016.0 80000239.206377997994\r\n",
+      "31.119999 738.0 80000240.66440632939\r\n",
+      "34.159996 814.0 80000241.05537928641\r\n",
+      "13.56 299.0 80000242.91226673126\r\n",
+      "18.92 433.0 80000243.34091578424\r\n",
+      "22.44 521.0 80000246.23444570601\r\n",
+      "40.8 980.0 80000246.39591316879\r\n",
+      "21.28 492.0 80000248.63243843615\r\n",
+      "24.28 567.0 80000249.259784281254\r\n",
+      "9.56 199.0 80000249.85402186215\r\n",
+      "5.04 86.0 80000250.17666938901\r\n",
+      "3.0 35.0 80000251.49163559079\r\n",
+      "25.44 596.0 80000251.50295473635\r\n",
+      "24.4 570.0 80000252.06601053476\r\n",
+      "30.56 724.0 80000252.272911697626\r\n",
+      "38.12 913.0 80000252.985514968634\r\n",
+      "38.8 930.0 80000253.836741268635\r\n",
+      "30.76 729.0 80000255.06581965089\r\n",
+      "41.719997 1003.0 80000255.60727831721\r\n",
+      "41.64 1001.0 80000256.902037888765\r\n",
+      "19.8 455.0 80000258.60432396829\r\n",
+      "42.359997 1019.0 80000260.50080451369\r\n",
+      "25.6 600.0 80000260.75552198291\r\n",
+      "11.56 249.0 80000260.88460493088\r\n",
+      "33.839996 806.0 80000261.36898006499\r\n",
+      "37.48 897.0 80000262.92271217704\r\n",
+      "18.2 415.0 80000262.99845524132\r\n",
+      "23.36 544.0 80000263.33590015769\r\n",
+      "40.96 984.0 80000264.96524555981\r\n",
+      "9.28 192.0 80000265.84508921206\r\n",
+      "10.84 231.0 80000266.91673760116\r\n",
+      "4.44 71.0 80000268.235334053636\r\n",
+      "22.76 529.0 80000271.489329367876\r\n",
+      "23.96 559.0 80000271.64101035893\r\n",
+      "35.879997 857.0 80000271.98798702657\r\n",
+      "11.16 239.0 80000273.71523039043\r\n",
+      "36.199997 865.0 80000275.30799421668\r\n",
+      "32.76 779.0 80000275.81958813965\r\n",
+      "27.32 643.0 80000276.46777294576\r\n",
+      "27.0 635.0 80000277.24329108\r\n",
+      "11.360001 244.0 80000277.80254943669\r\n",
+      "3.08 37.0 80000278.42643971741\r\n",
+      "18.68 427.0 80000278.52543953061\r\n",
+      "5.8399997 106.0 80000278.78952820599\r\n",
+      "25.24 591.0 80000279.13904826343\r\n",
+      "11.400001 245.0 80000279.32166413963\r\n",
+      "6.72 128.0 80000279.47431126237\r\n",
+      "34.6 825.0 80000281.05502511561\r\n",
+      "14.2 315.0 80000281.66787202656\r\n",
+      "18.08 412.0 80000281.735276550055\r\n",
+      "14.16 314.0 80000283.60641156137\r\n",
+      "12.4800005 272.0 80000284.68940325081\r\n",
+      "22.72 528.0 80000284.771769434214\r\n",
+      "7.2 140.0 80000285.59601339698\r\n",
+      "37.519997 898.0 80000287.934347867966\r\n",
+      "37.559998 899.0 80000288.457227408886\r\n",
+      "25.36 594.0 80000288.84559759498\r\n",
+      "37.039997 886.0 80000289.283936053514\r\n",
+      "32.48 772.0 80000289.74665103853\r\n",
+      "21.36 494.0 80000290.772457659245\r\n",
+      "1.64 1.0 80000290.879882499576\r\n",
+      "19.32 443.0 80000291.225027650595\r\n",
+      "21.84 506.0 80000291.23198154569\r\n",
+      "2.8 30.0 80000293.356203347445\r\n",
+      "31.92 758.0 80000296.29710520804\r\n",
+      "32.52 773.0 80000297.10793355107\r\n",
+      "37.159996 889.0 80000298.52665117383\r\n",
+      "12.64 276.0 80000298.93143287301\r\n",
+      "7.4399996 146.0 80000299.927507817745\r\n",
+      "17.199999 390.0 80000300.818491622806\r\n",
+      "2.52 23.0 80000302.07161732018\r\n",
+      "2.56 24.0 80000302.72473844886\r\n",
+      "36.319996 868.0 80000305.32900521159\r\n",
+      "4.52 73.0 80000305.93047915399\r\n",
+      "3.24 41.0 80000306.89711469412\r\n",
+      "16.64 376.0 80000309.568026304245\r\n",
+      "4.4 70.0 80000310.67230030894\r\n",
+      "18.36 419.0 80000311.17736788094\r\n",
+      "8.24 166.0 80000311.37703952193\r\n",
+      "20.12 463.0 80000313.92710117996\r\n",
+      "36.76 879.0 80000316.52630840242\r\n",
+      "3.6399999 51.0 80000316.576121881604\r\n",
+      "2.56 24.0 80000316.61531569064\r\n",
+      "4.68 77.0 80000316.991498693824\r\n",
+      "30.92 733.0 80000318.496204048395\r\n",
+      "4.44 71.0 80000318.759574487805\r\n",
+      "25.72 603.0 80000318.99812464416\r\n",
+      "24.16 564.0 80000323.19316992164\r\n",
+      "39.64 951.0 80000323.76615965366\r\n",
+      "2.6799998 27.0 80000324.23196092248\r\n",
+      "30.8 730.0 80000325.30946139991\r\n",
+      "13.68 302.0 80000325.49627235532\r\n",
+      "40.64 976.0 80000325.76096495986\r\n",
+      "9.04 186.0 80000326.018922537565\r\n",
+      "23.56 549.0 80000328.51117782295\r\n",
+      "32.12 763.0 80000330.33366891742\r\n",
+      "21.16 489.0 80000331.37347571552\r\n",
+      "38.8 930.0 80000332.161390304565\r\n",
+      "6.2 115.0 80000332.54631538689\r\n",
+      "37.319996 893.0 80000333.515790537\r\n",
+      "2.6799998 27.0 80000335.46171656251\r\n",
+      "27.8 655.0 80000336.63410934806\r\n",
+      "38.92 933.0 80000339.03143580258\r\n",
+      "5.7599998 104.0 80000339.16872346401\r\n",
+      "18.32 418.0 80000340.030776798725\r\n",
+      "5.8399997 106.0 80000340.41478018463\r\n",
+      "17.48 397.0 80000340.533760264516\r\n",
+      "33.32 793.0 80000341.72407652438\r\n",
+      "11.360001 244.0 80000344.206543818116\r\n",
+      "24.88 582.0 80000344.78012427688\r\n",
+      "32.96 784.0 80000345.00482337177\r\n",
+      "2.52 23.0 80000345.26880034804\r\n",
+      "13.2 290.0 80000345.654379203916\r\n",
+      "34.359997 819.0 80000345.975308820605\r\n",
+      "42.359997 1019.0 80000346.41354955733\r\n",
+      "7.8799996 157.0 80000346.86677853763\r\n",
+      "39.6 950.0 80000347.32460169494\r\n",
+      "9.32 193.0 80000347.35750260949\r\n",
+      "16.0 360.0 80000349.31582227349\r\n",
+      "37.879997 907.0 80000351.124539494514\r\n",
+      "19.44 446.0 80000352.37143753469\r\n",
+      "36.76 879.0 80000353.196565657854\r\n",
+      "2.24 16.0 80000354.17744512856\r\n",
+      "30.88 732.0 80000355.20202793181\r\n",
+      "39.8 955.0 80000355.60426925123\r\n",
+      "40.12 963.0 80000355.82318587601\r\n",
+      "16.4 370.0 80000356.5162641108\r\n",
+      "10.360001 219.0 80000357.642409190536\r\n",
+      "4.12 63.0 80000359.16175606847\r\n",
+      "7.68 152.0 80000359.8546615839\r\n",
+      "4.12 63.0 80000362.5537327677\r\n",
+      "20.8 480.0 80000362.92154058814\r\n",
+      "17.199999 390.0 80000363.773983463645\r\n",
+      "39.999996 960.0 80000365.48620200157\r\n",
+      "36.319996 868.0 80000368.489620789886\r\n",
+      "19.6 450.0 80000369.631684705615\r\n",
+      "41.679996 1002.0 80000370.6534255296\r\n",
+      "39.159996 939.0 80000371.82940942049\r\n",
+      "34.399998 820.0 80000373.43823419511\r\n",
+      "29.28 692.0 80000373.8585408777\r\n",
+      "39.039997 936.0 80000374.209455892444\r\n",
+      "34.44 821.0 80000374.64683301747\r\n",
+      "2.96 34.0 80000375.620239943266\r\n",
+      "32.36 769.0 80000378.87894229591\r\n",
+      "35.999996 860.0 80000378.97707155347\r\n",
+      "14.28 317.0 80000379.42757484317\r\n",
+      "37.839996 906.0 80000379.917373120785\r\n",
+      "8.92 183.0 80000381.10625052452\r\n",
+      "37.239998 891.0 80000382.077453806996\r\n",
+      "31.039999 736.0 80000382.17598539591\r\n",
+      "34.079998 812.0 80000382.22633959353\r\n",
+      "25.84 606.0 80000382.22792515159\r\n",
+      "27.6 650.0 80000382.55412106216\r\n",
+      "2.8 30.0 80000383.94620233774\r\n",
+      "37.12 888.0 80000384.37110866606\r\n",
+      "28.16 664.0 80000387.30780394375\r\n",
+      "20.44 471.0 80000387.87746040523\r\n",
+      "25.119999 588.0 80000388.37795352936\r\n",
+      "2.6799998 27.0 80000389.268874913454\r\n",
+      "37.199997 890.0 80000392.62231977284\r\n",
+      "28.16 664.0 80000393.17818275094\r\n",
+      "11.52 248.0 80000393.43643279374\r\n",
+      "2.6 25.0 80000395.12563699484\r\n",
+      "15.6 350.0 80000395.77989049256\r\n",
+      "6.48 122.0 80000396.31284117699\r\n",
+      "32.039997 761.0 80000399.1847140342\r\n",
+      "37.92 908.0 80000399.54459910095\r\n",
+      "16.84 381.0 80000400.72491231561\r\n",
+      "20.64 476.0 80000403.17735889554\r\n",
+      "8.88 182.0 80000403.54358610511\r\n",
+      "20.72 478.0 80000404.22769507766\r\n",
+      "5.4 95.0 80000404.47602318227\r\n",
+      "42.479996 1022.0 80000404.67004515231\r\n",
+      "16.64 376.0 80000408.95574080944\r\n",
+      "7.16 139.0 80000410.03962627053\r\n",
+      "16.72 378.0 80000410.75551979244\r\n",
+      "8.52 173.0 80000412.09823872149\r\n",
+      "31.8 755.0 80000412.219870209694\r\n",
+      "1.9200001 8.0 80000412.81054663658\r\n",
+      "21.96 509.0 80000414.8682410419\r\n",
+      "24.44 571.0 80000415.37962676585\r\n",
+      "27.92 658.0 80000416.70795631409\r\n",
+      "24.56 574.0 80000417.1444568038\r\n",
+      "37.039997 886.0 80000418.38563929498\r\n",
+      "1.96 9.0 80000420.47344271839\r\n",
+      "8.88 182.0 80000420.53409618139\r\n",
+      "26.48 622.0 80000420.80564555526\r\n",
+      "41.719997 1003.0 80000420.863403081894\r\n",
+      "5.96 109.0 80000420.942480519414\r\n",
+      "35.8 855.0 80000422.02582614124\r\n",
+      "8.44 171.0 80000422.79813404381\r\n",
+      "12.76 279.0 80000424.42955330014\r\n",
+      "7.8399997 156.0 80000424.81564453244\r\n",
+      "7.4799995 147.0 80000425.28199738264\r\n",
+      "40.319996 968.0 80000425.867245197296\r\n",
+      "33.719997 803.0 80000426.62731541693\r\n",
+      "40.12 963.0 80000427.133511930704\r\n",
+      "14.52 323.0 80000427.36044855416\r\n",
+      "7.0 135.0 80000428.54412809014\r\n",
+      "15.56 349.0 80000428.88726851344\r\n",
+      "30.6 725.0 80000429.38063727319\r\n",
+      "19.6 450.0 80000432.95051422715\r\n",
+      "3.08 37.0 80000434.64868846536\r\n",
+      "2.4 20.0 80000435.51728320122\r\n",
+      "39.76 954.0 80000436.24377171695\r\n",
+      "23.64 551.0 80000437.577606111765\r\n",
+      "9.48 197.0 80000438.05216662586\r\n",
+      "34.039997 811.0 80000438.70308248699\r\n",
+      "2.3600001 19.0 80000442.052734196186\r\n",
+      "27.36 644.0 80000442.764658123255\r\n",
+      "14.4800005 322.0 80000443.238895997405\r\n",
+      "12.76 279.0 80000445.098355308175\r\n",
+      "14.6 325.0 80000446.023702159524\r\n",
+      "32.879997 782.0 80000446.16962249577\r\n",
+      "10.92 233.0 80000448.83636845648\r\n",
+      "7.7999997 155.0 80000450.061449572444\r\n",
+      "9.12 188.0 80000450.52947856486\r\n",
+      "32.079998 762.0 80000450.55909974873\r\n",
+      "28.32 668.0 80000451.879113674164\r\n",
+      "22.28 517.0 80000452.064453706145\r\n",
+      "10.08 212.0 80000452.13652163744\r\n",
+      "26.32 618.0 80000452.9472001791\r\n",
+      "35.399998 845.0 80000453.03071194887\r\n",
+      "9.48 197.0 80000454.07206726074\r\n",
+      "3.32 43.0 80000456.48143340647\r\n",
+      "34.399998 820.0 80000458.18602730334\r\n",
+      "11.56 249.0 80000459.0324331224\r\n",
+      "4.2799997 67.0 80000459.4572635144\r\n",
+      "32.36 769.0 80000459.920432657\r\n",
+      "41.239998 991.0 80000464.06256014109\r\n",
+      "10.76 229.0 80000464.33307418227\r\n",
+      "34.079998 812.0 80000466.34134361148\r\n",
+      "26.84 631.0 80000467.24169912934\r\n",
+      "16.119999 363.0 80000467.884447038174\r\n",
+      "40.319996 968.0 80000468.7550342083\r\n",
+      "10.72 228.0 80000469.84887549281\r\n",
+      "22.52 523.0 80000469.8745007813\r\n",
+      "39.92 958.0 80000472.20344258845\r\n",
+      "27.4 645.0 80000472.30986727774\r\n",
+      "31.84 756.0 80000473.21885484457\r\n",
+      "15.440001 346.0 80000473.694500654936\r\n",
+      "17.24 391.0 80000476.0327218622\r\n",
+      "32.84 781.0 80000476.96122226119\r\n",
+      "39.28 942.0 80000480.92292739451\r\n",
+      "35.319996 843.0 80000481.06054444611\r\n",
+      "4.4 70.0 80000481.37218731642\r\n",
+      "24.36 569.0 80000481.933602169156\r\n",
+      "26.16 614.0 80000481.98567260802\r\n",
+      "40.879997 982.0 80000482.9210729748\r\n",
+      "40.479996 972.0 80000483.857440814376\r\n",
+      "4.64 76.0 80000484.32165810466\r\n",
+      "39.8 955.0 80000484.80663745105\r\n",
+      "29.16 689.0 80000486.771085351706\r\n",
+      "11.84 256.0 80000487.217004179955\r\n",
+      "14.16 314.0 80000487.990593642\r\n",
+      "28.92 683.0 80000491.276099190116\r\n",
+      "37.999996 910.0 80000491.747016862035\r\n",
+      "6.4399996 121.0 80000493.35879443586\r\n",
+      "25.2 590.0 80000494.31928488612\r\n",
+      "12.16 264.0 80000495.14925374091\r\n",
+      "14.6 325.0 80000495.4605127275\r\n",
+      "20.64 476.0 80000496.37845928967\r\n",
+      "5.16 89.0 80000496.85824956\r\n",
+      "19.88 457.0 80000497.20662690699\r\n",
+      "35.92 858.0 80000502.43506611884\r\n",
+      "25.8 605.0 80000502.71769653261\r\n",
+      "17.119999 388.0 80000502.80815401673\r\n",
+      "36.159996 864.0 80000504.42526854575\r\n",
+      "21.4 495.0 80000505.48890078068\r\n",
+      "12.4800005 272.0 80000506.024649724364\r\n",
+      "21.92 508.0 80000506.17142087221\r\n",
+      "4.56 74.0 80000508.07841642201\r\n",
+      "4.72 78.0 80000508.71263246238\r\n",
+      "31.56 749.0 80000509.140583753586\r\n",
+      "28.119999 663.0 80000509.95569059253\r\n",
+      "27.28 642.0 80000510.86728909612\r\n",
+      "12.04 261.0 80000512.479585409164\r\n",
+      "30.199999 715.0 80000516.56570722163\r\n",
+      "33.36 794.0 80000516.99862577021\r\n",
+      "5.16 89.0 80000517.344923987985\r\n",
+      "11.12 238.0 80000519.38823206723\r\n",
+      "11.32 243.0 80000519.57560668886\r\n",
+      "5.0 85.0 80000519.58020955324\r\n",
+      "33.239998 791.0 80000520.51779472828\r\n",
+      "6.3999996 120.0 80000520.546872377396\r\n",
+      "9.72 203.0 80000521.153368234634\r\n",
+      "30.64 726.0 80000521.42145887017\r\n",
+      "21.96 509.0 80000521.63308496773\r\n",
+      "12.6 275.0 80000523.057834371924\r\n",
+      "8.36 169.0 80000525.05073848367\r\n",
+      "10.56 224.0 80000527.819232299924\r\n",
+      "29.24 691.0 80000531.12523216009\r\n",
+      "24.6 575.0 80000532.10568276048\r\n",
+      "40.8 980.0 80000533.20108996332\r\n",
+      "17.0 385.0 80000534.29738210142\r\n",
+      "23.48 547.0 80000534.340845018625\r\n",
+      "18.28 417.0 80000534.83431440592\r\n",
+      "2.08 12.0 80000534.87653042376\r\n",
+      "41.92 1008.0 80000534.895185917616\r\n",
+      "8.52 173.0 80000535.94042633474\r\n",
+      "19.84 456.0 80000537.48509004712\r\n",
+      "10.400001 220.0 80000538.26394830644\r\n",
+      "23.92 558.0 80000540.002261936665\r\n",
+      "37.719997 903.0 80000540.1134250015\r\n",
+      "13.84 306.0 80000546.718622386456\r\n",
+      "4.32 68.0 80000546.84028501809\r\n",
+      "18.56 424.0 80000547.30754908919\r\n",
+      "3.08 37.0 80000549.5327937603\r\n",
+      "27.88 657.0 80000550.56298401952\r\n",
+      "29.0 685.0 80000550.60222132504\r\n",
+      "35.159996 839.0 80000552.734096348286\r\n",
+      "38.519997 923.0 80000553.922179594636\r\n",
+      "5.52 98.0 80000555.44246518612\r\n",
+      "18.56 424.0 80000558.82404534519\r\n",
+      "39.319996 943.0 80000558.947059229016\r\n",
+      "32.399998 770.0 80000559.282619684935\r\n",
+      "33.0 785.0 80000560.58969677985\r\n",
+      "29.72 703.0 80000560.70387540758\r\n",
+      "10.24 216.0 80000561.323437169194\r\n",
+      "17.88 407.0 80000562.679025664926\r\n",
+      "27.44 646.0 80000563.71705073118\r\n",
+      "14.4800005 322.0 80000563.95132599771\r\n",
+      "25.24 591.0 80000564.861919119954\r\n",
+      "23.24 541.0 80000565.76752875745\r\n",
+      "37.92 908.0 80000565.78528097272\r\n",
+      "24.92 583.0 80000566.29958720505\r\n",
+      "31.88 757.0 80000567.06900238991\r\n",
+      "42.359997 1019.0 80000569.15245625377\r\n",
+      "11.68 252.0 80000570.583770141006\r\n",
+      "11.56 249.0 80000571.260604158044\r\n",
+      "22.48 522.0 80000572.77767854929\r\n",
+      "24.64 576.0 80000574.140301436186\r\n",
+      "28.119999 663.0 80000574.51526069641\r\n",
+      "3.28 42.0 80000577.082364201546\r\n",
+      "35.559998 849.0 80000578.60487310588\r\n",
+      "5.72 103.0 80000579.25371134281\r\n",
+      "3.4 45.0 80000579.63681046665\r\n",
+      "6.3199997 118.0 80000581.21821717918\r\n",
+      "6.3199997 118.0 80000582.04014620185\r\n",
+      "22.12 513.0 80000583.46193483472\r\n",
+      "9.5199995 198.0 80000586.03360375762\r\n",
+      "3.48 47.0 80000589.798507750034\r\n",
+      "31.72 753.0 80000591.46542161703\r\n",
+      "2.88 32.0 80000591.97941620648\r\n",
+      "10.8 230.0 80000593.13316428661\r\n",
+      "15.84 356.0 80000594.042805209756\r\n",
+      "15.56 349.0 80000594.91821274161\r\n",
+      "37.159996 889.0 80000595.397889867425\r\n",
+      "28.16 664.0 80000595.763835296035\r\n",
+      "6.8399997 131.0 80000596.830532982945\r\n",
+      "37.559998 899.0 80000598.901824980974\r\n",
+      "31.16 739.0 80000599.64194495976\r\n",
+      "28.88 682.0 80000600.793473765254\r\n",
+      "31.56 749.0 80000602.10744164884\r\n",
+      "7.8399997 156.0 80000602.55246156454\r\n",
+      "17.24 391.0 80000603.4955958724\r\n",
+      "7.12 138.0 80000606.650620505214\r\n",
+      "2.16 14.0 80000608.090855017304\r\n",
+      "37.879997 907.0 80000609.993093535304\r\n",
+      "4.7999997 80.0 80000610.186307400465\r\n",
+      "15.56 349.0 80000611.37006236613\r\n",
+      "30.48 722.0 80000611.83906060457\r\n",
+      "19.96 459.0 80000611.8572294265\r\n",
+      "34.64 826.0 80000611.95349282026\r\n",
+      "41.839996 1006.0 80000613.84575891495\r\n",
+      "23.2 540.0 80000617.17802332342\r\n",
+      "17.56 399.0 80000617.24794691801\r\n",
+      "34.559998 824.0 80000617.35718101263\r\n",
+      "28.16 664.0 80000617.732587218285\r\n",
+      "20.64 476.0 80000618.9578525275\r\n",
+      "28.84 681.0 80000619.30346444249\r\n",
+      "39.239998 941.0 80000621.2265856415\r\n",
+      "18.16 414.0 80000621.38765838742\r\n",
+      "7.9999995 160.0 80000621.735619053245\r\n",
+      "33.079998 787.0 80000623.792137786746\r\n",
+      "37.64 901.0 80000623.85770910978\r\n",
+      "2.6 25.0 80000626.21549396217\r\n",
+      "31.039999 736.0 80000627.16449086368\r\n",
+      "33.12 788.0 80000628.88948699832\r\n",
+      "39.319996 943.0 80000630.68285809457\r\n",
+      "11.32 243.0 80000630.789920687675\r\n",
+      "30.48 722.0 80000632.821838498116\r\n",
+      "27.199999 640.0 80000632.881889894605\r\n",
+      "24.84 581.0 80000634.78217072785\r\n",
+      "20.28 467.0 80000635.002951964736\r\n",
+      "33.679996 802.0 80000635.41563603282\r\n",
+      "36.199997 865.0 80000635.88681785762\r\n",
+      "8.56 174.0 80000637.371477141976\r\n",
+      "35.519997 848.0 80000642.38429802656\r\n",
+      "30.4 720.0 80000643.78843893111\r\n",
+      "25.44 596.0 80000644.600917607546\r\n",
+      "11.68 252.0 80000644.882760211825\r\n",
+      "10.28 217.0 80000645.594902947545\r\n",
+      "9.2 190.0 80000645.93502403796\r\n",
+      "16.439999 371.0 80000646.383003011346\r\n",
+      "2.6399999 26.0 80000646.53795617819\r\n",
+      "34.64 826.0 80000647.63100332022\r\n",
+      "22.84 531.0 80000648.47574129701\r\n",
+      "5.12 88.0 80000649.00771085918\r\n",
+      "42.079998 1012.0 80000649.114930674434\r\n",
+      "24.92 583.0 80000650.1061706841\r\n",
+      "22.88 532.0 80000655.68533721566\r\n",
+      "24.68 577.0 80000657.16480255127\r\n",
+      "26.68 627.0 80000657.258827999234\r\n",
+      "19.8 455.0 80000657.33367057145\r\n",
+      "35.64 851.0 80000658.74945259094\r\n",
+      "2.08 12.0 80000660.18671748042\r\n",
+      "17.439999 396.0 80000660.63745248318\r\n",
+      "33.999996 810.0 80000661.82945792377\r\n",
+      "6.48 122.0 80000661.90170559287\r\n",
+      "17.16 389.0 80000662.26141363382\r\n",
+      "33.32 793.0 80000662.64840815961\r\n",
+      "41.64 1001.0 80000663.12676268816\r\n",
+      "14.56 324.0 80000663.227578774095\r\n",
+      "24.44 571.0 80000664.475006356835\r\n",
+      "3.3600001 44.0 80000664.552283763885\r\n",
+      "17.24 391.0 80000665.17621576786\r\n",
+      "27.4 645.0 80000666.08528217673\r\n",
+      "39.079998 937.0 80000670.71755500138\r\n",
+      "7.72 153.0 80000671.198174357414\r\n",
+      "6.8799996 132.0 80000673.345912232995\r\n",
+      "34.199997 815.0 80000674.87888632715\r\n",
+      "35.28 842.0 80000676.18293096125\r\n",
+      "11.64 251.0 80000676.64919489622\r\n",
+      "40.359997 969.0 80000676.80372226238\r\n",
+      "31.44 746.0 80000678.275382354856\r\n",
+      "11.8 255.0 80000680.48982979357\r\n",
+      "19.28 442.0 80000682.686058193445\r",
+      "\r\n",
+      "26.24 616.0 80000684.38221885264\r\n",
+      "2.8 30.0 80000685.43452076614\r\n",
+      "22.0 510.0 80000686.74407067895\r\n",
+      "31.199999 740.0 80000686.81872756779\r\n",
+      "30.84 731.0 80000688.30932036042\r\n",
+      "42.319996 1018.0 80000688.81981065869\r\n",
+      "20.16 464.0 80000691.197261437774\r\n",
+      "16.4 370.0 80000692.15807239711\r\n",
+      "27.92 658.0 80000693.03427194059\r\n",
+      "10.360001 219.0 80000694.3066085726\r\n",
+      "36.8 880.0 80000694.962600558996\r\n",
+      "40.44 971.0 80000697.02309130132\r\n",
+      "38.48 922.0 80000698.11148573458\r\n",
+      "21.56 499.0 80000698.516439035535\r\n",
+      "40.28 967.0 80000699.06620439887\r\n",
+      "42.44 1021.0 80000701.39014860988\r\n",
+      "27.76 654.0 80000701.87561401725\r\n",
+      "11.8 255.0 80000702.62369687855\r\n",
+      "27.88 657.0 80000702.988359063864\r\n",
+      "39.159996 939.0 80000705.296378955245\r\n",
+      "23.96 559.0 80000705.433091163635\r\n",
+      "11.440001 246.0 80000705.599841311574\r\n",
+      "2.8400002 31.0 80000709.3684746474\r\n",
+      "12.2 265.0 80000709.77955941856\r\n",
+      "3.7199998 53.0 80000709.794584959745\r\n",
+      "11.2 240.0 80000709.846471622586\r\n",
+      "27.0 635.0 80000711.9785169363\r\n",
+      "19.4 445.0 80000712.899810910225\r\n",
+      "1.9200001 8.0 80000713.0795609951\r\n",
+      "21.96 509.0 80000713.76596863568\r\n",
+      "36.48 872.0 80000716.780457377434\r\n",
+      "22.039999 511.0 80000717.29924210906\r\n",
+      "17.32 393.0 80000720.5562723279\r\n",
+      "12.68 277.0 80000720.58715964854\r\n",
+      "41.239998 991.0 80000722.03180555999\r\n",
+      "29.32 693.0 80000722.03699606657\r\n",
+      "7.9599996 159.0 80000722.478862181306\r\n",
+      "29.96 709.0 80000723.87889204919\r\n",
+      "5.52 98.0 80000724.7961999625\r\n",
+      "37.44 896.0 80000726.34677195549\r\n",
+      "40.28 967.0 80000727.47035036981\r\n",
+      "26.84 631.0 80000728.90236452222\r\n",
+      "41.92 1008.0 80000729.3514444083\r\n",
+      "26.16 614.0 80000730.33039654791\r\n",
+      "4.2 65.0 80000730.81428743899\r\n",
+      "4.4 70.0 80000731.42920610309\r\n",
+      "16.359999 369.0 80000732.61377693713\r\n",
+      "14.04 311.0 80000733.754086226225\r\n",
+      "17.08 387.0 80000733.79874679446\r\n",
+      "3.52 48.0 80000733.991308033466\r\n",
+      "38.28 917.0 80000734.417156770825\r\n",
+      "1.96 9.0 80000738.45621095598\r\n",
+      "11.08 237.0 80000739.78259626031\r\n",
+      "39.319996 943.0 80000739.904296547174\r\n",
+      "29.36 694.0 80000742.26487219334\r\n",
+      "20.8 480.0 80000742.58448088169\r\n",
+      "18.0 410.0 80000743.84713715315\r\n",
+      "7.0 135.0 80000745.445721656084\r\n",
+      "33.32 793.0 80000745.704266637564\r\n",
+      "4.96 84.0 80000746.49740232527\r\n",
+      "2.88 32.0 80000748.3739194572\r\n",
+      "40.76 979.0 80000749.18420062959\r\n",
+      "39.559998 949.0 80000749.238480210304\r\n",
+      "40.8 980.0 80000749.36030867696\r\n",
+      "15.36 344.0 80000751.06558699906\r\n",
+      "35.64 851.0 80000751.55830208957\r\n",
+      "39.479996 947.0 80000752.70824530721\r\n",
+      "9.12 188.0 80000752.72337460518\r\n",
+      "20.64 476.0 80000752.881983697414\r\n",
+      "29.52 698.0 80000753.15865902603\r\n",
+      "35.28 842.0 80000753.76198838651\r\n",
+      "27.92 658.0 80000754.23456764221\r\n",
+      "18.08 412.0 80000754.3275937736\r\n",
+      "35.76 854.0 80000755.37613813579\r\n",
+      "26.56 624.0 80000756.66476659477\r\n",
+      "6.7599998 129.0 80000758.372802481055\r\n",
+      "23.48 547.0 80000759.07206888497\r\n",
+      "29.16 689.0 80000759.892510056496\r\n",
+      "36.48 872.0 80000761.603752076626\r\n",
+      "17.16 389.0 80000762.42036630213\r\n",
+      "11.0 235.0 80000765.06811144948\r\n",
+      "31.76 754.0 80000765.382397055626\r\n",
+      "35.44 846.0 80000765.4667224288\r\n",
+      "41.28 992.0 80000765.93857854605\r\n",
+      "37.039997 886.0 80000767.26963350177\r\n",
+      "25.72 603.0 80000767.7786257714\r\n",
+      "20.28 467.0 80000770.32975102961\r\n",
+      "7.3999996 145.0 80000771.69804634154\r\n",
+      "3.32 43.0 80000773.945546999574\r\n",
+      "37.399998 895.0 80000774.221253693104\r\n",
+      "10.92 233.0 80000775.89942243695\r\n",
+      "24.6 575.0 80000777.312041819096\r\n",
+      "12.4800005 272.0 80000777.77507701516\r\n",
+      "31.72 753.0 80000777.79259891808\r\n",
+      "12.360001 269.0 80000779.33480271697\r\n",
+      "22.64 526.0 80000779.554390221834\r\n",
+      "36.999996 885.0 80000780.81437155604\r\n",
+      "29.28 692.0 80000780.933462917805\r\n",
+      "35.159996 839.0 80000781.15924490988\r\n",
+      "24.64 576.0 80000781.26206161082\r\n",
+      "25.119999 588.0 80000781.72611118853\r\n",
+      "4.7599998 79.0 80000782.172751545906\r\n",
+      "20.28 467.0 80000783.125701248646\r\n",
+      "38.64 926.0 80000785.342386975884\r\n",
+      "4.92 83.0 80000785.36341136694\r\n",
+      "34.6 825.0 80000785.92007930577\r\n",
+      "20.56 474.0 80000786.1086602211\r\n",
+      "17.279999 392.0 80000786.253573834896\r\n",
+      "33.6 800.0 80000787.553292140365\r\n",
+      "32.32 768.0 80000787.658161982894\r\n",
+      "4.68 77.0 80000790.072870031\r\n",
+      "24.64 576.0 80000792.274298503995\r\n",
+      "9.44 196.0 80000792.443054273725\r\n",
+      "17.52 398.0 80000792.46565423906\r\n",
+      "14.4800005 322.0 80000792.808876529336\r\n",
+      "33.879997 807.0 80000795.87703709304\r\n",
+      "32.719997 778.0 80000795.91278010607\r\n",
+      "5.44 96.0 80000797.14426906407\r\n",
+      "11.04 236.0 80000797.26987493038\r\n",
+      "34.719997 828.0 80000798.51847578585\r\n",
+      "2.2 15.0 80000799.48481544852\r\n",
+      "31.72 753.0 80000799.881970733404\r\n",
+      "31.039999 736.0 80000803.51909430325\r\n",
+      "18.52 423.0 80000803.731096595526\r\n",
+      "32.16 764.0 80000803.883781552315\r\n",
+      "40.92 983.0 80000805.29773187637\r\n",
+      "18.0 410.0 80000805.306009307504\r\n",
+      "17.32 393.0 80000807.21232941747\r\n",
+      "11.88 257.0 80000808.28512185812\r\n",
+      "21.36 494.0 80000808.454649567604\r\n",
+      "2.48 22.0 80000808.523783952\r\n",
+      "41.76 1004.0 80000809.73774009943\r\n",
+      "39.92 958.0 80000810.001270249486\r\n",
+      "13.12 288.0 80000810.86777666211\r\n",
+      "41.319996 993.0 80000811.438306853175\r\n",
+      "6.16 114.0 80000812.21489995718\r\n",
+      "28.199999 665.0 80000815.07969661057\r\n",
+      "29.56 699.0 80000815.974775359035\r\n",
+      "19.44 446.0 80000816.16485761106\r\n",
+      "3.32 43.0 80000816.704811513424\r\n",
+      "33.679996 802.0 80000816.80518731475\r\n",
+      "6.68 127.0 80000816.81600318849\r\n",
+      "3.1599998 39.0 80000819.00975045562\r\n",
+      "19.32 443.0 80000819.48453132808\r\n",
+      "34.079998 812.0 80000821.329228281975\r\n",
+      "8.8 180.0 80000821.52698163688\r\n",
+      "36.319996 868.0 80000822.00912617147\r\n",
+      "34.199997 815.0 80000824.46000294387\r\n",
+      "10.52 223.0 80000824.66023361683\r\n",
+      "11.28 242.0 80000825.05113039911\r\n",
+      "25.0 585.0 80000827.12451052666\r\n",
+      "3.96 59.0 80000827.4073446542\r\n",
+      "24.68 577.0 80000828.5048404783\r\n",
+      "38.159996 914.0 80000828.622610628605\r\n",
+      "31.88 757.0 80000828.63124883175\r\n",
+      "24.0 560.0 80000829.2215629518\r\n",
+      "20.6 475.0 80000829.66059269011\r\n",
+      "5.32 93.0 80000830.33870181441\r\n",
+      "13.76 304.0 80000831.20006233454\r\n",
+      "11.88 257.0 80000831.21613633633\r\n",
+      "15.16 339.0 80000832.059845909476\r\n",
+      "21.84 506.0 80000832.423598602414\r\n",
+      "13.6 300.0 80000833.69929590821\r\n",
+      "34.999996 835.0 80000834.46965831518\r\n",
+      "41.159996 989.0 80000836.12533031404\r\n",
+      "8.12 163.0 80000836.71061439812\r\n",
+      "28.4 670.0 80000836.78514607251\r\n",
+      "19.56 449.0 80000837.03853216767\r\n",
+      "12.88 282.0 80000839.699784219265\r\n",
+      "5.2799997 92.0 80000841.037233412266\r\n",
+      "31.76 754.0 80000843.41804847121\r\n",
+      "35.48 847.0 80000844.98050430417\r\n",
+      "31.199999 740.0 80000845.57550364733\r\n",
+      "28.76 679.0 80000850.37028862536\r\n",
+      "24.039999 561.0 80000850.423752725124\r\n",
+      "41.839996 1006.0 80000851.28334981203\r\n",
+      "36.76 879.0 80000851.615449771285\r\n",
+      "17.4 395.0 80000851.654990166426\r\n",
+      "38.999996 935.0 80000851.67317868769\r\n",
+      "12.32 268.0 80000852.59776712954\r\n",
+      "11.2 240.0 80000854.87065626681\r\n",
+      "7.4399996 146.0 80000855.74864292145\r\n",
+      "14.76 329.0 80000855.829678565264\r\n",
+      "7.2799997 142.0 80000856.83493223786\r\n",
+      "21.36 494.0 80000858.589912459254\r\n",
+      "26.28 617.0 80000859.1553748399\r\n",
+      "37.44 896.0 80000859.18091611564\r\n",
+      "5.56 99.0 80000859.44560496509\r\n",
+      "21.44 496.0 80000859.509354412556\r\n",
+      "25.28 592.0 80000860.59416265786\r\n",
+      "24.96 584.0 80000861.303189352155\r\n",
+      "19.4 445.0 80000861.96652762592\r\n",
+      "10.92 233.0 80000863.23499922454\r\n",
+      "20.24 466.0 80000864.197188302875\r\n",
+      "7.04 136.0 80000865.590956673026\r\n",
+      "42.319996 1018.0 80000865.72700405121\r\n",
+      "33.6 800.0 80000866.084478631616\r\n",
+      "31.8 755.0 80000866.50517678261\r\n",
+      "32.8 780.0 80000866.850857138634\r\n",
+      "41.239998 991.0 80000867.7263391763\r\n",
+      "22.0 510.0 80000868.06848114729\r\n",
+      "14.4800005 322.0 80000869.2763479501\r\n",
+      "34.44 821.0 80000870.65760450065\r\n",
+      "19.72 453.0 80000871.05340576172\r\n",
+      "23.28 542.0 80000873.14886234701\r\n",
+      "38.239998 916.0 80000874.297571882606\r\n",
+      "36.039997 861.0 80000874.73376466334\r\n",
+      "22.28 517.0 80000879.41517931223\r\n",
+      "33.999996 810.0 80000881.185400635004\r\n",
+      "15.6 350.0 80000882.22257082164\r\n",
+      "21.56 499.0 80000884.97935457528\r\n",
+      "27.84 656.0 80000885.29664757848\r\n",
+      "11.72 253.0 80000886.4507638216\r\n",
+      "37.8 905.0 80000888.94126729667\r\n",
+      "23.28 542.0 80000889.59991361201\r\n",
+      "33.079998 787.0 80000890.74508482218\r\n",
+      "32.719997 778.0 80000893.32567283511\r\n",
+      "13.32 293.0 80000893.43082770705\r\n",
+      "35.48 847.0 80000893.56059738994\r\n",
+      "4.68 77.0 80000894.35489681363\r\n",
+      "39.64 951.0 80000897.77023650706\r\n",
+      "23.039999 536.0 80000899.03790041804\r\n",
+      "14.4 320.0 80000899.37754881382\r\n",
+      "18.4 420.0 80000900.8128515929\r\n",
+      "10.84 231.0 80000901.414481043816\r\n",
+      "20.32 468.0 80000901.48123975098\r\n",
+      "42.359997 1019.0 80000901.93236474693\r\n",
+      "25.2 590.0 80000901.972453475\r\n",
+      "23.64 551.0 80000902.81782488525\r\n",
+      "38.399998 920.0 80000903.59163464606\r\n",
+      "30.199999 715.0 80000903.92151616514\r\n",
+      "13.4800005 297.0 80000904.27971172333\r\n",
+      "11.76 254.0 80000904.998699590564\r\n",
+      "16.76 379.0 80000905.63441582024\r\n",
+      "13.2 290.0 80000905.648124307394\r\n",
+      "2.04 11.0 80000906.234885290265\r\n",
+      "12.64 276.0 80000907.07798694074\r\n",
+      "9.16 189.0 80000908.87027671933\r\n",
+      "25.52 598.0 80000909.368400886655\r\n",
+      "4.56 74.0 80000909.811767444015\r\n",
+      "27.24 641.0 80000910.33445057273\r\n",
+      "17.199999 390.0 80000910.60975474119\r\n",
+      "2.16 14.0 80000911.29370170832\r\n",
+      "34.519997 823.0 80000913.69095006585\r\n",
+      "12.2 265.0 80000914.1802495867\r\n",
+      "26.88 632.0 80000914.66017211974\r\n",
+      "28.199999 665.0 80000916.50571863353\r\n",
+      "42.399998 1020.0 80000916.718121901155\r\n",
+      "37.44 896.0 80000919.645673155785\r\n",
+      "27.6 650.0 80000920.63476088643\r\n",
+      "18.88 432.0 80000922.45012420416\r\n",
+      "8.48 172.0 80000925.23763982952\r\n",
+      "12.28 267.0 80000926.283655911684\r\n",
+      "28.32 668.0 80000926.6409278512\r\n",
+      "30.96 734.0 80000928.05741724372\r\n",
+      "32.079998 762.0 80000933.627166330814\r\n",
+      "39.44 946.0 80000933.76277536154\r\n",
+      "30.24 716.0 80000934.16055440903\r\n",
+      "6.7599998 129.0 80000935.81169986725\r\n",
+      "24.48 572.0 80000936.16736589372\r\n",
+      "14.6 325.0 80000936.44196587801\r\n",
+      "25.68 602.0 80000936.549025550485\r\n",
+      "11.4800005 247.0 80000938.685712620616\r\n",
+      "6.2 115.0 80000939.08911083639\r\n",
+      "36.239998 866.0 80000940.29467050731\r\n",
+      "27.28 642.0 80000941.77238176763\r\n",
+      "4.2799997 67.0 80000942.128024578094\r\n",
+      "12.92 283.0 80000942.38229085505\r\n",
+      "20.96 484.0 80000944.63000917435\r\n",
+      "9.64 201.0 80000945.404179006815\r\n",
+      "14.32 318.0 80000945.718157589436\r\n",
+      "8.32 168.0 80000945.91892364621\r\n",
+      "42.28 1017.0 80000948.791864678264\r\n",
+      "29.32 693.0 80000948.85667587817\r\n",
+      "2.32 18.0 80000949.93122699857\r\n",
+      "2.6399999 26.0 80000950.1588781476\r\n",
+      "8.44 171.0 80000950.502268999815\r\n",
+      "39.8 955.0 80000951.22832208872\r\n",
+      "21.08 487.0 80000951.838016077876\r\n",
+      "20.32 468.0 80000952.52954874933\r\n",
+      "33.96 809.0 80000952.626723498106\r\n",
+      "21.68 502.0 80000956.18126910925\r\n",
+      "33.079998 787.0 80000956.38345962763\r\n",
+      "23.76 554.0 80000957.466738790274\r\n",
+      "8.32 168.0 80000959.38979135454\r\n",
+      "14.28 317.0 80000960.34404800832\r\n",
+      "29.92 708.0 80000962.452562466264\r\n",
+      "11.64 251.0 80000964.24332383275\r\n",
+      "25.6 600.0 80000966.99032564461\r\n",
+      "28.36 669.0 80000967.36089865863\r\n",
+      "15.4 345.0 80000968.338882282376\r\n",
+      "25.48 597.0 80000968.875151097775\r\n",
+      "16.72 378.0 80000969.143758147955\r\n",
+      "14.76 329.0 80000971.409240707755\r\n",
+      "19.6 450.0 80000974.77004908025\r\n",
+      "28.76 679.0 80000974.80595380068\r\n",
+      "38.359997 919.0 80000975.64050154388\r\n",
+      "40.6 975.0 80000975.95903091133\r\n",
+      "4.2 65.0 80000980.43536031246\r\n",
+      "3.1599998 39.0 80000980.572394132614\r\n",
+      "41.679996 1002.0 80000981.61112074554\r\n",
+      "17.439999 396.0 80000981.74807231128\r\n",
+      "40.239998 966.0 80000983.25735516846\r\n",
+      "36.359997 869.0 80000985.01507012546\r\n",
+      "18.12 413.0 80000985.20637777448\r\n",
+      "38.28 917.0 80000986.77888666093\r\n",
+      "40.479996 972.0 80000988.17710210383\r\n",
+      "29.72 703.0 80000988.92275629938\r\n",
+      "16.96 384.0 80000990.097374781966\r\n",
+      "30.8 730.0 80000990.79127365351\r\n",
+      "21.72 503.0 80000991.06344228983\r\n",
+      "42.28 1017.0 80000991.80377283692\r\n",
+      "28.24 666.0 80000993.049590453506\r\n",
+      "7.04 136.0 80000994.441833391786\r\n",
+      "36.28 867.0 80000994.527631640434\r\n",
+      "24.4 570.0 80000995.25695282221\r\n",
+      "21.76 504.0 80000995.29652753472\r\n",
+      "11.52 248.0 80000995.99297225475\r\n",
+      "41.319996 993.0 80000996.40901064873\r\n",
+      "35.239998 841.0 80000996.557712092996\r\n",
+      "10.52 223.0 80000997.22821688652\r\n",
+      "33.96 809.0 80000997.405183792114\r\n",
+      "11.96 259.0 80000997.93263950944\r\n",
+      "15.440001 346.0 80000998.813208565116\r\n",
+      "30.92 733.0 80000999.3882278502\r\n",
+      "3.96 59.0 80000999.59336720407\r\n",
+      "18.36 419.0 80001000.09518702328\r\n",
+      "32.039997 761.0 80001001.49414373934\r\n",
+      "28.48 672.0 80001002.54425382614\r\n",
+      "39.8 955.0 80001003.1178855896\r\n",
+      "18.72 428.0 80001003.56476637721\r\n",
+      "7.52 148.0 80001005.884933292866\r\n",
+      "9.68 202.0 80001007.618157073855\r\n",
+      "3.6799998 52.0 80001009.596397176385\r\n",
+      "13.56 299.0 80001015.068401411176\r\n",
+      "40.519997 973.0 80001015.44013249874\r\n",
+      "24.0 560.0 80001017.39824913442\r\n",
+      "34.12 813.0 80001017.49642172456\r\n",
+      "25.88 607.0 80001017.91779854894\r\n",
+      "7.3199997 143.0 80001017.95813263953\r\n",
+      "12.84 281.0 80001018.01935687661\r\n",
+      "6.56 124.0 80001023.587887212634\r\n",
+      "30.64 726.0 80001023.69297429919\r\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "array([80000000.23635569, 80000001.47479323, 80000001.78458866,\n",
+       "       80000002.78943624, 80000003.42859936, 80000004.07943003,\n",
+       "       80000006.09310323, 80000007.18041813, 80000008.17602143,\n",
+       "       80000008.20403489], dtype=float128)"
+      ]
+     },
+     "execution_count": 18,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Try the round trip again to verify that everything works\n",
+    "\n",
+    "ev.write(\"events.ecsv\", \"ascii.ecsv\")\n",
+    "ev4 = EventList.read(\"events.ecsv\", \"ascii.ecsv\")\n",
+    "!cat events.ecsv\n",
+    "ev4.time[:10]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Transforming a Lightcurve into an EventList."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Event lists can be obtained from light curves, where the standard followed is as follows: as many events are created as the counts in the lightcurve at the time specified by time bins.\n",
+    "\n",
+    "To demonstrate this, let us define a light curve."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "times = np.arange(3)\n",
+    "counts = np.floor(np.random.rand(3)*5)\n",
+    "lc = Lightcurve(times, counts, skip_checks=True, dt=1.)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(array([0, 1, 2]), array([1., 4., 3.]))"
+      ]
+     },
+     "execution_count": 20,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "lc.time, lc.counts"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now, eventlist can be loaded by calling static `from_lc()` method."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([0, 1, 1, 1, 1, 2, 2, 2])"
+      ]
+     },
+     "execution_count": 21,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "ev = EventList.from_lc(lc)\n",
+    "ev.time"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Simulating EventList from Lightcurve"
+   ]
+  },
+  {
+   "attachments": {},
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "An arguably better way is having proper random events, reproducing the initial light curve within the errors. Stingray does this by using the inverse CDF method, using the light curve as a binned probability distribution.\n",
+    "Please note that in this case we will have to create the EventList object before (in technical terms, `simulate_times` is not a static method.). See simulation tutorial for more details.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([0.60459939, 0.8644437 , 1.47100837, 1.54281243, 1.80725171,\n",
+       "       2.47032653])"
+      ]
+     },
+     "execution_count": 22,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "ev = EventList()\n",
+    "ev.simulate_times(lc)\n",
+    "ev.time"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Creating a light curve from an EventList object"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "After simulating event list, the original light curve can be recovered. Let's demonstrate by creating a light curve."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "dt = 1.\n",
+    "times = np.arange(50)\n",
+    "counts = np.floor(np.random.rand(50)*50000)\n",
+    "lc = Lightcurve(times, counts, skip_checks=True, dt=1.)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Simulate an event list."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 24,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "ev = EventList()\n",
+    "ev = ev.from_lc(lc)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 25,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([[-0.5, 49.5]])"
+      ]
+     },
+     "execution_count": 25,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "ev.gti"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Recover original light curve curve using `to_lc()` method. Here, `dt` defines time resolution, `tstart` the starting time, and `tseg` the total time duration."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 26,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "lc_new = ev.to_lc(dt=1)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Let us verify that this has worked properly, by comparing the input and output light curves"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 27,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Text(0, 0.5, 'Counts')"
+      ]
+     },
+     "execution_count": 27,
+     "metadata": {},
+     "output_type": "execute_result"
+    },
+    {
+     "data": {
+      "image/png": "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\n",
+      "text/plain": [
+       "<Figure size 432x288 with 1 Axes>"
+      ]
+     },
+     "metadata": {
+      "needs_background": "light"
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "plt.plot(lc.time, lc.counts,'r-', lc_new.counts, 'g-', drawstyle=\"steps-mid\")\n",
+    "plt.xlabel('Times')\n",
+    "plt.ylabel('Counts')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "... and their difference"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 28,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Text(0, 0.5, 'Counts')"
+      ]
+     },
+     "execution_count": 28,
+     "metadata": {},
+     "output_type": "execute_result"
+    },
+    {
+     "data": {
+      "image/png": "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\n",
+      "text/plain": [
+       "<Figure size 432x288 with 1 Axes>"
+      ]
+     },
+     "metadata": {
+      "needs_background": "light"
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "plt.plot(lc.time, lc.counts - lc_new.counts, 'g-', drawstyle=\"steps-mid\")\n",
+    "plt.xlabel('Times')\n",
+    "plt.ylabel('Counts')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "As can be seen from the figure above, the recovered light curve is aligned with the original light curve."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Simulating Energies"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "In order to simulate photon energies, a spectral distribution needs to be passed.\n",
+    "The `spectrum` input is a two-dimensional array, with the energies in keV in the first dimension and the number of counts in the second. The count array will be normalized before the simulation: the raw counts do not matter, but only the ratio of the counts in each bin to the total.\n",
+    "Again, the energies are simulated using an inverse CDF method."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 29,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "spectrum = [[1, 2, 3, 4, 5, 6],[1000, 2040, 1000, 3000, 4020, 2070]]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 30,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "ev = EventList(time=np.sort(np.random.uniform(0, 1000, 12)))\n",
+    "ev.simulate_energies(spectrum)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 31,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([4.84164641, 3.62741142, 3.68169619, 4.70867585, 4.92065534,\n",
+       "       4.93644725, 2.26749277, 5.45959615, 3.01137686, 4.86366818,\n",
+       "       0.63048041, 6.26300006])"
+      ]
+     },
+     "execution_count": 31,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "ev.energy"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Joining EventLists"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Two event lists can also be joined together. If the GTI do not overlap, the event times and GTIs are appended. Otherwise, the GTIs are crossed (i.e., only the overlapping parts are saved) and the events merged together."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 32,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(array([1, 2, 3, 4, 5]), array([[0.5, 5.5]]))"
+      ]
+     },
+     "execution_count": 32,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "ev1 = EventList(time=[1,2,3], gti=[[0.5, 3.5]])\n",
+    "ev2 = EventList(time=[4,5], gti=[[3.5, 5.5]])\n",
+    "ev = ev1.join(ev2)\n",
+    "ev.time, ev.gti"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 33,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(array([1. , 1.2, 2. , 3. , 3.3, 5.6]), array([[0.6, 3.5]]))"
+      ]
+     },
+     "execution_count": 33,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "ev1 = EventList(time=[1,2,3], gti=[[0.5, 3.5]])\n",
+    "ev2 = EventList(time=[1.2, 3.3, 5.6], gti=[[0.6, 7.8]])\n",
+    "ev = ev1.join(ev2)\n",
+    "ev.time, ev.gti"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.8"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 1
+}
