@@ -1,1 +1,0 @@
-Compatible with Numpy 2.5 and new Astropy
