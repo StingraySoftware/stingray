@@ -1,7 +1,9 @@
 import copy
 from multiprocessing import Event
 import os
+import shutil
 import numpy as np
+from astropy.io import fits
 from stingray.events import EventList
 from stingray.varenergyspectrum import VarEnergySpectrum
 from stingray.varenergyspectrum import ComplexCovarianceSpectrum, CovarianceSpectrum
@@ -31,6 +33,8 @@ try:
     import h5py
 except ImportError:
     _HAS_H5PY = False
+
+_HAS_FLX2XSP = (os.getenv("HEADAS") is not None) and (shutil.which("ftflx2xsp") is not None)
 
 np.random.seed(20150907)
 curdir = os.path.abspath(os.path.dirname(__file__))
@@ -430,7 +434,53 @@ class BaseTestIO(abc.ABC):
         spec.bin_time = 0.01
         spec.segment_size = 100
         spec.cross = cls.variant == "complcov"
+        spec.spectrum = np.array([1.0, 2.0])
+        spec.spectrum_error = np.array([0.1, 0.2])
+        if spec.cross:
+            spec.spectrum = spec.spectrum + 1.0j
+            spec.spectrum_error = spec.spectrum_error + 0.1j
+        spec.energy_intervals = np.array([[0.3, 12], [12, 15]])
         cls.sting_obj = spec
+
+    def full_xspec_tst(self):
+        """Check that the files created by save_as_xspec exist and have the correct content.
+
+        This function is executed by two tests below. We write it separately here to avoid
+        code duplication. This test checks that the files created by `save_as_xspec` exist,
+        that the header keywords are correctly written in the PHA file, and that the warning
+        about the files created by the mission pipelines is correctly issued. The test is run
+        below by different tests that run both with and without the presence of ftflx2xsp.
+        """
+        so = copy.deepcopy(self.sting_obj)
+        if self.variant == "complcov":
+            try:
+                with pytest.warns(UserWarning, match="The XSPEC-compatible files created "):
+                    so.save_as_xspec("dummy", header_keywords={"RESPFILE": "dummy.rsp"})
+                for part in ["real", "imag"]:
+                    for ext in ["pha", "rsp", "txt"]:
+                        assert os.path.exists(f"dummy_{part}.{ext}")
+                    with fits.open(f"dummy_{part}.pha") as hdul:
+                        assert "RESPFILE" in hdul[1].header
+                        assert hdul[1].header["RESPFILE"] == "dummy.rsp"
+            finally:
+                for part in ["real", "imag"]:
+                    for ext in ["pha", "rsp", "txt"]:
+                        if os.path.exists(f"dummy_{part}.{ext}"):
+                            os.unlink(f"dummy_{part}.{ext}")
+        else:
+            try:
+                with pytest.warns(UserWarning, match="The XSPEC-compatible files created "):
+                    so.save_as_xspec("dummy_pow", header_keywords={"RESPFILE": "dummy.rsp"})
+                assert os.path.exists("dummy_pow.pha")
+                assert os.path.exists("dummy_pow.rsp")
+                assert os.path.exists("dummy_pow.txt")
+                with fits.open("dummy_pow.pha") as hdul:
+                    assert "RESPFILE" in hdul[1].header
+                    assert hdul[1].header["RESPFILE"] == "dummy.rsp"
+            finally:
+                for ext in [".pha", ".rsp", ".txt"]:
+                    if os.path.exists(f"dummy_pow{ext}"):
+                        os.unlink(f"dummy_pow{ext}")
 
     def test_astropy_roundtrip(self):
         so = copy.deepcopy(self.sting_obj)
@@ -513,6 +563,37 @@ class BaseTestIO(abc.ABC):
         os.unlink(f"dummy.{fmt}")
 
         assert so == new_so
+
+    def test_save_as_xspec_without_xspec(self):
+        from unittest.mock import patch
+
+        def function(blah, root):
+            table = Table(
+                {"channel": [1, 2, 3], "rate": [10.0, 20.0, 30.0], "stat_err": [1.0, 2.0, 3.0]}
+            )
+            table.write(root + ".pha", format="fits", overwrite=True)
+            for fnames in [root + ".rsp", root + ".txt"]:
+                with open(fnames, "w") as f:
+                    f.write("dummy")
+
+        with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
+            self.full_xspec_tst()
+
+    @pytest.mark.skipif("not _HAS_FLX2XSP", reason="ftflx2xsp is not available")
+    def test_save_as_xspec_with_xspec(self):
+        from unittest.mock import patch
+
+        def function(blah, root):
+            table = Table(
+                {"channel": [1, 2, 3], "rate": [10.0, 20.0, 30.0], "stat_err": [1.0, 2.0, 3.0]}
+            )
+            table.write(root + ".pha", format="fits", overwrite=True)
+            for fnames in [root + ".rsp", root + ".txt"]:
+                with open(fnames, "w") as f:
+                    f.write("dummy")
+
+        with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
+            self.full_xspec_tst()
 
 
 class TestCovarianceIO(BaseTestIO):

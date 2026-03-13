@@ -22,7 +22,24 @@ from .utils import (
     fix_segment_size_to_integer_samples,
     rebin_data,
     njit,
+    vectorize,
 )
+
+
+__all__ = [
+    "integrate_power_in_frequency_range",
+    "positive_fft_bins",
+    "poisson_level",
+    "normalize_frac",
+    "normalize_abs",
+    "normalize_leahy_from_variance",
+    "normalize_leahy_poisson",
+    "normalize_periodograms",
+    "unnormalize_periodograms",
+    "bias_term",
+    "raw_coherence",
+    "intrinsic_coherence",
+]
 
 
 def integrate_power_in_frequency_range(
@@ -180,21 +197,30 @@ def poisson_level(norm="frac", meanrate=None, n_ph=None, backrate=0):
     Poisson (white)-noise level in a periodogram of pure counting noise.
 
     For Leahy normalization, this is:
+
     .. math::
+
         P = 2
 
     For the fractional r.m.s. normalization, this is
+
     .. math::
+
         P = \frac{2}{\mu}
+
     where :math:`\mu` is the average count rate
 
     For the absolute r.m.s. normalization, this is
+
     .. math::
+
         P = 2 \mu
 
     Finally, for the unnormalized periodogram, this is
+
     .. math::
-        P = N_{ph}
+
+        P = N_{\rm ph}
 
     Parameters
     ----------
@@ -272,22 +298,27 @@ def normalize_frac(unnorm_power, dt, n_bin, mean_flux, background_flux=0):
     r"""
     Fractional rms normalization.
 
-    ..math::
-        P = \frac{P_{Leahy}}{\mu} = \frac{2T}{N_{ph}^2}P_{unnorm}
+    .. math::
+
+        P = \frac{P_{\rm Leahy}}{\mu} = \frac{2T}{N_{\rm ph}^2}P_{\rm unnorm}
 
     where :math:`\mu` is the mean count rate, :math:`T` is the length of
-    the observation, and :math:`N_{ph}` the number of photons.
+    the observation, and :math:`N_{\rm ph}` the number of photons.
     Alternative formulas found in the literature substitute :math:`T=N\,dt`,
-    :math:`\mu=N_{ph}/T`, which give equivalent results.
+    :math:`\mu=N_{\rm ph}/T`, which give equivalent results.
 
     If the background can be estimated, one can calculate the source rms
     normalized periodogram as
-    ..math::
-        P = P_{Leahy} * \frac{\mu}{(\mu - \beta)^2}
+
+    .. math::
+
+        P = P_{\rm Leahy} \frac{\mu}{(\mu - \beta)^2}
 
     or
-    ..math::
-        P = \frac{2T}{(N_{ph} - \beta T)^2}P_{unnorm}
+
+    .. math::
+
+        P = \frac{2T}{(N_{\rm ph} - \beta T)^2}P_{\rm unnorm}
 
     where :math:`\beta` is the background count rate.
 
@@ -361,11 +392,14 @@ def normalize_abs(unnorm_power, dt, n_bin):
     Absolute rms normalization.
 
     .. math::
-        P = P_{frac} * \mu^2
+
+        P = P_{\rm frac} * \mu^2
 
     where :math:`\mu` is the mean count rate, or equivalently
+
     .. math::
-        P = \frac{2}{T}P_{unnorm}
+
+        P = \frac{2}{T}P_{\rm unnorm}
 
     In this normalization, the periodogram is in units of
     :math:`rms^2 Hz^{-1}`, and the squared root of the
@@ -413,7 +447,8 @@ def normalize_leahy_from_variance(unnorm_power, variance, n_bin):
     Leahy+83 normalization, from the variance of the lc.
 
     .. math::
-        P = \frac{P_{unnorm}}{N <\delta{x}^2>}
+
+        P = \frac{P_{\rm unnorm}}{N <\delta{x}^2>}
 
     In this normalization, the periodogram of a single light curve
     is distributed according to a chi squared distribution with two
@@ -460,11 +495,12 @@ def normalize_leahy_from_variance(unnorm_power, variance, n_bin):
 
 
 def normalize_leahy_poisson(unnorm_power, n_ph):
-    """
+    r"""
     Leahy+83 normalization.
 
     .. math::
-        P = \frac{2}{N_{ph}} P_{unnorm}
+
+        P = \frac{2}{N_{\rm ph}} P_{\rm unnorm}
 
     In this normalization, the periodogram of a single light curve
     is distributed according to a chi squared distribution with two
@@ -518,27 +554,27 @@ def normalize_periodograms(
 
     Parameters
     ----------
-    unnorm_power: numpy.ndarray
+    unnorm_power : numpy.ndarray
         The unnormalized cross spectrum.
 
-    dt: float
+    dt : float
         The sampling time of the light curve
 
-    n_bin: int
+    n_bin : int
         The number of bins in the light curve
 
     Other parameters
     ----------------
-    mean_flux: float
+    mean_flux : float
         The mean of the light curve used to calculate the powers
         (If a cross spectrum, the geometrical mean of the light
         curves in the two channels). Only relevant for "frac" normalization
 
-    n_ph: int or float
+    n_ph : int or float
         The number of counts in the light curve used to calculate
         the unnormalized periodogram. Only relevant for Leahy normalization.
 
-    variance: float
+    variance : float
         The average variance of the measurements in light curve (if a cross
         spectrum,  the geometrical mean of the variances in the two channels).
         **NOT** the variance of the light curve, but of each flux measurement
@@ -558,7 +594,7 @@ def normalize_periodograms(
 
     Returns
     -------
-    power: numpy.nd.array
+    power : numpy.nd.array
         The normalized co-spectrum (real part of the cross spectrum). For
         'none' normalization, imaginary part is returned as well.
     """
@@ -596,27 +632,27 @@ def unnormalize_periodograms(
 
     Parameters
     ----------
-    norm_power: numpy.ndarray
+    norm_power : numpy.ndarray
         The normalized cross-spectrum or poisson noise
 
-    dt: float
+    dt : float
         The sampling time of the light curve
 
-    n_bin: int
+    n_bin : int
         The number of bins in the light curve
 
     Other parameters
     ----------------
-    mean_flux: float
+    mean_flux : float
         The mean of the light curve used to calculate the powers
         (If a cross spectrum, the geometrical mean of the light
         curves in the two channels). Only relevant for "frac" normalization
 
-    n_ph: int or float
+    n_ph : int or float
         The number of counts in the light curve used to calculate
         the unnormalized periodogram. Only relevant for Leahy normalization.
 
-    variance: float
+    variance : float
         The average variance of the measurements in light curve (if a cross
         spectrum,  the geometrical mean of the variances in the two channels).
         **NOT** the variance of the light curve, but of each flux measurement
@@ -636,7 +672,7 @@ def unnormalize_periodograms(
 
     Returns
     -------
-    power: numpy.nd.array
+    power : numpy.nd.array
         The normalized co-spectrum (real part of the cross spectrum). For
         'none' normalization, imaginary part is returned as well.
     """
@@ -666,6 +702,22 @@ def unnormalize_periodograms(
     raise ValueError("Unrecognized power type")
 
 
+@vectorize(
+    [
+        "float64(float64, float64, float64, float64, int64, float64)",
+        "float64(float64, float64, float64, float64, float64, float64)",
+    ],
+    nopython=True,
+)
+def _bias_term(power1, power2, power1_noise, power2_noise, n_ave, input_intrinsic_coherence):
+    if n_ave > 500:
+        return 0.0
+    bsq = power1 * power2 - input_intrinsic_coherence * (power1 - power1_noise) * (
+        power2 - power2_noise
+    )
+    return bsq / n_ave
+
+
 def bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=1.0):
     """
     Bias term needed to calculate the coherence.
@@ -688,7 +740,7 @@ def bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coher
         Poisson noise level of the sub-band periodogram
     power2_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
 
     Other Parameters
@@ -701,16 +753,77 @@ def bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coher
     bias : float `np.array`, same shape as ``power1`` and ``power2``
         The bias term
     """
-    if (isinstance(n_ave, Iterable) and np.all(n_ave > 500)) or (
-        not isinstance(n_ave, Iterable) and n_ave > 500
-    ):
-        return 0.0 * power1
-    bsq = power1 * power2 - intrinsic_coherence * (power1 - power1_noise) * (power2 - power2_noise)
-    return bsq / n_ave
+
+    return _bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence)
 
 
-def raw_coherence(
-    cross_power, power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=1
+@vectorize(["float64(float64, float64, float64)"], nopython=True)
+def _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty):
+    """
+    Apply a low limit to the uncertainty on the coherence, to avoid zero or negative uncertainties.
+
+    Parameters
+    ----------
+    coherence : float or float `np.array`
+        The coherence values at all frequencies.
+    uncertainty : float or float `np.array`
+        The uncertainty on the coherence at all frequencies. Must have the same
+        shape as `coherence`.
+    min_uncertainty : float or float `np.array`
+        The minimum uncertainty to apply. Can be a single value or an array of
+        the same shape as `coherence` and `uncertainty`.
+
+    Returns
+    -------
+    uncertainty : float or float `np.array`
+        The uncertainty on the coherence, with the low limit applied.
+
+    Examples
+    --------
+    >>> coherence = np.array([0.5, 0.0, 0.5])
+    >>> uncertainty = np.array([0.1, 0.0, 0.05])
+    >>> min_uncertainty = 0.01
+    >>> expected = np.array([0.1, 0.01, 0.05])
+    >>> res = _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty)
+    >>> assert np.allclose(res, expected)
+
+    # The same, but with a different minimum uncertainty for each frequency.
+    >>> min_uncertainty = np.array([0.01, 0.1, 0.1])
+    >>> res = _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty)
+    >>> expected = np.array([0.1, 0.1, 0.1])
+    >>> assert np.allclose(res, expected)
+
+    # All the same, but with scalar inputs.
+    >>> coherence = 0.5
+    >>> uncertainty = 0.0
+    >>> min_uncertainty = 0.01
+    >>> expected = 0.01
+    >>> res = _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty)
+    >>> assert np.isclose(res, expected)
+
+    """
+
+    bad = (coherence == 0) | (uncertainty < min_uncertainty)
+    if bad:
+        uncertainty = min_uncertainty
+    return uncertainty
+
+
+@vectorize(
+    [
+        "float64(complex128, float64, float64, float64, float64, int64, float64)",
+        "float64(complex128, float64, float64, float64, float64, float64, float64)",
+    ],
+    nopython=True,
+)
+def _raw_coherence(
+    cross_power,
+    power1,
+    power2,
+    power1_noise,
+    power2_noise,
+    n_ave,
+    intrinsic_coherence,
 ):
     """
     Raw coherence estimations from cross and power spectra.
@@ -729,81 +842,589 @@ def raw_coherence(
         Poisson noise level of the sub-band periodogram
     power2_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
 
     Other Parameters
     ----------------
     intrinsic_coherence : float, default 1
         If known, the intrinsic coherence.
+    return_uncertainty : bool, default False
+        Whether to return the uncertainty on the coherence, calculated according to VN97
 
     Returns
     -------
     coherence : float `np.array`
         The raw coherence values at all frequencies.
     """
-    bsq = bias_term(
-        power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=intrinsic_coherence
-    )
+    bsq = _bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence)
     num = (cross_power * np.conj(cross_power)).real - bsq
-    if isinstance(num, Iterable):
-        num[num < 0] = (cross_power * np.conj(cross_power)).real[num < 0]
-    elif num < 0:
-        warnings.warn("Negative numerator in raw_coherence calculation. Setting bias term to 0")
-        num = (cross_power * np.conj(cross_power)).real
+    if num < 0:
+        num = 0
+
     den = power1 * power2
-    return num / den
+
+    coherence = num / den
+
+    return coherence
 
 
-def _estimate_intrinsic_coherence_single(
-    cross_power, power1, power2, power1_noise, power2_noise, n_ave
+def raw_coherence(
+    cross_power,
+    power1,
+    power2,
+    power1_noise,
+    power2_noise,
+    n_ave,
+    intrinsic_coherence=1.0,
+    return_uncertainty=False,
 ):
-    """
-    Estimate intrinsic coherence.
+    r"""
+    Raw coherence estimations from cross and power spectra.
 
-    Use the iterative procedure from sec. 5 of
+    The function is defined as (see Ingram 2019 [#]_ :
 
-    Ingram 2019, MNRAS 489, 392
+    .. math::
+
+        \tilde{g}^2(f) = \frac{|\langle \tilde{C}(f) \rangle|^2 - \tilde{b}^2}
+        {\langle \tilde{P}_1(f) \rangle \langle \tilde{P}_2(f) \rangle}
+
+    where :math:`\tilde{b}^2` is the bias term that accounts for the contribution of Poisson
+    noise to the cross spectrum (see :func:`stingray.fourier.bias_term`), and tilde generally indicates noisy
+    measurements of the cross spectrum :math:`C` and the power spectra :math:`P_n`.
 
     Parameters
     ----------
-    cross_power : complex
+    cross_power : complex `np.array`
         cross spectrum
-    power1 : float
-        sub-band power
-    power2 : float
-        reference-band power
+    power1 : float `np.array`
+        sub-band periodogram
+    power2 : float `np.array`
+        reference-band periodogram
     power1_noise : float
         Poisson noise level of the sub-band periodogram
     power2_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
+
+    Other Parameters
+    ----------------
+    intrinsic_coherence : float, default 1
+        If known, the intrinsic coherence.
+    return_uncertainty : bool, default False
+        Whether to return the uncertainty on the coherence, calculated according to VN97
 
     Returns
     -------
     coherence : float `np.array`
-        The estimated intrinsic coherence, at all frequencies.
+        The raw coherence values at all frequencies.
+
+    References
+    ----------
+    .. [#] https://doi.org/10.1093/mnras/stz2409
     """
-    new_coherence = 1
-    old_coherence = 0
-    count = 0
-    while not np.isclose(new_coherence, old_coherence, atol=0.01) and count < 40:
-        old_coherence = new_coherence
-        bsq = bias_term(
-            power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=new_coherence
+
+    coherence = _raw_coherence(
+        cross_power,
+        power1,
+        power2,
+        power1_noise,
+        power2_noise,
+        n_ave,
+        intrinsic_coherence,
+    )
+    if return_uncertainty:
+        min_uncertainty = 1 / n_ave
+        uncertainty = (2**0.5 * coherence * (1 - coherence)) / (np.sqrt(coherence) * n_ave**0.5)
+        uncertainty = _apply_low_lim_to_coherence_uncertainty(
+            coherence, uncertainty, min_uncertainty
         )
-        den = (power1 - power1_noise) * (power2 - power2_noise)
+        return coherence, uncertainty
+    return coherence
+
+
+@njit
+def _intrinsic_coherence_uncertainties(
+    bsq, num, power1_sub, power2_sub, power1_noise, power2_noise, coherence, n_ave
+):
+    """Calculate the uncertainty on the intrinsic coherence, according to VN97, eq. 8.
+
+    Parameters
+    ----------
+    bsq : float
+        The bias term squared, calculated according to the bias_term function.
+    num : float
+        The numerator of the coherence calculation, i.e. (cross_power * np.conj(cross_power)).real - bsq.
+    power1_sub : float
+        The subtracted power of the first band, i.e. power1 - power1_noise
+    power2_sub : float
+        The subtracted power of the second band, i.e. power2 - power2_noise
+    power1_noise : float
+        The Poisson noise level of the first band periodogram
+    power2_noise : float
+        The Poisson noise level of the second band periodogram
+    coherence : float
+        The intrinsic coherence calculated according to the _intrinsic_coherence function.
+    n_ave : int or float
+        The number of intervals that have been averaged to obtain the input spectra
+    """
+    # Terms from VN97, eq. 8, for the uncertainty on the coherence.
+    err1 = 2.0 * (bsq**2) * n_ave / (num - bsq) ** 2
+    err2 = (power1_noise / power1_sub) ** 2 + (power2_noise / power2_sub) ** 2
+    err3 = 2.0 * ((1 - coherence) / (coherence**1.5)) ** 2
+    uncertainty = coherence / np.sqrt(n_ave) * np.sqrt(err1 + err2 + err3)
+    return uncertainty
+
+
+@vectorize(
+    [
+        "bool(float64, float64, float64, float64, int64, float64)",
+        "bool(float64, float64, float64, float64, float64, float64)",
+    ],
+    nopython=True,
+)
+def check_powers_for_intrinsic_coherence(
+    power1, power2, power1_noise, power2_noise, n_ave, threshold
+):
+    """Check if the powers are above the threshold for the intrinsic coherence to be well defined.
+
+    Parameters
+    ----------
+    power1 : float `np.array`
+        sub-band periodogram
+    power2 : float `np.array`
+        reference-band periodogram
+    power1_noise : float
+        Poisson noise level of the sub-band periodogram
+    power2_noise : float
+        Poisson noise level of the reference-band periodogram
+    n_ave : int or float
+        number of intervals that have been averaged to obtain the input spectra
+    threshold : float
+        The threshold in sigma above the noise level for the powers to be considered "high".
+
+    Returns
+    -------
+    low_power1 : bool `np.array`
+        Whether the powers of the first band are below the threshold.
+    low_power2 : bool `np.array`
+        Whether the powers of the second band are below the threshold.
+
+    """
+    # Consider low power when the power is less than 3 sigma above the noise level.
+    # This is somewhat arbitrary, better criteria suggestions are welcome.
+    low_power1 = (power1 - power1_noise) <= threshold * power1_noise / np.sqrt(n_ave)
+    low_power2 = (power2 - power2_noise) <= threshold * power2_noise / np.sqrt(n_ave)
+    return low_power1 or low_power2
+
+
+@njit
+def _intrinsic_coherence(
+    cross_power,
+    power1,
+    power2,
+    power1_noise,
+    power2_noise,
+    n_ave,
+):
+    """
+    Intrinsic coherence estimations from cross and power spectra.
+
+    Vaughan & Nowak 1997, ApJ 474, L43
+
+    For errors, assumes **high powers, high coherence**. See eq. 8 of the paper.
+    Powers below 3 sigma above the noise level (P_noise / sqrt(MW)) are considered too low,
+    and the coherence will be set to NaN.
+
+    TODO: implement a more general treatment of the uncertainty.
+
+    Parameters
+    ----------
+    cross_power : complex `np.array`
+        cross spectrum
+    power1 : float `np.array`
+        sub-band periodogram
+    power2 : float `np.array`
+        reference-band periodogram
+    power1_noise : float
+        Poisson noise level of the sub-band periodogram
+    power2_noise : float
+        Poisson noise level of the reference-band periodogram
+    n_ave : int or float
+        number of intervals that have been averaged to obtain the input spectra
+
+    Other Parameters
+    ----------------
+    return_uncertainty : bool, default False
+        Whether to return the uncertainty on the coherence, calculated according to
+        Vaughan & Nowak 1997, ApJ 474, L43, eq. 8.
+
+    Returns
+    -------
+    coherence : float `np.array` or tuple of two float `np.array`
+        The intrinsic coherence values at all frequencies. It is 0 if the numerator
+        of the coherence calculation is negative, and NaN if the powers are too low compared
+        to the noise level.
+    uncertainty : float `np.array`, optional
+        The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
+        1997, ApJ 474, L43, eq. 8.
+    """
+
+    if check_powers_for_intrinsic_coherence(power1, power2, power1_noise, power2_noise, n_ave, 3):
+        # If the powers are too close to the noise level, the coherence is not well defined.
+        return np.nan, np.nan
+
+    bsq = _bias_term(power1, power2, power1_noise, power2_noise, n_ave, 1)
+    num = (cross_power * np.conj(cross_power)).real - bsq
+    if num < 0:
+        return 0.0, np.nan
+
+    power1_sub = power1 - power1_noise
+    power2_sub = power2 - power2_noise
+
+    den = power1_sub * power2_sub
+
+    coherence = num / den
+
+    uncertainty = _intrinsic_coherence_uncertainties(
+        bsq, num, power1_sub, power2_sub, power1_noise, power2_noise, coherence, n_ave
+    )
+
+    return coherence, uncertainty
+
+
+@njit
+def _intrinsic_coherence_with_adjusted_bias(
+    cross_power,
+    power1,
+    power2,
+    power1_noise,
+    power2_noise,
+    n_ave,
+    atol=0.01,
+):
+    """
+    Intrinsic coherence estimations from cross and power spectra, with adjusted bias term.
+
+    Follows the procedure from sec. 5 of Ingram 2019, MNRAS 489, 3927, which iteratively
+    adjusts the bias term
+
+    For errors, assumes **high powers, high coherence**. See eq. 8 of Vaughan & Nowak 1997.
+    Powers below 3 sigma above the noise level (P_noise / sqrt(MW)) are considered too low,
+    and the coherence will be set to NaN.
+
+    Parameters
+    ----------
+    cross_power : complex `np.array`
+        cross spectrum
+    power1 : float `np.array`
+        sub-band periodogram
+    power2 : float `np.array`
+        reference-band periodogram
+    power1_noise : float
+        Poisson noise level of the sub-band periodogram
+    power2_noise : float
+        Poisson noise level of the reference-band periodogram
+    n_ave : int or float
+        number of intervals that have been averaged to obtain the input spectra
+
+    Other Parameters
+    ----------------
+    atol : float, default 0.01
+        The absolute tolerance for the convergence of the iterative procedure to adjust
+        the bias term.
+
+    Returns
+    -------
+    coherence : float `np.array` or tuple of two float `np.array`
+        The intrinsic coherence values at all frequencies. It is 0 if the numerator
+        of the coherence calculation is negative, and NaN if the powers are too low compared
+        to the noise level.
+    uncertainty : float `np.array`, optional
+        The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
+        1997, ApJ 474, L43, eq. 8.
+    not_converged_flag : bool `np.array`
+        Whether the bias term adjustment procedure converged (False) or not (True).
+
+    """
+
+    if check_powers_for_intrinsic_coherence(power1, power2, power1_noise, power2_noise, n_ave, 3):
+        # If the powers are too close to the noise level, the coherence is not well defined.
+        return np.nan, np.nan, False
+
+    # Consider low power when the power is less than 3 sigma above the noise level.
+    # This is somewhat arbitrary, better criteria suggestions are welcome.
+    power1_sub = power1 - power1_noise
+    power2_sub = power2 - power2_noise
+
+    current_coherence = 1.0
+
+    converged = False
+    for _ in range(40):
+        bsq = _bias_term(power1, power2, power1_noise, power2_noise, n_ave, current_coherence)
         num = (cross_power * np.conj(cross_power)).real - bsq
-        if num < 0:
-            num = (cross_power * np.conj(cross_power)).real
-        new_coherence = num / den
-        count += 1
-    return new_coherence
+        if num <= 0:
+            # if the current coherence still drops, the bias term increases,
+            # so at this point it is useless to keep iterating.
+            return 0.0, np.nan, False
+
+        den = power1_sub * power2_sub
+
+        coherence = num / den
+        if np.abs(current_coherence - coherence) < atol:
+            converged = True
+            break
+        current_coherence = coherence
+
+    uncertainty = _intrinsic_coherence_uncertainties(
+        bsq, num, power1_sub, power2_sub, power1_noise, power2_noise, coherence, n_ave
+    )
+    return coherence, uncertainty, not converged
 
 
-# This is the vectorized version of the function above.
-estimate_intrinsic_coherence_vec = np.vectorize(_estimate_intrinsic_coherence_single)
+@njit
+def _intrinsic_coherence_array(
+    cross_power,
+    power1,
+    power2,
+    power1_noise,
+    power2_noise,
+    n_ave,
+    adjust_bias=False,
+    atol=0.01,
+):
+    r"""
+    Intrinsic coherence estimations from cross and power spectra.
+
+    Vaughan & Nowak 1997, ApJ 474, L43
+
+    .. math::
+
+        \tilde{\gamma}^2(f) = \frac{|\langle \tilde{C}(f) \rangle|^2 - \tilde{b}^2}
+        {(\langle \tilde{P}_1(f) \rangle - \tilde{P}_{1, \rm noise})
+        (\langle \tilde{P}_2(f) \rangle - \tilde{P}_{2, \rm noise})}
+
+    where :math:`\tilde{b}^2` is the bias term that accounts for the contribution of Poisson
+    noise to the cross spectrum (see :func:`stingray.fourier.bias_term`), and tilde generally
+    indicates noisy measurements of the cross spectrum :math:`C` and the power spectra :math:`P_n`.
+    The terms :math:`\tilde{P}_{\rm n, \rm noise}` are the estimates of the contribution of
+    Poisson noise to the power spectra.
+
+    The bias term depends on the intrinsic coherence itself, so it can be calculated iteratively
+    following the procedure from sec. 5 of Ingram 2019, MNRAS 489, 3927, which adjusts the bias
+    term until convergence is reached. This is done if ``adjust_bias`` is set to True. It is
+    typically a very small correction.
+
+    For errors, assumes **high powers, high coherence**. See eq. 8 of the paper.
+    Powers below 3 sigma above the noise level (P_noise / sqrt(MW)) are considered too low,
+    and the coherence will be set to NaN.
+
+    TODO: implement a more general treatment of the uncertainty.
+
+    Parameters
+    ----------
+    cross_power : complex `np.array`
+        Cross spectrum
+    power1 : float `np.array`
+        Sub-band periodogram. Must have the same shape as `cross_power`.
+    power2 : float `np.array`
+        Reference-band periodogram. Must have the same shape as `cross_power`.
+    power1_noise : float `np.array`
+        Poisson noise level of the sub-band periodogram. Can have a single value
+        or the same shape as `cross_power`.
+    power2_noise : float `np.array`
+        Poisson noise level of the reference-band periodogram. Can have a single value
+        or the same shape as `cross_power`.
+    n_ave : int or float `np.array`
+        number of intervals that have been averaged to obtain the input spectra. Can have
+        a single value or the same shape as `cross_power`.
+
+    Other Parameters
+    ----------------
+    adjust_bias : bool, default False
+        Whether to adjust the bias term iteratively following the procedure from sec. 5 of
+        Ingram 2019, MNRAS 489, 3927. It is typically a very small correction, but it can be
+        relevant for low coherence values and/or low number of averaged intervals
+    atol : float, default 0.01
+        The absolute tolerance for the convergence of the iterative procedure to adjust
+        the bias term. Only relevant if ``adjust_bias`` is True.
+
+    Returns
+    -------
+    coherence : float `np.array`
+        The intrinsic coherence values at all frequencies. It is 0 if the numerator
+        of the coherence calculation is negative, and NaN if the powers are too low compared
+        to the noise level.
+    uncertainty : float `np.array`
+        The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
+        1997, ApJ 474, L43, eq. 8.
+    no_conversion_flags : `list` of int
+        List of indices of ``coherence`` corresponding to frequencies where the bias term
+        adjustment procedure did not converge. Only relevant if ``adjust_bias`` is True.
+
+    """
+
+    coherence = np.empty(cross_power.shape, dtype=np.float64)
+    uncertainty = np.empty(cross_power.shape, dtype=np.float64)
+    no_conversion_flags = []
+
+    for i in range(cross_power.size):
+        if np.size(power1_noise) == np.size(cross_power):
+            p1_n = float(power1_noise[i])
+        else:
+            p1_n = float(power1_noise[0])
+
+        if np.size(power2_noise) == np.size(cross_power):
+            p2_n = float(power2_noise[i])
+        else:
+            p2_n = float(power2_noise[0])
+
+        if np.size(n_ave) == np.size(cross_power):
+            n_a = int(n_ave[i])
+        else:
+            n_a = int(n_ave[0])
+
+        if adjust_bias:
+            coherence[i], uncertainty[i], flag = _intrinsic_coherence_with_adjusted_bias(
+                cross_power[i], power1[i], power2[i], p1_n, p2_n, n_a, atol=atol
+            )
+            if flag:
+                no_conversion_flags.append(i)
+
+        else:
+            coherence[i], uncertainty[i] = _intrinsic_coherence(
+                cross_power[i], power1[i], power2[i], p1_n, p2_n, n_a
+            )
+
+    return coherence, uncertainty, no_conversion_flags
+
+
+def intrinsic_coherence(
+    cross_power,
+    power1,
+    power2,
+    power1_noise,
+    power2_noise,
+    n_ave,
+    return_uncertainty=False,
+    adjust_bias=False,
+    atol=0.01,
+):
+    r"""
+    Intrinsic coherence estimations from cross and power spectra.
+
+    Vaughan & Nowak 1997, ApJ 474, L43
+
+    .. math::
+
+        \tilde{\gamma}^2(f) = \frac{|\langle \tilde{C}(f) \rangle|^2 - \tilde{b}^2}
+        {(\langle \tilde{P}_1(f) \rangle - \tilde{P}_{1, \rm noise})
+        (\langle \tilde{P}_2(f) \rangle - \tilde{P}_{2, \rm noise})}
+
+    where :math:`\tilde{b}^2` is the bias term that accounts for the contribution of Poisson
+    noise to the cross spectrum (see :func:`stingray.fourier.bias_term`), and tilde generally
+    indicates noisy measurements of the cross spectrum :math:`C` and the power spectra :math:`P_n`.
+    The terms :math:`\tilde{P}_{\rm n, \rm noise}` are the estimates of the contribution of
+    Poisson noise to the power spectra.
+
+    The bias term depends on the intrinsic coherence itself, so it can be calculated iteratively
+    following the procedure from sec. 5 of Ingram 2019, MNRAS 489, 3927, which adjusts the bias
+    term until convergence is reached. This is done if ``adjust_bias`` is set to True. It is
+    typically a very small correction.
+
+    For errors, assumes **high powers, high coherence**. See eq. 8 of the paper.
+    Powers below 3 sigma above the noise level (P_noise / sqrt(MW)) are considered too low,
+    and the coherence will be set to NaN.
+
+    TODO: implement a more general treatment of the uncertainty.
+
+    Parameters
+    ----------
+    cross_power : complex `np.array`
+        Cross spectrum
+    power1 : float `np.array`
+        Sub-band periodogram. Must have the same shape as `cross_power`.
+    power2 : float `np.array`
+        Reference-band periodogram. Must have the same shape as `cross_power`.
+    power1_noise : float or float `np.array` of the same shape as `cross_power`
+        Poisson noise level of the sub-band periodogram
+    power2_noise : float or float `np.array` of the same shape as `cross_power`
+        Poisson noise level of the reference-band periodogram
+    n_ave : int or float or int `np.array` of the same shape as `cross_power`
+        number of intervals that have been averaged to obtain the input spectra
+
+    Other Parameters
+    ----------------
+    return_uncertainty : bool, default False
+        Whether to return the uncertainty on the coherence, calculated according to
+        Vaughan & Nowak 1997, ApJ 474, L43, eq. 8.
+    atol : float, default 0.01
+        The absolute tolerance for the convergence of the iterative procedure to adjust
+        the bias term.Only relevant if ``adjust_bias`` is True.
+
+    Returns
+    -------
+    coherence : float `np.array` or tuple of two float `np.array`
+        The intrinsic coherence values at all frequencies. It is 0 if the numerator
+        of the coherence calculation is negative, and NaN if the powers are too low compared
+        to the noise level.
+    uncertainty : float `np.array`, optional
+        The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
+        1997, ApJ 474, L43, eq. 8.
+
+    """
+    single_power = False
+    if not isinstance(cross_power, np.ndarray):
+        cross_power = np.asanyarray([cross_power])
+        power1 = np.asanyarray([power1])
+        power2 = np.asanyarray([power2])
+        single_power = True
+
+    if not isinstance(power1_noise, Iterable):
+        power1_noise = np.asanyarray([power1_noise])
+    if not isinstance(power2_noise, Iterable):
+        power2_noise = np.asanyarray([power2_noise])
+    if not isinstance(n_ave, Iterable):
+        n_ave = np.asanyarray([n_ave])
+
+    coherence, uncertainty, flagged = _intrinsic_coherence_array(
+        cross_power,
+        power1,
+        power2,
+        power1_noise,
+        power2_noise,
+        n_ave,
+        adjust_bias=adjust_bias,
+        atol=atol,
+    )
+
+    if len(flagged) > 0:
+        warnings.warn(
+            "The iterative procedure to adjust the bias term did not converge after 40 "
+            "iterations. Consider rebinning the spectra to increase the signal-to-noise "
+            "ratio, or to use a more permissive tolerance (``atol`` parameter)."
+        )
+    if np.any(np.isnan(coherence)):
+        warnings.warn(
+            "NaN values detected in intrinsic_coherence calculation. This happens when the powers "
+            "are too close to the noise level, and the coherence is not well defined. Consider "
+            "rebinning the spectra to increase the signal-to-noise ratio."
+        )
+    if np.any(np.isclose(coherence, 0)):
+        warnings.warn(
+            "Zero values detected in intrinsic_coherence calculation. This usually happens"
+            " when the bias term is larger than the cross spectrum, and the coherence is not"
+            " well defined. "
+        )
+
+    if single_power:
+        coherence = coherence[0]
+        uncertainty = uncertainty[0]
+
+    if return_uncertainty:
+        return coherence, uncertainty
+    return coherence
 
 
 def estimate_intrinsic_coherence(cross_power, power1, power2, power1_noise, power2_noise, n_ave):
@@ -826,7 +1447,7 @@ def estimate_intrinsic_coherence(cross_power, power1, power2, power1_noise, powe
         Poisson noise level of the sub-band periodogram
     power2_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
 
     Returns
@@ -834,8 +1455,19 @@ def estimate_intrinsic_coherence(cross_power, power1, power2, power1_noise, powe
     coherence : float `np.array`
         The estimated intrinsic coherence, at all frequencies.
     """
-    new_coherence = estimate_intrinsic_coherence_vec(
-        cross_power, power1, power2, power1_noise, power2_noise, n_ave
+    warnings.warn(
+        "estimate_intrinsic_coherence is deprecated. Use intrinsic_coherence with adjust_bias=True instead.",
+        DeprecationWarning,
+    )
+    new_coherence = intrinsic_coherence(
+        cross_power,
+        power1,
+        power2,
+        power1_noise,
+        power2_noise,
+        n_ave,
+        return_uncertainty=False,
+        adjust_bias=True,
     )
     return new_coherence
 
@@ -848,13 +1480,13 @@ def get_rms_from_rms_norm_periodogram(power_sqrms, poisson_noise_sqrms, df, M, l
 
     Parameters
     ----------
-    power_sqrms: array-like
+    power_sqrms : array-like
         Powers, in units of fractional rms ($(rms/mean)^2 Hz{-1}$)
-    poisson_noise_sqrms: float
+    poisson_noise_sqrms : float
         Poisson noise level, in units of fractional rms ($(rms/mean)^2 Hz{-1}$
-    df: float or ``np.array``, same dimension of ``power_sqrms``
+    df : float or ``np.array``, same dimension of ``power_sqrms``
         The frequency resolution of each power
-    M: int or ``np.array``, same dimension of ``power_sqrms``
+    M : int or ``np.array``, same dimension of ``power_sqrms``
         The number of powers averaged to obtain each value of power.
 
     Other Parameters
@@ -1016,33 +1648,33 @@ def rms_calculation(
 
     Parameters
     ----------
-    unnorm_powers: array of float
+    unnorm_powers : array of float
         unnormalised power or cross spectrum, the array has already been
         filtered for the given frequency range
 
-    min_freq: float
+    min_freq : float
         The lower frequency bound for the calculation (from the freq grid).
 
-    max_freq: float
+    max_freq : float
         The upper frequency bound for the calculation (from the freq grid).
 
-    nphots: float
+    nphots : float
         Number of photons for the full power or cross spectrum
 
-    T: float
+    T : float
         Time length of the light curve
 
-    M_freq: scalar or array of float
+    M_freq : scalar or array of float
         If scalar, it is the number of segments in the AveragedCrossspectrum
         If array, it is the number of segments times the rebinning sample
         in the given frequency range.
 
-    K_freq: scalar or array of float
+    K_freq : scalar or array of float
         If scalar, the power or cross spectrum is not rebinned (K_freq = 1)
         If array,  the power or cross spectrum is rebinned and it is the
         rebinned sample in the given frequency range.
 
-    freq_bins: integer
+    freq_bins : integer
         if the cross or power spectrum is rebinned freq_bins = 1,
         if it NOT rebinned freq_bins is the number of frequency bins
         in the given frequency range.
@@ -1052,16 +1684,16 @@ def rms_calculation(
 
     Other parameters
     ----------------
-    deadtime: float
+    deadtime : float
         Deadtime of the instrument
 
     Returns
     -------
-    rms: float
+    rms : float
         The fractional rms amplitude contained between ``min_freq`` and
         ``max_freq``.
 
-    rms_err: float
+    rms_err : float
         The error on the fractional rms amplitude.
 
     """
@@ -1108,7 +1740,7 @@ def error_on_averaged_cross_spectrum(
         Poisson noise level of the sub-band periodogram
     ref_power_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
 
     Other Parameters
@@ -1155,8 +1787,15 @@ def error_on_averaged_cross_spectrum(
         PrPs = ref_power * seg_power
         dRe = np.sqrt((PrPs + cross_power.real**2 - cross_power.imag**2) / two_n_ave)
         dIm = np.sqrt((PrPs - cross_power.real**2 + cross_power.imag**2) / two_n_ave)
+
         gsq = raw_coherence(
-            cross_power, seg_power, ref_power, seg_power_noise, ref_power_noise, n_ave
+            cross_power,
+            seg_power,
+            ref_power,
+            seg_power_noise,
+            ref_power_noise,
+            n_ave,
+            return_uncertainty=False,
         )
         dphi = np.sqrt((1 - gsq) / (2 * gsq * n_ave))
         dG = np.sqrt(PrPs / n_ave)
@@ -1188,7 +1827,7 @@ def cross_to_covariance(cross_power, ref_power, ref_power_noise, delta_nu):
 
     Returns
     -------
-    covariance: complex `np.array`
+    covariance : complex `np.array`
         The cross spectrum, normalized as a covariance.
 
     """
@@ -1208,8 +1847,6 @@ def _which_segment_idx_fun(binned=False, dt=None):
     """
     # Make function interface equal (fluxes gets ignored)
     if not binned:
-        fun = generate_indices_of_segment_boundaries_unbinned
-
         # Define a new function, make sure that, by default, the sort check
         # is disabled.
         def fun(*args, **kwargs):
@@ -2329,7 +2966,7 @@ def avg_pds_from_timeseries(
         The normalized periodogram powers
     n_bin : int
         the number of bins in the light curves used in each segment
-    n_ave : int
+    n_ave : int or float
         the number of averaged periodograms
     mean : float
         the mean flux
@@ -2443,7 +3080,7 @@ def avg_cs_from_timeseries(
         The normalized periodogram powers
     n_bin : int
         the number of bins in the light curves used in each segment
-    n_ave : int
+    n_ave : int or float
         the number of averaged periodograms
     """
 

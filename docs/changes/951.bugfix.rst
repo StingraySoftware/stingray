@@ -1,1 +1,0 @@
-Fixed an error in ``power_confidence_limits`` that led to systematically narrower confidence intervals. 

@@ -1365,18 +1365,19 @@ class TestJoinEvents:
 class TestFillBTI(object):
     @classmethod
     def setup_class(cls):
-        cls.rand_time = np.sort(np.random.uniform(0, 1000, 100000))
-        cls.rand_ener = np.random.uniform(0, 100, 100000)
+        cls.ctrate = 1000
+        cls.rand_time = np.sort(np.random.uniform(0, 1000, int(cls.ctrate * 1000)))
+        cls.rand_ener = np.random.uniform(0, 100, int(cls.ctrate * 1000))
         cls.gti = [[0, 900], [950, 1000]]
-        blablas = np.random.normal(0, 1, cls.rand_ener.size)
+        blablas = np.random.normal(100, 0.01, cls.rand_ener.size)
         cls.ev_like = StingrayTimeseries(
             cls.rand_time, energy=cls.rand_ener, blablas=blablas, gti=cls.gti
         )
         time_edges = np.linspace(0, 1000, 1001)
         counts = np.histogram(cls.rand_time, bins=time_edges)[0]
-        blablas = np.random.normal(0, 1, 1000)
+        blublus = np.random.normal(100, 0.01, 1000)
         cls.lc_like = StingrayTimeseries(
-            time=time_edges[:-1] + 0.5, counts=counts, blablas=blablas, gti=cls.gti, dt=1
+            time=time_edges[:-1] + 0.5, counts=counts, blublus=blublus, gti=cls.gti, dt=1
         )
 
     def test_no_btis_returns_copy(self):
@@ -1384,13 +1385,23 @@ class TestFillBTI(object):
         ts_new = ts.fill_bad_time_intervals()
         assert ts == ts_new
 
+    def test_event_like_small_gtis_eliminated(self):
+        ev_like_filt = copy.deepcopy(self.ev_like)
+        # I introduce a small gap in the GTIs
+        ev_like_filt.gti = np.asanyarray(
+            [[0, 498], [500, 520], [522, 700], [702, 900], [910, 910.1], [911, 911.1], [950, 1000]]
+        )
+        ev_new = ev_like_filt.fill_bad_time_intervals(max_length=3, buffer_size=4)
+
+        assert np.allclose(ev_new.gti, self.gti)
+
     def test_event_like(self):
         ev_like_filt = copy.deepcopy(self.ev_like)
         # I introduce a small gap in the GTIs
         ev_like_filt.gti = np.asanyarray(
             [[0, 498], [500, 520], [522, 700], [702, 900], [950, 1000]]
         )
-        ev_new = ev_like_filt.fill_bad_time_intervals()
+        ev_new = ev_like_filt.fill_bad_time_intervals(max_length=3, buffer_size=4)
 
         assert np.allclose(ev_new.gti, self.gti)
 
@@ -1420,7 +1431,7 @@ class TestFillBTI(object):
         lc_like_filt.gti = np.asanyarray(
             [[0, 498], [500, 520], [522, 700], [702, 900], [950, 1000]]
         )
-        lc_new = lc_like_filt.fill_bad_time_intervals()
+        lc_new = lc_like_filt.fill_bad_time_intervals(max_length=3, buffer_size=4)
         assert np.allclose(lc_new.gti, self.gti)
 
         lc_like_gtifilt = self.lc_like.apply_gtis(inplace=False)
@@ -1432,7 +1443,7 @@ class TestFillBTI(object):
         lc_new.gti = lc_like_filt.gti
 
         new_masked, filt_masked = lc_new.apply_gtis(), lc_like_filt.apply_gtis()
-        for attr in ["time", "counts", "blablas"]:
+        for attr in ["time", "counts", "blublus"]:
             assert np.allclose(getattr(new_masked, attr), getattr(filt_masked, attr))
 
     def test_ignore_attrs_ev_like(self):
@@ -1457,8 +1468,8 @@ class TestFillBTI(object):
         assert np.allclose(lc_new0.gti, lc_new1.gti)
         assert np.allclose(lc_new0.time, lc_new1.time)
 
-        assert np.count_nonzero(np.isnan(lc_new0.blablas)) == 0
-        assert np.count_nonzero(np.isnan(lc_new1.blablas)) > 0
+        assert np.count_nonzero(np.isnan(lc_new0.blublus)) == 0
+        assert np.count_nonzero(np.isnan(lc_new1.blublus)) > 0
         assert np.count_nonzero(np.isnan(lc_new1.counts)) == 0
 
     def test_forcing_non_uniform(self):
@@ -1478,7 +1489,7 @@ class TestFillBTI(object):
         # Results should be exactly the same
         lc_new0 = lc_like_filt.fill_bad_time_intervals(even_sampling=True, seed=201903)
         lc_new1 = lc_like_filt.fill_bad_time_intervals(even_sampling=None, seed=201903)
-        for attr in ["time", "counts", "blablas"]:
+        for attr in ["time", "counts", "blublus"]:
             assert np.allclose(getattr(lc_new0, attr), getattr(lc_new1, attr))
 
     def test_bti_close_to_edge_event_like(self):
@@ -1506,6 +1517,30 @@ class TestFillBTI(object):
         lc_like_filt.gti = np.asanyarray([[0, 900], [950, 999], [999.5, 1000]])
         lc_new = lc_like_filt.fill_bad_time_intervals()
         assert np.allclose(lc_new.gti, self.gti)
+
+    def test_fill_bti_values_event_like(self):
+        ev_like_filt = copy.deepcopy(self.ev_like)
+        # I introduce a small gap in the GTIs
+        ev_like_filt.gti = np.asanyarray([[0, 498], [500, 900], [950, 1000]])
+        ev_new = ev_like_filt.fill_bad_time_intervals(seed=1234)
+
+        # I check that the values in the filled GTI are not all the same
+        mask = (ev_new.time >= 498) & (ev_new.time <= 500)
+        new_ctrate = np.count_nonzero(mask) / 2.0
+        assert np.isclose(new_ctrate, self.ctrate, rtol=0.1)
+        assert np.allclose(ev_new.blablas[mask], 100, atol=0.1)
+
+    def test_fill_bti_values_lc_like(self):
+        lc_like_filt = copy.deepcopy(self.lc_like)
+        # I introduce a small gap in the GTIs
+        lc_like_filt.gti = np.asanyarray([[0, 498], [500, 900], [950, 1000]])
+        lc_new = lc_like_filt.fill_bad_time_intervals(seed=1234)
+
+        # I check that the values in the filled GTI are not all the same
+        mask = (lc_new.time > 498) & (lc_new.time < 500)
+        new_ctrate = np.mean(lc_new.counts[mask])
+        assert np.isclose(new_ctrate, self.ctrate, rtol=0.1)
+        assert np.allclose(lc_new.blublus[mask], 100, atol=0.1)
 
 
 class TestAnalyzeChunks(object):
