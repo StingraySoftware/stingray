@@ -716,8 +716,8 @@ class CrossSpectrumSimulator(Simulator):
         Whether Poisson noise is applied to the output counts.
     channels : list of tuple
         Energy-channel store inherited from :class:`Simulator`. Each entry is
-        a ``(channel_name, Lightcurve)`` pair; managed via
-        ``simulate_channel`` / ``get_channel`` / ``delete_channel``.
+        a ``(channel_name, Lightcurve)`` pair. Note that ``simulate_channel``
+        is disabled on this class; use ``CS_simulate`` directly.
     random_state : numpy.random.RandomState
         Random-state object used for all stochastic draws.
 
@@ -736,11 +736,15 @@ class CrossSpectrumSimulator(Simulator):
         Inherited single-band Timmer-Koenig simulator; the
         ``_extract_and_scale`` override ensures compatibility with the tuple
         ``rms`` attribute.
+    simulate_channel(channel, \*args)
+        Disabled. Raises :exc:`NotImplementedError`; use ``CS_simulate``
+        to generate correlated light curve pairs.
 
     Raises
     ------
     NotImplementedError
-        If ``red_noise > 1`` is requested.
+        If ``red_noise > 1`` is requested, or if ``simulate_channel`` is
+        called (use ``CS_simulate`` instead).
     AssertionError
         If any value in a tuple ``rms`` exceeds 1.
 
