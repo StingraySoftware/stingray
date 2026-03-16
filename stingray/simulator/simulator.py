@@ -652,33 +652,118 @@ class Simulator(object):
 
 
 class CrossSpectrumSimulator(Simulator):
-    """
-    Methods to simulate and visualize light curves with arbitrary coherence
-    and phase lag distributions.
+    r"""Simulate pairs of correlated light curves with arbitrary coherence and
+    phase lag distributions.
 
-    Built on top of the `stingray.simulator.Simulator` implementation.
+    Extends :class:`Simulator` with the correlated Timmer-Koenig method from
+    Larner, Nowak, & Wilms (2026), which generates two light curves whose
+    cross-spectral properties (coherence :math:`\gamma^2` and phase lag
+    :math:`\phi`) match user-supplied models at every Fourier frequency.
 
     Parameters
     ----------
-    dt : int, default 1
-        time resolution of simulated light curve
-    N : int, default 1024
-        bins count of simulated light curve
-    mean : float, default 0
-        mean value of the simulated light curve
-    rms : float, default 1
-        Fractional root mean square of the output lightcurves. If float, same
-        RMS is used for both bands. If tuple (rms1, rms2), different RMS for
-        each band. Default is 1.
-    err : float, default 0
-        the errorbars on the final light curve
-    red_noise : int, default 1
-        multiple of real length of light curve, by
-        which to simulate, to avoid red noise leakage
-    random_state : int, default None
-        seed value for random processes
-    poisson : bool, default False
-        return Poisson-distributed light curves.
+    dt : float
+        Time resolution (sampling interval) of the simulated light curves in
+        seconds.
+    N : int
+        Number of time bins in each simulated light curve.
+    mean : float
+        Mean count rate of the simulated light curves in counts/s.
+    rms : float or tuple of float
+        Fractional root-mean-square variability of the output light curves.
+        Must satisfy ``rms <= 1``. If a tuple ``(rms1, rms2)`` is given,
+        independent fractional RMS values are applied to the reference and
+        dependent light curves, respectively.
+    err : float, optional
+        Constant error bar to attach to every time bin. Default is 0.
+    red_noise : int, optional
+        Oversampling factor used to mitigate red-noise leakage: the internal
+        time series is generated at ``red_noise * N`` bins and a random
+        segment of length ``N`` is extracted. Must be 1 for
+        ``CrossSpectrumSimulator`` (values > 1 raise
+        :exc:`NotImplementedError`). Default is 1.
+    random_state : int or numpy.random.RandomState, optional
+        Seed or random-state object for reproducible simulations.
+        Default is ``None`` (unseeded).
+    tstart : float, optional
+        Start time of the output light curves in seconds. Default is 0.
+    poisson : bool, optional
+        If ``True``, draw final counts from a Poisson distribution so that
+        the light curves contain non-negative integer counts. Default is
+        ``False``.
+
+    Attributes
+    ----------
+    dt : float
+        Time resolution of the simulated light curves in seconds.
+    N : int
+        Number of time bins in each simulated light curve.
+    mean : float
+        Mean count rate in counts/s.
+    rms : float or tuple of (float, float)
+        Fractional RMS variability. Stored as a tuple when a per-band pair
+        was supplied at construction time.
+    red_noise : int
+        Oversampling factor (always 1 for this class).
+    tstart : float
+        Start time of the output light curves in seconds.
+    time : numpy.ndarray
+        Array of time bin centres, ``dt * arange(N) + tstart``.
+    err : float
+        Constant error bar on each time bin.
+    poisson : bool
+        Whether Poisson noise is applied to the output counts.
+    channels : list of tuple
+        Energy-channel store inherited from :class:`Simulator`. Each entry is
+        a ``(channel_name, Lightcurve)`` pair; managed via
+        ``simulate_channel`` / ``get_channel`` / ``delete_channel``.
+    random_state : numpy.random.RandomState
+        Random-state object used for all stochastic draws.
+
+    Methods
+    -------
+    CS_simulate(pds1, pds2[, params, lag, coh, cospec, quadspec, ...])
+        Simulate a correlated pair of light curves from power-spectral and
+        cross-spectral model inputs.
+    crossspectrum(lc1, lc2[, seg_size, norm])
+        Compute the averaged cross spectrum of two light curves (static
+        method; can also be called on an instance).
+    get_refftfreq()
+        Return the positive FFT frequencies at which PSD and lag models are
+        evaluated, of length ``N // 2``.
+    simulate(\*args)
+        Inherited single-band Timmer-Koenig simulator; the
+        ``_extract_and_scale`` override ensures compatibility with the tuple
+        ``rms`` attribute.
+
+    Raises
+    ------
+    NotImplementedError
+        If ``red_noise > 1`` is requested.
+    AssertionError
+        If any value in a tuple ``rms`` exceeds 1.
+
+    See Also
+    --------
+    Simulator : Parent class providing single-band simulation and
+        channel-management utilities.
+
+    References
+    ----------
+    Larner, S. R., Nowak, M. A., & Wilms, J. 2026 (under review)
+    Timmer, J., & Koenig, M. 1995, A&A, 300, 707
+
+    Examples
+    --------
+    Simulate two light curves with 80 % coherence and a 0.5 rad phase lag:
+
+    >>> import numpy as np
+    >>> from stingray.simulator import CrossSpectrumSimulator
+    >>> sim = CrossSpectrumSimulator(N=1024, mean=100.0, dt=0.1, rms=0.1,
+    ...                              random_state=42)
+    >>> lc1, lc2 = sim.CS_simulate(pds1=2.0, pds2=None, lag=0.5, coh=0.8)
+    >>> lc1.n == 1024
+    True
     """
 
     def __init__(self, *args, **kwargs):
@@ -1052,7 +1137,7 @@ class CrossSpectrumSimulator(Simulator):
 
         References
         ----------
-        Larner, S. R., Nowak, M. A., & Wilms, J. 2026 (in prep)
+        Larner, S. R., Nowak, M. A., & Wilms, J. 2026 (under review)
         """
 
         magnitude = np.sqrt(P_Y * gamma2 / P_X)
@@ -1094,7 +1179,7 @@ class CrossSpectrumSimulator(Simulator):
 
         References
         ----------
-        Larner, S. R., Nowak, M. A., & Wilms, J. 2026 (in prep)
+        Larner, S. R., Nowak, M. A., & Wilms, J. 2026 (under review)
         """
 
         T_mag_squared = np.abs(T) ** 2
@@ -1351,7 +1436,7 @@ class CrossSpectrumSimulator(Simulator):
 
         References
         ----------
-        Larner, S. R., Nowak, M. A., & Wilms, J. 2026 (in prep)
+        Larner, S. R., Nowak, M. A., & Wilms, J. 2026 (under review)
         Timmer, J., & Koenig, M. 1995, A&A, 300, 707
         """
 
