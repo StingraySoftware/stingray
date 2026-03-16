@@ -790,6 +790,13 @@ class CrossSpectrumSimulator(Simulator):
         if self.red_noise != 1:
             raise NotImplementedError("Red noise > 1 not implemented for cross spectral fitting")
 
+    def simulate_channel(self, channel, *args):
+        raise NotImplementedError(
+            "simulate_channel is not supported by CrossSpectrumSimulator because it produces "
+            "uncorrelated single-band light curves. Use CS_simulate() to generate a correlated "
+            "pair of light curves instead."
+        )
+
     def CS_simulate(
         self,
         pds1: Union[str, float, astropy.modeling.Model, Callable[[Iterable], Iterable]],
