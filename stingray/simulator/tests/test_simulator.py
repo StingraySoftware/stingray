@@ -6,7 +6,7 @@ from scipy.interpolate import interp1d
 import pytest
 import astropy.modeling.models
 from stingray import Lightcurve, Crossspectrum, sampledata, Powerspectrum
-from stingray.simulator import Simulator
+from stingray.simulator import Simulator, CrossSpectrumSimulator
 from stingray.simulator import models
 
 _H5PY_INSTALLED = True
@@ -612,3 +612,693 @@ class TestSimulator(object):
         with pytest.raises(KeyError):
             sim.read("sim.pickle", fmt="hdf5")
         os.remove("sim.pickle")
+
+
+class TestCrossSpectrumSimulator(object):
+    @classmethod
+    def setup_class(cls):
+        cls.N = 2048
+        cls.mean = 100.0
+        cls.dt = 0.1
+        cls.rms = 0.1
+        cls.sim = CrossSpectrumSimulator(
+            N=cls.N, mean=cls.mean, dt=cls.dt, rms=cls.rms, random_state=42
+        )
+
+    # --- Construction and validation ---
+
+    def test_simulate_channel_raises(self):
+        """simulate_channel is disabled; users must use CS_simulate instead."""
+        with pytest.raises(NotImplementedError):
+            self.sim.simulate_channel("3-10keV", 2.0)
+
+    def test_red_noise_gt1_raises(self):
+        """CrossSpectrumSimulator does not support red_noise > 1."""
+        with pytest.raises(NotImplementedError):
+            CrossSpectrumSimulator(
+                N=self.N, mean=self.mean, dt=self.dt, rms=self.rms, red_noise=2
+            )
+
+    def test_rms_tuple_keyword(self):
+        """rms tuple passed as keyword argument is stored correctly."""
+        sim = CrossSpectrumSimulator(N=self.N, mean=self.mean, dt=self.dt, rms=(0.1, 0.2))
+        assert sim.rms == (0.1, 0.2)
+
+    def test_rms_tuple_positional(self):
+        """rms tuple passed as positional argument is stored correctly."""
+        sim = CrossSpectrumSimulator(self.dt, self.N, self.mean, (0.1, 0.2))
+        assert sim.rms == (0.1, 0.2)
+
+    def test_rms_tuple_invalid_raises(self):
+        """rms tuple with any value > 1 is rejected."""
+        with pytest.raises(AssertionError):
+            CrossSpectrumSimulator(N=self.N, mean=self.mean, dt=self.dt, rms=(0.1, 1.5))
+
+    # --- Return type and shape ---
+
+    def test_cs_simulate_returns_tuple_of_lightcurves(self):
+        """CS_simulate returns a 2-tuple of Lightcurve objects."""
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=None, lag=0.5, coh=0.8)
+        assert isinstance(lc1, Lightcurve)
+        assert isinstance(lc2, Lightcurve)
+
+    def test_cs_simulate_output_length(self):
+        """Both output light curves have length N."""
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=None, lag=0.5, coh=0.8)
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    # --- Error handling ---
+
+    def test_cs_simulate_lag_and_cospec_raises(self):
+        """Combining lag with cospec raises ValueError."""
+        with pytest.raises(ValueError):
+            self.sim.CS_simulate(pds1=2.0, pds2=None, lag=0.5, cospec=0.5)
+
+    def test_cs_simulate_coh_and_quadspec_raises(self):
+        """Combining coh with quadspec raises ValueError."""
+        with pytest.raises(ValueError):
+            self.sim.CS_simulate(pds1=2.0, pds2=None, coh=0.5, quadspec=0.5)
+
+    # --- Fallback path (no cross-spectral constraints) ---
+
+    def test_cs_simulate_no_cross_terms_returns_two_lightcurves(self):
+        """Without coh/lag/cospec/quadspec, two independent Lightcurves are returned."""
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=None)
+        assert isinstance(lc1, Lightcurve)
+        assert isinstance(lc2, Lightcurve)
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    # --- Input variety ---
+
+    def test_cs_simulate_array_lag(self):
+        """lag can be given as an array of per-frequency values."""
+        lag_arr = np.ones_like(self.sim.get_refftfreq()) * 0.5
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=None, lag=lag_arr)
+        assert lc1.n == self.N
+
+    def test_cs_simulate_array_coh(self):
+        """coh can be given as an array of per-frequency values."""
+        coh_arr = np.ones_like(self.sim.get_refftfreq()) * 0.8
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=None, coh=coh_arr)
+        assert lc1.n == self.N
+
+    def test_cs_simulate_callable_pds(self):
+        """pds1 can be a callable with signature f(frequency) -> pds."""
+        pds_func = lambda f: np.power(1 / f, 2.0)
+        lc1, lc2 = self.sim.CS_simulate(pds1=pds_func, pds2=None, lag=0.5, coh=1.0)
+        assert lc1.n == self.N
+
+    def test_cs_simulate_array_pds(self):
+        """pds1 can be an array of PSD values at each rfftfreq."""
+        pds_arr = np.power(1 / self.sim.get_refftfreq(), 2.0)
+        lc1, lc2 = self.sim.CS_simulate(pds1=pds_arr, pds2=None, lag=0.5, coh=1.0)
+        assert lc1.n == self.N
+
+    def test_cs_simulate_different_pds(self):
+        """pds1 and pds2 can be different power spectra."""
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=1.0, lag=0.5, coh=0.8)
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_cospec_quadspec(self):
+        """Cross spectrum can be specified directly via cospec and quadspec."""
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=None, cospec=0.5, quadspec=0.3)
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_rms_tuple(self):
+        """rms tuple applies different fractional RMS to each band."""
+        sim = CrossSpectrumSimulator(
+            N=self.N, mean=self.mean, dt=self.dt, rms=(0.1, 0.2), random_state=42
+        )
+        lc1, lc2 = sim.CS_simulate(pds1=2.0, pds2=None, lag=0.5, coh=0.8)
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    # --- Poisson ---
+
+    def test_cs_simulate_poisson_nonnegative_integer_counts(self):
+        """With poisson=True, both light curves have non-negative integer counts."""
+        sim = CrossSpectrumSimulator(
+            N=self.N, mean=self.mean, dt=self.dt, rms=self.rms, poisson=True, random_state=42
+        )
+        lc1, lc2 = sim.CS_simulate(pds1=2.0, pds2=None, lag=0.5, coh=0.8)
+        assert np.all(lc1.counts >= 0)
+        assert np.all(lc2.counts >= 0)
+        assert np.all(lc1.counts == lc1.counts.astype(int))
+        assert np.all(lc2.counts == lc2.counts.astype(int))
+
+    # --- Reproducibility ---
+
+    def test_cs_simulate_same_seed_reproducible(self):
+        """Two simulators with the same random_state produce identical output."""
+        sim1 = CrossSpectrumSimulator(
+            N=self.N, mean=self.mean, dt=self.dt, rms=self.rms, random_state=42
+        )
+        lc1a, lc2a = sim1.CS_simulate(pds1=2.0, pds2=None, lag=0.5, coh=0.8)
+
+        sim2 = CrossSpectrumSimulator(
+            N=self.N, mean=self.mean, dt=self.dt, rms=self.rms, random_state=42
+        )
+        lc1b, lc2b = sim2.CS_simulate(pds1=2.0, pds2=None, lag=0.5, coh=0.8)
+
+        np.testing.assert_array_equal(lc1a.counts, lc1b.counts)
+        np.testing.assert_array_equal(lc2a.counts, lc2b.counts)
+
+    def test_cs_simulate_different_seeds_differ(self):
+        """Different random seeds produce different light curves."""
+        sim1 = CrossSpectrumSimulator(
+            N=self.N, mean=self.mean, dt=self.dt, rms=self.rms, random_state=42
+        )
+        lc1a, _ = sim1.CS_simulate(pds1=2.0, pds2=None, lag=0.5, coh=0.8)
+
+        sim2 = CrossSpectrumSimulator(
+            N=self.N, mean=self.mean, dt=self.dt, rms=self.rms, random_state=99
+        )
+        lc1b, _ = sim2.CS_simulate(pds1=2.0, pds2=None, lag=0.5, coh=0.8)
+
+        assert not np.allclose(lc1a.counts, lc1b.counts)
+
+    # --- crossspectrum static method ---
+
+    def test_crossspectrum_static_method(self):
+        """crossspectrum() can be called on the class without an instance."""
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=None, lag=0.5, coh=1.0)
+        cs = CrossSpectrumSimulator.crossspectrum(lc1, lc2)
+        assert isinstance(cs, np.ndarray)
+        assert len(cs) == self.N // 2 - 1
+
+    def test_crossspectrum_instance_method(self):
+        """crossspectrum() can also be called on an instance."""
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=None, lag=0.5, coh=1.0)
+        cs = self.sim.crossspectrum(lc1, lc2)
+        assert isinstance(cs, np.ndarray)
+        assert len(cs) == self.N // 2 - 1
+
+    # --- Parent simulate still works via _extract_and_scale override ---
+
+    def test_parent_simulate_still_works(self):
+        """The overridden _extract_and_scale does not break the parent simulate()."""
+        lc = self.sim.simulate(2.0)
+        assert isinstance(lc, Lightcurve)
+        assert lc.n == self.N
+
+    # --- Statistical correctness ---
+
+    def test_cs_simulate_mean_and_rms(self):
+        """Simulated light curves have approximately the correct mean and fractional RMS."""
+        nsim = 100
+        sim = CrossSpectrumSimulator(
+            N=self.N, mean=self.mean, dt=self.dt, rms=self.rms, random_state=42
+        )
+        means1, means2, rms1_list, rms2_list = [], [], [], []
+        for _ in range(nsim):
+            lc1, lc2 = sim.CS_simulate(pds1=2.0, pds2=None, lag=0.5, coh=0.8)
+            means1.append(np.mean(lc1.counts))
+            means2.append(np.mean(lc2.counts))
+            rms1_list.append(np.std(lc1.counts) / np.mean(lc1.counts))
+            rms2_list.append(np.std(lc2.counts) / np.mean(lc2.counts))
+
+        assert np.isclose(np.mean(means1), self.mean, rtol=0.01)
+        assert np.isclose(np.mean(rms1_list), self.rms, rtol=0.1)
+        assert np.isclose(np.mean(means2), self.mean, rtol=0.01)
+        assert np.isclose(np.mean(rms2_list), self.rms, rtol=0.1)
+
+    def test_cs_simulate_phase_lag_recovery(self):
+        r"""With perfect coherence (:math:`\gamma^2 = 1`), the cross-spectral phase
+        equals the input lag exactly at every Fourier frequency for a single realisation.
+
+        Derivation: with :math:`\gamma^2 = 1`, :math:`Y(f) = T(f) X(f)` where
+        :math:`T(f) = \sqrt{P_2/P_1} \, e^{i\phi}`.
+        The mean-subtraction and rescaling in ``_extract_and_scale`` divide each series
+        by a real scalar, so the phase of :math:`\overline{X} Y = |X|^2 T` is
+        preserved as :math:`\phi`.
+        """
+        target_lag = 0.5  # radians
+        sim = CrossSpectrumSimulator(
+            N=self.N, mean=500.0, dt=self.dt, rms=0.3, random_state=42
+        )
+        lc1, lc2 = sim.CS_simulate(pds1=2.0, pds2=None, lag=target_lag, coh=1.0)
+
+        x = lc1.counts - lc1.counts.mean()
+        y = lc2.counts - lc2.counts.mean()
+        # Exclude DC (index 0) and Nyquist (index -1) bins
+        X = np.fft.rfft(x)[1:-1]
+        Y = np.fft.rfft(y)[1:-1]
+
+        phases = np.angle(np.conj(X) * Y)
+        np.testing.assert_allclose(phases, target_lag, atol=1e-6)
+
+    def test_cs_simulate_coherence_recovery(self):
+        r"""Average coherence over many realisations converges to the target value.
+
+        The coherence estimator
+
+        .. math::
+
+            \hat{\gamma}^2(f) = \frac{|\langle C(f) \rangle|^2}
+                                      {\langle P_1(f) \rangle \langle P_2(f) \rangle}
+
+        (averages over independent realisations) converges to :math:`\gamma^2` as
+        :math:`N_\mathrm{sim} \to \infty`.
+        """
+        target_coh = 0.6
+        N = 1024
+        nsim = 300
+        sim = CrossSpectrumSimulator(N=N, mean=100.0, dt=self.dt, rms=self.rms, random_state=0)
+
+        nfreq = N // 2  # length of rfft(x)[1:]
+        sum_Cxy = np.zeros(nfreq, dtype=complex)
+        sum_Pxx = np.zeros(nfreq)
+        sum_Pyy = np.zeros(nfreq)
+
+        for _ in range(nsim):
+            lc1, lc2 = sim.CS_simulate(pds1=2.0, pds2=None, lag=0.0, coh=target_coh)
+            x = lc1.counts - lc1.counts.mean()
+            y = lc2.counts - lc2.counts.mean()
+            X = np.fft.rfft(x)[1:]
+            Y = np.fft.rfft(y)[1:]
+            sum_Cxy += np.conj(X) * Y
+            sum_Pxx += np.abs(X) ** 2
+            sum_Pyy += np.abs(Y) ** 2
+
+        coh_est = np.abs(sum_Cxy) ** 2 / (sum_Pxx * sum_Pyy)
+        assert np.abs(np.mean(coh_est) - target_coh) < 0.05
+
+    def test_cs_simulate_zero_coherence_uncorrelated(self):
+        r"""With coh=0 the two light curves are statistically uncorrelated.
+
+        The average estimated coherence (computed over many independent realisations)
+        should converge to zero, because the incoherent component :math:`K(H + iJ)`
+        carries all of the power and is drawn from a fully independent random draw.
+        """
+        nsim = 200
+        N = 1024
+        sim = CrossSpectrumSimulator(N=N, mean=100.0, dt=self.dt, rms=0.2, random_state=0)
+
+        nfreq = N // 2
+        sum_Cxy = np.zeros(nfreq, dtype=complex)
+        sum_Pxx = np.zeros(nfreq)
+        sum_Pyy = np.zeros(nfreq)
+
+        for _ in range(nsim):
+            lc1, lc2 = sim.CS_simulate(pds1=2.0, pds2=None, coh=0.0)
+            x = lc1.counts - lc1.counts.mean()
+            y = lc2.counts - lc2.counts.mean()
+            X = np.fft.rfft(x)[1:]
+            Y = np.fft.rfft(y)[1:]
+            sum_Cxy += np.conj(X) * Y
+            sum_Pxx += np.abs(X) ** 2
+            sum_Pyy += np.abs(Y) ** 2
+
+        coh_est = np.abs(sum_Cxy) ** 2 / (sum_Pxx * sum_Pyy)
+        assert np.mean(coh_est) < 0.05
+
+    def test_cs_simulate_perfect_coherence_same_pds_identical(self):
+        r"""With coh=1, lag=0, and pds1=pds2 the two light curves are numerically identical.
+
+        Derivation: :math:`T = \sqrt{P_2 \gamma^2 / P_1} \, e^{i\phi} = 1` and
+        :math:`K = \sqrt{(P_2 - P_1 |T|^2) / 2} = 0`, so :math:`Y = X` exactly in
+        Fourier space. Both series share the same extraction cut and rescaling
+        parameters, so counts1 == counts2 to machine precision.
+        """
+        sim = CrossSpectrumSimulator(
+            N=self.N, mean=self.mean, dt=self.dt, rms=self.rms, random_state=42
+        )
+        lc1, lc2 = sim.CS_simulate(pds1=2.0, pds2=None, lag=0.0, coh=1.0)
+        np.testing.assert_array_equal(lc1.counts, lc2.counts)
+
+    def test_cs_simulate_zero_lag_zero_phase_different_pds(self):
+        r"""With coh=1, lag=0, and pds1 != pds2 the cross-spectrum phase is identically zero.
+
+        With :math:`\gamma^2 = 1` and :math:`\phi = 0`:
+        :math:`T = \sqrt{P_2 / P_1}` (real positive at every bin).
+        Then :math:`\overline{X} Y = T |X|^2` is real positive, so angle = 0 exactly.
+        Using pds2 != pds1 ensures the light curves are not identical (non-trivial test).
+        """
+        sim = CrossSpectrumSimulator(
+            N=self.N, mean=500.0, dt=self.dt, rms=0.3, random_state=42
+        )
+        lc1, lc2 = sim.CS_simulate(pds1=2.0, pds2=1.0, lag=0.0, coh=1.0)
+        x = lc1.counts - lc1.counts.mean()
+        y = lc2.counts - lc2.counts.mean()
+        X = np.fft.rfft(x)[1:-1]
+        Y = np.fft.rfft(y)[1:-1]
+        phases = np.angle(np.conj(X) * Y)
+        np.testing.assert_allclose(phases, 0.0, atol=1e-6)
+
+    def test_cs_simulate_negative_lag_sign_convention(self):
+        r"""Negative lag produces a negative cross-spectrum phase (sign convention check).
+
+        With :math:`\gamma^2 = 1`: :math:`Y = e^{i\phi} X` so
+        :math:`\angle(\overline{X} Y) = \phi` exactly.
+        This test verifies that negative :math:`\phi` is preserved faithfully.
+        """
+        target_lag = -0.7  # radians
+        sim = CrossSpectrumSimulator(
+            N=self.N, mean=500.0, dt=self.dt, rms=0.3, random_state=42
+        )
+        lc1, lc2 = sim.CS_simulate(pds1=2.0, pds2=None, lag=target_lag, coh=1.0)
+        x = lc1.counts - lc1.counts.mean()
+        y = lc2.counts - lc2.counts.mean()
+        X = np.fft.rfft(x)[1:-1]
+        Y = np.fft.rfft(y)[1:-1]
+        phases = np.angle(np.conj(X) * Y)
+        np.testing.assert_allclose(phases, target_lag, atol=1e-6)
+
+    def test_cs_simulate_frequency_dependent_lag_array_recovery(self):
+        r"""Frequency-dependent lag array is recovered exactly at :math:`\gamma^2 = 1`.
+
+        With a flat PSD (index=0, :math:`T = e^{i\phi(f)}`),
+        :math:`\overline{X}(f) Y(f) = e^{i\phi(f)} |X(f)|^2` so the phase at each bin
+        equals :math:`\phi(f)` exactly. The lag array spans ``get_refftfreq()`` which has
+        N//2 entries; ``rfft[1:-1]`` gives N//2-1 entries (excluding Nyquist), matching
+        ``lag_arr[:-1]``.
+        """
+        sim = CrossSpectrumSimulator(
+            N=self.N, mean=500.0, dt=self.dt, rms=0.3, random_state=42
+        )
+        w = sim.get_refftfreq()  # N//2 elements
+        median_f = np.median(w)
+        # Step function: 0.3 rad below median frequency, 0.9 rad above
+        lag_arr = np.where(w < median_f, 0.3, 0.9)
+
+        # Flat PSD so all bins have equal power (avoids near-zero high-freq bins)
+        lc1, lc2 = sim.CS_simulate(pds1=0.0, pds2=None, lag=lag_arr, coh=1.0)
+        x = lc1.counts - lc1.counts.mean()
+        y = lc2.counts - lc2.counts.mean()
+        # rfft has N//2+1 coefficients; [1:-1] drops DC and Nyquist → N//2-1 entries
+        X = np.fft.rfft(x)[1:-1]
+        Y = np.fft.rfft(y)[1:-1]
+        phases = np.angle(np.conj(X) * Y)
+        np.testing.assert_allclose(phases, lag_arr[:-1], atol=1e-6)
+
+    def test_cs_simulate_rms_tuple_independent_per_band(self):
+        """rms tuple produces the correct, independent fractional RMS in each band.
+
+        The mean fractional RMS of lc1 should converge to rms1 and lc2 to rms2,
+        and the two values should be measurably different.
+        """
+        rms1_target, rms2_target = 0.1, 0.3
+        nsim = 100
+        sim = CrossSpectrumSimulator(
+            N=self.N, mean=self.mean, dt=self.dt, rms=(rms1_target, rms2_target), random_state=42
+        )
+        rms1_list, rms2_list = [], []
+        for _ in range(nsim):
+            lc1, lc2 = sim.CS_simulate(pds1=2.0, pds2=None, lag=0.5, coh=0.8)
+            rms1_list.append(np.std(lc1.counts) / np.mean(lc1.counts))
+            rms2_list.append(np.std(lc2.counts) / np.mean(lc2.counts))
+
+        assert np.isclose(np.mean(rms1_list), rms1_target, rtol=0.1)
+        assert np.isclose(np.mean(rms2_list), rms2_target, rtol=0.1)
+        # Verify the two values are actually different (not just equal to the same scalar)
+        assert not np.isclose(np.mean(rms1_list), np.mean(rms2_list), rtol=0.05)
+
+    def test_cross_spectra_to_coh_lag_conversion(self):
+        r"""``_cross_spectra_to_coh_lag`` correctly implements :math:`\gamma^2` and
+        :math:`\phi` formulae.
+
+        For cospec = quadspec = C and :math:`P_X = P_Y = P`:
+
+        .. math::
+
+            \gamma^2 = \frac{C^2 + C^2}{P^2} = \frac{2 C^2}{P^2}, \qquad
+            \phi = \arctan2(C,\, C) = \frac{\pi}{4}
+        """
+        C = np.sqrt(2.0)
+        P = np.ones(10) * 4.0
+        cospec = np.ones(10) * C
+        quadspec = np.ones(10) * C
+        gamma2, phi = self.sim._cross_spectra_to_coh_lag(cospec, quadspec, P, P)
+
+        expected_gamma2 = (C**2 + C**2) / (4.0 * 4.0)  # 4 / 16 = 0.25
+        expected_phi = np.pi / 4
+
+        np.testing.assert_allclose(gamma2, expected_gamma2)
+        np.testing.assert_allclose(phi, expected_phi)
+
+    # --- pds1/pds2 model string and astropy model input types ---
+
+    def test_cs_simulate_pds1_astropy_model(self):
+        """pds1 accepts an astropy Model instance (callable)."""
+        mod = models.GeneralizedLorentz1D(x_0=10, fwhm=1.0, value=10.0, power_coeff=2)
+        lc1, lc2 = self.sim.CS_simulate(pds1=mod, pds2=None, lag=0.5, coh=0.8)
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_pds1_string_list_params(self):
+        """pds1 accepts a model-name string with list params."""
+        lc1, lc2 = self.sim.CS_simulate(
+            pds1="generalized_lorentzian",
+            pds2=None,
+            lag=0.5,
+            coh=0.8,
+            params=[0.3, 0.9, 0.6, 0.5],
+        )
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_pds1_string_dict_params(self):
+        """pds1 accepts a model-name string with dict params."""
+        lc1, lc2 = self.sim.CS_simulate(
+            pds1="GeneralizedLorentz1D",
+            pds2=None,
+            lag=0.5,
+            coh=0.8,
+            params={"x_0": 10, "fwhm": 1.0, "value": 10.0, "power_coeff": 2},
+        )
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_pds1_invalid_string_raises(self):
+        """pds1 as an unrecognised model string raises ValueError."""
+        with pytest.raises(ValueError, match="Model string not defined"):
+            self.sim.CS_simulate(pds1="nonexistent_model", pds2=None, lag=0.5, coh=0.8, params=[1])
+
+    def test_cs_simulate_pds1_string_params_not_list_or_dict_raises(self):
+        """pds1 string model with params neither list nor dict raises ValueError."""
+        with pytest.raises(ValueError, match="Params should be list or dictionary"):
+            self.sim.CS_simulate(
+                pds1="generalized_lorentzian", pds2=None, lag=0.5, coh=0.8, params=12345
+            )
+
+    def test_cs_simulate_pds2_callable(self):
+        """pds2 accepts a callable with signature f(frequency) -> pds."""
+        pds_func = lambda f: np.power(1 / f, 2.0)
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=pds_func, lag=0.5, coh=0.8)
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_pds2_array(self):
+        """pds2 accepts an array of PSD values at each rfftfreq."""
+        pds_arr = np.power(1 / self.sim.get_refftfreq(), 2.0)
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=pds_arr, lag=0.5, coh=0.8)
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    # --- lag input types ---
+
+    def test_cs_simulate_lag_callable(self):
+        """lag accepts a callable with signature f(frequency) -> lag."""
+        lag_func = lambda f: np.ones_like(f) * 0.5
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=None, lag=lag_func)
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_lag_string_list_params(self):
+        """lag accepts a model-name string with list params."""
+        lc1, lc2 = self.sim.CS_simulate(
+            pds1=2.0,
+            pds2=None,
+            lag="generalized_lorentzian",
+            lag_params=[3.0, 2.0, 0.5, 2.0],
+        )
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_lag_string_dict_params(self):
+        """lag accepts a model-name string with dict params."""
+        lc1, lc2 = self.sim.CS_simulate(
+            pds1=2.0,
+            pds2=None,
+            lag="GeneralizedLorentz1D",
+            lag_params={"x_0": 3.0, "fwhm": 2.0, "value": 0.5, "power_coeff": 2},
+        )
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_lag_invalid_string_raises(self):
+        """lag as an unrecognised model string raises ValueError."""
+        with pytest.raises(ValueError, match="Model string not defined"):
+            self.sim.CS_simulate(
+                pds1=2.0, pds2=None, lag="nonexistent_model", lag_params=[1]
+            )
+
+    def test_cs_simulate_lag_string_bad_params_raises(self):
+        """lag string model with params neither list nor dict raises ValueError."""
+        with pytest.raises(ValueError, match="Params should be list or dictionary"):
+            self.sim.CS_simulate(
+                pds1=2.0, pds2=None, lag="generalized_lorentzian", lag_params=12345
+            )
+
+    # --- coh input types ---
+
+    def test_cs_simulate_coh_callable(self):
+        """coh accepts a callable with signature f(frequency) -> coherence."""
+        coh_func = lambda f: np.ones_like(f) * 0.8
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=None, coh=coh_func)
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_coh_string_list_params(self):
+        """coh accepts a model-name string with list params."""
+        lc1, lc2 = self.sim.CS_simulate(
+            pds1=2.0,
+            pds2=None,
+            coh="generalized_lorentzian",
+            coh_params=[3.0, 2.0, 0.7, 2.0],
+        )
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_coh_string_dict_params(self):
+        """coh accepts a model-name string with dict params."""
+        lc1, lc2 = self.sim.CS_simulate(
+            pds1=2.0,
+            pds2=None,
+            coh="GeneralizedLorentz1D",
+            coh_params={"x_0": 3.0, "fwhm": 2.0, "value": 0.7, "power_coeff": 2},
+        )
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_coh_invalid_string_raises(self):
+        """coh as an unrecognised model string raises ValueError."""
+        with pytest.raises(ValueError, match="Model string not defined"):
+            self.sim.CS_simulate(
+                pds1=2.0, pds2=None, coh="nonexistent_model", coh_params=[1]
+            )
+
+    def test_cs_simulate_coh_string_bad_params_raises(self):
+        """coh string model with params neither list nor dict raises ValueError."""
+        with pytest.raises(ValueError, match="Params should be list or dictionary"):
+            self.sim.CS_simulate(
+                pds1=2.0, pds2=None, coh="generalized_lorentzian", coh_params=12345
+            )
+
+    # --- cospec/quadspec input types ---
+
+    def test_cs_simulate_cospec_only_float(self):
+        """cospec as a float without quadspec produces two valid light curves."""
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=None, cospec=0.5)
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_quadspec_only_float(self):
+        """quadspec as a float without cospec produces two valid light curves."""
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=None, quadspec=0.3)
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_cospec_callable(self):
+        """cospec accepts a callable f(frequency) -> cospec."""
+        cospec_func = lambda f: np.ones_like(f) * 0.5
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=None, cospec=cospec_func)
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_cospec_array(self):
+        """cospec accepts an array of per-frequency values."""
+        cospec_arr = np.ones_like(self.sim.get_refftfreq()) * 0.5
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=None, cospec=cospec_arr)
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_cospec_string_list_params(self):
+        """cospec accepts a model-name string with list params."""
+        lc1, lc2 = self.sim.CS_simulate(
+            pds1=2.0,
+            pds2=None,
+            cospec="generalized_lorentzian",
+            cospec_params=[3.0, 2.0, 0.5, 2.0],
+        )
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_cospec_string_dict_params(self):
+        """cospec accepts a model-name string with dict params."""
+        lc1, lc2 = self.sim.CS_simulate(
+            pds1=2.0,
+            pds2=None,
+            cospec="GeneralizedLorentz1D",
+            cospec_params={"x_0": 3.0, "fwhm": 2.0, "value": 0.5, "power_coeff": 2},
+        )
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_cospec_invalid_string_raises(self):
+        """cospec as an unrecognised model string raises ValueError."""
+        with pytest.raises(ValueError, match="Model string not defined"):
+            self.sim.CS_simulate(
+                pds1=2.0, pds2=None, cospec="nonexistent_model", cospec_params=[1]
+            )
+
+    def test_cs_simulate_cospec_string_bad_params_raises(self):
+        """cospec string model with params neither list nor dict raises ValueError."""
+        with pytest.raises(ValueError, match="Params should be list or dictionary"):
+            self.sim.CS_simulate(
+                pds1=2.0, pds2=None, cospec="generalized_lorentzian", cospec_params=12345
+            )
+
+    def test_cs_simulate_quadspec_callable(self):
+        """quadspec accepts a callable f(frequency) -> quadspec."""
+        quadspec_func = lambda f: np.ones_like(f) * 0.3
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=None, quadspec=quadspec_func)
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_quadspec_array(self):
+        """quadspec accepts an array of per-frequency values."""
+        quadspec_arr = np.ones_like(self.sim.get_refftfreq()) * 0.3
+        lc1, lc2 = self.sim.CS_simulate(pds1=2.0, pds2=None, quadspec=quadspec_arr)
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_quadspec_string_list_params(self):
+        """quadspec accepts a model-name string with list params."""
+        lc1, lc2 = self.sim.CS_simulate(
+            pds1=2.0,
+            pds2=None,
+            quadspec="generalized_lorentzian",
+            quadspec_params=[3.0, 2.0, 0.3, 2.0],
+        )
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_quadspec_string_dict_params(self):
+        """quadspec accepts a model-name string with dict params."""
+        lc1, lc2 = self.sim.CS_simulate(
+            pds1=2.0,
+            pds2=None,
+            quadspec="GeneralizedLorentz1D",
+            quadspec_params={"x_0": 3.0, "fwhm": 2.0, "value": 0.3, "power_coeff": 2},
+        )
+        assert lc1.n == self.N
+        assert lc2.n == self.N
+
+    def test_cs_simulate_quadspec_invalid_string_raises(self):
+        """quadspec as an unrecognised model string raises ValueError."""
+        with pytest.raises(ValueError, match="Model string not defined"):
+            self.sim.CS_simulate(
+                pds1=2.0, pds2=None, quadspec="nonexistent_model", quadspec_params=[1]
+            )
+
+    def test_cs_simulate_quadspec_string_bad_params_raises(self):
+        """quadspec string model with params neither list nor dict raises ValueError."""
+        with pytest.raises(ValueError, match="Params should be list or dictionary"):
+            self.sim.CS_simulate(
+                pds1=2.0, pds2=None, quadspec="generalized_lorentzian", quadspec_params=12345
+            )
