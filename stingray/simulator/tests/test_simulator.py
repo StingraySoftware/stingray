@@ -822,12 +822,14 @@ class TestCrossSpectrumSimulator(object):
         assert np.isclose(np.mean(rms2_list), self.rms, rtol=0.1)
 
     def test_cs_simulate_phase_lag_recovery(self):
-        """With perfect coherence (γ²=1), the cross-spectral phase equals the input lag
-        exactly at every Fourier frequency for a single realisation.
+        r"""With perfect coherence (:math:`\gamma^2 = 1`), the cross-spectral phase
+        equals the input lag exactly at every Fourier frequency for a single realisation.
 
-        Derivation: with γ²=1, Y(f) = T(f)*X(f) where T(f) = sqrt(P2/P1)*exp(iφ).
-        The mean-subtraction and rescaling in _extract_and_scale divide each series
-        by a real scalar, so the phase of conj(X)*Y = |X|²*T is preserved as φ.
+        Derivation: with :math:`\gamma^2 = 1`, :math:`Y(f) = T(f) X(f)` where
+        :math:`T(f) = \sqrt{P_2/P_1} \, e^{i\phi}`.
+        The mean-subtraction and rescaling in ``_extract_and_scale`` divide each series
+        by a real scalar, so the phase of :math:`\overline{X} Y = |X|^2 T` is
+        preserved as :math:`\phi`.
         """
         target_lag = 0.5  # radians
         sim = CrossSpectrumSimulator(
@@ -845,11 +847,17 @@ class TestCrossSpectrumSimulator(object):
         np.testing.assert_allclose(phases, target_lag, atol=1e-6)
 
     def test_cs_simulate_coherence_recovery(self):
-        """Average coherence over many realisations converges to the target value.
+        r"""Average coherence over many realisations converges to the target value.
 
         The coherence estimator
-            γ²_hat(f) = |<C(f)>|² / (<P1(f)> * <P2(f)>)
-        (averages over independent realisations) converges to γ² as nsim → ∞.
+
+        .. math::
+
+            \hat{\gamma}^2(f) = \frac{|\langle C(f) \rangle|^2}
+                                      {\langle P_1(f) \rangle \langle P_2(f) \rangle}
+
+        (averages over independent realisations) converges to :math:`\gamma^2` as
+        :math:`N_\mathrm{sim} \to \infty`.
         """
         target_coh = 0.6
         N = 1024
@@ -875,11 +883,11 @@ class TestCrossSpectrumSimulator(object):
         assert np.abs(np.mean(coh_est) - target_coh) < 0.05
 
     def test_cs_simulate_zero_coherence_uncorrelated(self):
-        """With coh=0 the two light curves are statistically uncorrelated.
+        r"""With coh=0 the two light curves are statistically uncorrelated.
 
         The average estimated coherence (computed over many independent realisations)
-        should converge to zero, because the incoherent component K*(H+iJ) carries all
-        of the power and is drawn from a fully independent random draw.
+        should converge to zero, because the incoherent component :math:`K(H + iJ)`
+        carries all of the power and is drawn from a fully independent random draw.
         """
         nsim = 200
         N = 1024
@@ -904,11 +912,12 @@ class TestCrossSpectrumSimulator(object):
         assert np.mean(coh_est) < 0.05
 
     def test_cs_simulate_perfect_coherence_same_pds_identical(self):
-        """With coh=1, lag=0, and pds1=pds2 the two light curves are numerically identical.
+        r"""With coh=1, lag=0, and pds1=pds2 the two light curves are numerically identical.
 
-        Derivation: T = sqrt(P2*γ²/P1)*exp(iφ) = 1 and K = sqrt((P2 - P1*|T|²)/2) = 0,
-        so Y = X exactly in Fourier space. Both series share the same extraction cut
-        and rescaling parameters, so counts1 == counts2 to machine precision.
+        Derivation: :math:`T = \sqrt{P_2 \gamma^2 / P_1} \, e^{i\phi} = 1` and
+        :math:`K = \sqrt{(P_2 - P_1 |T|^2) / 2} = 0`, so :math:`Y = X` exactly in
+        Fourier space. Both series share the same extraction cut and rescaling
+        parameters, so counts1 == counts2 to machine precision.
         """
         sim = CrossSpectrumSimulator(
             N=self.N, mean=self.mean, dt=self.dt, rms=self.rms, random_state=42
@@ -917,10 +926,11 @@ class TestCrossSpectrumSimulator(object):
         np.testing.assert_array_equal(lc1.counts, lc2.counts)
 
     def test_cs_simulate_zero_lag_zero_phase_different_pds(self):
-        """With coh=1, lag=0, and pds1 != pds2 the cross-spectrum phase is identically zero.
+        r"""With coh=1, lag=0, and pds1 != pds2 the cross-spectrum phase is identically zero.
 
-        With γ²=1 and φ=0: T = sqrt(P2/P1) (real positive at every bin).
-        Then conj(X)*Y = T*|X|² is real positive, so angle = 0 exactly.
+        With :math:`\gamma^2 = 1` and :math:`\phi = 0`:
+        :math:`T = \sqrt{P_2 / P_1}` (real positive at every bin).
+        Then :math:`\overline{X} Y = T |X|^2` is real positive, so angle = 0 exactly.
         Using pds2 != pds1 ensures the light curves are not identical (non-trivial test).
         """
         sim = CrossSpectrumSimulator(
@@ -935,10 +945,11 @@ class TestCrossSpectrumSimulator(object):
         np.testing.assert_allclose(phases, 0.0, atol=1e-6)
 
     def test_cs_simulate_negative_lag_sign_convention(self):
-        """Negative lag produces a negative cross-spectrum phase (sign convention check).
+        r"""Negative lag produces a negative cross-spectrum phase (sign convention check).
 
-        With γ²=1: Y = exp(iφ)*X so angle(conj(X)*Y) = φ exactly.
-        This test verifies that negative φ is preserved faithfully.
+        With :math:`\gamma^2 = 1`: :math:`Y = e^{i\phi} X` so
+        :math:`\angle(\overline{X} Y) = \phi` exactly.
+        This test verifies that negative :math:`\phi` is preserved faithfully.
         """
         target_lag = -0.7  # radians
         sim = CrossSpectrumSimulator(
@@ -953,12 +964,13 @@ class TestCrossSpectrumSimulator(object):
         np.testing.assert_allclose(phases, target_lag, atol=1e-6)
 
     def test_cs_simulate_frequency_dependent_lag_array_recovery(self):
-        """Frequency-dependent lag array is recovered exactly at γ²=1.
+        r"""Frequency-dependent lag array is recovered exactly at :math:`\gamma^2 = 1`.
 
-        With a flat PSD (index=0, T = exp(iφ(f))), conj(X(f))*Y(f) = exp(iφ(f))*|X(f)|²
-        so the phase at each bin equals φ(f) exactly. The lag array spans
-        get_refftfreq() which has N//2 entries; rfft[1:-1] gives N//2-1 entries
-        (excluding Nyquist), matching lag_arr[:-1].
+        With a flat PSD (index=0, :math:`T = e^{i\phi(f)}`),
+        :math:`\overline{X}(f) Y(f) = e^{i\phi(f)} |X(f)|^2` so the phase at each bin
+        equals :math:`\phi(f)` exactly. The lag array spans ``get_refftfreq()`` which has
+        N//2 entries; ``rfft[1:-1]`` gives N//2-1 entries (excluding Nyquist), matching
+        ``lag_arr[:-1]``.
         """
         sim = CrossSpectrumSimulator(
             N=self.N, mean=500.0, dt=self.dt, rms=0.3, random_state=42
@@ -1001,11 +1013,15 @@ class TestCrossSpectrumSimulator(object):
         assert not np.isclose(np.mean(rms1_list), np.mean(rms2_list), rtol=0.05)
 
     def test_cross_spectra_to_coh_lag_conversion(self):
-        """_cross_spectra_to_coh_lag correctly implements γ² and φ formulae.
+        r"""``_cross_spectra_to_coh_lag`` correctly implements :math:`\gamma^2` and
+        :math:`\phi` formulae.
 
-        For cospec = quadspec = C and P_X = P_Y = P:
-            γ² = (C² + C²) / P²  = 2C²/P²
-            φ  = arctan2(C, C)    = π/4
+        For cospec = quadspec = C and :math:`P_X = P_Y = P`:
+
+        .. math::
+
+            \gamma^2 = \frac{C^2 + C^2}{P^2} = \frac{2 C^2}{P^2}, \qquad
+            \phi = \arctan2(C,\, C) = \frac{\pi}{4}
         """
         C = np.sqrt(2.0)
         P = np.ones(10) * 4.0

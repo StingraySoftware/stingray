@@ -722,7 +722,7 @@ class CrossSpectrumSimulator(Simulator):
         cospec_params: Optional[Union[list, dict]] = None,
         quadspec_params: Optional[Union[list, dict]] = None,
     ) -> Tuple[Lightcurve, Lightcurve]:
-        """Simulate two LightCurves from a power spectrum with a specified
+        r"""Simulate two LightCurves from a power spectrum with a specified
         phase lag and/or coherence distribution.
 
         Parameters
@@ -741,7 +741,7 @@ class CrossSpectrumSimulator(Simulator):
             Parameters for the predefined model when ``pds1`` or ``pds2`` is a string.
         lag : str or float or astropy.modeling.Model or callable or array-like, optional
             Phase lag spectrum in radians. If omitted, no phase lag is applied.
-            If float, a constant value in [-π, π].
+            If float, a constant value in :math:`[-\pi, \pi]`.
             If str, a model name from ``stingray.simulator.models``; supply
             parameters via ``lag_params``.
             If callable, must have signature ``f(frequency) -> lag``.
@@ -1020,17 +1020,20 @@ class CrossSpectrumSimulator(Simulator):
         P_X: Union[float, np.ndarray[float]],
         P_Y: Union[float, np.ndarray[float]],
     ) -> Union[complex, np.ndarray[complex]]:
-        """Compute the transfer function T from coherence and phase lag.
+        r"""Compute the transfer function T from coherence and phase lag.
 
         Implements Equation 15 from Larner, Nowak, & Wilms (2026):
-        ``T = sqrt(P_Y * γ² / P_X) * exp(i*φ)``
+
+        .. math::
+
+            T = \sqrt{\frac{P_Y \gamma^2}{P_X}} \, e^{i\phi}
 
         Parameters
         ----------
         gamma2 : float or numpy.ndarray
-            Coherence squared, γ². Range: [0, 1].
+            Coherence squared, :math:`\gamma^2`. Range: [0, 1].
         phi : float or numpy.ndarray
-            Phase lag in radians. Range: [-π, π].
+            Phase lag in radians. Range: :math:`[-\pi, \pi]`.
         P_X : float or numpy.ndarray
             Power spectrum of the reference time series.
         P_Y : float or numpy.ndarray
@@ -1061,10 +1064,13 @@ class CrossSpectrumSimulator(Simulator):
         P_Y: Union[float, np.ndarray[float]],
         T: Union[complex, np.ndarray[complex]],
     ) -> Union[float, np.ndarray[float]]:
-        """Compute the normalization constant K for the incoherent component.
+        r"""Compute the normalization constant K for the incoherent component.
 
         Implements Equation 12 from Larner, Nowak, & Wilms (2026):
-        ``K = sqrt((P_Y - P_X*|T|²) / 2)``
+
+        .. math::
+
+            K = \sqrt{\frac{P_Y - P_X |T|^2}{2}}
 
         Parameters
         ----------
@@ -1083,8 +1089,8 @@ class CrossSpectrumSimulator(Simulator):
         Notes
         -----
         This constant ensures that the dependent time series Y has the correct
-        power spectrum P_Y. The factor of 2 accounts for the variance of complex
-        Gaussian random variables.
+        power spectrum :math:`P_Y`. The factor of 2 accounts for the variance of
+        complex Gaussian random variables.
 
         References
         ----------
@@ -1102,14 +1108,14 @@ class CrossSpectrumSimulator(Simulator):
         P_X: Union[float, np.ndarray],
         P_Y: Union[float, np.ndarray],
     ) -> Tuple[Union[float, np.ndarray], Union[float, np.ndarray]]:
-        """Convert co-spectrum and quadrature spectrum to coherence and phase lag.
+        r"""Convert co-spectrum and quadrature spectrum to coherence and phase lag.
 
         Parameters
         ----------
         cospec : float or numpy.ndarray
-            Real part of the cross spectrum, Re[C].
+            Real part of the cross spectrum, :math:`\mathrm{Re}[C]`.
         quadspec : float or numpy.ndarray
-            Imaginary part of the cross spectrum, Im[C].
+            Imaginary part of the cross spectrum, :math:`\mathrm{Im}[C]`.
         P_X : float or numpy.ndarray
             Power spectrum of the reference time series.
         P_Y : float or numpy.ndarray
@@ -1118,9 +1124,11 @@ class CrossSpectrumSimulator(Simulator):
         Returns
         -------
         gamma2 : float or numpy.ndarray
-            Coherence squared, γ² = (Re[C]² + Im[C]²) / (P_X * P_Y).
+            Coherence squared,
+            :math:`\gamma^2 = (\mathrm{Re}[C]^2 + \mathrm{Im}[C]^2) / (P_X P_Y)`.
         phi : float or numpy.ndarray
-            Phase lag in radians, φ = arctan2(Im[C], Re[C]).
+            Phase lag in radians,
+            :math:`\phi = \arctan2(\mathrm{Im}[C],\, \mathrm{Re}[C])`.
         """
 
         gamma2 = (cospec**2 + quadspec**2) / (P_X * P_Y)
@@ -1260,7 +1268,7 @@ class CrossSpectrumSimulator(Simulator):
         cospec: Optional[Union[float, np.ndarray[float]]] = None,
         quadspec: Optional[Union[float, np.ndarray[float]]] = None,
     ) -> Tuple[np.ndarray[float], np.ndarray[float]]:
-        """Simulate two correlated time series with arbitrary coherence and phase lag.
+        r"""Simulate two correlated time series with arbitrary coherence and phase lag.
 
         Implements the method from Larner, Nowak, & Wilms (2026) using Equations 9, 10,
         12, and 15. The reference time series is generated using the Timmer-Koenig method,
@@ -1279,11 +1287,11 @@ class CrossSpectrumSimulator(Simulator):
         mean : float
             Mean count rate of the output light curves in counts/s.
         lag : float or numpy.ndarray, optional
-            Phase lag spectrum in radians (φ). Range: [-π, π].
+            Phase lag spectrum in radians (:math:`\phi`). Range: :math:`[-\pi, \pi]`.
             If float, constant across all frequencies.
             If array, must have the same length as ``P1``. Default: 0.
         gamma : float or numpy.ndarray, optional
-            Coherence squared spectrum (γ²). Range: [0, 1].
+            Coherence squared spectrum (:math:`\gamma^2`). Range: [0, 1].
             If float, constant across all frequencies.
             If array, must have the same length as ``P1``. Default: 1 (perfect coherence).
         red_noise : int, optional
@@ -1297,11 +1305,12 @@ class CrossSpectrumSimulator(Simulator):
         poisson : bool, optional
             If ``True``, draw final counts from a Poisson distribution. Default: ``False``.
         cospec : float or numpy.ndarray, optional
-            Real part of the cross spectrum, Re[C]. Cannot be specified together with
-            ``gamma``/``lag``. If float, constant across all frequencies.
+            Real part of the cross spectrum, :math:`\mathrm{Re}[C]`. Cannot be specified
+            together with ``gamma``/``lag``. If float, constant across all frequencies.
         quadspec : float or numpy.ndarray, optional
-            Imaginary part of the cross spectrum, Im[C]. Cannot be specified together
-            with ``gamma``/``lag``. If float, constant across all frequencies.
+            Imaginary part of the cross spectrum, :math:`\mathrm{Im}[C]`. Cannot be
+            specified together with ``gamma``/``lag``. If float, constant across all
+            frequencies.
 
         Returns
         -------
@@ -1320,13 +1329,25 @@ class CrossSpectrumSimulator(Simulator):
         -----
         The method follows these steps at each Fourier frequency:
 
-        1. Reference transform: ``X = sqrt(P_X/2) * (A_r + i*B_r)``  [Eq. 9]
-        2. Transfer function: ``T = sqrt(P_Y*γ²/P_X) * exp(i*φ)``  [Eq. 15]
-        3. Normalization: ``K = sqrt((P_Y - P_X*|T|²)/2)``  [Eq. 12]
-        4. Dependent transform: ``Y = K*(H_r + i*J_r) + T*X``  [Eq. 10]
+        1. Reference transform [Eq. 9]:
 
-        where A_r, B_r, H_r, J_r are independent standard normal random variables.
-        When γ² = 1 the incoherent component vanishes and ``Y = T*X``.
+           .. math:: X = \sqrt{P_X / 2} \, (A_r + i B_r)
+
+        2. Transfer function [Eq. 15]:
+
+           .. math:: T = \sqrt{\frac{P_Y \gamma^2}{P_X}} \, e^{i\phi}
+
+        3. Normalization constant [Eq. 12]:
+
+           .. math:: K = \sqrt{\frac{P_Y - P_X |T|^2}{2}}
+
+        4. Dependent transform [Eq. 10]:
+
+           .. math:: Y = K (H_r + i J_r) + T X
+
+        where :math:`A_r, B_r, H_r, J_r` are independent standard normal random
+        variables. When :math:`\gamma^2 = 1` the incoherent component vanishes and
+        :math:`Y = T X`.
 
         References
         ----------
