@@ -658,7 +658,8 @@ class CrossSpectrumSimulator(Simulator):
     Extends :class:`Simulator` with the correlated Timmer-Koenig method from
     Larner, Nowak, & Wilms (2026), which generates two light curves whose
     cross-spectral properties (coherence :math:`\gamma^2` and phase lag
-    :math:`\phi`) match user-supplied models at every Fourier frequency.
+    :math:`\phi` or cospectrum :math:`\mathrm{Re}[C]` and quadrature spectrum 
+    :math:`\mathrm{Im}[C]`) match user-supplied models at every Fourier frequency.
 
     Parameters
     ----------
