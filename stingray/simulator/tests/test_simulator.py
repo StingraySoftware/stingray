@@ -627,6 +627,11 @@ class TestCrossSpectrumSimulator(object):
 
     # --- Construction and validation ---
 
+    def test_simulate_channel_raises(self):
+        """simulate_channel is disabled; users must use CS_simulate instead."""
+        with pytest.raises(NotImplementedError):
+            self.sim.simulate_channel("3-10keV", 2.0)
+
     def test_red_noise_gt1_raises(self):
         """CrossSpectrumSimulator does not support red_noise > 1."""
         with pytest.raises(NotImplementedError):
