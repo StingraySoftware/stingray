@@ -45,18 +45,12 @@ def simulate_times(lc, use_spline=False):
     >>> c = [100] * 3
     >>> lc = Lightcurve(t, c, gti=[[0, 2], [3, 4]], dt=1.)
     >>> times = simulate_times(lc, use_spline=True)
-    >>> np.all(np.diff(times) > 0)  # Output array is sorted
-    True
-    >>> np.all(times >= 0.)  # All times inside GTIs
-    True
-    >>> np.all(times <= 4.)
-    True
-    >>> np.any(times > 3.)
-    True
-    >>> np.any(times < 2.)
-    True
-    >>> np.any((times > 2.) & (times < 3.))  # No times outside GTIs
-    False
+    >>> assert np.all(np.diff(times) > 0)  # Output array is sorted
+    >>> assert np.all(times >= 0.)  # All times inside GTIs
+    >>> assert np.all(times <= 4.)
+    >>> assert np.any(times > 3.)
+    >>> assert np.any(times < 2.)
+    >>> assert not np.any((times > 2.) & (times < 3.))  # No times outside GTIs
     >>> lc.counts[0] = -3.
     >>> simulate_times(lc)  # Test with one negative value in the lc
     Traceback (most recent call last):
@@ -103,18 +97,12 @@ def simulate_times_from_count_array(time, counts, gti, dt, use_spline=False):
     >>> c = [100] * 5
     >>> gti = [[-0.5, 3.5], [4.5, 5.5]]
     >>> times = simulate_times_from_count_array(t, c, gti, 1, use_spline=True)
-    >>> np.all(np.diff(times) > 0)  # Output array is sorted
-    True
-    >>> np.all(times >= -0.5)  # All times inside GTIs
-    True
-    >>> np.all(times <= 5.5)
-    True
-    >>> np.any(times > 4.5)
-    True
-    >>> np.any(times < 3.5)
-    True
-    >>> np.any((times > 3.5) & (times < 4.5))  # No times outside GTIs
-    False
+    >>> assert np.all(np.diff(times) > 0)  # Output array is sorted
+    >>> assert np.all(times >= -0.5)  # All times inside GTIs
+    >>> assert np.all(times <= 5.5)
+    >>> assert np.any(times > 4.5)
+    >>> assert np.any(times < 3.5)
+    >>> assert not np.any((times > 3.5) & (times < 4.5))  # No times outside GTIs
     >>> # test that it works with integer times (former bug)
     >>> times = simulate_times_from_count_array([0, 1, 2, 3, 5], c, gti, 1, use_spline=True)
     >>> c[0] = -3.
@@ -123,9 +111,9 @@ def simulate_times_from_count_array(time, counts, gti, dt, use_spline=False):
         ...
     ValueError: simulate_times can only work with...
     """
-    time = np.asarray(time)
-    counts = np.asarray(counts).astype(float)
-    gti = np.asarray(gti)
+    time = np.asanyarray(time)
+    counts = np.asanyarray(counts).astype(float)
+    gti = np.asanyarray(gti)
     kind = "linear"
     if use_spline and time.size > 2:
         kind = "cubic"
@@ -196,16 +184,13 @@ def simulate_with_inverse_cdf(
     103
 
     No values were simulated between 0.25 and 0.5
-    >>> np.count_nonzero((vals > 0.25)&(vals < 0.5)) == 0
-    True
+    >>> assert np.count_nonzero((vals > 0.25)&(vals < 0.5)) == 0
 
     All values are between 0 and 1
-    >>> np.all((vals >= 0)&(vals < 1))
-    True
+    >>> assert np.all((vals >= 0)&(vals < 1))
 
     Values are sorted
-    >>> np.all(np.diff(vals)) >= 0
-    True
+    >>> assert np.all(np.diff(vals)) >= 0
 
     We should get exactly the same result by passing the edges.
     >>> vals = simulate_with_inverse_cdf([2, 0, 4, 3], 103,
@@ -213,12 +198,10 @@ def simulate_with_inverse_cdf(
     ...                                  interp_kind="linear", sorted=True)
 
     No values were simulated between 0.25 and 0.5
-    >>> np.count_nonzero((vals > 0.25)&(vals < 0.5)) == 0
-    True
+    >>> assert np.count_nonzero((vals > 0.25)&(vals < 0.5)) == 0
 
     All values are between 0 and 1
-    >>> np.all((vals >= 0)&(vals < 1))
-    True
+    >>> assert np.all((vals >= 0)&(vals < 1))
 
     Do not pass negative values in the binned PDF!
     >>> simulate_with_inverse_cdf([2, -1., 4], 10)
@@ -234,11 +217,10 @@ def simulate_with_inverse_cdf(
     14
 
     Values are sorted
-    >>> np.all(np.diff(vals)) >= 0
-    True
+    >>> assert np.all(np.diff(vals)) >= 0
 
     """
-    binned_pdf = np.asarray(binned_pdf).astype(float)
+    binned_pdf = np.asanyarray(binned_pdf).astype(float)
 
     if x_range is None:
         x_range = [0, 1]

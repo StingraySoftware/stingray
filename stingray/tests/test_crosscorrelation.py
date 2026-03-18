@@ -63,6 +63,11 @@ class TestCrossCorrelation(object):
         assert cr.n is None
         assert cr.auto is False
 
+    def test_almost_empty_works(self):
+        cs = CrossCorrelation()
+        cs.corr = np.array([660, 1790, 3026, 4019, 5164, 6647, 8105, 7023, 6012, 5162])
+        _ = cs.cal_timeshift(dt=0.5)
+
     def test_empty_cross_correlation_with_dt(self):
         cr = CrossCorrelation()
         with pytest.raises(StingrayError):

@@ -6,7 +6,6 @@ from scipy import stats
 from stingray.utils import simon
 from stingray.utils import vectorize, float64, float32, int32, int64
 
-
 __all__ = [
     "p_multitrial_from_single_trial",
     "p_single_trial_from_p_multitrial",
@@ -82,13 +81,11 @@ def equivalent_gaussian_Nsigma_from_logp(logp):
     >>> log_pvalues = np.log(np.array(pvalues))
     >>> sigmas = np.array([1, 3, 6, 8, 25])
     >>> # Single number
-    >>> np.isclose(equivalent_gaussian_Nsigma_from_logp(log_pvalues[0]),
-    ...            sigmas[0], atol=0.01)
-    True
+    >>> assert np.isclose(equivalent_gaussian_Nsigma_from_logp(log_pvalues[0]),
+    ...                   sigmas[0], atol=0.01)
     >>> # Array
-    >>> np.allclose(equivalent_gaussian_Nsigma_from_logp(log_pvalues),
-    ...             sigmas, atol=0.01)
-    True
+    >>> assert np.allclose(equivalent_gaussian_Nsigma_from_logp(log_pvalues),
+    ...                    sigmas, atol=0.01)
     """
     if logp < -300:
         # print("Extended")
@@ -111,20 +108,15 @@ def equivalent_gaussian_Nsigma(p):
 
     Examples
     --------
-    >>> np.isclose(equivalent_gaussian_Nsigma(0.15865525393145707), 1,
-    ...                                       atol=0.01)
-    True
-    >>> np.isclose(equivalent_gaussian_Nsigma(0.0013498980316301035), 3,
-    ...                                       atol=0.01)
-    True
-    >>> np.isclose(equivalent_gaussian_Nsigma(9.865877e-10), 6,
-    ...                                       atol=0.01)
-    True
-    >>> np.isclose(equivalent_gaussian_Nsigma(6.22096e-16), 8,
-    ...                                       atol=0.01)
-    True
-    >>> np.isclose(equivalent_gaussian_Nsigma(3.0567e-138), 25, atol=0.1)
-    True
+    >>> assert np.isclose(equivalent_gaussian_Nsigma(0.15865525393145707), 1,
+    ...                   atol=0.01)
+    >>> assert np.isclose(equivalent_gaussian_Nsigma(0.0013498980316301035), 3,
+    ...                   atol=0.01)
+    >>> assert np.isclose(equivalent_gaussian_Nsigma(9.865877e-10), 6,
+    ...                   atol=0.01)
+    >>> assert np.isclose(equivalent_gaussian_Nsigma(6.22096e-16), 8,
+    ...                   atol=0.01)
+    >>> assert np.isclose(equivalent_gaussian_Nsigma(3.0567e-138), 25, atol=0.1)
     """
     return equivalent_gaussian_Nsigma_from_logp(np.log(p))
 
@@ -188,11 +180,9 @@ def chi2_logp(chi2, dof):
     ValueError: The number of degrees of freedom cannot be < 2
     >>> # Test that approximate function works as expected. chi2 / dof > 15,
     >>> # but small and safe number in order to compare to scipy.stats
-    >>> np.isclose(chi2_logp(chi2, 2), stats.chi2.logsf(chi2, 2), atol=0.1)
-    True
+    >>> assert np.isclose(chi2_logp(chi2, 2), stats.chi2.logsf(chi2, 2), atol=0.1)
     >>> chi2 = np.array([5, 32])
-    >>> np.allclose(chi2_logp(chi2, 2), stats.chi2.logsf(chi2, 2), atol=0.1)
-    True
+    >>> assert np.allclose(chi2_logp(chi2, 2), stats.chi2.logsf(chi2, 2), atol=0.1)
     """
     if dof < 2:
         raise ValueError("The number of degrees of freedom cannot be < 2")
@@ -737,8 +727,7 @@ def pds_logprobability(level, ntrial=1, n_summed_spectra=1, n_rebin=1):
     >>> ntrial = np.random.randint(1, 10000, 10)
     >>> logp = pds_logprobability(powers, ntrial, nsummed, nrebin)
     >>> p = pds_probability(powers, ntrial, nsummed, nrebin)
-    >>> np.allclose(p, np.exp(logp))
-    True
+    >>> assert np.allclose(p, np.exp(logp))
     """
 
     epsilon_1 = chi2_logp(level * n_summed_spectra * n_rebin, 2 * n_summed_spectra * n_rebin)
@@ -773,10 +762,8 @@ def pds_detection_level(epsilon=0.01, ntrial=1, n_summed_spectra=1, n_rebin=1):
 
     Examples
     --------
-    >>> np.isclose(pds_detection_level(0.1), 4.6, atol=0.1)
-    True
-    >>> np.allclose(pds_detection_level(0.1, n_rebin=[1]), [4.6], atol=0.1)
-    True
+    >>> assert np.isclose(pds_detection_level(0.1), 4.6, atol=0.1)
+    >>> assert np.allclose(pds_detection_level(0.1, n_rebin=[1]), [4.6], atol=0.1)
     """
     epsilon = p_single_trial_from_p_multitrial(epsilon, ntrial)
     epsilon = epsilon.astype(np.double)
@@ -874,7 +861,7 @@ def classical_pvalue(power, nspec):
     # If the power is really big, it's safe to say it's significant,
     # and the p-value will be nearly zero
     if (power * nspec) > 30000:
-        simon("Probability of no signal too miniscule to calculate.")
+        simon("Probability of no signal too minuscule to calculate.")
         return 0.0
 
     else:
@@ -918,7 +905,7 @@ def _pavnosigfun(power, nspec):
     return sum
 
 
-def power_confidence_limits(preal, n=1, c=0.95):
+def power_confidence_limits(preal, n=1, c=0.95, summed_flag=True):
     """Confidence limits on power, given a (theoretical) signal power.
 
     This is to be used when we *expect* a given power (e.g. from the pulsed
@@ -942,23 +929,37 @@ def power_confidence_limits(preal, n=1, c=0.95):
         power in a QPO, or the n in Z^2_n
     c: float
         The confidence level (e.g. 0.95=95%)
+    summed_flag: bool
+        Whether the power is (if True) summed or (if False) averaged. Only
+        relevant if n > 1
 
     Returns
     -------
     pmeas: [float, float]
-        The upper and lower confidence interval (a, 1-a) on the measured power
+        The lower and upper bounds of the symmetric ``c``-level confidence
+        interval on the measured power
 
     Examples
     --------
-    >>> cl = power_confidence_limits(150, c=0.84)
-    >>> np.allclose(cl, [127, 176], atol=1)
-    True
+    >>> cl = power_confidence_limits(150, c=0.68, n=1, summed_flag=True)
+    >>> assert np.allclose(cl, [127, 176], atol=1)
+    >>> cl = power_confidence_limits(150, c=0.68, n=8, summed_flag=True)
+    >>> assert np.allclose(cl, [141, 190], atol=1)
+    >>> cl = power_confidence_limits(150, c=0.68, n=1, summed_flag=False)
+    >>> assert np.allclose(cl, [127, 176], atol=1)
+    >>> cl = power_confidence_limits(150, c=0.68, n=8, summed_flag=False)
+    >>> assert np.allclose(cl, [143, 160], atol=1)
     """
-    rv = stats.ncx2(2 * n, preal)
-    return rv.ppf([1 - c, c])
+    if summed_flag:
+        rv = stats.ncx2(2 * n, preal)
+        ints = rv.ppf([(1 - c) / 2, (1 + c) / 2])
+    else:
+        rv = stats.ncx2(2 * n, preal * n)
+        ints = rv.ppf([(1 - c) / 2, (1 + c) / 2]) / n
+    return ints
 
 
-def power_upper_limit(pmeas, n=1, c=0.95):
+def power_upper_limit(pmeas, n=1, c=0.95, summed_flag=True):
     """Upper limit on signal power, given a measured power in the PDS/Z search.
 
     Adapted from Vaughan et al. 1994, noting that, after appropriate
@@ -987,9 +988,15 @@ def power_upper_limit(pmeas, n=1, c=0.95):
     n: int
         The number of summed powers to obtain pmeas. It can be multiple
         harmonics of the PDS, adjacent bins in a PDS summed to collect all the
-        power in a QPO, or the n in Z^2_n
+        power in a QPO, the n in Z^2_n or the number of averaged PDS
     c: float
         The confidence value for the probability (e.g. 0.95 = 95%)
+    summed_flag: bool
+        If True, pmeas is the sum of n powers. If False, pmeas is the average
+        of n powers. This is relevant when dealing with averaged PDS, where
+        the powers are averaged rather than summed. For example, Z^2_n searches
+        deal with summed powers (i.e. summed_flag=True), while if power spectrum
+        is averaged to improve the statistics the summed_flag should be set to False.
 
     Returns
     -------
@@ -999,9 +1006,9 @@ def power_upper_limit(pmeas, n=1, c=0.95):
     Examples
     --------
     >>> pup = power_upper_limit(40, 1, 0.99)
-    >>> np.isclose(pup, 75, atol=2)
-    True
+    >>> assert np.isclose(pup, 75, atol=2)
     """
+    from scipy.optimize import brentq
 
     def ppf(x):
         rv = stats.ncx2(2 * n, x)
@@ -1011,20 +1018,34 @@ def power_upper_limit(pmeas, n=1, c=0.95):
         rv = stats.ncx2(2 * n, x)
         return rv.ppf(c)
 
-    def func_to_minimize(x, xmeas):
-        return np.abs(ppf(x) - xmeas)
+    if summed_flag:
+        pow = pmeas
+    else:
+        pow = pmeas * n
 
-    from scipy.optimize import minimize
+    def func_to_minimize(x):
+        return ppf(x) - pow
 
-    initial = isf(pmeas)
+    rv = stats.chi2(2 * n)
+    plow = rv.ppf(1 - c)
+    if pow < plow:
+        # Any power below plow is consistent with noise,
+        # so the upper limit on the signal power is 0.
+        return 0.0
 
-    res = minimize(func_to_minimize, [initial], pmeas, bounds=[(0, initial * 2)])
+    initial = isf(pow)
+    sol = brentq(func_to_minimize, 0, initial * 2)
 
-    return res.x[0]
+    if summed_flag:
+        return sol
+    else:
+        return sol / n
 
 
-def amplitude_upper_limit(pmeas, counts, n=1, c=0.95, fft_corr=False, nyq_ratio=0):
-    """Upper limit on a sinusoidal modulation, given a measured power in the PDS/Z search.
+def amplitude_upper_limit(
+    pmeas, counts, n=1, c=0.95, fft_corr=False, nyq_ratio=0, summed_flag=True
+):
+    r"""Upper limit on a sinusoidal modulation, given a measured power in the PDS/Z search.
 
     Eq. 10 in Vaughan+94 and `a_from_ssig`: they are equivalent but Vaughan+94
     corrects further for the response inside an FFT bin and at frequencies close
@@ -1056,7 +1077,7 @@ def amplitude_upper_limit(pmeas, counts, n=1, c=0.95, fft_corr=False, nyq_ratio=
     n: int
         The number of summed powers to obtain pmeas. It can be multiple
         harmonics of the PDS, adjacent bins in a PDS summed to collect all the
-        power in a QPO, or the n in Z^2_n
+        power in a QPO, the n in Z^2_n or the number of averaged PDS
     c: float
         The confidence value for the probability (e.g. 0.95 = 95%)
     fft_corr: bool
@@ -1068,6 +1089,12 @@ def amplitude_upper_limit(pmeas, counts, n=1, c=0.95, fft_corr=False, nyq_ratio=
         frequency. Important to know when dealing with FFTs, because the FFT
         response decays between 0 and f_Nyq similarly to the response inside
         a frequency bin: from 1 at 0 Hz to ~2/pi at f_Nyq
+    summed_flag: bool
+        If True, pmeas is the sum of n powers. If False, pmeas is the average
+        of n powers. This is relevant when dealing with averaged PDS, where
+        the powers are averaged rather than summed. For example, Z^2_n searches
+        deal with summed powers (i.e. summed_flag=True), while if power spectrum
+        is averaged to improve the statistics the summed_flag should be set to False.
 
     Returns
     -------
@@ -1078,14 +1105,12 @@ def amplitude_upper_limit(pmeas, counts, n=1, c=0.95, fft_corr=False, nyq_ratio=
     --------
     >>> aup = amplitude_upper_limit(40, 30000, 1, 0.99)
     >>> aup_nyq = amplitude_upper_limit(40, 30000, 1, 0.99, nyq_ratio=1)
-    >>> np.isclose(aup_nyq, aup / (2 / np.pi))
-    True
+    >>> assert np.isclose(aup_nyq, aup / (2 / np.pi))
     >>> aup_corr = amplitude_upper_limit(40, 30000, 1, 0.99, fft_corr=True)
-    >>> np.isclose(aup_corr, aup / np.sqrt(0.773))
-    True
+    >>> assert np.isclose(aup_corr, aup / np.sqrt(0.773))
     """
 
-    uplim = power_upper_limit(pmeas, n, c)
+    uplim = power_upper_limit(pmeas, n, c, summed_flag=summed_flag)
     a = a_from_ssig(uplim, counts)
     if fft_corr:
         factor = 1 / np.sqrt(0.773)
@@ -1137,8 +1162,7 @@ def pf_upper_limit(*args, **kwargs):
     Examples
     --------
     >>> pfup = pf_upper_limit(40, 30000, 1, 0.99)
-    >>> np.isclose(pfup, 0.13, atol=0.01)
-    True
+    >>> assert np.isclose(pfup, 0.13, atol=0.01)
     """
 
     return pf_from_a(amplitude_upper_limit(*args, **kwargs))
@@ -1218,8 +1242,7 @@ def a_from_ssig(ssig, ncounts):
 
     Examples
     --------
-    >>> a_from_ssig(150, 30000)
-    0.1
+    >>> assert np.isclose(a_from_ssig(150, 30000), 0.1)
     """
     return np.sqrt(2 * ssig / ncounts)
 
@@ -1231,8 +1254,7 @@ def ssig_from_pf(pf, ncounts):
 
     Examples
     --------
-    >>> round(ssig_from_pf(pf_from_a(0.1), 30000), 1)
-    150.0
+    >>> assert round(ssig_from_pf(pf_from_a(0.1), 30000), 1) == 150.0
     """
     a = a_from_pf(pf)
     return ncounts / 2 * a**2
@@ -1245,8 +1267,7 @@ def pf_from_ssig(ssig, ncounts):
 
     Examples
     --------
-    >>> round(a_from_pf(pf_from_ssig(150, 30000)), 1)
-    0.1
+    >>> assert np.isclose(round(a_from_pf(pf_from_ssig(150, 30000)), 1), 0.1)
     """
     a = a_from_ssig(ssig, ncounts)
     return pf_from_a(a)

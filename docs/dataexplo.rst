@@ -1,8 +1,9 @@
-Data Exploration
-****************
+More Data Exploration
+*********************
 
 These notebook tutorials show some ways to explore data with
 Stingray.
+
 
 A quick look at a NuSTAR observation
 ====================================
@@ -15,17 +16,18 @@ In this Tutorial, we will show an example quicklook of a NuSTAR observation.
 
    notebooks/DataQuickLook/Quicklook NuSTAR data with Stingray.ipynb
 
+A quick look of LAXPC data analysis
+===================================
 
-Spectral timing exploration with NICER
-======================================
-
-In this Tutorial, we will show an example spectral timing exploration of a
-black hole binary using NICER data.
+Stingray now can also read event files and GTI from AstroSat LAXPC mission.
+Here is a tutorial on how to load a test observation of Crab pulsar and work 
+with various aspects of LAXPC observation (e.g. energy dependent analysis, 
+layer dependent extraction, etc.)
 
 .. toctree::
    :maxdepth: 2
 
-   notebooks/Spectral Timing/Spectral Timing Exploration.ipynb
+   notebooks/LAXPC analysis/laxpc_analysis.ipynb
 
 
 Studying very slow variability with the Lomb-Scargle periodogram
@@ -38,3 +40,4 @@ periodogram and cross spectrum to study very slow variability in a light curve.
    :maxdepth: 2
 
    notebooks/LombScargle/Very slow variability with Lomb-Scargle methods.ipynb
+

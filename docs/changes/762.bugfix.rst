@@ -1,1 +1,0 @@
-Crossspectrum had "real" as default value. This meant that, for example, lags could not be calculated. Now the default value is "all", as it should be.

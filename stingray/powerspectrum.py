@@ -6,27 +6,20 @@ import numpy as np
 import scipy
 import scipy.optimize
 import scipy.stats
+import matplotlib.pyplot as plt
 
-import stingray.utils as utils
-from stingray.crossspectrum import AveragedCrossspectrum, Crossspectrum
-from stingray.gti import bin_intervals_from_gtis, check_gtis
-from stingray.stats import pds_probability, amplitude_upper_limit
+from stingray.crossspectrum import AveragedCrossspectrum, Crossspectrum, DynamicalCrossspectrum
+from stingray.stats import pds_probability, amplitude_upper_limit, pds_detection_level
 
 from .events import EventList
-from .gti import cross_two_gtis
+from .gti import cross_two_gtis, time_intervals_from_gtis, create_gti_mask
+
 from .lightcurve import Lightcurve
 from .fourier import avg_pds_from_iterable, unnormalize_periodograms
-from .fourier import avg_pds_from_events
-from .fourier import fftfreq, fft
+from .fourier import avg_pds_from_timeseries
 from .fourier import get_flux_iterable_from_segments
-from .fourier import rms_calculation, poisson_level
-
-try:
-    from tqdm import tqdm as show_progress
-except ImportError:
-
-    def show_progress(a, **kwargs):
-        return a
+from .fourier import poisson_level
+from .fourier import get_rms_from_unnorm_periodogram
 
 
 __all__ = ["Powerspectrum", "AveragedPowerspectrum", "DynamicalPowerspectrum"]
@@ -85,6 +78,12 @@ class Powerspectrum(Crossspectrum):
         binning, or averaging power spectra of segments of a light curve).
         Note that for a single realization (``m=1``) the error is equal to the
         power.
+
+    unnorm_power: numpy.ndarray
+        The array of unnormalized powers
+
+    unnorm_power_err: numpy.ndarray
+        The uncertainties of ``unnorm_power``.
 
     df: float
         The frequency resolution.
@@ -149,9 +148,7 @@ class Powerspectrum(Crossspectrum):
 
         return bin_ps
 
-    def compute_rms(
-        self, min_freq, max_freq, poisson_noise_level=None, white_noise_offset=None, deadtime=0.0
-    ):
+    def compute_rms(self, min_freq, max_freq, poisson_noise_level=None):
         """
         Compute the fractional rms amplitude in the power spectrum
         between two frequencies.
@@ -176,12 +173,6 @@ class Powerspectrum(Crossspectrum):
             this function using the same normalisation of the PDS
             and it will get subtracted from powers here.
 
-        white_noise_offset : float, default None
-            This is the white noise level, in Leahy normalization. In the ideal
-            case, this is 2. Dead time and other instrumental effects can alter
-            it. The user can fit the white noise level outside this function
-            and it will get subtracted from powers here.
-
         Returns
         -------
         rms: float
@@ -192,65 +183,36 @@ class Powerspectrum(Crossspectrum):
             The error on the fractional rms amplitude.
 
         """
-        minind = self.freq.searchsorted(min_freq)
-        maxind = self.freq.searchsorted(max_freq)
-        min_freq = self.freq[minind]
 
-        # To avoid corner case of searchsorted, where maxind goes out of the array
-        if maxind >= len(self.freq) - 1:
-            max_freq = self.freq[maxind - 1]
-        else:
-            max_freq = self.freq[maxind]
+        good = (self.freq >= min_freq) & (self.freq <= max_freq)
 
-        nphots = self.nphots
-        # distinguish the rebinned and non-rebinned case
+        M_freq = self.m
+        K_freq = self.k
+
+        if isinstance(self.k, Iterable):
+            K_freq = self.k[good]
+
         if isinstance(self.m, Iterable):
-            M_freq = self.m[minind:maxind]
-            K_freq = self.k[minind:maxind]
-            freq_bins = 1
-        else:
-            M_freq = self.m
-            K_freq = self.k
-            freq_bins = maxind - minind
-        T = self.dt * self.n
+            M_freq = self.m[good]
 
-        if white_noise_offset is not None:
-            powers = self.power[minind:maxind]
-            warnings.warn(
-                "the option white_noise_offset now deprecated and will be "
-                "removed in the next major release. The routine"
-                "is correct only with non-rebinned power-spectra.",
-                DeprecationWarning,
+        if poisson_noise_level is None:
+            poisson_noise_unnorm = poisson_level("none", n_ph=self.nphots)
+        else:
+            poisson_noise_unnorm = unnormalize_periodograms(
+                poisson_noise_level, self.dt, self.n, self.nphots, norm=self.norm
             )
 
-            if self.norm.lower() == "leahy":
-                powers_leahy = powers.copy()
-            else:
-                powers_leahy = self.unnorm_power[minind:maxind].real * 2 / nphots
+        rms, rmse = get_rms_from_unnorm_periodogram(
+            self.unnorm_power[good],
+            self.nphots,
+            self.df * K_freq,
+            M=M_freq,
+            poisson_noise_unnorm=poisson_noise_unnorm,
+            segment_size=self.segment_size,
+            kind="frac",
+        )
 
-            rms = np.sqrt(np.sum(powers_leahy - white_noise_offset) / nphots)
-            rms_err = self._rms_error(powers_leahy)
-            return rms, rms_err
-
-        else:
-            if poisson_noise_level is None:
-                poisson_noise_unnorm = poisson_level("none", n_ph=self.nphots)
-            else:
-                poisson_noise_unnorm = unnormalize_periodograms(
-                    poisson_noise_level, self.dt, self.n, self.nphots, norm=self.norm
-                )
-            return rms_calculation(
-                self.unnorm_power[minind:maxind],
-                min_freq,
-                max_freq,
-                self.nphots,
-                T,
-                M_freq,
-                K_freq,
-                freq_bins,
-                poisson_noise_unnorm,
-                deadtime,
-            )
+        return rms, rmse
 
     def _rms_error(self, powers):
         r"""
@@ -421,8 +383,10 @@ class Powerspectrum(Crossspectrum):
         >>> pds.power = np.array([100000, 1, 1, 40, 1])
         >>> pds.m = 1
         >>> pds.nphots = 30000
-        >>> pds.modulation_upper_limit(fmin=2, fmax=5, c=0.99)
-        0.1016...
+        >>> assert np.isclose(
+        ...     pds.modulation_upper_limit(fmin=2, fmax=5, c=0.99),
+        ...     0.10164,
+        ...     atol=0.0001)
         """
 
         pds = self
@@ -444,10 +408,16 @@ class Powerspectrum(Crossspectrum):
         maximum_val = np.argmax(power)
         nyq_ratio = freq[maximum_val] / fnyq
 
-        # I multiply by M because the formulas from Vaughan+94 treat summed
-        # powers, while here we have averaged powers.
+        # Since we have averaged powerspectra of segments, we need to set summed_flag to False.
+        # Check power_upper_limit/amplitude_upper_limit functions for more details.
         return amplitude_upper_limit(
-            power[maximum_val] * pds.m, pds.nphots, n=pds.m, c=c, nyq_ratio=nyq_ratio, fft_corr=True
+            power[maximum_val],
+            pds.nphots,
+            n=pds.m,
+            c=c,
+            nyq_ratio=nyq_ratio,
+            fft_corr=True,
+            summed_flag=False,
         )
 
     @staticmethod
@@ -502,7 +472,14 @@ class Powerspectrum(Crossspectrum):
 
     @staticmethod
     def from_events(
-        events, dt, segment_size=None, gti=None, norm="frac", silent=False, use_common_mean=True
+        events,
+        dt,
+        segment_size=None,
+        gti=None,
+        norm="frac",
+        silent=False,
+        use_common_mean=True,
+        save_all=False,
     ):
         """
         Calculate an average power spectrum from an event list.
@@ -538,6 +515,8 @@ class Powerspectrum(Crossspectrum):
             to calculate it on a per-segment basis.
         silent : bool, default False
             Silence the progress bars.
+        save_all : bool, default False
+            Save all intermediate PDSs used for the final average.
         """
         if gti is None:
             gti = events.gti
@@ -549,11 +528,79 @@ class Powerspectrum(Crossspectrum):
             norm=norm,
             silent=silent,
             use_common_mean=use_common_mean,
+            save_all=save_all,
+        )
+
+    @staticmethod
+    def from_stingray_timeseries(
+        ts,
+        flux_attr,
+        error_flux_attr=None,
+        segment_size=None,
+        norm="none",
+        silent=False,
+        use_common_mean=True,
+        gti=None,
+        save_all=False,
+    ):
+        """Calculate AveragedPowerspectrum from a time series.
+
+        Parameters
+        ----------
+        ts : `stingray.Timeseries`
+            Input Time Series
+        flux_attr : `str`
+            What attribute of the time series will be used.
+
+        Other parameters
+        ----------------
+        error_flux_attr : `str`
+            What attribute of the time series will be used as error bar.
+        segment_size : float
+            The length, in seconds, of the light curve segments that will be averaged.
+            Only relevant (and required) for AveragedCrossspectrum
+        norm : str, default "frac"
+            The normalization of the periodogram. "abs" is absolute rms, "frac" is
+            fractional rms, "leahy" is Leahy+83 normalization, and "none" is the
+            unnormalized periodogram
+        use_common_mean : bool, default True
+            The mean of the light curve can be estimated in each interval, or on
+            the full light curve. This gives different results (Alston+2013).
+            Here we assume the mean is calculated on the full light curve, but
+            the user can set ``use_common_mean`` to False to calculate it on a
+            per-segment basis.
+        silent : bool, default False
+            Silence the progress bars
+        gti: [[gti0_0, gti0_1], [gti1_0, gti1_1], ...]
+            Good Time intervals. Defaults to the common GTIs from the two input
+            objects. Could throw errors if these GTIs have overlaps with the
+            input object GTIs! If you're getting errors regarding your GTIs,
+            don't  use this and only give GTIs to the input objects before
+            making the cross spectrum.
+        save_all : bool, default False
+            Save all intermediate PDSs used for the final average.
+        """
+        return powerspectrum_from_timeseries(
+            ts,
+            flux_attr=flux_attr,
+            error_flux_attr=error_flux_attr,
+            segment_size=segment_size,
+            norm=norm,
+            silent=silent,
+            use_common_mean=use_common_mean,
+            gti=gti,
+            save_all=save_all,
         )
 
     @staticmethod
     def from_lightcurve(
-        lc, segment_size=None, gti=None, norm="frac", silent=False, use_common_mean=True
+        lc,
+        segment_size=None,
+        gti=None,
+        norm="frac",
+        silent=False,
+        use_common_mean=True,
+        save_all=False,
     ):
         """
         Calculate a power spectrum from a light curve.
@@ -589,6 +636,8 @@ class Powerspectrum(Crossspectrum):
             to calculate it on a per-segment basis.
         silent : bool, default False
             Silence the progress bars.
+        save_all : bool, default False
+            Save all intermediate PDSs used for the final average.
         """
         if gti is None:
             gti = lc.gti
@@ -599,11 +648,19 @@ class Powerspectrum(Crossspectrum):
             norm=norm,
             silent=silent,
             use_common_mean=use_common_mean,
+            save_all=save_all,
         )
 
     @staticmethod
     def from_lc_iterable(
-        iter_lc, dt, segment_size=None, gti=None, norm="frac", silent=False, use_common_mean=True
+        iter_lc,
+        dt,
+        segment_size=None,
+        gti=None,
+        norm="frac",
+        silent=False,
+        use_common_mean=True,
+        save_all=False,
     ):
         """
         Calculate the average power spectrum of an iterable collection of
@@ -640,6 +697,8 @@ class Powerspectrum(Crossspectrum):
             to calculate it on a per-segment basis.
         silent : bool, default False
             Silence the progress bars.
+        save_all : bool, default False
+            Save all intermediate PDSs used for the final average.
         """
 
         return powerspectrum_from_lc_iterable(
@@ -650,6 +709,7 @@ class Powerspectrum(Crossspectrum):
             norm=norm,
             silent=silent,
             use_common_mean=use_common_mean,
+            save_all=save_all,
         )
 
     def _initialize_from_any_input(
@@ -788,8 +848,7 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
         The array of mid-bin frequencies that the Fourier transform samples.
 
     power: numpy.ndarray
-        The array of normalized squared absolute values of Fourier
-        amplitudes.
+        The array of normalized powers
 
     power_err: numpy.ndarray
         The uncertainties of ``power``.
@@ -798,6 +857,12 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
         binning, or averaging power spectra of segments of a light curve).
         Note that for a single realization (``m=1``) the error is equal to the
         power.
+
+    unnorm_power: numpy.ndarray
+        The array of unnormalized powers
+
+    unnorm_power_err: numpy.ndarray
+        The uncertainties of ``unnorm_power``.
 
     df: float
         The frequency resolution.
@@ -811,6 +876,8 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
     nphots: float
         The total number of photons in the light curve.
 
+    cs_all: list of :class:`Powerspectrum` objects
+        The list of all periodograms used to calculate the average periodogram.
     """
 
     def __init__(
@@ -885,7 +952,7 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
         return AveragedCrossspectrum.initial_checks(self, *args, **kwargs)
 
 
-class DynamicalPowerspectrum(AveragedPowerspectrum):
+class DynamicalPowerspectrum(DynamicalCrossspectrum):
     type = "powerspectrum"
     """
     Create a dynamical power spectrum, also often called a *spectrogram*.
@@ -902,7 +969,7 @@ class DynamicalPowerspectrum(AveragedPowerspectrum):
     ----------
     lc : :class:`stingray.Lightcurve` or :class:`stingray.EventList` object
         The time series or event list of which the dynamical power spectrum is
-        to be calculated.
+        to be calculated. If :class:`stingray.EventList`, ``dt`` must be specified as well.
 
     segment_size : float, default 1
          Length of the segment of light curve, default value is 1 (in whatever
@@ -920,6 +987,11 @@ class DynamicalPowerspectrum(AveragedPowerspectrum):
         object GTIs! If you're getting errors regarding your GTIs, don't
         use this and only give GTIs to the input object before making
         the power spectrum.
+
+    sample_time: float
+        Compulsory for input :class:`stingray.EventList` data. The time resolution of the
+        lightcurve that is created internally from the input event lists. Drives the
+        Nyquist frequency.
 
     Attributes
     ----------
@@ -940,30 +1012,100 @@ class DynamicalPowerspectrum(AveragedPowerspectrum):
     freq: numpy.ndarray
         The array of mid-bin frequencies that the Fourier transform samples.
 
+    time: numpy.ndarray
+        The array of mid-point times of each interval used for the dynamical
+        power spectrum.
+
     df: float
         The frequency resolution.
 
     dt: float
-        The time resolution.
+        The time resolution of the dynamical spectrum. It is **not** the time resolution of the
+        input light curve. It is the integration time of each line of the dynamical power
+        spectrum (typically, an integer multiple of ``segment_size``).
+
+    m: int
+        The number of averaged cross spectra.
     """
 
-    def __init__(self, lc, segment_size, norm="frac", gti=None, dt=None):
-        if isinstance(lc, EventList) and dt is None:
-            raise ValueError("To pass an input event lists, please specify dt")
+    def __init__(self, lc=None, segment_size=None, norm="frac", gti=None, sample_time=None):
+        self.segment_size = segment_size
+        self.sample_time = sample_time
+        self.gti = gti
+        self.norm = norm
 
-        if isinstance(lc, EventList):
-            lc = lc.to_lc(dt)
+        if segment_size is None and lc is None:
+            self._initialize_empty()
+            self.dyn_ps = None
+            return
 
-        if segment_size < 2 * lc.dt:
-            raise ValueError("Length of the segment is too short to form a " "light curve!")
-        elif segment_size > lc.tseg:
-            raise ValueError(
-                "Length of the segment is too long to create " "any segments of the light curve!"
-            )
-        AveragedPowerspectrum.__init__(
-            self, data=lc, segment_size=segment_size, norm=norm, gti=gti, dt=dt
-        )
+        if segment_size is None or lc is None:
+            raise TypeError("lc and segment_size must all be specified")
+
+        if isinstance(lc, EventList) and sample_time is None:
+            raise ValueError("To pass an input event lists, please specify sample_time")
+        elif isinstance(lc, Lightcurve):
+            sample_time = lc.dt
+            if segment_size > lc.tseg:
+                raise ValueError(
+                    "Length of the segment is too long to create "
+                    "any segments of the light curve!"
+                )
+        if segment_size < 2 * sample_time:
+            raise ValueError("Length of the segment is too short to form a light curve!")
+
         self._make_matrix(lc)
+
+    def shift_and_add(self, f0_list, nbins=100, rebin=None):
+        """Shift-and-add the dynamical power spectrum.
+
+        This is the basic operation for the shift-and-add operation used to track
+        kHz QPOs in X-ray binaries (e.g. Méndez et al. 1998, ApJ, 494, 65).
+
+        Parameters
+        ----------
+        freqs : np.array
+            Array of frequencies, the same for all powers. Must be sorted and on a uniform
+            grid.
+        power_list : list of np.array
+            List of power spectra. Each power spectrum must have the same length
+            as the frequency array.
+        f0_list : list of float
+            List of central frequencies
+
+        Other parameters
+        ----------------
+        nbins : int, default 100
+            Number of bins to extract
+        rebin : int, default None
+            Rebin the final spectrum by this factor. At the moment, the rebinning
+            is linear.
+
+        Returns
+        -------
+        output: :class:`AveragedPowerspectrum`
+            The final averaged power spectrum.
+
+        Examples
+        --------
+        >>> power_list = [[2, 5, 2, 2, 2], [1, 1, 5, 1, 1], [3, 3, 3, 5, 3]]
+        >>> power_list = np.array(power_list).T
+        >>> freqs = np.arange(5) * 0.1
+        >>> f0_list = [0.1, 0.2, 0.3, 0.4]
+        >>> dps = DynamicalPowerspectrum()
+        >>> dps.dyn_ps = power_list
+        >>> dps.freq = freqs
+        >>> dps.df = 0.1
+        >>> dps.m = 1
+        >>> output = dps.shift_and_add(f0_list, nbins=5)
+        >>> assert isinstance(output, AveragedPowerspectrum)
+        >>> assert np.array_equal(output.m, [2, 3, 3, 3, 2])
+        >>> assert np.array_equal(output.power, [2. , 2. , 5. , 2. , 1.5])
+        >>> assert np.allclose(output.freq, [0.05, 0.15, 0.25, 0.35, 0.45])
+        """
+        return super().shift_and_add(
+            f0_list, nbins=nbins, output_obj_type=AveragedPowerspectrum, rebin=rebin
+        )
 
     def _make_matrix(self, lc):
         """
@@ -978,142 +1120,272 @@ class DynamicalPowerspectrum(AveragedPowerspectrum):
             power spectrum.
         """
         avg = AveragedPowerspectrum(
-            lc, segment_size=self.segment_size, norm=self.norm, gti=self.gti, save_all=True
+            lc,
+            dt=self.sample_time,
+            segment_size=self.segment_size,
+            norm=self.norm,
+            gti=self.gti,
+            save_all=True,
         )
+        conv = avg.cs_all / avg.unnorm_cs_all
+        self.unnorm_conversion = np.nanmean(conv)
         self.dyn_ps = np.array(avg.cs_all).T
-
         self.freq = avg.freq
         current_gti = avg.gti
 
-        start_inds, end_inds = bin_intervals_from_gtis(
-            current_gti, self.segment_size, lc.time, dt=lc.dt
+        tstart, _ = time_intervals_from_gtis(current_gti, self.segment_size)
+
+        self.time = tstart + 0.5 * self.segment_size
+        self.df = avg.df
+        self.dt = self.segment_size
+        self.meanrate = avg.nphots / avg.n / avg.dt
+        self.nphots = avg.nphots
+        self.m = 1
+
+    def power_colors(
+        self,
+        freq_edges=[1 / 256, 1 / 32, 0.25, 2.0, 16.0],
+        freqs_to_exclude=None,
+        poisson_power=None,
+    ):
+        """
+        Return the power colors of the dynamical power spectrum.
+
+        Parameters
+        ----------
+        freq_edges: iterable
+            The edges of the frequency bins to be used for the power colors.
+
+        freqs_to_exclude : 1-d or 2-d iterable, optional, default None
+            The ranges of frequencies to exclude from the calculation of the power color.
+            For example, the frequencies containing strong QPOs.
+            A 1-d iterable should contain two values for the edges of a single range. (E.g.
+            ``[0.1, 0.2]``). ``[[0.1, 0.2], [3, 4]]`` will exclude the ranges 0.1-0.2 Hz and
+            3-4 Hz.
+
+        poisson_level : float or iterable, optional
+            Defaults to the theoretical Poisson noise level (e.g. 2 for Leahy normalization).
+            The Poisson noise level of the power spectrum. If iterable, it should have the same
+            length as ``frequency``. (This might apply to the case of a power spectrum with a
+            strong dead time distortion)
+
+        Returns
+        -------
+        pc0: np.ndarray
+        pc0_err: np.ndarray
+        pc1: np.ndarray
+        pc1_err: np.ndarray
+            The power colors for each spectrum and their respective errors
+        """
+        if poisson_power is None:
+            poisson_power = poisson_level(
+                norm=self.norm,
+                meanrate=self.meanrate,
+                n_ph=self.nphots,
+            )
+
+        return super().power_colors(
+            freq_edges=freq_edges,
+            freqs_to_exclude=freqs_to_exclude,
+            poisson_power=poisson_power,
         )
 
-        tstart = lc.time[start_inds]
-        tend = lc.time[end_inds]
 
-        self.time = tstart + 0.5 * (tend - tstart)
+class GtiCorrPowerspectrum(Powerspectrum):
+    main_array_attr = "freq"
+    type = "powerspectrum"
 
-        # Assign length of lightcurve as time resolution if only one value
-        if len(self.time) > 1:
-            self.dt = self.time[1] - self.time[0]
+    """Calculate the power spectrum of gappy light curves.
+
+    GtiCorrPowerspectrum computes the power spectrum of gappy light curves,
+    cleaning up the frequencies that are more affected by gaps.
+    Optionally, it fills bad time intervals (BTIs) with the mean count rate from
+    good time intervals (GTIs), mitigating window-induced features in the periodogram.
+    By analyzing the visibility light curve (synthetic light curve with constant mean
+    counts in GTIs), the class identifies strong peaks in the periodogram that correspond to
+    the missing data and applies notch filtering to the power spectrum to remove these
+    frequencies.
+    Additionally, it rescales the power spectrum to account for the number of bins in and out GTIs,
+    ensuring accurate white noise and rms estimation.
+
+    The detailed explanation of the method is given in
+    `El Byad et al. 2025 <https://arxiv.org/pdf/2505.16921>`__
+
+    Parameters
+    ----------
+    *args:
+        Any arguments that can be passed to ``Powerspectrum``
+
+    Other Parameters
+    ----------------
+    fill_lc: boolean, optional, default ``True``
+        If True, fill the BTIs of the light curve with the mean value of the counts in the GTIs.
+        Recommended.
+
+    sigma_threshold: float, optional, default ``3``
+        The sigma threshold for the detection of features in the power spectrum of the observing
+        window.
+
+    **kwargs:
+        Any other keyword arguments that can be passed to ``Powerspectrum``
+
+    Attributes
+    ----------
+    freq: numpy.ndarray
+        The array of mid-bin frequencies that the Fourier transform samples
+
+    power: numpy.ndarray
+        The array of power values
+
+    power_err: numpy.ndarray
+        The uncertainties of ``power``.
+        An approximation for each bin given by ``power_err= power/sqrt(m)``.
+        Where ``m`` is the number of power averaged in each bin (by frequency
+        binning, or averaging more than one spectra). Note that for a single
+        realization (``m=1``) the error is equal to the power.
+
+    df: float
+        The frequency resolution
+
+    m: int
+        The number of averaged cross-spectra amplitudes in each bin.
+
+    n: int
+        The number of data points/time bins in one segment of the light
+        curves.
+
+    k: array of int
+        The rebinning scheme if the object has been rebinned otherwise is set to 1.
+
+    nphots: float
+        The total number of photons in light curve
+
+    """
+
+    def __init__(self, *args, fill_lc=True, sigma_threshold=3, **kwargs):
+        dt = kwargs.pop("dt", None)
+        skip_checks = kwargs.pop("skip_checks", False)
+
+        if len(args) == 0:
+            self.lc = None
+        elif isinstance(args[0], EventList):
+            self.lc = args[0].to_lc(dt)
         else:
-            self.dt = lc.n
+            self.lc = args[0]
+            if dt is None:
+                dt = self.lc.dt
 
-        # Assign biggest freq. resolution if only one value
-        if len(self.freq) > 1:
-            self.df = self.freq[1] - self.freq[0]
-        else:
-            self.df = 1 / lc.n
+        if fill_lc:
+            self.fill_lc_with_mean()
 
-    def rebin_frequency(self, df_new, method="sum"):
-        """
-        Rebin the Dynamic Power Spectrum to a new frequency resolution.
-        Rebinning is an in-place operation, i.e. will replace the existing
-        ``dyn_ps`` attribute.
+        self.sigma_threshold = sigma_threshold
+        if not skip_checks:
+            self.initial_checks(*args, dt=dt, **kwargs)
 
-        While the new resolution need not be an integer multiple of the
-        previous frequency resolution, be aware that if it is not, the last
-        bin will be cut off by the fraction left over by the integer division.
+        super().__init__(self.lc, *args[1:], dt=dt, **kwargs, skip_checks=True)
 
-        Parameters
-        ----------
-        df_new: float
-            The new frequency resolution of the dynamical power spectrum.
-            Must be larger than the frequency resolution of the old dynamical
-            power spectrum!
+        self.mjdref = None
+        if hasattr(self.lc, "mjdref"):
+            self.mjdref = self.lc.mjdref
 
-        method: {"sum" | "mean" | "average"}, optional, default "sum"
-            This keyword argument sets whether the counts in the new bins
-            should be summed or averaged.
-        """
-        new_dynspec_object = copy.deepcopy(self)
-        dynspec_new = []
-        for data in self.dyn_ps.T:
-            freq_new, bin_counts, bin_err, _ = utils.rebin_data(
-                self.freq, data, dx_new=df_new, method=method
+        if len(args) == 0:
+            self.mask = None
+            return
+
+        if fill_lc:
+            lc_mask = create_gti_mask(self.lc.time, self.lc.gti)
+            self.power *= lc_mask.size / np.count_nonzero(lc_mask)
+
+        self.mask = np.ones(self.power.size, dtype=bool)
+
+    def initial_checks(self, *args, **kwargs):
+        if self.lc is not None and not np.allclose(np.diff(self.lc.time), self.lc.dt):
+            raise ValueError(
+                "The time array in the light curve is not evenly spaced. "
+                "This is not supported by GtiCorrPowerspectrum."
             )
-            dynspec_new.append(bin_counts)
 
-        new_dynspec_object.freq = freq_new
-        new_dynspec_object.dyn_ps = np.array(dynspec_new).T
-        new_dynspec_object.df = df_new
-        return new_dynspec_object
+    def fill_lc_with_mean(self):
+        if self.lc is None:
+            return
 
-    def trace_maximum(self, min_freq=None, max_freq=None):
-        """
-        Return the indices of the maximum powers in each segment
-        :class:`Powerspectrum` between specified frequencies.
+        mask = create_gti_mask(self.lc.time, self.lc.gti)
+        self.lc.counts = self.lc.counts.astype(float)
+        self.lc.counts[~mask] = np.mean(self.lc.counts[mask])
+
+    def clean_gti_features(self, plot=False, figname="gti_features"):
+        gti = getattr(self, "gti", None)
+        if gti is None:
+            raise AttributeError("GTI attribute is not set for this object.")
+        exposure = np.sum(gti[:, 1] - gti[:, 0])
+        ref_ctrate = self.nphots / exposure
+        self.exposure = exposure
+
+        lc = copy.deepcopy(self.lc)
+        lc.gti = np.array([[gti[0, 0], gti[-1, 1]]])
+        mask = create_gti_mask(lc.time, gti)
+        lc.counts = lc.counts.astype(float)
+        lc.counts[~mask] = 0
+        lc.counts[mask] = ref_ctrate * lc.dt
+
+        ps_gti = Powerspectrum(lc, norm="leahy")
+
+        # Correct the PS level to overcome the Nph from filling the lc with mean
+        prob = scipy.stats.norm.cdf(-self.sigma_threshold)
+        thresh = pds_detection_level(prob)
+
+        bad = ps_gti.power > thresh
+        if plot:
+            self._plot_gti_features(ps_gti, thresh, figname)
+        self.mask = self.mask & ~bad
+        newpow = self.apply_mask(self.mask)
+        return newpow
+
+    def _plot_gti_features(self, ps_gti, thresh, figname):
+        """Plot the features in the power spectrum of the GTI-corrected light curve.
+
+        This method generates a log-log plot of the power spectrum and saves it as a JPEG file.
 
         Parameters
         ----------
-        min_freq: float, default ``None``
-            The lower frequency bound.
+        ps_gti : Powerspectrum
+            The power spectrum of the synthetic light curve having the mean counts inside GTIs
+            and 0 outside.
+        thresh : float
+            The threshold value for the power spectrum, above which features are considered significant.
+        figname : str
+            The name of the figure file to be saved (without extension).
+        """
+        fig = plt.figure(figname)
+        plt.loglog(ps_gti.freq, ps_gti.power)
+        plt.axhline(thresh)
+        plt.xlabel("Frequency (Hz)")
+        plt.ylabel(f"Power {ps_gti.norm}")
+        plt.savefig(figname + ".jpg")
+        plt.close(fig)
 
-        max_freq: float, default ``None``
-            The upper frequency bound.
+    def rebin_log(self, *args, **kwargs):
+        """Rebin the power spectrum logarithmically and filter out NaN values.
+
+        This method overrides the parent class's `rebin_log` method by applying a mask
+        to remove any bins where the rebinned power is NaN.
+
+        Parameters
+        ----------
+        *args : tuple
+            Positional arguments passed to the parent class's `rebin_log` method.
+        **kwargs : dict
+            Keyword arguments passed to the parent class's `rebin_log` method.
 
         Returns
         -------
-        max_positions : np.array
-            The array of indices of the maximum power in each segment having
-            frequency between ``min_freq`` and ``max_freq``.
+        GtiCorrPowerspectrum
+            A new power spectrum object with rebinned frequencies and powers,
+            with NaN values filtered out.
         """
-        if min_freq is None:
-            min_freq = np.min(self.freq)
-        if max_freq is None:
-            max_freq = np.max(self.freq)
-
-        max_positions = []
-        for ps in self.dyn_ps.T:
-            indices = np.logical_and(self.freq <= max_freq, min_freq <= self.freq)
-            max_power = np.max(ps[indices])
-            max_positions.append(np.where(ps == max_power)[0][0])
-
-        return np.array(max_positions)
-
-    def rebin_time(self, dt_new, method="sum"):
-        """
-        Rebin the Dynamic Power Spectrum to a new time resolution.
-        While the new resolution need not be an integer multiple of the
-        previous time resolution, be aware that if it is not, the last bin
-        will be cut off by the fraction left over by the integer division.
-
-        Parameters
-        ----------
-        dt_new: float
-            The new time resolution of  the dynamical power spectrum.
-            Must be larger than the time resolution of the old dynamical power
-            spectrum!
-
-        method: {"sum" | "mean" | "average"}, optional, default "sum"
-            This keyword argument sets whether the counts in the new bins
-            should be summed or averaged.
-
-        Returns
-        -------
-        time_new: numpy.ndarray
-            Time axis with new rebinned time resolution.
-
-        dynspec_new: numpy.ndarray
-            New rebinned Dynamical Power Spectrum.
-        """
-        if dt_new < self.dt:
-            raise ValueError("New time resolution must be larger than " "old time resolution!")
-
-        new_dynspec_object = copy.deepcopy(self)
-
-        dynspec_new = []
-        for data in self.dyn_ps:
-            time_new, bin_counts, bin_err, _ = utils.rebin_data(
-                self.time, data, dt_new, method=method
-            )
-            dynspec_new.append(bin_counts)
-
-        new_dynspec_object.time = time_new
-        new_dynspec_object.dyn_ps = np.array(dynspec_new)
-        new_dynspec_object.dt = dt_new
-        return new_dynspec_object
+        new_ps = Powerspectrum.rebin_log(self, *args, **kwargs)
+        mask = ~np.isnan(new_ps.power)
+        return new_ps.apply_mask(mask)
 
 
 def powerspectrum_from_time_array(
@@ -1172,7 +1444,7 @@ def powerspectrum_from_time_array(
     force_averaged = segment_size is not None
     # Suppress progress bar for single periodogram
     silent = silent or (segment_size is None)
-    table = avg_pds_from_events(
+    table = avg_pds_from_timeseries(
         times,
         gti,
         segment_size,
@@ -1241,6 +1513,9 @@ def powerspectrum_from_events(
     """
     if gti is None:
         gti = events.gti
+
+    dt = events.suggest_compatible_dt(dt)
+
     return powerspectrum_from_time_array(
         events.time,
         dt,
@@ -1261,11 +1536,8 @@ def powerspectrum_from_lightcurve(
 
     Parameters
     ----------
-    events : `stingray.Lightcurve`
+    lc : `stingray.Lightcurve`
         Light curve to be analyzed.
-    dt : float
-        The time resolution of the intermediate light curves
-        (sets the Nyquist frequency)
 
     Other parameters
     ----------------
@@ -1308,7 +1580,7 @@ def powerspectrum_from_lightcurve(
     if gti is None:
         gti = lc.gti
 
-    table = avg_pds_from_events(
+    table = avg_pds_from_timeseries(
         lc.time,
         gti,
         segment_size,
@@ -1322,6 +1594,86 @@ def powerspectrum_from_lightcurve(
     )
 
     return _create_powerspectrum_from_result_table(table, force_averaged=force_averaged)
+
+
+def powerspectrum_from_timeseries(
+    ts,
+    flux_attr,
+    error_flux_attr=None,
+    segment_size=None,
+    norm="none",
+    silent=False,
+    use_common_mean=True,
+    gti=None,
+    save_all=False,
+):
+    """Calculate power spectrum from a time series
+
+    Parameters
+    ----------
+    ts : `stingray.StingrayTimeseries`
+        Input time series
+    flux_attr : `str`
+        What attribute of the time series will be used.
+
+    Other parameters
+    ----------------
+    error_flux_attr : `str`
+        What attribute of the time series will be used as error bar.
+    segment_size : float
+        The length, in seconds, of the light curve segments that will be
+        averaged. Only required (and used) for ``AveragedPowerspectrum``.
+    gti : ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``
+        Additional, optional Good Time intervals that get intersected with
+        the GTIs of the input object. Can cause errors if there are
+        overlaps between these GTIs and the input object GTIs. If that
+        happens, assign the desired GTIs to the input object.
+    norm : str, default "frac"
+        The normalization of the periodogram. `abs` is absolute rms, `frac`
+        is fractional rms, `leahy` is Leahy+83 normalization, and `none` is
+        the unnormalized periodogram.
+    use_common_mean : bool, default True
+        The mean of the light curve can be estimated in each interval, or
+        on the full light curve. This gives different results
+        (Alston+2013). By default, we assume the mean is calculated on the
+        full light curve, but the user can set ``use_common_mean`` to False
+        to calculate it on a per-segment basis.
+    silent : bool, default False
+        Silence the progress bars.
+    save_all : bool, default False
+        Save all intermediate PDSs used for the final average. Use with care.
+        This is likely to fill up your RAM on medium-sized datasets, and to
+        slow down the computation when rebinning.
+
+    Returns
+    -------
+    spec : `AveragedCrossspectrum` or `Crossspectrum`
+        The output cross spectrum.
+    """
+    force_averaged = segment_size is not None
+    # Suppress progress bar for single periodogram
+    silent = silent or (segment_size is None)
+    if gti is None:
+        gti = ts.gti
+
+    err = None
+    if error_flux_attr is not None:
+        err = getattr(ts, error_flux_attr)
+
+    results = avg_pds_from_timeseries(
+        ts.time,
+        gti,
+        segment_size,
+        ts.dt,
+        norm=norm,
+        use_common_mean=use_common_mean,
+        silent=silent,
+        fluxes=getattr(ts, flux_attr),
+        errors=err,
+        return_subcs=save_all,
+    )
+
+    return _create_powerspectrum_from_result_table(results, force_averaged=force_averaged)
 
 
 def powerspectrum_from_lc_iterable(

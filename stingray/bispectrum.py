@@ -179,7 +179,7 @@ class Bispectrum(object):
             self.window_name = window
             self.window = self._get_window()
 
-        # Other Atributes
+        # Other Attributes
         self.lags = None
         self.cum3 = None
         self.freq = None
@@ -219,7 +219,7 @@ class Bispectrum(object):
 
         # 2d window function to apply to bispectrum
         row = np.concatenate(([window[0]], np.zeros(2 * self.maxlag)))
-        toep_matrix = toeplitz(window, row)
+        toep_matrix = toeplitz(np.ravel(window), np.ravel(row))
         toep_matrix += np.tril(toep_matrix, -1).transpose()
         window = toep_matrix[..., ::-1] * window2d * window2d.transpose()
         return window
@@ -254,10 +254,10 @@ class Bispectrum(object):
         row = np.concatenate((rev_signal[0][ind_t], zero_maxlag[0]), axis=0)
 
         # converts row and column into a toeplitz matrix
-        toep = toeplitz(col, row)
+        toep = toeplitz(np.ravel(col), np.ravel(row))
         rev_signal = np.repeat(rev_signal, [2 * self.maxlag + 1], axis=0)
 
-        # Calulates Cummulant of 1D signal i.e. Lightcurve counts
+        # Calculates Cummulant of 1D signal i.e. Lightcurve counts
         self.cum3 = self.cum3 + np.matmul(np.multiply(toep, rev_signal), toep.transpose())
 
     def _normalize_cumulant3(self):
@@ -295,7 +295,7 @@ class Bispectrum(object):
             row = np.reshape(row, (1, len(row)))
 
             # Toeplitz matrix
-            toep_matrix = toeplitz(col, row)
+            toep_matrix = toeplitz(np.ravel(col), np.ravel(row))
             # Matrix used to concatenate with scaling matrix
             conc_mat = np.array([scal_matrix[self.maxlag, maxlag1ind]])
             join_matrix = np.concatenate((toep_matrix, conc_mat), axis=0)

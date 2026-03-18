@@ -1,1 +1,0 @@
-Fix plotting of spectra, avoiding the plot of imaginary parts of real numbers

@@ -1,5 +1,5 @@
 ---
-title: 'stingray: A modern Python library for spectral timing'
+title: 'Stingray 2: A fast and modern Python library for spectral timing'
 tags:
 - Python
 - astronomy
@@ -7,77 +7,123 @@ tags:
 - black holes
 - neutron stars
 authors:
-- name: Daniela Huppenkothen
-  orcid: 0000-0002-1169-7486
-  affiliation: 1
 - name: Matteo Bachetti
   orcid: 0000-0002-4576-9337
+  affiliation: 1
+- name: Daniela Huppenkothen
+  orcid: 0000-0002-1169-7486
   affiliation: 2
 - name: Abigail Stevens
   orcid: 0000-0002-5041-3079
-  affiliation: "3, 4"
-- name: Simone Migliari
-  affiliation: "5, 6"
-- name: Paul Balm
+  affiliation: 3
+- name: John Swinbank
+  affiliation: 4
+- name: Guglielmo Mastroserio
+  affiliation: 5
+  orcid: 0000-0003-4216-7936
+- name: Matteo Lucchini
+  orcid: 0000-0002-2235-3347
+  affiliation: 2
+- name: Eleonora Veronica Lai
+  affiliation: 1
+  orcid: 0000-0002-6421-2198
+- name: Johannes Buchner
   affiliation: 6
-- name: Omar Hammad
+  orcid: 0000-0003-0426-6634
+- name: Amogh Desai
   affiliation: 7
-- name: Usman Mahmood Khan
+  orcid: 0000-0002-6015-9553
+- name: Gaurav Joshi
+  orcid: 0009-0009-2305-5008
   affiliation: 8
-- name: Himanshu Mishra
+- name: Francesco Pisanu
+  orcid: 0000-0003-0799-5760
   affiliation: 9
-- name: Haroon Rashid
+- name: Sri Guru Datta Pisupati
+  orcid: 0009-0006-3745-5553
   affiliation: 10
 - name: Swapnil Sharma
   affiliation: 11
-- name: Evandro Martinez Ribeiro
+- name: Mihir Tripathi
   affiliation: 12
-- name: Ricardo Valles Blanco
-  affiliation: 6
+  orcid: 0009-0007-2723-0315
+- name: Dhruv Vats
+  affiliation: 13
+  orcid: 0009-0001-0542-0755
+
+
 affiliations:
-- name: DIRAC Institute, Department of Astronomy, University of Washington, 3910 15th Ave NE, Seattle, WA 98195
+- name: INAF-OACagliari, Italy
   index: 1
-- name: INAF-Osservatorio Astronomico di Cagliari, via della Scienza 5, I-09047 Selargius (CA), Italy
+- name: UvA, The Netherlands
   index: 2
-- name: Department of Physics & Astronomy, Michigan State University, 567 Wilson Road, East Lansing, MI 48824, USA
+- name: MSU Museum, Michigan State University, USA
   index: 3
-- name: Department of Astronomy, University of Michigan, 1085 South University Avenue, Ann Arbor, MI 48109, USA
+- name: ASTRON, The Netherlands
   index: 4
-- name: ESAC/ESA, XMM-Newton Science Operations Centre, Camino Bajo del Castillo s/n, Urb. Villafranca del Castillo, 28692, Villanueva de la Caada, Madrid, Spain
+- name: Dip. Fisica, Università di Milano, Italy
   index: 5
-- name: Timelab Technologies Ltd., 20-22 Wenlock Road, London N1 7GU, United Kingdom
+- name: MPE, Garching, Germany
   index: 6
-- name: AinShams University, Egypt
+- name: Carnegie Mellon University, USA
   index: 7
-- name: Department of Computer Science, North Carolina State University, Raleigh, USA
+- name: Indian Institute of Technology Gandhinagar, India
   index: 8
-- name: Indian Institute of Technology, Kharagpur West Bengal, India 721302
+- name: LIPN-Université Sorbonne Paris Nord, France
   index: 9
-- name: National University of Sciences and Technology (NUST), Islamabad 44000, Pakistan
+- name: Chaitanya Bharathi Institute of Technology, Hyderabad, India
   index: 10
-- name: Indian Institute of Technology Mandi, Mandi, Himachal Pradesh, India
+- name: Indian Institute of Technology, Mandi, India
   index: 11
-- name: Kapteyn Astronomical Institute, University of Groningen, P.O. Box 800, NL-9700 AV Groningen, The Netherlands
+- name: Academia Sinica Institute of Astronomy & Astrophysics, Taipei, Taiwan, R.O.C.
   index: 12
-date: 10 June 2019
+- name: Voltron Data, USA
+  index: 13
+
+date: 01 October 2024
 bibliography: joss.bib
-aas-doi: 10.3847/1538-4357/ab258d
-aas-journal: Astrophysical Journal
 ---
 
 # Summary
 
-Many celestial objects vary in brightness on timescales of milliseconds to centuries. These ``light curves''--variations of brightness of an object as a function of time--often encode interesting physical processes that can help us learn about the nature of the celestial bodies that produced them.
-In stars like our sun, typical time scales tell us about stellar rotation, starspots and internal physics like convection. In remnants of stellar explosions like neutron stars, we can use time series to learn about the densest matter known in the universe. Finally, variations in brightness of radiation emitted by gas falling into a black hole give important clues to the nature of gravity and allow us to test General Relativity to high precision.
-Unravelling the underlying physical processes requires sophisticated statistical and signal processing methods, largely based on Fourier analysis, now well-established in this field.
+Stingray is an Astropy-affiliated [@astropy2013; @astropy2022] Python package that brings advanced timing techniques to the wider astronomical community, with a focus on high-energy astrophysics, but built on top of general-purpose classes and methods that are designed to be easily adapted and extended to other use cases.
+Stingray was previously described by @stingrayapj and @stingrayjoss. Its core functionality comprises Fourier-based analyses [@bachettihuppenkothen], but the package has expanded significantly over time in both scope and functionality. In this paper we describe the improvements to the software in the last ~5 years.
 
-Stingray is an Astropy-affiliated [@astropy, @astropy2] Python package, making a large range of routinely used time series analysis methods available to the astronomy community. It is based on existing implementations of Fourier-space methods in Numpy [@numpy] and Scipy [@scipy], but conveniently wraps them in classes and functions that allow easy application on astronomical data sets, especially from X-ray timing telescopes like the Rossi X-ray Timing Explorer (RXTE) [@Bradtetal93], the Nuclear Spectroscopic Telescope Array (NuSTAR)[@nustar13] and the Neutron Star Interior Composition Explorer (NICER) [@gendreau2016].  
-Stingray is a modular, class-based library aiming to allow users to build custom workflows for their particular data set and science problem, and implements common operations such as periodograms with standard normalizations, cross spectra and coherence, auto- and cross-correlations, as well as higher-order Fourier products such as bispectra and spectral-timing methods like covariance spectra. The latter consider both time and wavelength of the arriving radiation simultaneously and allows for more comprehensive studies of the underlying physical system. Stingray also implements submodules that allow efficient parametric modelling of periodograms, simulations of realistic time series, and specialized tools to study pulsars.
+# Background
 
-Stingray was designed with a flexible and extensible API to be end-user friendly, but also lies at the core of two other packages: HENDRICS [@hendrics], which implements end-to-end versions of standard data analysis workflows, and DAVE, a graphical user interface designed to enable high-level exploratory data analysis on astronomical time series. A longer publication on the underlying methodology and implementation can be found in [@2019arXiv190107681H], while the source code itself is available on GitHub [@stingraysoftware] as part of a larger ecosystem including tutorials, as well as the repositories for HENDRICS and DAVE.
+Time series analysis concerns the detection, characterization and modeling quantities that vary with time.
+This variability might be strictly periodic like a metronome, quasi-periodic like our heart beat, or stochastic, like the vibration of the ground during an earthquake.
+Celestial objects are known to be change in brightness over time, driven by a diverse range of physical processes. Time scales range from sub-milliseconds to billions of years.
+For example, the rotation of some pulsars, extremely dense stellar remnants, can be tracked over time and be considered almost like a cosmic clock. Other applications require complex modeling, including the study of the signals produced by the complicated interplay, propagation and partial re-emission of the light emitted by different regions around an accreting black hole. These studies require techniques that blend together traditional time series analysis and modeling of wavelength-dependent spectra [@uttley; @bachettihuppenkothen].
 
+# Statement of need
+
+Until 2015, the techniques described above were used by competing groups using their own in-house codes. Very few of them were shared publicly, often with poor documentation and/or based on commercial or niche programming languages. Stingray brought them to the general astronomical community, and is now used worldwide, especially by young students.
+
+# Five years of Development
+
+A core development goal has been to accelerate core Stingray functionality, lower the memory footprint, and refactor the code to be extensive and interoperable.
+Stingray's core classes have shown dramatic increase in performance over time, as evident from [our benchmarks](https://stingray.science/stingray-benchmarks/). Stingray can now produce standard timing products
+of a typical high-flux NICER observation in roughly one second. This is thanks to algorithmic improvement, and Just-In-Time compilation through Numba of many key components of the code. We reorganized the code to avoid duplication,
+and created metaclasses that enable seamless integration with other popular array formats for time series (e.g. [Pandas](https://pandas.pydata.org/), [Lightkurve](https://docs.lightkurve.org/), [Astropy Timeseries](https://docs.astropy.org/en/stable/timeseries/index.html)) and data formats ([FITS](), [HDF5](https://www.hdfgroup.org/solutions/hdf5/), [extended CSV](https://docs.astropy.org/en/stable/io/ascii/ecsv.html)).
+
+We completed the originally planned implementation of spectral timing techniques. Newly implemented techniques include the lag spectrum, covariance, rms, and coherence spectra. These methods are now showcased in extensive tutorials exploring NICER and NuSTAR observations.
+
+We introduced a wide range of new techniques designed to analyze unevenly sampled data sets, responding to the growing need for these techniques from astronomical time domain surveys, subject to irregular observing constraints. Methods include Gaussian Process modeling of quasi-periodic oscillations [@hubner] and Lomb-Scargle cross spectra [@scargle]. We have introduced the Fourier-Domain Acceleration Search [@ransom], the H-test [@dejager] and Phase Dispersion Minimization  [@stellingwerf] statistics into the pulsar subpackage.
+We expanded the statistical capabilities of Stingray,
+with particular attention to the calculation of confidence limits and upper limits on variability measures.
+
+Finally, we have added high-level exploratory and diagnostic functionality, such as color-color and hardness-intensity diagrams, and their equivalent diagnostics in the frequency domain, "power colors" [@heil].
+
+Ongoing work funded by the Italian [National Recovery and Resilience Plan](https://www.mef.gov.it/en/focus/The-National-Recovery-and-Resilience-Plan-NRRP/) is pushing Stingray's performance further with the use of GPUs and parallel computing in anticipation of large-scale astronomical time domain surveys for example with the Vera Rubin Telescope. In addition, the near future will see an overhaul and redesign of Stingray's `modeling` subpackage in order to take advantage of recent developments in fast optimization and sampling algorithms and probabilistic programming. In order to facilitate spectral timing with state-of-the-art instruments, we are actively working to integrate Stingray with ongoing software efforts improving modeling of astronomical spectra.
 
 # Acknowledgments
-D.H. acknowledges support from the DIRAC Institute in the Department of Astronomy at the University of Washington. The DIRAC Institute is supported through generous gifts from the Charles and Lisa Simonyi Fund for Arts and Sciences, and the Washington Research Foundation. M.B. is supported in part by the Italian Space Agency through agreement ASI-INAF n.2017-12-H.0 and ASI-INFN agreement n.2017-13-H.0. A.L.S. is supported by an NSF Astronomy and Astrophysics Postdoctoral Fellowship under award AST1801792. S.S. was supported by Google Summer of Code 2018. We thank Astro Hack Week for providing the venue that started this project and the Lorentz Center workshop ‘The X- ray Spectral-Timing Revolution’ (February 2016) that started the collaboration. We thank the Google Summer of Code Program for funding a total 6 students who implemented a large fraction of the various library components over three summers.
+
+MB and EVL are supported in part by Italian Research Center on High Performance Computing Big Data and Quantum Computing (ICSC) project funded by European Union - NextGenerationEU - and National
+Recovery and Resilience Plan (NRRP) - Mission 4 Component 2 within the activities of Spoke 3
+(Astrophysics and Cosmos Observations).
+MB and GM were supported in part by PRIN TEC INAF 2019 ``SpecTemPolar! -- Timing analysis in the era of high-throughput photon detectors''.
+DH is supported by the Women In Science Excel (WISE) programme of the Netherlands Organisation for Scientific Research (NWO).
+GM acknowledges financial support from the European Union's Horizon Europe research and innovation programme under the Marie Sk\l{}odowska-Curie grant agreement No. 101107057.
 
 # References

@@ -151,7 +151,7 @@ def _gaussian(t, params):
         The time coordinates.
 
     params: dict
-        The dictionary contating parameter values of the gaussian flare.
+        The dictionary containing parameter values of the gaussian flare.
 
         The parameters for the gaussian flare are:
         A:  jnp.float / jnp.ndarray
@@ -181,7 +181,7 @@ def _exponential(t, params):
         The time coordinates.
 
     params: dict
-        The dictionary contating parameter values of the exponential flare.
+        The dictionary containing parameter values of the exponential flare.
 
         The parameters for the exponential flare are:
         A:  jnp.float / jnp.ndarray
@@ -211,7 +211,7 @@ def _constant(t, params):
         The time coordinates.
 
     params: dict
-        The dictionary contating parameter values of the constant flare.
+        The dictionary containing parameter values of the constant flare.
 
         The parameters for the constant flare are:
         A:  jnp.float
@@ -233,7 +233,7 @@ def _skew_gaussian(t, params):
         The time coordinates.
 
     params: dict
-        The dictionary contating parameter values of the skew gaussian flare.
+        The dictionary containing parameter values of the skew gaussian flare.
 
         The parameters for the skew gaussian flare are:
         A:  jnp.float / jnp.ndarray
@@ -275,7 +275,7 @@ def _skew_exponential(t, params):
         The time coordinates.
 
     params: dict
-        The dictionary contating parameter values of the skew exponential flare.
+        The dictionary containing parameter values of the skew exponential flare.
 
         The parameters for the skew exponential flare are:
         A:  jnp.float / jnp.ndarray
@@ -317,7 +317,7 @@ def _fred(t, params):
         The time coordinates.
 
     params: dict
-        The dictionary contating parameter values of the FRED flare.
+        The dictionary containing parameter values of the FRED flare.
 
         The parameters for the FRED flare are:
         A:  jnp.float / jnp.ndarray
@@ -587,7 +587,7 @@ class GPResult:
             compatible prior function.
 
         likelihood_model: jaxns.types.LikelihoodType object
-            A likelihood fucntion which takes in the arguments of the prior
+            A likelihood function which takes in the arguments of the prior
             model and returns the loglikelihood of the model.
             Can be made using the get_log_likelihood function or can use your own
             log_likelihood function with same order of arguments as the prior_model.
@@ -668,7 +668,7 @@ class GPResult:
 
     def get_max_likelihood_parameters(self):
         """
-        Retruns the maximum likelihood parameters
+        Returns the maximum likelihood parameters
         """
         max_like_idx = jnp.argmax(self.results.log_L_samples)
         max_like_points = jax.tree_map(lambda x: x[max_like_idx], self.results.samples)
@@ -782,10 +782,12 @@ class GPResult:
         )
 
         nbins = max(10, int(jnp.sqrt(self.results.ESS)) + 1)
-        binsx = jnp.linspace(*jnp.percentile(samples_resampled, jnp.asarray([0, 100])), 2 * nbins)
+        binsx = jnp.linspace(
+            *jnp.percentile(samples_resampled, jnp.asanyarray([0, 100])), 2 * nbins
+        )
 
         plt.hist(
-            np.asarray(samples_resampled),
+            np.asanyarray(samples_resampled),
             bins=binsx,
             density=True,
             alpha=1.0,

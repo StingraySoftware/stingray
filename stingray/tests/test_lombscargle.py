@@ -3,6 +3,7 @@ import copy
 import numpy as np
 import pytest
 from scipy.interpolate import interp1d
+from astropy.modeling.models import Lorentz1D
 
 from stingray.events import EventList
 from stingray.exceptions import StingrayError
@@ -10,6 +11,8 @@ from stingray.lightcurve import Lightcurve
 from stingray.lombscargle import LombScargleCrossspectrum, LombScarglePowerspectrum
 from stingray.lombscargle import _autofrequency
 from stingray.simulator import Simulator
+
+rng = np.random.RandomState(20150907)
 
 
 def test_autofrequency():
@@ -42,7 +45,7 @@ class TestLombScargleCrossspectrum:
         t = lc1.time
         self.time = lc1.time
         t_new = t.copy()
-        t_new[1:-1] = t[1:-1] + (np.random.rand(len(t) - 2) / (high - low))
+        t_new[1:-1] = t[1:-1] + (rng.rand(len(t) - 2) / (high - low))
         s1_new = interp1d(t, s1, fill_value="extrapolate")(t_new)
         s2_new = interp1d(t, s2, fill_value="extrapolate")(t_new)
         self.lc1 = Lightcurve(t, s1_new, dt=lc1.dt)
@@ -50,7 +53,7 @@ class TestLombScargleCrossspectrum:
         self.lscs = LombScargleCrossspectrum(lc1, lc2)
 
     def test_eventlist(self):
-        counts = np.random.poisson(10, 1000)
+        counts = rng.poisson(10, 1000)
         times = np.arange(0, 1000, 1)
         lc1 = Lightcurve(times, counts, dt=1)
         lc2 = Lightcurve(times, counts, dt=1)
@@ -59,7 +62,7 @@ class TestLombScargleCrossspectrum:
         ev_lscs = LombScargleCrossspectrum(ev1, ev2, dt=1)
         lc_lscs = LombScargleCrossspectrum(lc1, lc2, dt=1)
 
-        assert np.argmax(lc_lscs) == np.argmax(ev_lscs)
+        assert np.argmax(lc_lscs.power) == np.argmax(ev_lscs.power)
         assert np.all(ev_lscs.freq == lc_lscs.freq)
         assert np.all(ev_lscs.power == lc_lscs.power)
         assert ev_lscs.freq[np.argmax(ev_lscs.power)] == lc_lscs.freq[np.argmax(lc_lscs.power)] != 0
@@ -213,8 +216,8 @@ class TestLombScargleCrossspectrum:
             func()
 
     def test_no_dt(self):
-        el1 = EventList(self.lc1.counts, self.lc1.time, dt=None)
-        el2 = EventList(self.lc2.counts, self.lc2.time, dt=None)
+        el1 = EventList(self.lc1.time, self.lc1.counts, dt=None)
+        el2 = EventList(self.lc2.time, self.lc2.counts, dt=None)
         with pytest.raises(ValueError):
             lscs = LombScargleCrossspectrum(el1, el2)
 
@@ -225,7 +228,7 @@ class TestLombScargleCrossspectrum:
         def func(time, phase=0):
             return 2 + np.sin(2 * np.pi * (time * freq - phase))
 
-        time = np.sort(np.random.uniform(0, 100, 3000))
+        time = np.sort(rng.uniform(0, 100, 3000))
 
         with pytest.warns(UserWarning):
             lc1 = Lightcurve(time, func(time, 0))
@@ -249,7 +252,7 @@ class TestLombScarglePowerspectrum:
         s1 = lc.counts
         t = lc.time
         t_new = t.copy()
-        t_new[1:-1] = t[1:-1] + (np.random.rand(len(t) - 2) / (high - low))
+        t_new[1:-1] = t[1:-1] + (rng.rand(len(t) - 2) / (high - low))
         s_new = interp1d(t, s1, fill_value="extrapolate")(t_new)
         self.lc = Lightcurve(t, s_new, dt=lc.dt)
 
@@ -279,8 +282,60 @@ class TestLombScarglePowerspectrum:
         assert ps.method is None
 
     def test_ps_real(self):
-        counts = np.random.poisson(10, 1000)
+        counts = rng.poisson(10, 1000)
         times = np.arange(0, 1000, 1)
         lc = Lightcurve(times, counts, dt=1)
         ps = LombScarglePowerspectrum(lc)
         assert np.allclose(ps.power.imag, np.zeros_like(ps.power.imag), atol=1e-4)
+
+
+class TestRMS(object):
+    @classmethod
+    def setup_class(cls):
+        fwhm = 0.23456
+        cls.segment_size = 256
+        cls.df = 1 / cls.segment_size
+
+        cls.freqs = np.arange(cls.df, 1, cls.df)
+        dt = 0.5 / cls.freqs.max()
+
+        pds_shape_func = Lorentz1D(x_0=0, fwhm=fwhm)
+        cls.pds_shape_raw = pds_shape_func(cls.freqs)
+        cls.M = 1
+        cls.nphots = 1_000_000
+        cls.rms = 0.5
+        meanrate = cls.nphots / cls.segment_size
+        cls.poisson_noise_rms = 2 / meanrate
+        pds_shape_rms = cls.pds_shape_raw / np.sum(cls.pds_shape_raw * cls.df) * cls.rms**2
+        pds_shape_rms += cls.poisson_noise_rms
+
+        random_part = rng.chisquare(2 * cls.M, size=cls.pds_shape_raw.size) / 2 / cls.M
+        pds_rms_noisy = random_part * pds_shape_rms
+
+        pds_unnorm = pds_rms_noisy * meanrate / 2 * cls.nphots
+        cls.pds = LombScarglePowerspectrum()
+        cls.pds.freq = cls.freqs
+        cls.pds.unnorm_power = pds_unnorm
+        cls.pds.power = pds_rms_noisy
+        cls.pds.df = cls.df
+        cls.pds.m = cls.M
+        cls.pds.nphots = cls.nphots
+        cls.pds.norm = "frac"
+        cls.pds.dt = dt
+        cls.pds.n = cls.pds.freq.size
+
+    @pytest.mark.parametrize("norm", ["none", "frac", "leahy", "abs"])
+    def test_rms(self, norm):
+        pds = self.pds.to_norm(norm)
+        with pytest.warns(UserWarning, match="All power spectral bins have M<30."):
+            rms_from_ps, rmse_from_ps = pds.compute_rms(self.freqs.min(), self.freqs.max())
+        assert np.isclose(rms_from_ps, self.rms, atol=3 * rmse_from_ps)
+
+    @pytest.mark.parametrize("norm", ["none", "frac", "leahy", "abs"])
+    def test_rms_rebinning(self, norm):
+        pds = self.pds.to_norm(norm)
+        pds = pds.rebin_log(0.04)
+        with pytest.warns(UserWarning, match="All power spectral bins have M<30."):
+            rms_from_ps, rmse_from_ps = pds.compute_rms(self.freqs.min(), self.freqs.max())
+
+        assert np.isclose(rms_from_ps, self.rms, atol=3 * rmse_from_ps)

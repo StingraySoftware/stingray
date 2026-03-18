@@ -3,6 +3,7 @@ Basic pulsar-related functions and statistics.
 """
 
 import functools
+import math
 from collections.abc import Iterable
 import warnings
 from scipy.optimize import minimize, basinhopping
@@ -57,16 +58,11 @@ def p_to_f(*period_derivatives):
 
     Examples
     --------
-    >>> p_to_f() == []
-    True
-    >>> np.allclose(p_to_f(1), [1])
-    True
-    >>> np.allclose(p_to_f(1, 2), [1, -2])
-    True
-    >>> np.allclose(p_to_f(1, 2, 3), [1, -2, 5])
-    True
-    >>> np.allclose(p_to_f(1, 2, 3, 4), [1, -2, 5, -16])
-    True
+    >>> assert p_to_f() == []
+    >>> assert np.allclose(p_to_f(1), [1])
+    >>> assert np.allclose(p_to_f(1, 2), [1, -2])
+    >>> assert np.allclose(p_to_f(1, 2, 3), [1, -2, 5])
+    >>> assert np.allclose(p_to_f(1, 2, 3, 4), [1, -2, 5, -16])
     """
     nder = len(period_derivatives)
     if nder == 0:
@@ -117,12 +113,12 @@ def pulse_phase(times, *frequency_derivatives, **opts):
 
     """
 
-    ph0 = _default_value_if_no_key(opts, "ph0", 0)
-    to_1 = _default_value_if_no_key(opts, "to_1", True)
+    ph0 = opts.pop("ph0", 0)
+    to_1 = opts.pop("to_1", True)
     ph = ph0
 
     for i_f, f in enumerate(frequency_derivatives):
-        ph += 1 / np.math.factorial(i_f + 1) * times ** (i_f + 1) * f
+        ph += 1 / math.factorial(i_f + 1) * times ** (i_f + 1) * f
 
     if to_1:
         ph -= np.floor(ph)
@@ -267,18 +263,24 @@ def fold_events(times, *frequency_derivatives, **opts):
     profile_err : array of floats
         The uncertainties on the pulse profile
     """
-    mode = _default_value_if_no_key(opts, "mode", "ef")
-    nbin = _default_value_if_no_key(opts, "nbin", 16)
-    weights = _default_value_if_no_key(opts, "weights", 1)
+
+    mode = opts.pop("mode", "ef")
+    nbin = opts.pop("nbin", 16)
+    weights = opts.pop("weights", 1)
     # If no key is passed, *or gti is None*, defaults to the
     # initial and final event
-    gti = _default_value_if_no_key(opts, "gti", None)
+    gti = opts.pop("gti", None)
     if gti is None:
         gti = [[times[0], times[-1]]]
     # Be safe if gtis are a list
-    gti = np.asarray(gti)
-    ref_time = _default_value_if_no_key(opts, "ref_time", 0)
-    expocorr = _default_value_if_no_key(opts, "expocorr", False)
+    gti = np.asanyarray(gti)
+    ref_time = opts.pop("ref_time", 0)
+    expocorr = opts.pop("expocorr", False)
+
+    if opts:
+        raise ValueError(
+            f"Unidentified keyword(s) to fold_events: {', '.join([k for k in opts.keys()])} \n Please refer to the description of the function for optional parameters."
+        )
 
     if not isinstance(weights, Iterable):
         weights *= np.ones(len(times))
@@ -306,7 +308,6 @@ def fold_events(times, *frequency_derivatives, **opts):
         if expocorr:
             expo_norm = phase_exposure(start_phase, stop_phase, 1, nbin, gti=gti_phases)
             simon("For exposure != 1, the uncertainty might be incorrect")
-
         else:
             expo_norm = 1
 
@@ -326,7 +327,10 @@ def fold_events(times, *frequency_derivatives, **opts):
 
         # I need the variance uncorrected for the number of data points in each
         # bin, so I need to find that first, and then multiply
-        _, bincounts = np.unique(bin_idx, return_counts=True)
+        # bin_idx should be from the list [1, ..., nbin], although some might not appear
+        # histogram bin-edges set as [0.5, 1.5, ..., nbin - 0.5, nbin + 0.5]
+        # to include the bin_idx int values
+        bincounts, _ = np.histogram(bin_idx, bins=np.arange(0.5, nbin + 1.5))
         raw_profile = raw_profile * bincounts
 
         # dummy array for the error, which we don't have for the variance
@@ -652,7 +656,7 @@ def z_n(data, n, datatype="events", err=None, norm=None):
     z2_n : float
         The Z^2_n statistics of the events.
     """
-    data = np.asarray(data)
+    data = np.asanyarray(data)
 
     if norm is not None:
         warnings.warn(

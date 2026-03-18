@@ -1,6 +1,9 @@
+import copy
 from multiprocessing import Event
 import os
+import shutil
 import numpy as np
+from astropy.io import fits
 from stingray.events import EventList
 from stingray.varenergyspectrum import VarEnergySpectrum
 from stingray.varenergyspectrum import ComplexCovarianceSpectrum, CovarianceSpectrum
@@ -30,6 +33,8 @@ try:
     import h5py
 except ImportError:
     _HAS_H5PY = False
+
+_HAS_FLX2XSP = (os.getenv("HEADAS") is not None) and (shutil.which("ftflx2xsp") is not None)
 
 np.random.seed(20150907)
 curdir = os.path.abspath(os.path.dirname(__file__))
@@ -89,6 +94,14 @@ class TestVarEnergySpectrum(object):
         with pytest.raises(TypeError):
             ref_int = VarEnergySpectrum(self.events, [0.0, 10000], (0.5, 5, 10, "log"), [0.3, 10])
 
+    @pytest.mark.parametrize("energy_spec", [2, "a"])
+    def test_invalid_energy_spec(self, energy_spec):
+        with pytest.raises(
+            ValueError,
+            match=f"Energy specification must be a tuple or a list .input: {energy_spec}.",
+        ):
+            DummyVarEnergy(self.events, [0.0, 10000], energy_spec=energy_spec)
+
     def test_ref_band_none(self):
         events = EventList(
             [0.09, 0.21, 0.23, 0.32, 0.4, 0.54], energy=[0, 0, 0, 0, 1, 1], gti=[[0, 0.65]]
@@ -142,7 +155,9 @@ class TestVarEnergySpectrum(object):
 
     def test_construct_lightcurves_pi(self):
         events = EventList(
-            [0.09, 0.21, 0.23, 0.32, 0.4, 0.54], pi=np.asarray([0, 0, 0, 0, 1, 1]), gti=[[0, 0.65]]
+            [0.09, 0.21, 0.23, 0.32, 0.4, 0.54],
+            pi=np.asanyarray([0, 0, 0, 0, 1, 1]),
+            gti=[[0, 0.65]],
         )
         vespec = DummyVarEnergy(
             events, [0.0, 10000], (0, 1, 2, "lin"), [0.5, 1.1], use_pi=True, bin_time=0.1
@@ -174,11 +189,11 @@ class TestRmsAndCovSpectrum(object):
 
         cls.bin_time = 0.01
 
-        data = np.load(os.path.join(datadir, "sample_variable_lc.npy"))
+        data = Table.read(os.path.join(datadir, "sample_variable_series.fits"))["data"]
         # No need for huge count rates
         flux = data / 40
         times = np.arange(data.size) * cls.bin_time
-        gti = np.asarray([[0, data.size * cls.bin_time]])
+        gti = np.asanyarray([[0, data.size * cls.bin_time]])
         test_lc = Lightcurve(
             times, flux, err_dist="gauss", gti=gti, dt=cls.bin_time, skip_checks=True
         )
@@ -208,20 +223,16 @@ class TestRmsAndCovSpectrum(object):
         assert np.all(np.iscomplex(spec.spectrum))
 
     @pytest.mark.parametrize("cross", [True, False])
-    @pytest.mark.parametrize("kind", ["rms", "cov", "lag"])
-    def test_empty_subband_cov(self, cross, kind):
+    def test_empty_subband_lag(self, cross):
         ev2 = None
         if cross:
             ev2 = self.test_ev2_small
 
-        if kind == "rms":
-            func = RmsSpectrum
-        elif kind == "lag":
-            func = LagSpectrum
-        elif kind == "cov":
-            func = ComplexCovarianceSpectrum
-
-        spec = func(
+        # Note: energy_spec is a list, so it's actually the edges
+        # of the energy bins. So, the covariance spectrum will be
+        # calculated in two bands: 0.3-12 keV and 12-15 keV. But
+        # the 12-15 keV band is empty (see definition of test_ev1_small)
+        spec = LagSpectrum(
             self.test_ev1_small,
             freq_interval=[0.00001, 0.1],
             energy_spec=[0.3, 12, 15],
@@ -230,6 +241,51 @@ class TestRmsAndCovSpectrum(object):
             segment_size=200,
             events2=ev2,
         )
+        good = ~np.isnan(spec.spectrum)
+        assert np.count_nonzero(good) == 1
+
+    @pytest.mark.parametrize("cross", [True, False])
+    @pytest.mark.parametrize("kind", ["rms", "cov"])
+    def test_empty_subband_cov(self, cross, kind):
+        ev2 = None
+        if cross:
+            ev2 = self.test_ev2_small
+
+        if kind == "rms":
+            func = RmsSpectrum
+        elif kind == "cov":
+            func = ComplexCovarianceSpectrum
+        # Note: energy_spec is a list, so it's actually the edges
+        # of the energy bins. So, the covariance spectrum will be
+        # calculated in two bands: 0.3-12 keV and 12-15 keV. But
+        # the 12-15 keV band is empty (see definition of test_ev1_small)
+        with pytest.warns(UserWarning, match="Low count rate in the 12-15 subject band"):
+            spec = func(
+                self.test_ev1_small,
+                freq_interval=[0.00001, 0.1],
+                energy_spec=[0.3, 12, 15],
+                ref_band=[[0.3, 12]],
+                bin_time=self.bin_time / 2,
+                segment_size=200,
+                events2=ev2,
+            )
+        good = ~np.isnan(spec.spectrum)
+        assert np.count_nonzero(good) == 1
+
+    def test_empty_subband_cov_ev2(self):
+        ev2 = copy.deepcopy(self.test_ev2_small)
+        # We empty out only the second event list above 5 keV
+        ev2.filter_energy_range([0.3, 5], inplace=True)
+
+        with pytest.warns(UserWarning, match="Low count rate in the 5-12 subject band"):
+            spec = RmsSpectrum(
+                self.test_ev1_small,
+                freq_interval=[0.00001, 0.1],
+                energy_spec=[0.3, 5, 12],
+                bin_time=self.bin_time / 2,
+                segment_size=200,
+                events2=ev2,
+            )
         good = ~np.isnan(spec.spectrum)
         assert np.count_nonzero(good) == 1
 
@@ -353,6 +409,209 @@ class TestRmsAndCovSpectrum(object):
         assert np.all(np.isnan(rms.spectrum_error))
 
 
+import abc
+
+
+class BaseTestIO(abc.ABC):
+    @property
+    @abc.abstractmethod
+    def variant(self):
+        pass
+
+    @classmethod
+    def setup_class(cls):
+        if cls.variant == "rms":
+            cls.func = RmsSpectrum
+        elif cls.variant == "complcov":
+            cls.func = ComplexCovarianceSpectrum
+        elif cls.variant == "cov":
+            cls.func = CovarianceSpectrum
+        elif cls.variant == "lag":
+            cls.func = LagSpectrum
+        spec = cls.func(energy_spec=[0.3, 12, 15])
+        spec.freq_interval = [0.1, 0.2]
+        spec.ref_band = [0.3, 12]
+        spec.bin_time = 0.01
+        spec.segment_size = 100
+        spec.cross = cls.variant == "complcov"
+        spec.spectrum = np.array([1.0, 2.0])
+        spec.spectrum_error = np.array([0.1, 0.2])
+        if spec.cross:
+            spec.spectrum = spec.spectrum + 1.0j
+            spec.spectrum_error = spec.spectrum_error + 0.1j
+        spec.energy_intervals = np.array([[0.3, 12], [12, 15]])
+        cls.sting_obj = spec
+
+    def full_xspec_tst(self):
+        """Check that the files created by save_as_xspec exist and have the correct content.
+
+        This function is executed by two tests below. We write it separately here to avoid
+        code duplication. This test checks that the files created by `save_as_xspec` exist,
+        that the header keywords are correctly written in the PHA file, and that the warning
+        about the files created by the mission pipelines is correctly issued. The test is run
+        below by different tests that run both with and without the presence of ftflx2xsp.
+        """
+        so = copy.deepcopy(self.sting_obj)
+        if self.variant == "complcov":
+            try:
+                with pytest.warns(UserWarning, match="The XSPEC-compatible files created "):
+                    so.save_as_xspec("dummy", header_keywords={"RESPFILE": "dummy.rsp"})
+                for part in ["real", "imag"]:
+                    for ext in ["pha", "rsp", "txt"]:
+                        assert os.path.exists(f"dummy_{part}.{ext}")
+                    with fits.open(f"dummy_{part}.pha") as hdul:
+                        assert "RESPFILE" in hdul[1].header
+                        assert hdul[1].header["RESPFILE"] == "dummy.rsp"
+            finally:
+                for part in ["real", "imag"]:
+                    for ext in ["pha", "rsp", "txt"]:
+                        if os.path.exists(f"dummy_{part}.{ext}"):
+                            os.unlink(f"dummy_{part}.{ext}")
+        else:
+            try:
+                with pytest.warns(UserWarning, match="The XSPEC-compatible files created "):
+                    so.save_as_xspec("dummy_pow", header_keywords={"RESPFILE": "dummy.rsp"})
+                assert os.path.exists("dummy_pow.pha")
+                assert os.path.exists("dummy_pow.rsp")
+                assert os.path.exists("dummy_pow.txt")
+                with fits.open("dummy_pow.pha") as hdul:
+                    assert "RESPFILE" in hdul[1].header
+                    assert hdul[1].header["RESPFILE"] == "dummy.rsp"
+            finally:
+                for ext in [".pha", ".rsp", ".txt"]:
+                    if os.path.exists(f"dummy_pow{ext}"):
+                        os.unlink(f"dummy_pow{ext}")
+
+    def test_astropy_roundtrip(self):
+        so = copy.deepcopy(self.sting_obj)
+        ts = so.to_astropy_table()
+        new_so = self.func.from_astropy_table(ts)
+        assert so == new_so
+
+    @pytest.mark.skipif("not _HAS_XARRAY")
+    def test_xarray_roundtrip(self):
+        so = copy.deepcopy(self.sting_obj)
+        ts = so.to_xarray()
+        new_so = self.func.from_xarray(ts)
+        assert so == new_so
+
+    @pytest.mark.skipif("not _HAS_PANDAS")
+    def test_pandas_roundtrip(self):
+        so = copy.deepcopy(self.sting_obj)
+        ts = so.to_pandas()
+        new_so = self.func.from_pandas(ts)
+        assert so == new_so
+
+    def test_astropy_roundtrip_empty(self):
+        # Set an attribute to a DummyStingrayObj. It will *not* be saved
+        so = self.func()
+        ts = so.to_astropy_table()
+        new_so = self.func.from_astropy_table(ts)
+        assert new_so.energy == []
+        assert so == new_so
+
+    @pytest.mark.skipif("not _HAS_XARRAY")
+    def test_xarray_roundtrip_empty(self):
+        so = self.func()
+        ts = so.to_xarray()
+        new_so = self.func.from_xarray(ts)
+        assert new_so.energy == []
+        assert so == new_so
+
+    @pytest.mark.skipif("not _HAS_PANDAS")
+    def test_pandas_roundtrip_empty(self):
+        so = self.func()
+        ts = so.to_pandas()
+        new_so = self.func.from_pandas(ts)
+        assert new_so.energy == []
+        assert so == new_so
+
+    @pytest.mark.skipif("not _HAS_H5PY")
+    def test_hdf_roundtrip(self):
+        so = copy.deepcopy(self.sting_obj)
+        so.write("dummy.hdf5")
+        new_so = so.read("dummy.hdf5")
+        os.unlink("dummy.hdf5")
+
+        assert so == new_so
+
+    def test_file_roundtrip_fits(self):
+        so = copy.deepcopy(self.sting_obj)
+        with pytest.warns(
+            UserWarning, match=".* output does not serialize the metadata at the moment"
+        ):
+            so.write("dummy.fits")
+        new_so = self.func.read("dummy.fits")
+        os.unlink("dummy.fits")
+        assert so == new_so
+
+    @pytest.mark.parametrize("fmt", ["ascii", "ascii.ecsv"])
+    def test_file_roundtrip(self, fmt):
+        so = copy.deepcopy(self.sting_obj)
+        with pytest.warns(UserWarning, match=".* output does not serialize the metadata"):
+            so.write(f"dummy.{fmt}", fmt=fmt)
+        new_so = self.func.read(f"dummy.{fmt}", fmt=fmt)
+        os.unlink(f"dummy.{fmt}")
+
+        assert so == new_so
+
+    def test_file_roundtrip_pickle(self):
+        fmt = "pickle"
+        so = copy.deepcopy(self.sting_obj)
+        so.write(f"dummy.{fmt}", fmt=fmt)
+        new_so = self.func.read(f"dummy.{fmt}", fmt=fmt)
+        os.unlink(f"dummy.{fmt}")
+
+        assert so == new_so
+
+    def test_save_as_xspec_without_xspec(self):
+        from unittest.mock import patch
+
+        def function(blah, root):
+            table = Table(
+                {"channel": [1, 2, 3], "rate": [10.0, 20.0, 30.0], "stat_err": [1.0, 2.0, 3.0]}
+            )
+            table.write(root + ".pha", format="fits", overwrite=True)
+            for fnames in [root + ".rsp", root + ".txt"]:
+                with open(fnames, "w") as f:
+                    f.write("dummy")
+
+        with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
+            self.full_xspec_tst()
+
+    @pytest.mark.skipif("not _HAS_FLX2XSP", reason="ftflx2xsp is not available")
+    def test_save_as_xspec_with_xspec(self):
+        from unittest.mock import patch
+
+        def function(blah, root):
+            table = Table(
+                {"channel": [1, 2, 3], "rate": [10.0, 20.0, 30.0], "stat_err": [1.0, 2.0, 3.0]}
+            )
+            table.write(root + ".pha", format="fits", overwrite=True)
+            for fnames in [root + ".rsp", root + ".txt"]:
+                with open(fnames, "w") as f:
+                    f.write("dummy")
+
+        with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
+            self.full_xspec_tst()
+
+
+class TestCovarianceIO(BaseTestIO):
+    variant = "cov"
+
+
+class TestComplexCovarianceIO(BaseTestIO):
+    variant = "complcov"
+
+
+class TestRmsIO(BaseTestIO):
+    variant = "rms"
+
+
+class TestLagIO(BaseTestIO):
+    variant = "lag"
+
+
 @pytest.mark.slow
 class TestLagEnergySpectrum(object):
     @classmethod
@@ -361,7 +620,7 @@ class TestLagEnergySpectrum(object):
 
         dt = 0.01
         cls.time_lag = 5.0
-        data = np.load(os.path.join(datadir, "sample_variable_lc.npy"))
+        data = Table.read(os.path.join(datadir, "sample_variable_series.fits"))["data"]
         flux = data
         times = np.arange(data.size) * dt
         maxfreq = 0.15 / cls.time_lag
@@ -425,79 +684,3 @@ class TestLagEnergySpectrum(object):
 
         assert np.all(np.isnan(lag.spectrum))
         assert np.all(np.isnan(lag.spectrum_error))
-
-
-class TestRoundTrip:
-    @classmethod
-    def setup_class(cls):
-        tstart = 0.0
-        tend = 100.0
-        nphot = 1000
-        alltimes = np.random.uniform(tstart, tend, nphot)
-        alltimes.sort()
-        cls.events = EventList(
-            alltimes, energy=np.random.uniform(0.3, 12, nphot), gti=[[tstart, tend]]
-        )
-        cls.vespec = DummyVarEnergy(
-            cls.events, [0.0, 10000], (0.5, 5, 10, "lin"), [0.3, 10], bin_time=0.1
-        )
-        cls.vespec.spectrum = np.zeros_like(cls.vespec.energy)
-        cls.vespec.spectrum_error = np.zeros_like(cls.vespec.energy)
-
-    def _check_equal(self, so, table):
-        for attr in ["energy", "spectrum", "spectrum_error"]:
-            assert np.allclose(getattr(so, attr), table[attr])
-
-        if hasattr(table, "meta"):
-            for attr in ["freq_interval"]:
-                assert getattr(so, attr) == table.meta[attr]
-        if hasattr(table, "attrs"):
-            for attr in ["freq_interval"]:
-                assert getattr(so, attr) == table.attrs[attr]
-
-    def test_astropy_export(self):
-        so = self.vespec
-        ts = so.to_astropy_table()
-        self._check_equal(so, ts)
-        with pytest.raises(NotImplementedError):
-            so.from_astropy_table(ts)
-
-    @pytest.mark.skipif("not _HAS_XARRAY")
-    def test_xarray_export(self):
-        so = self.vespec
-        ts = so.to_xarray()
-        self._check_equal(so, ts)
-        with pytest.raises(NotImplementedError):
-            so.from_xarray(ts)
-
-    @pytest.mark.skipif("not _HAS_PANDAS")
-    def test_pandas_export(self):
-        so = self.vespec
-        ts = so.to_pandas()
-        self._check_equal(so, ts)
-        with pytest.raises(NotImplementedError):
-            so.from_pandas(ts)
-
-    @pytest.mark.skipif("not _HAS_H5PY")
-    def test_hdf_export(self):
-        so = self.vespec
-        so.write("dummy.hdf5")
-        new_so = Table.read("dummy.hdf5")
-        os.unlink("dummy.hdf5")
-        self._check_equal(so, new_so)
-
-    @pytest.mark.parametrize("fmt", ["ascii.ecsv", "fits"])
-    def test_file_export(self, fmt):
-        so = self.vespec
-        so.write("dummy", fmt=fmt)
-        new_so = Table.read("dummy", format=fmt)
-        os.unlink("dummy")
-        self._check_equal(so, new_so)
-
-    @pytest.mark.parametrize("fmt", ["pickle"])
-    def test_file_export_pickle(self, fmt):
-        so = self.vespec
-        so.write("dummy", fmt=fmt)
-        new_so = so.read("dummy", fmt=fmt)
-        os.unlink("dummy")
-        self._check_equal(so, new_so.to_astropy_table())

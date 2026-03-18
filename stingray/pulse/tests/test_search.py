@@ -111,6 +111,12 @@ class TestAll(object):
         plt.savefig("phaseogram_direct.png")
         plt.close(plt.gcf())
 
+    def test_search_wrong_key_fails(self):
+        with pytest.raises(
+            ValueError, match=r"Unidentified keyword\(s\) to fold_events: fdot, fddot"
+        ):
+            phase, prof, _ = fold_events(self.event_times, self.pulse_frequency, fdot=12, fddot=34)
+
     def test_plot_profile(self):
         phase, prof, _ = fold_events(self.event_times, self.pulse_frequency)
         ax = plot_profile(phase, prof)
@@ -120,7 +126,7 @@ class TestAll(object):
     def test_plot_profile_existing_ax(self):
         fig = plt.figure("Pulse profile")
         ax = plt.subplot()
-        phase, prof, _ = fold_events(self.event_times, self.pulse_frequency, ax=ax)
+        phase, prof, _ = fold_events(self.event_times, self.pulse_frequency)
         ax = plot_profile(phase, prof, ax=ax)
         plt.savefig("profile_existing_ax.png")
         plt.close(fig)
@@ -128,7 +134,7 @@ class TestAll(object):
     def test_plot_profile_errorbars(self):
         fig = plt.figure("Pulse profile")
         ax = plt.subplot()
-        phase, prof, err = fold_events(self.event_times, self.pulse_frequency, ax=ax)
+        phase, prof, err = fold_events(self.event_times, self.pulse_frequency)
 
         ax = plot_profile(phase, prof, err=err, ax=ax)
         plt.savefig("profile_errorbars.png")

@@ -1,0 +1,13 @@
+---
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        files: \.py$
+      - id: end-of-file-fixer
+        files: \.py$
+ci:
+  autofix_prs: false
+  autoupdate_schedule: "quarterly"
+

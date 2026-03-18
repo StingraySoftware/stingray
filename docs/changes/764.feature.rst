@@ -1,1 +1,0 @@
-Our fast implementation of histograms is now safer (failing safely to the equivalent numpy histogram functions), more consistent (ranges moved to range, for consistency with numpy), and accept complex weights as well!

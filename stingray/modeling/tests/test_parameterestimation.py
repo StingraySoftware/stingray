@@ -11,6 +11,7 @@ from stingray import Powerspectrum, AveragedPowerspectrum
 from stingray.modeling import ParameterEstimation, PSDParEst, OptimizationResults, SamplingResults
 from stingray.modeling import PSDPosterior, set_logprior, PSDLogLikelihood, LogLikelihood
 from stingray.modeling.posterior import fitter_to_model_params
+from stingray.loggingconfig import CustomFormatter, setup_logger
 
 try:
     from statsmodels.tools.numdiff import approx_hess
@@ -27,6 +28,8 @@ except ImportError:
     can_sample = False
 
 import matplotlib.pyplot as plt
+
+logger = setup_logger()
 
 pytestmark = pytest.mark.slow
 
@@ -46,6 +49,8 @@ class OptimizationResultsSubclassDummy(OptimizationResults):
             self.log.setLevel(logging.DEBUG)
             if not self.log.handlers:
                 ch = logging.StreamHandler()
+                formatter = CustomFormatter()
+                ch.setFormatter(formatter)
                 ch.setLevel(logging.DEBUG)
                 self.log.addHandler(ch)
 
@@ -341,7 +346,7 @@ class TestOptimizationResults(object):
     def test_compute_covariance_with_hess_inverse(self):
         self.optres._compute_covariance(self.lpost, self.opt)
 
-        assert np.allclose(self.optres.cov, np.asarray(self.opt.hess_inv))
+        assert np.allclose(self.optres.cov, np.asanyarray(self.opt.hess_inv))
         assert np.allclose(self.optres.err, np.sqrt(np.diag(self.opt.hess_inv)))
 
     @pytest.mark.skipif("comp_hessian")

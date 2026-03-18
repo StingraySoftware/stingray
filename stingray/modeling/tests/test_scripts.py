@@ -67,7 +67,7 @@ class TestFitLorentzians(object):
         cls.cs.df = cls.cs.freq[1] - cls.cs.freq[0]
         cls.cs.m = 1
 
-        cls.t0 = np.asarray([200.0, 0.5, 0.1, 100.0, 2.0, 1.0, 50.0, 7.5, 0.5, 2.0])
+        cls.t0 = np.asanyarray([200.0, 0.5, 0.1, 100.0, 2.0, 1.0, 50.0, 7.5, 0.5, 2.0])
 
         cls.parest, cls.res = fit_lorentzians(cls.ps, cls.nlor, cls.t0)
 

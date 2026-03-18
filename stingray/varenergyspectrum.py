@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 import numpy as np
 import warnings
 from stingray.base import StingrayObject
@@ -6,7 +7,12 @@ from stingray.gti import check_separate, cross_two_gtis
 from stingray.lightcurve import Lightcurve
 from stingray.utils import assign_value_if_none, simon, excess_variance, show_progress
 
-from stingray.fourier import avg_cs_from_events, avg_pds_from_events, fftfreq, get_average_ctrate
+from stingray.fourier import (
+    avg_cs_from_timeseries,
+    avg_pds_from_timeseries,
+    fftfreq,
+    get_average_ctrate,
+)
 from stingray.fourier import poisson_level, error_on_averaged_cross_spectrum, cross_to_covariance
 from abc import ABCMeta, abstractmethod
 
@@ -49,23 +55,20 @@ def get_non_overlapping_ref_band(channel_band, ref_band):
     >>> channel_band = [2, 3]
     >>> ref_band = [[0, 10]]
     >>> new_ref = get_non_overlapping_ref_band(channel_band, ref_band)
-    >>> np.allclose(new_ref, [[0, 2], [3, 10]])
-    True
+    >>> assert np.allclose(new_ref, [[0, 2], [3, 10]])
 
     Test this also works with a 1-D ref. band
     >>> new_ref = get_non_overlapping_ref_band(channel_band, [0, 10])
-    >>> np.allclose(new_ref, [[0, 2], [3, 10]])
-    True
+    >>> assert np.allclose(new_ref, [[0, 2], [3, 10]])
     >>> new_ref = get_non_overlapping_ref_band([0, 1], [[2, 3]])
-    >>> np.allclose(new_ref, [[2, 3]])
-    True
+    >>> assert np.allclose(new_ref, [[2, 3]])
     """
-    channel_band = np.asarray(channel_band)
-    ref_band = np.asarray(ref_band)
+    channel_band = np.asanyarray(channel_band)
+    ref_band = np.asanyarray(ref_band)
     if len(ref_band.shape) <= 1:
-        ref_band = np.asarray([ref_band])
+        ref_band = np.asanyarray([ref_band])
     if check_separate(ref_band, [channel_band]):
-        return np.asarray(ref_band)
+        return np.asanyarray(ref_band)
     not_channel_band = [
         [0, channel_band[0]],
         [channel_band[1], np.max([np.max(ref_band), channel_band[1] + 1])],
@@ -100,11 +103,9 @@ def _decode_energy_specification(energy_spec):
      ...
     ValueError: Energy specification must be a tuple
     >>> a = _decode_energy_specification((0, 2, 2, 'lin'))
-    >>> np.allclose(a, [0, 1, 2])
-    True
+    >>> assert np.allclose(a, [0, 1, 2])
     >>> a = _decode_energy_specification((1, 4, 2, 'log'))
-    >>> np.allclose(a, [1, 2, 4])
-    True
+    >>> assert np.allclose(a, [1, 2, 4])
     """
     if not isinstance(energy_spec, tuple):
         raise ValueError("Energy specification must be a tuple")
@@ -188,37 +189,57 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
 
     def __init__(
         self,
-        events,
-        freq_interval,
-        energy_spec,
+        events=None,
+        freq_interval=None,
+        energy_spec=None,
         ref_band=None,
         bin_time=1,
         use_pi=False,
         segment_size=None,
         events2=None,
         return_complex=False,
+        min_phot_per_segment=10,
     ):
-        self.events1 = events
-        self.events2 = assign_value_if_none(events2, events)
-        self._analyze_inputs()
+        if isinstance(energy_spec, tuple):
+            energies = _decode_energy_specification(energy_spec)
+        elif isinstance(energy_spec, Iterable) and not isinstance(energy_spec, str):
+            energies = np.asanyarray(energy_spec)
+        elif events is not None:
+            raise ValueError(
+                f"Energy specification must be a tuple or a list (input: {energy_spec})"
+            )
+
         # This will be set to True in ComplexCovariance
         self.return_complex = return_complex
-
         self.freq_interval = freq_interval
         self.use_pi = use_pi
         self.bin_time = bin_time
-
-        if isinstance(energy_spec, tuple):
-            energies = _decode_energy_specification(energy_spec)
+        self.min_phot_per_segment = min_phot_per_segment
+        if energy_spec is not None:
+            self.energy_intervals = list(zip(energies[0:-1], energies[1:]))
         else:
-            energies = np.asarray(energy_spec)
+            self.energy_intervals = None
+        self.ref_band = np.asanyarray(assign_value_if_none(ref_band, [0, np.inf]))
+        if len(self.ref_band.shape) <= 1:
+            self.ref_band = np.asanyarray([self.ref_band])
+
+        self.segment_size = self.delta_nu = None
+
+        if events is None:
+            self.events1 = self.events2 = None
+            # This will be set to True in ComplexCovariance
+            return
+
+        self.events1 = events
+        self.events2 = assign_value_if_none(events2, events)
+        self._analyze_inputs()
 
         self.energy_intervals = list(zip(energies[0:-1], energies[1:]))
 
-        self.ref_band = np.asarray(assign_value_if_none(ref_band, [0, np.inf]))
+        self.ref_band = np.asanyarray(assign_value_if_none(ref_band, [0, np.inf]))
 
         if len(self.ref_band.shape) <= 1:
-            self.ref_band = np.asarray([self.ref_band])
+            self.ref_band = np.asanyarray([self.ref_band])
 
         self.segment_size = self.delta_nu = None
         if segment_size is not None:
@@ -227,15 +248,24 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
 
         self._create_empty_spectrum()
 
-        if len(events.time) == 0:
-            simon("There are no events in your event list!" + "Can't make a spectrum!")
+        if events.time is None or len(events.time) == 0:
+            simon("There are no events in your event list! Can't make a spectrum!")
         else:
             self._spectrum_function()
 
     @property
     def energy(self):
         """Give the centers of the energy intervals."""
-        return np.sum(self.energy_intervals, axis=1) / 2
+        if not hasattr(self, "_energy") or self._energy is None:
+            if self.energy_intervals is None or len(self.energy_intervals) == 0:
+                self._energy = []
+            else:
+                self._energy = np.sum(self.energy_intervals, axis=1) / 2
+        return self._energy
+
+    @energy.setter
+    def energy(self, value):
+        self._energy = value
 
     def _analyze_inputs(self):
         """Make some checks on the inputs and set some internal variable.
@@ -414,14 +444,103 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
     def _spectrum_function(self):
         pass
 
-    def from_astropy_table(self, *args, **kwargs):
-        raise NotImplementedError("from_XXXX methods are not implemented for VarEnergySpectrum")
+    def check_phot_per_segment(self, phot_per_segment, eint):
+        """Check if the number of photons per segment is enough.
 
-    def from_xarray(self, *args, **kwargs):
-        raise NotImplementedError("from_XXXX methods are not implemented for VarEnergySpectrum")
+        Parameters
+        ----------
+        phot_per_segment: float or int
+            Number of photons in the segment
+        eint: iterable
+            Energy interval
+        """
+        if phot_per_segment < self.min_phot_per_segment:
+            streint = [f"{x:g}" for x in eint]
+            warnings.warn(
+                f"Low count rate in the {streint[0]}-{streint[1]} subject band: "
+                f"{phot_per_segment:g} ct/segment (<{self.min_phot_per_segment:g}). Skipping. "
+                "If you know what you're doing, you can set the `min_phot_per_segment` "
+                "parameter to a lower value, but in general, we recommend to use fewer "
+                "subject bands",
+            )
+            return False
+        return True
 
-    def from_pandas(self, *args, **kwargs):
-        raise NotImplementedError("from_XXXX methods are not implemented for VarEnergySpectrum")
+    def save_as_xspec(self, outroot, header_keywords=None):
+        """Save the cross spectrum in a format that can be read by XSPEC.
+
+        For power spectra (``self.type == "powerspectrum"``), the method will
+        produce three files using ``outroot`` as the base name:
+
+        * ``outroot.txt``: a plain-text file containing the frequency, power,
+          and error columns used as input to XSPEC.
+        * ``outroot.pha``: the spectral file.
+        * ``outroot.rsp``: the corresponding response file.
+
+        For non-powerspectrum cross spectra, the method will produce six files,
+        corresponding to the real and imaginary parts of the cross spectrum:
+
+        * ``outroot_real.txt``, ``outroot_real.pha``, ``outroot_real.rsp`` for
+          the real part.
+        * ``outroot_imag.txt``, ``outroot_imag.pha``, ``outroot_imag.rsp`` for
+          the imaginary part.
+
+        Parameters
+        ----------
+        outroot : str
+            The root name of the output files.
+        header_keywords : dict, optional
+            A dictionary of header keys and values to be added to the output files.
+
+        Raises
+        ------
+        ValueError
+            If the object has no ``df`` attribute or ``power_err`` attribute, or
+            if either of them is ``None``.
+        RuntimeError
+            If the underlying XSPEC/HEASOFT tools needed to create the XSPEC
+            files are not available. This is raised by :func:`stingray.io.save_as_xspec`.
+        """
+        from .io import save_as_xspec
+
+        eints = self.energy_intervals
+        energies = np.sum(eints, axis=1) / 2
+        de = np.diff(eints, axis=1).flatten()
+
+        simon(
+            "The XSPEC-compatible files created by the mission pipelines often include "
+            "corrections that we cannot reproduce here. When comparing or simultaneously "
+            "fitting these spectra with those produced by the pipelines, make sure to "
+            "take this into account. Some corrections can be introduced by providing the "
+            "necessary keywords using the `header_keywords` keyword argument if needed. "
+        )
+
+        if "complex" not in str(self.spectrum.dtype):
+            save_as_xspec(
+                energies,
+                de,
+                self.spectrum,
+                self.spectrum_error,
+                outroot,
+                header_keywords=header_keywords,
+            )
+        else:
+            save_as_xspec(
+                energies,
+                de,
+                self.spectrum.real,
+                self.spectrum_error.real,
+                outroot + "_real",
+                header_keywords=header_keywords,
+            )
+            save_as_xspec(
+                energies,
+                de,
+                self.spectrum.imag,
+                self.spectrum_error.imag,
+                outroot + "_imag",
+                header_keywords=header_keywords,
+            )
 
 
 class RmsSpectrum(VarEnergySpectrum):
@@ -487,8 +606,8 @@ class RmsSpectrum(VarEnergySpectrum):
 
     def __init__(
         self,
-        events,
-        energy_spec,
+        events=None,
+        energy_spec=None,
         ref_band=None,
         freq_interval=[0, 1],
         bin_time=1,
@@ -524,6 +643,8 @@ class RmsSpectrum(VarEnergySpectrum):
             sub_events = self._get_times_from_energy_range(self.events1, eint)
             countrate_sub = get_average_ctrate(sub_events, self.gti, self.segment_size)
             sub_power_noise = poisson_level(norm="abs", meanrate=countrate_sub)
+            if not self.check_phot_per_segment(countrate_sub * self.segment_size, eint):
+                continue
 
             # If we provided the `events2` array, calculate the rms from the
             # cospectrum, otherwise from the PDS
@@ -533,9 +654,11 @@ class RmsSpectrum(VarEnergySpectrum):
                 sub_events2 = self._get_times_from_energy_range(self.events2, eint)
                 countrate_sub2 = get_average_ctrate(sub_events2, self.gti, self.segment_size)
                 sub2_power_noise = poisson_level(norm="abs", meanrate=countrate_sub2)
+                if not self.check_phot_per_segment(countrate_sub2 * self.segment_size, eint):
+                    continue
 
                 # Calculate the cross spectrum
-                results = avg_cs_from_events(
+                results = avg_cs_from_timeseries(
                     sub_events,
                     sub_events2,
                     self.gti,
@@ -555,7 +678,7 @@ class RmsSpectrum(VarEnergySpectrum):
                     delta_nu_after_mean * np.sqrt(sub_power_noise * sub2_power_noise)
                 )
             else:
-                results = avg_pds_from_events(
+                results = avg_pds_from_timeseries(
                     sub_events, self.gti, self.segment_size, self.bin_time, silent=True, norm="abs"
                 )
                 if results is None:
@@ -783,9 +906,9 @@ class LagSpectrum(VarEnergySpectrum):
     # events, freq_interval, energy_spec, ref_band = None
     def __init__(
         self,
-        events,
-        freq_interval,
-        energy_spec,
+        events=None,
+        freq_interval=None,
+        energy_spec=None,
         ref_band=None,
         bin_time=1,
         use_pi=False,
@@ -807,12 +930,15 @@ class LagSpectrum(VarEnergySpectrum):
     def _spectrum_function(self):
         # Extract the photon arrival times from the reference band
         ref_events = self._get_times_from_energy_range(self.events2, self.ref_band[0])
-        ref_power_noise = poisson_level(norm="none", n_ph=ref_events.size)
 
         # Calculate the PDS in the reference band. Needed to calculate errors.
-        results = avg_pds_from_events(
+        results = avg_pds_from_timeseries(
             ref_events, self.gti, self.segment_size, self.bin_time, silent=True, norm="none"
         )
+
+        # Nph per interval, so on average it's the total number of events divided by
+        # the number of intervals
+        ref_power_noise = poisson_level(norm="none", n_ph=ref_events.size / results.meta["m"])
         freq = results["freq"]
         ref_power = results["power"]
         m_ave = results.meta["m"]
@@ -828,9 +954,8 @@ class LagSpectrum(VarEnergySpectrum):
         for i, eint in enumerate(show_progress(self.energy_intervals)):
             # Extract the photon arrival times from the subject band
             sub_events = self._get_times_from_energy_range(self.events1, eint)
-            sub_power_noise = poisson_level(norm="none", n_ph=sub_events.size)
 
-            results_cross = avg_cs_from_events(
+            results_cross = avg_cs_from_timeseries(
                 sub_events,
                 ref_events,
                 self.gti,
@@ -840,12 +965,18 @@ class LagSpectrum(VarEnergySpectrum):
                 norm="none",
             )
 
-            results_ps = avg_pds_from_events(
+            results_ps = avg_pds_from_timeseries(
                 sub_events, self.gti, self.segment_size, self.bin_time, silent=True, norm="none"
             )
 
             if results_cross is None or results_ps is None:
                 continue
+
+            # Nph per interval, so on average it's the total number of events divided by
+            # the number of intervals
+            sub_power_noise = poisson_level(
+                norm="none", n_ph=sub_events.size / results_ps.meta["m"]
+            )
 
             cross = results_cross["power"]
             sub_power = results_ps["power"]
@@ -947,8 +1078,8 @@ class ComplexCovarianceSpectrum(VarEnergySpectrum):
 
     def __init__(
         self,
-        events,
-        energy_spec,
+        events=None,
+        energy_spec=None,
         ref_band=None,
         freq_interval=[0, 1],
         bin_time=1,
@@ -957,6 +1088,7 @@ class ComplexCovarianceSpectrum(VarEnergySpectrum):
         events2=None,
         norm="frac",
         return_complex=True,
+        min_phot_per_segment=10,
     ):
         self.norm = norm
         VarEnergySpectrum.__init__(
@@ -970,6 +1102,7 @@ class ComplexCovarianceSpectrum(VarEnergySpectrum):
             segment_size=segment_size,
             events2=events2,
             return_complex=return_complex,
+            min_phot_per_segment=min_phot_per_segment,
         )
 
     def _spectrum_function(self):
@@ -979,7 +1112,7 @@ class ComplexCovarianceSpectrum(VarEnergySpectrum):
         countrate_ref = get_average_ctrate(ref_events, self.gti, self.segment_size)
         ref_power_noise = poisson_level(norm="abs", meanrate=countrate_ref)
 
-        results = avg_pds_from_events(
+        results = avg_pds_from_timeseries(
             ref_events, self.gti, self.segment_size, self.bin_time, silent=True, norm="abs"
         )
         freq = results["freq"]
@@ -999,9 +1132,13 @@ class ComplexCovarianceSpectrum(VarEnergySpectrum):
             # Extract events from the subject band
             sub_events = self._get_times_from_energy_range(self.events1, eint)
             countrate_sub = get_average_ctrate(sub_events, self.gti, self.segment_size)
+            phot_per_segment = countrate_sub * self.segment_size
+            if not self.check_phot_per_segment(phot_per_segment, eint):
+                continue
+
             sub_power_noise = poisson_level(norm="abs", meanrate=countrate_sub)
 
-            results_cross = avg_cs_from_events(
+            results_cross = avg_cs_from_timeseries(
                 sub_events,
                 ref_events,
                 self.gti,
@@ -1011,7 +1148,7 @@ class ComplexCovarianceSpectrum(VarEnergySpectrum):
                 norm="abs",
             )
 
-            results_ps = avg_pds_from_events(
+            results_ps = avg_pds_from_timeseries(
                 sub_events, self.gti, self.segment_size, self.bin_time, silent=True, norm="abs"
             )
 
@@ -1049,7 +1186,7 @@ class ComplexCovarianceSpectrum(VarEnergySpectrum):
 
             # Convert the cross spectrum to a covariance.
             cov, cov_e = cross_to_covariance(
-                np.asarray([Cmean, Ce]), mean_ref_power, ref_power_noise, delta_nu
+                np.asanyarray([Cmean, Ce]), mean_ref_power, ref_power_noise, delta_nu
             )
 
             meanrate = mean / self.bin_time
@@ -1123,8 +1260,8 @@ class CovarianceSpectrum(ComplexCovarianceSpectrum):
 
     def __init__(
         self,
-        events,
-        energy_spec,
+        events=None,
+        energy_spec=None,
         ref_band=None,
         freq_interval=[0, 1],
         bin_time=1,

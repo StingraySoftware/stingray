@@ -1,5 +1,5 @@
 ! This file contains mission-specific information used in XSELECT.
-! It is hierarchically organised in a tree 
+! It is hierarchically organised in a tree
 !       Mission:Submission:Detector:Datamode:keyword
 ! Any key between Mission and keyword can be omitted. keywords are
 ! inherited from higher levels eg the value of ASCA:x is also used
@@ -15,7 +15,7 @@
 ! instkey               The keyword read from the file to get the Instrument
 ! dmodekey              The keyword read from the file to get the Datamode
 !                       (All three of these keywords can be have a suffix (m:n)
-!                        which means take characters m to n of the keyword 
+!                        which means take characters m to n of the keyword
 !                        value)
 ! mkf_def_expr          The global expression for filenames of MKF files
 ! mkf_rel_dir           The directory path for MKF files relative to event files
@@ -37,6 +37,7 @@
 ! ecol                  The column for spectral information
 ! ccol                  The column for CCD number (if required - NONE if not)
 ! gcol                  The column for event grade/pattern
+! polwcol               The column for polarization weighting (NONE if not req.)
 ! imagecoord            The default coordinate system for images
 ! wmapcoord             The default coordinate system for WMAPs
 ! catnum                The extension number for catalog keywords
@@ -53,6 +54,7 @@
 ! dispcol               A list of keywords used to display the catalog
 ! extract               The ftool used to extract images, spectra, and light
 !                       curves. Options are extractor, saextrct, or seextrct
+! grpstr                Grouping to be run on the spectrum when saving (NONE if not req.)
 !
 ! Optional keyword dictionary. The value in parentheses is the default used if the
 ! keyword is not included.
@@ -66,10 +68,10 @@
 ! phamax       (TLMAX)  The keyword giving the max. value of ECOL.
 ! swmapx       (no)     True if WMAP X axis is inverted from sky
 ! swmapy       (no)     True if WMAP Y axis is inverted from sky
-! respscript   (NONE)   The name of the script run to generate the spectral 
+! respscript   (NONE)   The name of the script run to generate the spectral
 !                       responses.
-! respneedreg  (FALSE)  Set to yes if the response script needs the region file as input
-! extendresp   (FALSE)  If set to yes the spectral response generation has an
+! respneedreg  (no)     Set to yes if the response script needs the region file as input
+! extendresp   (no)     If set to yes the spectral response generation has an
 !                       extended source option.
 ! adjustgti    (no)     If set to yes then extractor will line output GTIs up
 !                       with CCD frame boundaries.
@@ -120,7 +122,7 @@ ASCA:SIS0:lststr      ad*s0*[hml].*
 ASCA:SIS1:lststr      ad*s1*[hml].*
 
 ASCA:SIS0:ofilt       ONTIME>100&&NEVENTS>0&&COORDPRO!='ERROR'
-ASCA:SIS0:fbin        4  
+ASCA:SIS0:fbin        4
 ASCA:SIS0:hbin        8
 ASCA:SIS0:gcol        GRADE
 ASCA:SIS0:respscript  xsl_asca_sis_makeresp
@@ -129,7 +131,7 @@ ASCA:SIS0:dispcol     OBJECT DATAMODE BIT_RATE DATE-OBS TIME-OBS ONTIME NEVENTS 
 ASCA:SIS0:timepixr    0.5
 
 ASCA:SIS1:ofilt       ONTIME>100&&NEVENTS>0&&COORDPRO!='ERROR'
-ASCA:SIS1:fbin        4  
+ASCA:SIS1:fbin        4
 ASCA:SIS1:hbin        8
 ASCA:SIS1:gcol        GRADE
 ASCA:SIS1:respscript  xsl_asca_sis_makeresp
@@ -246,7 +248,7 @@ Astro-E2:XIS-*:rawy               ACTY
 Astro-E2:XIS-*:gti             STDGTI
 Astro-E2:XIS-*:rbnval       2048
 Astro-E2:XIS-*:rbnmod         LINEAR
-Astro-E2:XIS-*:catcol       OBJECT TELESCOP INSTRUME DATAMODE EDITMODE DATE-OBS TIME-OBS DATE-END TIME-END OBSERVER 
+Astro-E2:XIS-*:catcol       OBJECT TELESCOP INSTRUME DATAMODE EDITMODE DATE-OBS TIME-OBS DATE-END TIME-END OBSERVER
 Astro-E2:XIS-*:dispcol            OBJECT DATE-OBS TIME-OBS DATE-END TIME-END EDITMODE
 Astro-E2:XIS-*:modes           STANDARD TIMING
 
@@ -257,7 +259,7 @@ Astro-E2:XIS-3:lststr   ae*xis3*.*
 Astro-E2:XIS-EM0:lststr ae*xis0*.*
 Astro-E2:XIS-EM1:lststr ae*xis1*.*
 Astro-E2:XIS-EM2:lststr ae*xis2*.*
-Astro-E2:XIS-EM3:lststr ae*xis3*.*                                             
+Astro-E2:XIS-EM3:lststr ae*xis3*.*
 
 
 Astro-E2:HXD:x      UNITID
@@ -331,7 +333,7 @@ ASTRO-E2:XIS-*:rawy               ACTY
 ASTRO-E2:XIS-*:gti             STDGTI
 ASTRO-E2:XIS-*:rbnval       2048
 ASTRO-E2:XIS-*:rbnmod         LINEAR
-ASTRO-E2:XIS-*:catcol       OBJECT TELESCOP INSTRUME DATAMODE EDITMODE DATE-OBS TIME-OBS DATE-END TIME-END OBSERVER 
+ASTRO-E2:XIS-*:catcol       OBJECT TELESCOP INSTRUME DATAMODE EDITMODE DATE-OBS TIME-OBS DATE-END TIME-END OBSERVER
 ASTRO-E2:XIS-*:dispcol            OBJECT DATE-OBS TIME-OBS DATE-END TIME-END EDITMODE
 ASTRO-E2:XIS-*:modes           STANDARD TIMING
 
@@ -342,7 +344,7 @@ ASTRO-E2:XIS-3:lststr   ae*xis3*.*
 ASTRO-E2:XIS-EM0:lststr ae*xis0*.*
 ASTRO-E2:XIS-EM1:lststr ae*xis1*.*
 ASTRO-E2:XIS-EM2:lststr ae*xis2*.*
-ASTRO-E2:XIS-EM3:lststr ae*xis3*.*                                             
+ASTRO-E2:XIS-EM3:lststr ae*xis3*.*
 
 
 ASTRO-E2:HXD:x      UNITID
@@ -363,7 +365,7 @@ ASTRO-E2:HXD:lststr ae*hxd_wel*.*
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! ASTRO-H mission database
-!  General keywords 
+!  General keywords
 !   Keywords gets replaced if redefined at lower level
 !   See initial list at the beginning of the file
 
@@ -390,7 +392,7 @@ ASTRO-H:rawysiz            TLMAX
 ASTRO-H:phamax             TLMAX
 ASTRO-H:gti                GTI
 ASTRO-H:events             EVENTS
-ASTRO-H:timeorder          yes 
+ASTRO-H:timeorder          yes
 ASTRO-H:instruments        SXS SXI HXI1 HXI2 SGD1 SGD2
 ASTRO-H:spbn               1
 ASTRO-H:ecol               PI
@@ -408,11 +410,11 @@ ASTRO-H:lststr             ah*.evt
 ASTRO-H:ofilt              NONE
 ASTRO-H:fbin               1
 ASTRO-H:hbin               1
-ASTRO-H:catcol             OBJECT TELESCOP INSTRUME DETNAM DATAMODE DATE-OBS DATE-END 
-ASTRO-H:dispcol            OBJECT TELESCOP INSTRUME DETNAM DATAMODE DATE-OBS DATE-END 
+ASTRO-H:catcol             OBJECT TELESCOP INSTRUME DETNAM DATAMODE DATE-OBS DATE-END
+ASTRO-H:dispcol            OBJECT TELESCOP INSTRUME DETNAM DATAMODE DATE-OBS DATE-END
 ASTRO-H:extract            extractor
 !
-! SXS all specific keywords 
+! SXS all specific keywords
 ASTRO-H:SXS:gcol           ITYPE
 ASTRO-H:SXS:lststr             ah*sxs*.evt
 ASTRO-H:SXS:modes              PX_NORMAL PX_MIDRES  AC_NORMAL
@@ -420,7 +422,7 @@ ASTRO-H:SXS:modes              PX_NORMAL PX_MIDRES  AC_NORMAL
 ! SXS Antico no image
 ASTRO-H:SXS:AC_NORMAL:imagecoord   NONE
 !
-!  SXI keywords 
+!  SXI keywords
 ASTRO-H:SXI:lststr             ah*sxi*.evt
 ASTRO-H:SXI:modes               WINDOW1 WINDOW2 WINDOW1BURST WINDOW2BURST
 !ASTRO-H:SXI:ccol               CCD_ID
@@ -431,15 +433,15 @@ ASTRO-H:SXI:wtmapfix           yes
 ASTRO-H:SXI:swmapx             false
 ASTRO-H:SXI:swmapy             false
 !
-!  HXI1 specific keywords 
+!  HXI1 specific keywords
 ASTRO-H:HXI1:lststr             ah*hxi1*.*
-ASTRO-H:HXI1:modes              CAMERA_NORMAL1 CAMERA_NORMAL2 CAMERA_NORMAL3 CAMERA_CHECKOUT1 
+ASTRO-H:HXI1:modes              CAMERA_NORMAL1 CAMERA_NORMAL2 CAMERA_NORMAL3 CAMERA_CHECKOUT1
 !
-!  HXI2 keywords 
+!  HXI2 keywords
 ASTRO-H:HXI2:lststr             ah*hxi2*.*
-ASTRO-H:HXI2:modes              CAMERA_NORMAL1 CAMERA_NORMAL2 CAMERA_NORMAL3 CAMERA_CHECKOUT1  
+ASTRO-H:HXI2:modes              CAMERA_NORMAL1 CAMERA_NORMAL2 CAMERA_NORMAL3 CAMERA_CHECKOUT1
 !
-!  SGD1 keywords 
+!  SGD1 keywords
 ASTRO-H:SGD1:x                 CAMERAX
 ASTRO-H:SGD1:y                 CAMERAY
 ASTRO-H:SGD1:detx              CAMERAX
@@ -450,7 +452,7 @@ ASTRO-H:SGD1:imagecoord         NONE
 ASTRO-H:SGD1:lststr        ah*sgd1*.*
 ASTRO-H:SGD1:modes              CC_NORMAL1
 !
-!  SGD2 keywords 
+!  SGD2 keywords
 ASTRO-H:SGD2:x                 CAMERAX
 ASTRO-H:SGD2:y                 CAMERAY
 ASTRO-H:SGD2:detx              CAMERAX
@@ -610,7 +612,7 @@ AXAF:LETG:ACIS:dispcol  OBJECT DATE-OBS LIVETIME DETNAM
 
 AXAF:HRC:modes          OBSERVING
 AXAF:HRC:fbin           16
-AXAF:HRC:dispcol        OBJECT DATE-OBS LIVETIME DETNAM 
+AXAF:HRC:dispcol        OBJECT DATE-OBS LIVETIME DETNAM
 AXAF:HRC:rawx           TDETX
 AXAF:HRC:rawy           TDETY
 
@@ -661,6 +663,143 @@ BBXRT:extendresp        no
 BBXRT:respneedreg       no
 
 
+!
+! BURSTCUBE
+
+BURSTCUBE:submkey     NONE
+BURSTCUBE:instkey    INSTRUME
+BURSTCUBE:dmodekey     DATAMODE
+BURSTCUBE:mkf_def_expr   NONE
+BURSTCUBE:mkf_rel_dir   .
+BURSTCUBE:time       TIME
+BURSTCUBE:tunits      s
+BURSTCUBE:binsize     1.0
+BURSTCUBE:x        NONE
+BURSTCUBE:y        NONE
+BURSTCUBE:xsiz      NONE
+BURSTCUBE:ysiz       NONE
+BURSTCUBE:detx       NONE
+BURSTCUBE:dety       NONE
+BURSTCUBE:detxsiz    NONE
+BURSTCUBE:detysiz    NONE
+BURSTCUBE:rawx       NONE
+BURSTCUBE:rawy       NONE
+BURSTCUBE:rawxsiz    NONE
+BURSTCUBE:rawysiz    NONE
+BURSTCUBE:phamax     TLMAX
+BURSTCUBE:gti        STDGTI
+BURSTCUBE:events      EVENTS
+BURSTCUBE:timeorder    yes
+BURSTCUBE:instruments   CS0 CS1 CS2 CS3
+BURSTCUBE:fbin       1
+BURSTCUBE:hbin       1
+BURSTCUBE:spbn       1
+BURSTCUBE:ecol       PHA
+BURSTCUBE:ccol       NONE
+BURSTCUBE:gcol       NONE
+BURSTCUBE:imagecoord    NONE
+BURSTCUBE:wmapcoord    NONE
+BURSTCUBE:catnum      1
+BURSTCUBE:catcol      TELESCOP INSTRUME DATAMODE DATE-OBS DATE-END
+BURSTCUBE:dispcol     TELESCOP INSTRUME DATAMODE DATE-OBS DATE-END
+BURSTCUBE:grpstr     NONE
+BURSTCUBE:wtmapb      no
+BURSTCUBE:wtmapfix     no
+BURSTCUBE:lststr      *.evt*
+BURSTCUBE:ofilt      NONE
+BURSTCUBE:extract     extractor
+BURSTCUBE:modes      EVENT
+!BURSTCUBE:CSO:modes  CBD EVENT
+!BURSTCUBE:CSO:CBD:extract saextrct
+!BURSTCUBE:CSO:CBD:events CBD
+!BURSTCUBE:CSO:CBD:ecol PHA
+!BURSTCUBE:CS1:modes  CBD EVENT
+!BURSTCUBE:CS1:CBD:extract saextrct
+!BURSTCUBE:CS1:CBD:events CBD
+!BURSTCUBE:CS1:CBD:ecol PHA
+!BURSTCUBE:CS2:modes  CBD EVENT
+!BURSTCUBE:CS2:CBD:extract saextrct
+!BURSTCUBE:CS2:CBD:events CBD
+!BURSTCUBE:CS2:CBD:ecol PHA
+!BURSTCUBE:CS3:modes  CBD EVENT
+!BURSTCUBE:CS3:CBD:extract saextrct
+!BURSTCUBE:CS3:CBD:events CBD
+!BURSTCUBE:CS3:CBD:ecol PHA
+!
+! CGBM
+!
+CALET:submkey     NONE
+CALET:instkey     DETNAM
+CALET:dmodekey     DATAMODE
+CALET:mkf_def_expr   NONE
+CALET:mkf_rel_dir   .
+CALET:time       TIME
+CALET:tunits      s
+CALET:binsize     1.0
+CALET:x        NONE
+CALET:y        NONE
+CALET:xsiz      NONE
+CALET:ysiz       NONE
+CALET:detx       NONE
+CALET:dety       NONE
+CALET:detxsiz    NONE
+CALET:detysiz    NONE
+CALET:rawx       NONE
+CALET:rawy       NONE
+CALET:rawxsiz    NONE
+CALET:rawysiz    NONE
+CALET:phamax     TLMAX
+CALET:gti       GTI
+CALET:events      EVENTS
+CALET:timeorder    yes
+CALET:instruments   HXM1 HXM2 SGM
+CALET:fbin       1
+CALET:hbin       1
+CALET:spbn       1
+CALET:ecol       PI_LOW
+CALET:ccol       NONE
+CALET:gcol       NONE
+CALET:imagecoord    NONE
+CALET:wmapcoord    NONE
+CALET:catnum      1
+CALET:catcol      TELESCOP INSTRUME DETNAM DATAMODE DATE-OBS DATE-END
+CALET:dispcol     TELESCOP INSTRUME DETNAM DATAMODE DATE-OBS DATE-END
+CALET:grpstr     NONE
+CALET:wtmapb      no
+CALET:wtmapfix     no
+CALET:lststr      *.evt*
+CALET:ofilt      NONE
+CALET:extract     extractor
+CALET:modes      EVENT
+!
+!CALET:HX1:modes  PH_LOW PH_HIGH EVENT
+!!  HX1 PH_LOW datamode
+!CALET:HX1:PH_LOW:extract saextrct
+!CALET:HX1:PH_LOW:events CGBM_PH
+!CALET:HX1:PH_LOW:ecol  PI
+!! HX1 PH_HIGH datamode
+!CALET:HX1:PH_HIGH:extract saextrct
+!CALET:HX1:PH_HIGH:ecol  PI
+!CALET:HX1:PH_HIGH:events CGBM_PH
+!!  HX2 PH_LOW datamode
+!CALET:HX2:modes  PH_LOW PH_HIGH EVENT
+!CALET:HX2:PH_LOW:extract saextrct
+!CALET:HX2:PH_LOW:events CGBM_PH
+!CALET:HX2:PH_LOW:ecol  PI
+!! HX2 PH_HIGH datamode
+!CALET:HX2:PH_HIGH:extract saextrct
+!CALET:HX2:PH_HIGH:events CGBM_PH
+!CALET:HX2:PH_HIGH:ecol  PI
+!CALET:SGM:modes  PH_LOW PH_HIGH EVENT
+!! SGM PH_HIGH datamode
+!CALET:SGM:PH_HIGH:extract saextrct
+!CALET:SGM:PH_HIGH:events CGBM_PH
+!CALET:SGM:PH_HIGH:ecol  PI
+!! SGM PH_LOW datamode
+!CALET:SGM:PH_LOW:extract saextrct
+!CALET:SGM:PH_LOW:events CGBM_PH
+!CALET:SGM:PH_LOW:ecol  PI
+!
 EINSTEIN:submkey        NONE
 EINSTEIN:instkey        INSTRUME
 EINSTEIN:dmodekey       DATAMODE
@@ -711,7 +850,7 @@ EINSTEIN:HRI:fbin       4
 EINSTEIN:HRI:hbin       8
 EINSTEIN:HRI:ecol       PHA
 EINSTEIN:HRI:wmapcoord  SKY
-EINSTEIN:HRI:catcol     DATE-OBS TIME-OBS XS-RAPT XS-DECPT XS-ONTI TELESCOP INSTRUME 
+EINSTEIN:HRI:catcol     DATE-OBS TIME-OBS XS-RAPT XS-DECPT XS-ONTI TELESCOP INSTRUME
 EINSTEIN:HRI:dispcol    DATE-OBS TIME-OBS XS-RAPT XS-DECPT XS-ONTI
 
 EINSTEIN:IPC:lststr     i*.xp*
@@ -811,7 +950,7 @@ EXOSAT:ME:lststr        me*.xp*
 
 EXOSAT:GS:lststr        gs*.xp*
 
-!! HALOSAT 
+!! HALOSAT
 
 HALOSAT:submkey            NONE
 HALOSAT:instkey            INSTRUME
@@ -847,8 +986,8 @@ HALOSAT:gcol               NONE
 HALOSAT:imagecoord         NONE
 HALOSAT:wmapcoord          NONE
 HALOSAT:catnum             1
-HALOSAT:catcol             OBJECT TELESCOP INSTRUME OBJTYPE DATAMODE DATE-OBS DATE-END 
-HALOSAT:dispcol            OBJECT TELESCOP INSTRUME OBJTYPE DATAMODE DATE-OBS DATE-END 
+HALOSAT:catcol             OBJECT TELESCOP INSTRUME OBJTYPE DATAMODE DATE-OBS DATE-END
+HALOSAT:dispcol            OBJECT TELESCOP INSTRUME OBJTYPE DATAMODE DATE-OBS DATE-END
 HALOSAT:grpstr             NONE
 HALOSAT:lststr             *.evt
 HALOSAT:ofilt              NONE
@@ -861,7 +1000,7 @@ HALOSAT:extract            extractor
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! HITOMI mission database
-!  General keywords 
+!  General keywords
 !   Keywords gets replaced if redefined at lower level
 !   See initial list at the beginning of the file
 
@@ -888,7 +1027,7 @@ HITOMI:rawysiz            TLMAX
 HITOMI:phamax             TLMAX
 HITOMI:gti                GTI
 HITOMI:events             EVENTS
-HITOMI:timeorder          yes 
+HITOMI:timeorder          yes
 HITOMI:instruments        SXS SXI HXI1 HXI2 SGD1 SGD2
 HITOMI:spbn               1
 HITOMI:ecol               PI
@@ -906,11 +1045,11 @@ HITOMI:lststr             ah*.evt
 HITOMI:ofilt              NONE
 HITOMI:fbin               1
 HITOMI:hbin               1
-HITOMI:catcol             OBJECT TELESCOP INSTRUME DETNAM DATAMODE DATE-OBS DATE-END 
-HITOMI:dispcol            OBJECT TELESCOP INSTRUME DETNAM DATAMODE DATE-OBS DATE-END 
+HITOMI:catcol             OBJECT TELESCOP INSTRUME DETNAM DATAMODE DATE-OBS DATE-END
+HITOMI:dispcol            OBJECT TELESCOP INSTRUME DETNAM DATAMODE DATE-OBS DATE-END
 HITOMI:extract            extractor
 !
-! SXS all specific keywords 
+! SXS all specific keywords
 HITOMI:SXS:lststr             ah*sxs*.evt
 HITOMI:SXS:modes              PX_NORMAL PX_MIDRES  AC_NORMAL
 HITOMI:SXS:gcol               ITYPE
@@ -918,7 +1057,7 @@ HITOMI:SXS:gcol               ITYPE
 ! SXS Antico no image
 HITOMI:SXS:AC_NORMAL:imagecoord   NONE
 !
-!  SXI keywords 
+!  SXI keywords
 HITOMI:SXI:lststr             ah*sxi*.evt
 HITOMI:SXI:modes               WINDOW1 WINDOW2 WINDOW1BURST WINDOW2BURST
 !HITOMI:SXI:ccol               CCD_ID
@@ -929,15 +1068,15 @@ HITOMI:SXI:wtmapfix           yes
 HITOMI:SXI:swmapx             false
 HITOMI:SXI:swmapy             false
 !
-!  HXI1 specific keywords 
+!  HXI1 specific keywords
 HITOMI:HXI1:lststr             ah*hxi1*.*
-HITOMI:HXI1:modes              CAMERA_NORMAL1 CAMERA_NORMAL2 CAMERA_NORMAL3 CAMERA_CHECKOUT1 
+HITOMI:HXI1:modes              CAMERA_NORMAL1 CAMERA_NORMAL2 CAMERA_NORMAL3 CAMERA_CHECKOUT1
 !
-!  HXI2 keywords 
+!  HXI2 keywords
 HITOMI:HXI2:lststr             ah*hxi2*.*
-HITOMI:HXI2:modes              CAMERA_NORMAL1 CAMERA_NORMAL2 CAMERA_NORMAL3 CAMERA_CHECKOUT1  
+HITOMI:HXI2:modes              CAMERA_NORMAL1 CAMERA_NORMAL2 CAMERA_NORMAL3 CAMERA_CHECKOUT1
 !
-!  SGD1 keywords 
+!  SGD1 keywords
 HITOMI:SGD1:x                  CAMERAX
 HITOMI:SGD1:y                  CAMERAY
 HITOMI:SGD1:detx               CAMERAX
@@ -948,7 +1087,7 @@ HITOMI:SGD1:rawy               CAMERAY
 HITOMI:SGD1:lststr        ah*sgd1*.*
 HITOMI:SGD1:modes              CC_NORMAL1
 !
-!  SGD2 keywords 
+!  SGD2 keywords
 HITOMI:SGD2:x                  CAMERAX
 HITOMI:SGD2:y                  CAMERAY
 HITOMI:SGD2:detx               CAMERAX
@@ -967,12 +1106,12 @@ INTEGRAL:dmodekey     DATAMODE
 INTEGRAL:mkf_def_expr NONE
 INTEGRAL:mkf_rel_dir  .
 INTEGRAL:events       EVENTS
-INTEGRAL:wtmapfix     yes 
+INTEGRAL:wtmapfix     yes
 INTEGRAL:wtmapb       yes
 INTEGRAL:time         TIME
 INTEGRAL:tunits       d
 INTEGRAL:timeorder    yes
-INTEGRAL:binsize      1.851851852e-4  
+INTEGRAL:binsize      1.851851852e-4
 INTEGRAL:instruments  SPI IBIS JMX1 JMX2
 INTEGRAL:wmapcoord    DETECTOR
 INTEGRAL:xsiz         TLMAX
@@ -991,7 +1130,7 @@ INTEGRAL:gcol              NONE
 INTEGRAL:catnum             3
 INTEGRAL:imagecoord         DETECTOR
 INTEGRAL:gti               ALLGTI
-INTEGRAL:lststr            *.fits 
+INTEGRAL:lststr            *.fits
 INTEGRAL:wmapcoord    DETECTOR
 INTEGRAL:catcol  SWID DATE-OBS DATE-END RA_SCX DEC_SCX
 INTEGRAL:dispcol SWID DATE-OBS DATE-END RA_SCX DEC_SCX
@@ -1000,7 +1139,7 @@ INTEGRAL:extract          extractor
 INTEGRAL:SPI:catnum   1
 INTEGRAL:SPI:ecol     PHA
 INTEGRAL:SPI:events   SPI.-OSGL-ALL
-INTEGRAL:SPI:detx     DETE 
+INTEGRAL:SPI:detx     DETE
 INTEGRAL:SPI:dety     DETE
 INTEGRAL:SPI:gti      SPI.-GNRL-GTI
 
@@ -1014,13 +1153,66 @@ INTEGRAL:JMX1:ecol    PI
 INTEGRAL:JMX1:events  JMX1-FULL-ALL
 INTEGRAL:JMX1:gti     JMX1-GNRL-GTI
 INTEGRAL:JMX1:detx    DETX
-INTEGRAL:JMX1:dety    DETY  
+INTEGRAL:JMX1:dety    DETY
 
-INTEGRAL:JMX2:ecol    PI 
+INTEGRAL:JMX2:ecol    PI
 INTEGRAL:JMX2:events  JMX2-FULL-ALL
 INTEGRAL:JMX2:gti     JMX2-GNRL-GTI
 INTEGRAL:JMX2:detx    DETX
 INTEGRAL:JMX2:dety    DETY
+
+IXPE:submkey          NONE
+IXPE:instkey          DETNAM
+IXPE:dmodekey         NONE
+IXPE:mkf_rel_dir      .
+IXPE:mkf_def_expr     *.mkf
+IXPE:time             TIME
+IXPE:tunits           s
+IXPE:binsize          5.
+IXPE:x                X
+IXPE:y                Y
+IXPE:xsiz             TLMAX
+IXPE:ysiz             TLMAX
+IXPE:detx             X
+IXPE:dety             Y
+IXPE:detxsiz          TLMAX
+IXPE:detysiz          TLMAX
+IXPE:rawx             X
+IXPE:rawy             Y
+IXPE:rawxsiz          TLMAX
+IXPE:rawysiz          TLMAX
+IXPE:phamax           TLMAX
+IXPE:gti              GTI
+IXPE:events           EVENTS
+IXPE:timeorder        yes
+IXPE:instruments      DU1 DU2 DU3
+IXPE:fbin             1
+IXPE:hbin             1
+IXPE:spbn             1
+IXPE:ecol             PI
+IXPE:ccol             NONE
+IXPE:gcol             NONE
+IXPE:polwcol          W_MOM
+IXPE:imagecoord       SKY
+IXPE:wmapcoord        SKY
+IXPE:catnum           1
+IXPE:grpstr           NONE
+IXPE:lststr           ixpe*_evt2_*.fits
+IXPE:ofilt            NONE
+IXPE:wtmapb           no
+IXPE:wtmapfix         no
+IXPE:catcol           TELESCOP INSTRUME DETNAM DATAMODE DATE-OBS DATE-END OBJECT OBS_ID
+IXPE:dispcol          OBJECT DETNAM OBS_ID DATE-OBS
+IXPE:extract          extractor
+IXPE:respscript       NONE
+IXPE:extendresp       no
+
+IXPE:DU1:lststr       ixpe*_det1_evt2_*.fits
+IXPE:DU1:mkf_def_expr *.mkf
+IXPE:DU2:lststr       ixpe*_det1_evt2_*.fits
+IXPE:DU2:mkf_def_expr *.mkf
+IXPE:DU3:lststr       ixpe*_det1_evt2_*.fits
+IXPE:DU3:mkf_def_expr *.mkf
 
 MAXI:submkey       NONE
 MAXI:instkey       INSTRUME
@@ -1419,7 +1611,7 @@ SUZAKU:XIS0:respscript      xsl_suzaku_xis_makeresp
 SUZAKU:XIS0:extendresp      yes
 SUZAKU:XIS0:respneedreg     yes
 
-SUZAKU:XIS0:catcol       OBJECT TELESCOP INSTRUME DATAMODE EDITMODE DATE-OBS DATE-END OBSERVER 
+SUZAKU:XIS0:catcol       OBJECT TELESCOP INSTRUME DATAMODE EDITMODE DATE-OBS DATE-END OBSERVER
 SUZAKU:XIS0:dispcol            OBJECT DATE-OBS DATE-END EDITMODE
 SUZAKU:XIS0:dmodekey           DATAMODE
 SUZAKU:XIS0:modes           STANDARD TIMING
@@ -1430,7 +1622,7 @@ SUZAKU:XIS1:respscript      xsl_suzaku_xis_makeresp
 SUZAKU:XIS1:extendresp      yes
 SUZAKU:XIS1:respneedreg     yes
 
-SUZAKU:XIS1:catcol       OBJECT TELESCOP INSTRUME DATAMODE EDITMODE DATE-OBS DATE-END OBSERVER 
+SUZAKU:XIS1:catcol       OBJECT TELESCOP INSTRUME DATAMODE EDITMODE DATE-OBS DATE-END OBSERVER
 SUZAKU:XIS1:dispcol            OBJECT DATE-OBS DATE-END EDITMODE
 SUZAKU:XIS1:dmodekey           DATAMODE
 SUZAKU:XIS1:modes           STANDARD TIMING
@@ -1441,7 +1633,7 @@ SUZAKU:XIS2:respscript      xsl_suzaku_xis_makeresp
 SUZAKU:XIS2:extendresp      yes
 SUZAKU:XIS2:respneedreg     yes
 
-SUZAKU:XIS2:catcol       OBJECT TELESCOP INSTRUME DATAMODE EDITMODE DATE-OBS DATE-END OBSERVER 
+SUZAKU:XIS2:catcol       OBJECT TELESCOP INSTRUME DATAMODE EDITMODE DATE-OBS DATE-END OBSERVER
 SUZAKU:XIS2:dispcol            OBJECT DATE-OBS DATE-END EDITMODE
 SUZAKU:XIS2:dmodekey           DATAMODE
 SUZAKU:XIS2:modes           STANDARD TIMING
@@ -1452,7 +1644,7 @@ SUZAKU:XIS3:respscript      xsl_suzaku_xis_makeresp
 SUZAKU:XIS3:extendresp      yes
 SUZAKU:XIS3:respneedreg     yes
 
-SUZAKU:XIS3:catcol       OBJECT TELESCOP INSTRUME DATAMODE EDITMODE DATE-OBS DATE-END OBSERVER 
+SUZAKU:XIS3:catcol       OBJECT TELESCOP INSTRUME DATAMODE EDITMODE DATE-OBS DATE-END OBSERVER
 SUZAKU:XIS3:dispcol            OBJECT DATE-OBS DATE-END EDITMODE
 SUZAKU:XIS3:dmodekey           DATAMODE
 SUZAKU:XIS3:modes           STANDARD TIMING
@@ -1530,11 +1722,11 @@ SWIFT:XRT:adjustgti      yes
 SWIFT:XRT:WINDOWED:imagecoord  SKY
 SWIFT:XRT:WINDOWED:wmapcoord   SKY
 SWIFT:XRT:WINDOWED:binsize     1.
- 
+
 SWIFT:XRT:PILEDUP:imagecoord  DETECTOR
 SWIFT:XRT:PILEDUP:wmapcoord  DETECTOR
 SWIFT:XRT:PILEDUP:binsize     1.
- 
+
 SWIFT:XRT:LOWRATE:imagecoord  DETECTOR
 SWIFT:XRT:LOWRATE:wmapcoord  DETECTOR
 SWIFT:XRT:LOWRATE:binsize     1.
@@ -1544,6 +1736,142 @@ SWIFT:UVOT:ecol          NONE
 SWIFT:UVOT:ccol          EXPREF
 SWIFT:UVOT:gcol          NONE
 SWIFT:UVOT:lststr        sw*u*.*
+!
+! XLCALIBUR1
+!
+XLCALIBUR1:submkey          NONE
+XLCALIBUR1:instkey          INSTRUME
+XLCALIBUR1:dmodekey         DATAMODE
+XLCALIBUR1:mkf_def_expr     NONE
+XLCALIBUR1:mkf_rel_dir       .
+XLCALIBUR1:time             TIME
+XLCALIBUR1:tunits             s
+XLCALIBUR1:binsize            16
+!
+! X Y detx dety xsiz ysiz detxsiz detysiz imagecoord see instruments
+!XLCALIBUR1:x                X
+!XLCALIBUR1:y                Y
+!XLCALIBUR1:detx             DETX
+!XLCALIBUR1:dety             DETY
+XLCALIBUR1:rawx             NONE
+XLCALIBUR1:rawy             NONE
+XLCALIBUR1:phamax           TLMAX
+XLCALIBUR1:gti              GTI
+XLCALIBUR1:events           EVENTS
+XLCALIBUR1:timeorder        yes
+XLCALIBUR1:instruments     POLARIMETER IMAGER
+XLCALIBUR1:spbn            1
+XLCALIBUR1:ecol            PI
+XLCALIBUR1:ccol            NONE
+XLCALIBUR1:gcol            NONE
+!XLCALIBUR1:imagecoord         NONE
+XLCALIBUR1:wmapcoord         NONE
+XLCALIBUR1:catnum         1
+XLCALIBUR1:wtmapb         NONE
+XLCALIBUR1:wtmapfix       NONE
+XLCALIBUR1:lststr         *.evt
+XLCALIBUR1: ofilt          NONE
+XLCALIBUR1:fbin          1
+XLCALIBUR1:hbin          1
+XLCALIBUR1:modes         POLARIMETER IMAGER
+! rbnval rbnmod not set
+XLCALIBUR1:catcol       TELESCOP INSTRUME DATAMODE OBJECT OBS_ID  DATE-OBS DATE-END
+XLCALIBUR1:dispcol      TELESCOP INSTRUME DATAMODE OBJECT OBS_ID  DATE-OBS DATE-END
+XLCALIBUR1:extract      extractor
+!
+! XLCALIBUR! Polarimeter
+XLCALIBUR1:POLARIMETER:x   NONE
+XLCALIBUR1:POLARIMETER:y   NONE
+XLCALIBUR1:POLARIMETER:detx   COLUMN
+XLCALIBUR1:POLARIMETER:dety   Z_LAYER
+XLCALIBUR1:POLARIMETER:detxsiz   TLMAX
+XLCALIBUR1:POLARIMETER:detxsiz   TLMAX
+XLCALIBUR1:POLARIMETER:imagecoord DETECTOR
+XLCALIBUR1:POLARIMETER:polwcol    WEIGHT
+!
+! XLCALIBUR1 Imager
+
+XLCALIBUR1:IMAGER:x         X
+XLCALIBUR1:IMAGER:y                Y
+XLCALIBUR1:IMAGER:xsiz      TLMAX
+XLCALIBUR1:IMAGER:ysiz      TLMAX
+XLCALIBUR1:IMAGER:detx             DETX
+XLCALIBUR1:IMAGER:dety             DETY
+XLCALIBUR1:IMAGER:detxsiz          TLMAX
+XLCALIBUR1:IMAGER:detysiz          TLMAX
+XLCALIBUR1:IMAGER:imagecoord       SKY
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! XRISM mission database
+!  General keywords
+!   Keywords gets replaced if redefined at lower level
+!   See initial list at the beginning of the file
+
+XRISM:submkey            NONE
+XRISM:instkey            INSTRUME
+XRISM:dmodekey           DATAMODE
+XRISM:mkf_def_expr       ah*.mkf*
+XRISM:mkf_rel_dir        .
+XRISM:time               TIME
+XRISM:tunits             s
+XRISM:binsize            16.
+XRISM:x                  X
+XRISM:y                  Y
+XRISM:xsiz               TLMAX
+XRISM:ysiz               TLMAX
+XRISM:detx               DETX
+XRISM:dety               DETY
+XRISM:detxsiz            TLMAX
+XRISM:detysiz            TLMAX
+XRISM:rawx               ACTX
+XRISM:rawy               ACTY
+XRISM:rawxsiz            TLMAX
+XRISM:rawysiz            TLMAX
+XRISM:phamax             TLMAX
+XRISM:gti                GTI
+XRISM:events             EVENTS
+XRISM:timeorder          yes
+XRISM:instruments        RESOLVE XTEND
+XRISM:spbn               1
+XRISM:ecol               PI
+XRISM:ccol               NONE
+XRISM:gcol               NONE
+XRISM:imagecoord         SKY
+XRISM:wmapcoord          NONE
+XRISM:catnum             1
+XRISM:wtmapb             no
+XRISM:wtmapfix           no
+XRISM:swmapx             false
+XRISM:swmapy             false
+XRISM:grpstr             NONE
+XRISM:lststr             ah*.evt
+XRISM:ofilt              NONE
+XRISM:fbin               1
+XRISM:hbin               1
+XRISM:catcol             OBJECT TELESCOP INSTRUME DETNAM DATAMODE DATE-OBS DATE-END
+XRISM:dispcol            OBJECT TELESCOP INSTRUME DETNAM DATAMODE DATE-OBS DATE-END
+XRISM:extract            extractor
+!
+! RESOLVE all specific keywords
+XRISM:RESOLVE:lststr             ah*sxs*.evt
+XRISM:RESOLVE:modes              PX_NORMAL PX_MIDRES  AC_NORMAL
+XRISM:RESOLVE:gcol               ITYPE
+!
+! RESOLVE Antico no image
+XRISM:RESOLVE:AC_NORMAL:imagecoord   NONE
+!
+!  XTEND keywords
+XRISM:XTEND:lststr             ah*sxi*.evt
+XRISM:XTEND:modes               WINDOW1 WINDOW2 WINDOW1BURST WINDOW2BURST
+!XRISM:XTEND:ccol               CCD_ID
+XRISM:XTEND:gcol               GRADE
+XRISM:XTEND:wmapcoord          DETECTOR
+XRISM:XTEND:wtmapb             yes
+XRISM:XTEND:wtmapfix           yes
+XRISM:XTEND:swmapx             false
+XRISM:XTEND:swmapy             false
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 XMM:submkey            NONE
 XMM:instkey            INSTRUME
@@ -1633,8 +1961,8 @@ XTE:gti              GTI
 XTE:events           XTE_SA
 XTE:timeorder        yes
 XTE:instruments      PCA HEXTE
-XTE:fbin             1  
-XTE:hbin             1  
+XTE:fbin             1
+XTE:hbin             1
 XTE:spbn             1
 XTE:ecol             GOOD
 XTE:ccol             NONE
@@ -1653,8 +1981,8 @@ XTE:respneedreg      no
 
 XTE:HEXTE:lststr    FS*
 XTE:HEXTE:ofilt     NONE
-XTE:HEXTE:fbin      1  
-XTE:HEXTE:hbin      1  
+XTE:HEXTE:fbin      1
+XTE:HEXTE:hbin      1
 XTE:HEXTE:modes     E_8US_256_DX1F
 XTE:HEXTE:grpstr    NONE
 XTE:HEXTE:catcol    TELESCOP INSTRUME OBSERVER OBJECT RA_PNT DEC_PNT DATAMODE DATE-OBS TIME-OBS CREATOR OBS_MODE OBS_ID APPID TIMEDEL DELTAT
@@ -1666,9 +1994,9 @@ XTE:HEXTE:E_8US_256_DX1F:extract seextrct
 
 XTE:PCA:lststr      FS4a*
 XTE:PCA:ofilt       NONE
-XTE:PCA:fbin        1  
-XTE:PCA:hbin        1  
-XTE:PCA:modes       STANDARD2A STANDARD2B STANDARD2C STANDARD2D STANDARD2E STANDARD2F E_500US_64M_0_1S GOODXENON_2S E_125US_64M_0_1S GOODXENON_16S E_62US_64M_0_1S_L1R1 E_16US_16B_36_1S E_125US_64M_36_1S E_62US_32M_36_1S GOODXENONWITHPROPANE_2S E_1MS_128M_0_8S E_16US_64M_0_1S E_250US_128M_0_1S E_125US_64M_24_1S E_125US_64M_14_1S E_16US_64M_36_1S E_125US_64M_18_1S E_16US_64M_0_8S E_16US_64M_18_1S E_500US_64M_36_1S E_16US_64M_14_1S E_16US_64M_24_1S E_62US_32M_24_1S E_125US_64M_50_1S E_1MS_128M_50_1S GOODXENONWITHPROPANE_16S E_1MS_128M_0_1S E_8US_32B_14_1S E_500US_64N_0_1S E_250US_128M_50_1S E_62US_32M_0_1S E_250US_128M_24_8S E_8US_32M_0_1S E_16US_16M_0_1S E_250US_128M_18_1S E_16US_16B_0_1S E_16US_64M_36_8S E_125US_64M_0_8S E_62US_32M_50_1S E_62US_32M_14_8S E_250US_128M_18_8S E_4US_16A_0_1S E_31US_16M_36_1S E_8US_32B_0_1S E_16US_64M_24_8S E_16US_16B_24_1S E_4US_16B_0_1S E_8US_32M_36_1S E_1US_1M_0_1S E_1MS_128M_50_8S E_62US_14M_0_13_1S E_4US_16M_50_1S E_8US_8A_0_1S E_250US_128M_0_8S E_16US_16M_50_1S E_8US_8C_0_1S E_1US_4M_0_1S E_8US_8B_24_1S E_8US_8B_36_1S E_500US_64M_14_8S E_250US_128M_24_1S E_4US_4B_0_1S E_1US_4A_50_8S E_250US_128M_14_1S E_16US_64M_14_8S E_16US_64M_18_8S E_2US_8B_36_1S E_31US_16M_0_8S E_1US_1M_18_1S E_8US_8B_18_1S E_62US_32B_18_1S E_8US_32M_24_1S E_1US_4A_36_1S E_250US_128M_14_8S E_8US_32M_18_1S E_500US_64M_50_1S E_31US_16M_50_1S E_250US_128M_50_8S E_2US_8B_14_1S E_8US_8M_0_1S E_16US_64M_50_8S E_2US_2M_0_1S  
+XTE:PCA:fbin        1
+XTE:PCA:hbin        1
+XTE:PCA:modes       STANDARD2A STANDARD2B STANDARD2C STANDARD2D STANDARD2E STANDARD2F E_500US_64M_0_1S GOODXENON_2S E_125US_64M_0_1S GOODXENON_16S E_62US_64M_0_1S_L1R1 E_16US_16B_36_1S E_125US_64M_36_1S E_62US_32M_36_1S GOODXENONWITHPROPANE_2S E_1MS_128M_0_8S E_16US_64M_0_1S E_250US_128M_0_1S E_125US_64M_24_1S E_125US_64M_14_1S E_16US_64M_36_1S E_125US_64M_18_1S E_16US_64M_0_8S E_16US_64M_18_1S E_500US_64M_36_1S E_16US_64M_14_1S E_16US_64M_24_1S E_62US_32M_24_1S E_125US_64M_50_1S E_1MS_128M_50_1S GOODXENONWITHPROPANE_16S E_1MS_128M_0_1S E_8US_32B_14_1S E_500US_64N_0_1S E_250US_128M_50_1S E_62US_32M_0_1S E_250US_128M_24_8S E_8US_32M_0_1S E_16US_16M_0_1S E_250US_128M_18_1S E_16US_16B_0_1S E_16US_64M_36_8S E_125US_64M_0_8S E_62US_32M_50_1S E_62US_32M_14_8S E_250US_128M_18_8S E_4US_16A_0_1S E_31US_16M_36_1S E_8US_32B_0_1S E_16US_64M_24_8S E_16US_16B_24_1S E_4US_16B_0_1S E_8US_32M_36_1S E_1US_1M_0_1S E_1MS_128M_50_8S E_62US_14M_0_13_1S E_4US_16M_50_1S E_8US_8A_0_1S E_250US_128M_0_8S E_16US_16M_50_1S E_8US_8C_0_1S E_1US_4M_0_1S E_8US_8B_24_1S E_8US_8B_36_1S E_500US_64M_14_8S E_250US_128M_24_1S E_4US_4B_0_1S E_1US_4A_50_8S E_250US_128M_14_1S E_16US_64M_14_8S E_16US_64M_18_8S E_2US_8B_36_1S E_31US_16M_0_8S E_1US_1M_18_1S E_8US_8B_18_1S E_62US_32B_18_1S E_8US_32M_24_1S E_1US_4A_36_1S E_250US_128M_14_8S E_8US_32M_18_1S E_500US_64M_50_1S E_31US_16M_50_1S E_250US_128M_50_8S E_2US_8B_14_1S E_8US_8M_0_1S E_16US_64M_50_8S E_2US_2M_0_1S
 XTE:PCA:grpstr      NONE
 XTE:PCA:catcol      TELESCOP INSTRUME OBSERVER OBJECT RA_PNT DEC_PNT DATAMODE DATE-OBS TIME-OBS CREATOR OBS_MODE OBS_ID APPID TIMEDEL DELTAT HDUCLAS2
 XTE:PCA:dispcol     INSTRUME OBSERVER OBJECT DATAMODE DATE-OBS TIME-OBS HDUCLAS2

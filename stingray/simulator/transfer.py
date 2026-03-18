@@ -49,7 +49,7 @@ class TransferFunction(object):
     """
 
     def __init__(self, data, dt=1, de=1, tstart=0, estart=0, time=None, energy=None):
-        self.data = np.asarray(data)
+        self.data = np.asanyarray(data)
         self.dt = dt
         self.de = de
         self.tstart = tstart

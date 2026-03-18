@@ -375,7 +375,7 @@ class Covariancespectrum(object):
     def _create_band_interest(self, data):
         """
         If no bands of interest are given, but event data is, create bands of interest for each
-        discrete enery value in the second column of ``data``.
+        discrete energy value in the second column of ``data``.
 
         Parameters
         ----------

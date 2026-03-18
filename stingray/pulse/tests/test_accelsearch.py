@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from stingray.pulse.accelsearch import accelsearch
+from stingray.pulse.accelsearch import accelsearch, _create_responses
 from stingray.utils import HAS_NUMBA
 
 pytestmark = pytest.mark.slow
@@ -45,6 +45,16 @@ class TestAccelsearch(object):
 
     def test_prepare(self):
         pass
+
+    @pytest.mark.parametrize("kind", [float, np.longdouble])
+    def test_create_response_types(self, kind):
+        z = np.array([-1, 0, 1], dtype=kind)
+        zint = np.array([-1, 0, 1], dtype=int)
+
+        rs = _create_responses(z)
+        rints = _create_responses(zint)
+        for r, rint in zip(rs, rints):
+            assert np.allclose(r, rint)
 
     def test_signal(self):
         candidate_table = accelsearch(
@@ -105,5 +115,29 @@ class TestAccelsearch(object):
         assert np.isclose(
             candidate_table["fdot"][best] * self.rescale_fdot,
             -self.fdot * self.rescale_fdot,
+            atol=2 * self.dfdot * self.rescale_fdot,
+        )
+
+    def test_signal_with_gaps(self):
+        with pytest.warns(UserWarning, match="Data contain multiple GTIs."):
+            candidate_table = accelsearch(
+                self.times,
+                self.signal,
+                zmax=10,
+                candidate_file="bubu.csv",
+                delta_z=0.5,
+                gti=[[self.tstart, self.tstart + 10], [self.tstart + 20, self.tstop]],
+                debug=True,
+                interbin=True,
+                nproc=1,
+            )
+        best = np.argmax(candidate_table["power"])
+        assert np.isclose(candidate_table["frequency"][best], self.freq, atol=5 * self.df)
+
+        print(candidate_table["fdot"][best] * self.rescale_fdot, self.fdot * self.rescale_fdot)
+
+        assert np.isclose(
+            candidate_table["fdot"][best] * self.rescale_fdot,
+            self.fdot * self.rescale_fdot,
             atol=2 * self.dfdot * self.rescale_fdot,
         )

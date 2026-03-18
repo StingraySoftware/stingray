@@ -4,12 +4,13 @@ import copy
 
 import numpy as np
 import numpy.random as ra
-from astropy import log
-from astropy.logger import AstropyUserWarning
 
 from .utils import njit
+from .loggingconfig import setup_logger
 
 __all__ = ["Window1D", "Optimal1D"]
+
+logger = setup_logger()
 
 
 class Window1D(object):
@@ -259,7 +260,7 @@ def get_deadtime_mask(
     deadtime_values = deadtime_values[saved_mask]
     final_len = tot_ev_list_filt.size
     if verbose:
-        log.info(
+        logger.info(
             "filter_for_deadtime: "
             "{0}/{1} events rejected".format(initial_len - final_len, initial_len)
         )

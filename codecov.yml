@@ -4,10 +4,10 @@ codecov:
 
 comment:
     after_n_builds: 7
-    # will leave a comment on the pull request after 7 (out of 9) 
+    # will leave a comment on the pull request after 7 (out of 9)
     # continuous integration tests have completed
 
 coverage:
   round: nearest
-  # rounds the coverage percentage to the nearest value, 
+  # rounds the coverage percentage to the nearest value,
   # instead of always rounding down (former default behaviour)

@@ -13,7 +13,7 @@ __all__ = ["CrossCorrelation", "AutoCorrelation"]
 
 
 class CrossCorrelation(object):
-    """Make a cross-correlation from light curves or a cross spectrum.
+    r"""Make a cross-correlation from light curves or a cross spectrum.
 
     You can also make an empty :class:`Crosscorrelation` object to populate
     with your own cross-correlation data.
@@ -246,6 +246,11 @@ class CrossCorrelation(object):
                     self._make_corr(self.lc1, self.lc2)
 
         self.n = len(self.corr)
+        n1 = n2 = self.n
+        if self.lc1 is not None:
+            n1 = np.size(self.lc1.counts)
+        if self.lc2 is not None:
+            n2 = np.size(self.lc2.counts)
 
         if self.cross is not None:
             # Obtains correlation lags if a cross spectrum object is given
@@ -254,12 +259,10 @@ class CrossCorrelation(object):
             x_lags = signal.correlation_lags(self.n, self.n, self.mode)
 
         else:
-            # Obtains correlation lags if two light curves are porvided
+            # Obtains correlation lags if two light curves are provided
             # Correlation against all possible lags, positive as well as negative lags are stored
             # signal.correlation_lags() method uses SciPy versions >= 1.6.1
-            x_lags = signal.correlation_lags(
-                np.size(self.lc1.counts), np.size(self.lc2.counts), self.mode
-            )
+            x_lags = signal.correlation_lags(n1, n2, self.mode)
 
         self.time_lags = x_lags * self.dt
         # time_shift is the time lag for max. correlation

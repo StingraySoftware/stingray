@@ -1,10 +1,192 @@
-[build-system]
+[project]
+name = "stingray"
+dynamic = [
+    "version"
+]
+description = "Time Series Methods For Astronomical X-ray Data"
+readme = "README.rst"
+authors = [
+    { name = "Stingray Developers", email = "spectraltiming-stingray@googlegroups.com" }
+]
+license = { text = "MIT" }
+requires-python = ">=3.8"
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+keywords = [
+    "astronomy",
+    "astrophysics",
+    "time series",
+    "X-ray",
+    "data analysis",
+    "black holes",
+    "neutron stars",
+    "pulsars",
+    "space",
+    "science",
+]
+dependencies = [
+    "numpy>=1.17",
+    "astropy>=4.0",
+    "scipy>=1.1.0",
+    "matplotlib>=3.0,!=3.4.00",
+]
 
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-astropy",
+
+]
+test_all = [
+    "astropy[test]",  # installs the [test] dependencies
+    "objgraph",
+    "ipython>=4.2",
+    "coverage[toml]",
+    "skyfield>=1.20",
+    "sgp4>=2.3",
+]
+recommended = [
+    "numba",
+    "h5py",
+    "pyyaml",
+    "statsmodels",
+    "pyfftw",
+]
+all = [
+    "stingray[recommended]",  # installs the [recommended] dependencies
+    "jplephem",
+    "emcee>=3.0.0",
+    "corner",
+    "lightkurve",
+    "pint-pulsar",
+    "numcodecs",
+    "xarray",
+    "pyarrow",
+    "pandas",
+    "ultranest",
+    "jax",
+    "tinygp",
+    "jaxns",
+    "etils",
+    "tfp-nightly",
+    "typing_extensions",
+    "fsspec",
+]
+docs = [
+    "tomli>=1.1.0; python_version < '3.11'",
+    "jinja2==3.1.3",
+    "docutils",
+    "sphinx-astropy",
+    "nbsphinx>=0.8.3,!=0.8.8",
+    "nbconvert<7.14",
+    "pandoc",
+    "ipython",
+    "towncrier<22.12.0",
+]
+
+[project.urls]
+homepage = "https://stingray.science"
+documentation = "https://docs.stingray.science"
+repository = "https://github.com/stingraysoftware/stingray"
+
+[build-system]
 requires = ["setuptools",
             "setuptools_scm",
             "wheel"]
 
 build-backend = 'setuptools.build_meta'
+
+[tool.setuptools]
+include-package-data = true
+license-files = ["LICENSE.rst"]
+
+[tool.setuptools.packages.find]
+include = ["stingray*"]
+exclude = ["stingray._dev*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+"*" = [
+    "data/*",
+    "*.fits",
+    "*.evt",
+    "*.rmf",
+    "*.txt",
+]
+"stingray" = ["datasets/*"]
+
+[tool.setuptools_scm]
+write_to = "stingray/_version.py"
+
+[tool.pytest.ini_options]
+minversion = 7.0
+testpaths = [
+    "stingray",
+    "docs",
+]
+norecursedirs = [
+    "docs[\\/]_build",
+    "docs[\\/]generated",
+]
+astropy_header = true
+doctest_plus = "enabled"
+text_file_format = "rst"
+remote_data_strict = true
+addopts = "--color=yes --doctest-rst"
+filterwarnings = [
+    "error",
+    "ignore:.*numpy.core.einsumfunc is deprecated.*:DeprecationWarning",
+    "ignore:Unrecognized parfile line:UserWarning",
+    "ignore:.*:ResourceWarning",
+    "ignore:distutils Version classes are deprecated.:DeprecationWarning",
+    "ignore:unclosed .ssl.SSLSocket:ResourceWarning",
+    "ignore:.*set self.value directly:DeprecationWarning",
+    "ignore:On Windows, the size of an integer is 32 bits:UserWarning",
+    "ignore:.*Number of segments used in averaging.*:UserWarning",
+    "ignore:.*:astropy.units.core.UnitsWarning",
+    "ignore:.*cannot be added to FITS Header:astropy.utils.exceptions.AstropyUserWarning",
+    "ignore:The recommended numba package is not installed:UserWarning",
+    "ignore:More than 20 figures have been opened.:RuntimeWarning",
+    "ignore:This platform does not support:RuntimeWarning",
+    "ignore:Some error bars in the Averaged:UserWarning",
+    "ignore:n_ave is below 30:UserWarning",
+    "ignore:pyfftw not installed:UserWarning",
+    "ignore:SIMON says. Errorbars on cross spectra are not thoroughly tested.:UserWarning",
+    "ignore:SIMON says. Stingray only uses poisson err_dist at the moment.:UserWarning",
+    "ignore:SIMON says. Looks like your lightcurve:UserWarning",
+    "ignore:Matplotlib is currently using agg, which is a:UserWarning",
+    "ignore:Using or importing the ABCs from 'collections':DeprecationWarning",
+    "ignore:unclosed file:ResourceWarning",
+    "ignore:numpy.ufunc size changed:RuntimeWarning",
+    "ignore:numpy.ndarray size changed:RuntimeWarning",
+    "ignore:invalid value encountered:RuntimeWarning",
+    "ignore:divide by zero encountered:RuntimeWarning",
+    "ignore:underflow encountered:RuntimeWarning",
+    "ignore:overflow encountered:RuntimeWarning",
+    "ignore:table path was not set via the path= argument; using default path:UserWarning",
+    "ignore:Large Datasets may not be processed efficiently:UserWarning",
+    "ignore:.*is a deprecated alias for:DeprecationWarning",
+    "ignore:.*HIERARCH card will be created.*:",
+    "ignore:.*FigureCanvasAgg is non-interactive.*:UserWarning",
+    "ignore:.*jax.* deprecated:DeprecationWarning:",
+    "ignore:.*Converting to lower precision.*:UserWarning",
+    "ignore:.*is_categorical_dtype is deprecated.*:DeprecationWarning",
+    "ignore:.*datetime.datetime.utcfromtimestamp.*:DeprecationWarning",
+    "ignore:.*__array_wrap__ must accept context and return_scalar arguments:DeprecationWarning",
+    "ignore:.*Pyarrow:",
+    "ignore:.*Creating an ndarray from ragged nested sequences:",
+    "ignore:.*the tpfmodel submodule is not available without oktopus.*:UserWarning",
+    "ignore:.*chararray"
+
+]
 
 [tool.towncrier]
     package = "stingray"
@@ -51,3 +233,49 @@ build-backend = 'setuptools.build_meta'
 
 [tool.black]
 line-length = 100
+
+[tool.coverage]
+
+    [tool.coverage.run]
+        omit = [
+            "stingray/_astropy_init*",
+            "stingray/conftest.py",
+            "stingray/*setup_package*",
+            "stingray/tests/*",
+            "stingray/*/tests/*",
+            "stingray/extern/*",
+            "stingray/version*",
+            "*/stingray/_astropy_init*",
+            "*/stingray/conftest.py",
+            "*/stingray/*setup_package*",
+            "*/stingray/tests/*",
+            "*/stingray/*/tests/*",
+            "*/stingray/extern/*",
+            "*/stingray/version*",
+        ]
+
+    [tool.coverage.report]
+        exclude_lines = [
+            # Have to re-enable the standard pragma
+            "pragma: no cover",
+            # Don't complain about packages we have installed
+            "except ImportError",
+            # Don't complain if tests don't hit defensive assertion code:
+            "raise AssertionError",
+            "raise NotImplementedError",
+            # Don't complain about script hooks
+            "'def main(.*):'",
+            # Ignore branches that don't pertain to this version of Python
+            "pragma: py{ignore_python_version}",
+            # Don't complain about IPython completion helper
+            "def _ipython_key_completions_",
+        ]
+
+[tool.flake8]
+max-line-length = 100
+exclude = ".git,__pycache__,docs/source/conf.py,old,build,dist,*.egg-info"
+extend-ignore = "E203, W503, W605"
+
+[tool.pycodestyle]
+max-line-length = 100
+exclude = ".git,__pycache__,docs/source/conf.py,old,build,dist,*.egg-info"

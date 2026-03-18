@@ -11,6 +11,7 @@ __pycache__
 
 # Other generated files
 */version.py
+*/_version.py
 */cython_version.py
 htmlcov
 .coverage
@@ -31,10 +32,15 @@ MANIFEST
 cov.xml
 *coverage*
 release.*
+build/
+dist/
+stingray-*/
+joss/jats
 
 # Sphinx
 docs/api
 docs/_build
+
 
 # Environments
 .env

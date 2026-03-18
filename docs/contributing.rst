@@ -168,10 +168,31 @@ Coding Style and Conventions
       ``MyNewClass``.
    -  Inline comments should start with two spaces and a single #.
 
--  **Formatting Style:** The new Python 3 formatting style should be
-   used, i.e. f-strings ``f"{variable_name}"`` or
-   ``"{0}".format(variable_name}``\ should be used instead of
-   ``"%s" % (variable_name)``.
+- **Formatting Style:** The new Python 3 formatting style should be
+  used, i.e., f-strings ``f"{variable_name}"`` or
+  ``"{0}".format(variable_name}`` should be used instead of
+  ``"%s" % (variable_name)``. Additionally, the project enforces
+  code formatting and style checks through the **pre-commit** tool,
+  ensuring consistency and adherence to style guidelines across contributions.
+
+- To set up pre-commit locally for the Stingray project, follow these steps:
+
+  1. Install the pre-commit package:
+
+     .. code-block:: bash
+
+        $ pip install pre-commit
+
+  2. Run pre-commit on all files in the Stingray repository:
+
+     .. code-block:: bash
+
+        $ pre-commit run --all-files
+
+     This will run the pre-commit tools on all files in the Stingray git repository. The tools may automatically modify some files, while in other cases, they will report issues that require manual correction. If pre-commit makes changes to any files, those changes will appear as new modifications, which need to be staged before committing.
+
+
+   
 
 -  **Linter/Style Guide Checker:** Our testing infrastructure currently
    enforces a subset of the PEP8 style guide. You can check locally
@@ -397,5 +418,5 @@ Attribution
 ~~~~~~~~~~~
 
 This Code of Conduct is adapted from the `Contributor
-Covenant <http://contributor-covenant.org>`__, version 1.4, available at
-`http://contributor-covenant.org/version/1/4 <http://contributor-covenant.org/version/1/4/>`__
+Covenant <https://contributor-covenant.org>`__, version 1.4, available at
+`https://contributor-covenant.org/version/1/4 <https://contributor-covenant.org/version/1/4/>`__

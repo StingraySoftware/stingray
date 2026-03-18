@@ -1,0 +1,17 @@
+name: General Issue
+description: Your issue does not fit the categories already mentioned.
+labels: 
+  - help wanted
+body:
+  - type: markdown
+    attributes:
+      value: >
+        If you want to discuss more about the issue, reach us at our [Slack Channel](https://stingraysoftware.slack.com/ssb/redirecthttps://join.slack.com/t/stingraysoftware/shared_invite/zt-49kv4kba-mD1Y~s~rlrOOmvqM7mZugQ)
+  - type: textarea
+    attributes:
+      label: Description of the Issue
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Your suggestions for the Fix

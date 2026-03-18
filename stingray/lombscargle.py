@@ -1,15 +1,25 @@
 import copy
+from collections.abc import Iterable
 import warnings
 from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
+import scipy
+import scipy.stats
 from astropy.timeseries.periodograms import LombScargle
 
 from .crossspectrum import Crossspectrum
 from .events import EventList
 from .exceptions import StingrayError
-from .fourier import impose_symmetry_lsft, lsft_fast, lsft_slow
+from .fourier import (
+    impose_symmetry_lsft,
+    lsft_fast,
+    lsft_slow,
+    get_rms_from_unnorm_periodogram,
+    poisson_level,
+    unnormalize_periodograms,
+)
 from .lightcurve import Lightcurve
 from .utils import simon
 
@@ -41,17 +51,13 @@ def _autofrequency(min_freq=None, max_freq=None, df=None, dt=None, length=None, 
     Examples
     --------
     >>> freqs = _autofrequency(min_freq=0.1, max_freq=0.5, df=0.1)
-    >>> np.allclose(freqs, [0.1, 0.2, 0.3, 0.4, 0.5])
-    True
+    >>> assert np.allclose(freqs, [0.1, 0.2, 0.3, 0.4, 0.5])
     >>> freqs = _autofrequency(min_freq=0.1, max_freq=0.5, length=10)
-    >>> np.allclose(freqs, [0.1, 0.2, 0.3, 0.4, 0.5])
-    True
+    >>> assert np.allclose(freqs, [0.1, 0.2, 0.3, 0.4, 0.5])
     >>> freqs = _autofrequency(min_freq=0.1, dt=1, length=10)
-    >>> np.allclose(freqs, [0.1, 0.2, 0.3, 0.4, 0.5])
-    True
+    >>> assert np.allclose(freqs, [0.1, 0.2, 0.3, 0.4, 0.5])
     >>> freqs = _autofrequency(max_freq=0.5, df=0.2)
-    >>> np.allclose(freqs, [0.1, 0.3, 0.5])
-    True
+    >>> assert np.allclose(freqs, [0.1, 0.3, 0.5])
     """
 
     if (df is None or df <= 0) and length is None:
@@ -356,6 +362,7 @@ class LombScargleCrossspectrum(Crossspectrum):
         self.oversampling = None
         self.variance1 = None
         self.variance2 = None
+        self.variance = None
         return
 
     def time_lag(self):
@@ -391,6 +398,112 @@ class LombScargleCrossspectrum(Crossspectrum):
         raise AttributeError(
             "Object has no attribute named 'from_lc_iterable' ! Not applicable for unevenly sampled data"
         )
+
+        if self.df is None:
+            self.df = self.freq[1] - self.freq[0]
+
+    def compute_rms(self, min_freq, max_freq, poisson_noise_level=None):
+        """
+        Compute the fractional rms amplitude in the power spectrum
+        between two frequencies.
+
+        Parameters
+        ----------
+        min_freq: float
+            The lower frequency bound for the calculation.
+
+        max_freq: float
+            The upper frequency bound for the calculation.
+
+        Other parameters
+        ----------------
+        poisson_noise_level : float, default is None
+            This is the Poisson noise level of the PDS with same
+            normalization as the PDS. If poissoin_noise_level is None,
+            the Poisson noise is calculated in the idealcase
+            e.g. 2./<countrate> for fractional rms normalisation
+            Dead time and other instrumental effects can alter it.
+            The user can fit the Poisson noise level outside
+            this function using the same normalisation of the PDS
+            and it will get subtracted from powers here.
+
+        Returns
+        -------
+        rms: float
+            The fractional rms amplitude contained between ``min_freq`` and
+            ``max_freq``.
+
+        rms_err: float
+            The error on the fractional rms amplitude.
+
+        """
+        good = (self.freq >= min_freq) & (self.freq <= max_freq)
+
+        M_freq = self.m
+        K_freq = self.k
+
+        if isinstance(self.k, Iterable):
+            K_freq = self.k[good]
+
+        if isinstance(self.m, Iterable):
+            M_freq = self.m[good]
+
+        if poisson_noise_level is None:
+            poisson_noise_unnorm = poisson_level("none", n_ph=self.nphots)
+        else:
+            poisson_noise_unnorm = unnormalize_periodograms(
+                poisson_noise_level, self.dt, self.n, self.nphots, norm=self.norm
+            )
+
+        rms, rmse = get_rms_from_unnorm_periodogram(
+            self.unnorm_power[good],
+            self.nphots,
+            self.df * K_freq,
+            M=M_freq,
+            poisson_noise_unnorm=poisson_noise_unnorm,
+            segment_size=None,
+            kind="frac",
+        )
+
+        return rms, rmse
+
+    def _rms_error(self, powers):
+        r"""
+        Compute the error on the fractional rms amplitude using error
+        propagation.
+        Note: this uses the actual measured powers, which is not
+        strictly correct. We should be using the underlying power spectrum,
+        but in the absence of an estimate of that, this will have to do.
+
+        .. math::
+
+           r = \sqrt{P}
+
+        .. math::
+
+           \delta r = \\frac{1}{2 * \sqrt{P}} \delta P
+
+        Parameters
+        ----------
+        powers: iterable
+            The list of powers used to compute the fractional rms amplitude.
+
+        Returns
+        -------
+        delta_rms: float
+            The error on the fractional rms amplitude.
+        """
+        nphots = self.nphots
+        p_err = scipy.stats.chi2(2.0 * self.m).var() * powers / self.m / nphots
+
+        rms = np.sum(powers) / nphots
+        pow = np.sqrt(rms)
+
+        drms_dp = 1 / (2 * pow)
+
+        sq_sum_err = np.sqrt(np.sum(p_err**2))
+        delta_rms = sq_sum_err * drms_dp
+        return delta_rms
 
 
 class LombScarglePowerspectrum(LombScargleCrossspectrum):
@@ -653,7 +766,7 @@ def _ls_cross(
     Parameters
     ----------
     lc1: :class:`stingray.lightcurve.Lightcurve` object
-        One light curve to be Lomb-Scargle Fourier transformed. Ths is the band of
+        One light curve to be Lomb-Scargle Fourier transformed. This is the band of
         interest or channel of interest.
 
     lc2: :class:`stingray.lightcurve.Lightcurve` object

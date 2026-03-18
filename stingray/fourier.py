@@ -12,7 +12,117 @@ from .gti import (
     generate_indices_of_segment_boundaries_binned,
     generate_indices_of_segment_boundaries_unbinned,
 )
-from .utils import fft, fftfreq, histogram, show_progress, sum_if_not_none_or_initialize
+
+from .utils import (
+    fft,
+    fftfreq,
+    histogram,
+    show_progress,
+    sum_if_not_none_or_initialize,
+    fix_segment_size_to_integer_samples,
+    rebin_data,
+    njit,
+    vectorize,
+)
+
+
+__all__ = [
+    "integrate_power_in_frequency_range",
+    "positive_fft_bins",
+    "poisson_level",
+    "normalize_frac",
+    "normalize_abs",
+    "normalize_leahy_from_variance",
+    "normalize_leahy_poisson",
+    "normalize_periodograms",
+    "unnormalize_periodograms",
+    "bias_term",
+    "raw_coherence",
+    "intrinsic_coherence",
+]
+
+
+def integrate_power_in_frequency_range(
+    frequency,
+    power,
+    frequency_range,
+    power_err=None,
+    df=None,
+    m=1,
+    poisson_power=0,
+):
+    """
+    Integrate the power in a given frequency range.
+
+    Parameters
+    ----------
+    frequency : iterable
+        The frequencies of the power spectrum
+    power : iterable
+        The power at each frequency
+    frequency_range : iterable of length 2
+        The frequency range to integrate
+    power_err : iterable, optional, default None
+        The power error bar at each frequency
+    df : float or float iterable, optional, default None
+        The frequency resolution of the input data. If None, it is calculated
+        from the median difference of input frequencies.
+    m : int, optional, default 1
+        The number of segments and/or contiguous frequency bins averaged to obtain power.
+        Only needed if ``power_err`` is None
+    poisson_power : float, optional, default 0
+        The Poisson noise level of the power spectrum.
+
+    Returns
+    -------
+    power_integrated : float
+        The integrated power
+    power_integrated_err : float
+        The error on the integrated power
+
+    """
+    frequency = np.array(frequency, dtype=float)
+    power = np.array(power)
+    if not np.iscomplexobj(power):
+        power = power.astype(float)
+    if not isinstance(poisson_power, Iterable):
+        poisson_power = np.ones_like(frequency) * poisson_power
+    if df is None:
+        df = np.median(np.diff(frequency))
+    if not isinstance(df, Iterable):
+        df = np.ones_like(frequency) * df
+
+    # The frequency_range is in the middle or at the edge of each bin. When only a part of the
+    # bin is included, we need to add the fraction of the bin that is included.
+    frequency_mask = (frequency + df / 2 > frequency_range[0]) & (
+        frequency - df / 2 < frequency_range[1]
+    )
+
+    freqs_to_integrate = frequency[frequency_mask]
+    poisson_power = poisson_power[frequency_mask]
+    correction_ratios = np.ones_like(freqs_to_integrate)
+    dfs_to_integrate = df[frequency_mask]
+
+    # The first and last bins are only partially included. We need to correct for the
+    # fraction of the bin actually included.
+    correction_ratios[0] = (
+        freqs_to_integrate[0] + 0.5 * dfs_to_integrate[0] - frequency_range[0]
+    ) / dfs_to_integrate[0]
+    correction_ratios[-1] = (
+        frequency_range[-1] - freqs_to_integrate[-1] + 0.5 * dfs_to_integrate[-1]
+    ) / dfs_to_integrate[-1]
+    dfs_to_integrate = dfs_to_integrate * correction_ratios
+
+    powers_to_integrate = power[frequency_mask]
+
+    if power_err is None:
+        power_err_to_integrate = powers_to_integrate / np.sqrt(m)
+    else:
+        power_err_to_integrate = np.asanyarray(power_err)[frequency_mask]
+
+    power_integrated = np.sum((powers_to_integrate - poisson_power) * dfs_to_integrate)
+    power_err_integrated = np.sqrt(np.sum((power_err_to_integrate * dfs_to_integrate) ** 2))
+    return power_integrated, power_err_integrated
 
 
 def positive_fft_bins(n_bin, include_zero=False):
@@ -56,23 +166,19 @@ def positive_fft_bins(n_bin, include_zero=False):
     as an equivalent mask for the positive bins. Below, a few tests that
     this works as expected.
     >>> goodbins = positive_fft_bins(10)
-    >>> np.allclose(freq[good], freq[goodbins])
-    True
+    >>> assert np.allclose(freq[good], freq[goodbins])
     >>> freq = np.fft.fftfreq(11)
     >>> good = freq > 0
     >>> goodbins = positive_fft_bins(11)
-    >>> np.allclose(freq[good], freq[goodbins])
-    True
+    >>> assert np.allclose(freq[good], freq[goodbins])
     >>> freq = np.fft.fftfreq(10)
     >>> good = freq >= 0
     >>> goodbins = positive_fft_bins(10, include_zero=True)
-    >>> np.allclose(freq[good], freq[goodbins])
-    True
+    >>> assert np.allclose(freq[good], freq[goodbins])
     >>> freq = np.fft.fftfreq(11)
     >>> good = freq >= 0
     >>> goodbins = positive_fft_bins(11, include_zero=True)
-    >>> np.allclose(freq[good], freq[goodbins])
-    True
+    >>> assert np.allclose(freq[good], freq[goodbins])
     """
     # The zeroth bin is 0 Hz. We usually don't include it, but
     # if the user wants it, we do.
@@ -91,21 +197,30 @@ def poisson_level(norm="frac", meanrate=None, n_ph=None, backrate=0):
     Poisson (white)-noise level in a periodogram of pure counting noise.
 
     For Leahy normalization, this is:
+
     .. math::
+
         P = 2
 
     For the fractional r.m.s. normalization, this is
+
     .. math::
+
         P = \frac{2}{\mu}
+
     where :math:`\mu` is the average count rate
 
     For the absolute r.m.s. normalization, this is
+
     .. math::
+
         P = 2 \mu
 
     Finally, for the unnormalized periodogram, this is
+
     .. math::
-        P = N_{ph}
+
+        P = N_{\rm ph}
 
     Parameters
     ----------
@@ -183,22 +298,27 @@ def normalize_frac(unnorm_power, dt, n_bin, mean_flux, background_flux=0):
     r"""
     Fractional rms normalization.
 
-    ..math::
-        P = \frac{P_{Leahy}}{\mu} = \frac{2T}{N_{ph}^2}P_{unnorm}
+    .. math::
+
+        P = \frac{P_{\rm Leahy}}{\mu} = \frac{2T}{N_{\rm ph}^2}P_{\rm unnorm}
 
     where :math:`\mu` is the mean count rate, :math:`T` is the length of
-    the observation, and :math:`N_{ph}` the number of photons.
+    the observation, and :math:`N_{\rm ph}` the number of photons.
     Alternative formulas found in the literature substitute :math:`T=N\,dt`,
-    :math:`\mu=N_{ph}/T`, which give equivalent results.
+    :math:`\mu=N_{\rm ph}/T`, which give equivalent results.
 
     If the background can be estimated, one can calculate the source rms
     normalized periodogram as
-    ..math::
-        P = P_{Leahy} * \frac{\mu}{(\mu - \beta)^2}
+
+    .. math::
+
+        P = P_{\rm Leahy} \frac{\mu}{(\mu - \beta)^2}
 
     or
-    ..math::
-        P = \frac{2T}{(N_{ph} - \beta T)^2}P_{unnorm}
+
+    .. math::
+
+        P = \frac{2T}{(N_{\rm ph} - \beta T)^2}P_{\rm unnorm}
 
     where :math:`\beta` is the background count rate.
 
@@ -246,12 +366,12 @@ def normalize_frac(unnorm_power, dt, n_bin, mean_flux, background_flux=0):
     >>> lc = np.random.poisson(mean, n_bin)
     >>> pds = np.abs(fft(lc))**2
     >>> pdsnorm = normalize_frac(pds, dt, lc.size, mean)
-    >>> np.isclose(pdsnorm[1:n_bin//2].mean(), poisson_level(meanrate=meanrate,norm="frac"), rtol=0.01)
-    True
+    >>> assert np.isclose(
+    ...     pdsnorm[1:n_bin//2].mean(), poisson_level(meanrate=meanrate,norm="frac"), rtol=0.01)
     >>> pdsnorm = normalize_frac(pds, dt, lc.size, mean, background_flux=back)
-    >>> np.isclose(pdsnorm[1:n_bin//2].mean(),
-    ...            poisson_level(meanrate=meanrate,norm="frac",backrate=backrate), rtol=0.01)
-    True
+    >>> assert np.isclose(pdsnorm[1:n_bin//2].mean(),
+    ...                   poisson_level(meanrate=meanrate,norm="frac",backrate=backrate),
+    ...                   rtol=0.01)
     """
     #     (mean * n_bin) / (mean /dt) = n_bin * dt
     #     It's Leahy / meanrate;
@@ -272,11 +392,14 @@ def normalize_abs(unnorm_power, dt, n_bin):
     Absolute rms normalization.
 
     .. math::
-        P = P_{frac} * \mu^2
+
+        P = P_{\rm frac} * \mu^2
 
     where :math:`\mu` is the mean count rate, or equivalently
+
     .. math::
-        P = \frac{2}{T}P_{unnorm}
+
+        P = \frac{2}{T}P_{\rm unnorm}
 
     In this normalization, the periodogram is in units of
     :math:`rms^2 Hz^{-1}`, and the squared root of the
@@ -308,8 +431,8 @@ def normalize_abs(unnorm_power, dt, n_bin):
     >>> lc = np.random.poisson(mean, n_bin)
     >>> pds = np.abs(fft(lc))**2
     >>> pdsnorm = normalize_abs(pds, dt, lc.size)
-    >>> np.isclose(pdsnorm[1:n_bin//2].mean(), poisson_level(norm="abs", meanrate=meanrate), rtol=0.01)
-    True
+    >>> assert np.isclose(
+    ...     pdsnorm[1:n_bin//2].mean(), poisson_level(norm="abs", meanrate=meanrate), rtol=0.01)
     """
     #     It's frac * meanrate**2; Leahy / meanrate * meanrate**2
     #     n_ph = mean * n_bin
@@ -324,7 +447,8 @@ def normalize_leahy_from_variance(unnorm_power, variance, n_bin):
     Leahy+83 normalization, from the variance of the lc.
 
     .. math::
-        P = \frac{P_{unnorm}}{N <\delta{x}^2>}
+
+        P = \frac{P_{\rm unnorm}}{N <\delta{x}^2>}
 
     In this normalization, the periodogram of a single light curve
     is distributed according to a chi squared distribution with two
@@ -356,10 +480,8 @@ def normalize_leahy_from_variance(unnorm_power, variance, n_bin):
     >>> lc = np.random.poisson(mean, n_bin).astype(float)
     >>> pds = np.abs(fft(lc))**2
     >>> pdsnorm = normalize_leahy_from_variance(pds, var, lc.size)
-    >>> np.isclose(pdsnorm[0], 2 * np.sum(lc), rtol=0.01)
-    True
-    >>> np.isclose(pdsnorm[1:n_bin//2].mean(), poisson_level(norm="leahy"), rtol=0.01)
-    True
+    >>> assert np.isclose(pdsnorm[0], 2 * np.sum(lc), rtol=0.01)
+    >>> assert np.isclose(pdsnorm[1:n_bin//2].mean(), poisson_level(norm="leahy"), rtol=0.01)
 
     If the variance is zero, it will fail:
     >>> pdsnorm = normalize_leahy_from_variance(pds, 0., lc.size)
@@ -373,11 +495,12 @@ def normalize_leahy_from_variance(unnorm_power, variance, n_bin):
 
 
 def normalize_leahy_poisson(unnorm_power, n_ph):
-    """
+    r"""
     Leahy+83 normalization.
 
     .. math::
-        P = \frac{2}{N_{ph}} P_{unnorm}
+
+        P = \frac{2}{N_{\rm ph}} P_{\rm unnorm}
 
     In this normalization, the periodogram of a single light curve
     is distributed according to a chi squared distribution with two
@@ -406,10 +529,8 @@ def normalize_leahy_poisson(unnorm_power, n_ph):
     >>> lc = np.random.poisson(mean, n_bin).astype(float)
     >>> pds = np.abs(fft(lc))**2
     >>> pdsnorm = normalize_leahy_poisson(pds, np.sum(lc))
-    >>> np.isclose(pdsnorm[0], 2 * np.sum(lc), rtol=0.01)
-    True
-    >>> np.isclose(pdsnorm[1:n_bin//2].mean(), poisson_level(norm="leahy"), rtol=0.01)
-    True
+    >>> assert np.isclose(pdsnorm[0], 2 * np.sum(lc), rtol=0.01)
+    >>> assert np.isclose(pdsnorm[1:n_bin//2].mean(), poisson_level(norm="leahy"), rtol=0.01)
     """
     return unnorm_power * 2.0 / n_ph
 
@@ -433,27 +554,27 @@ def normalize_periodograms(
 
     Parameters
     ----------
-    unnorm_power: numpy.ndarray
+    unnorm_power : numpy.ndarray
         The unnormalized cross spectrum.
 
-    dt: float
+    dt : float
         The sampling time of the light curve
 
-    n_bin: int
+    n_bin : int
         The number of bins in the light curve
 
     Other parameters
     ----------------
-    mean_flux: float
+    mean_flux : float
         The mean of the light curve used to calculate the powers
         (If a cross spectrum, the geometrical mean of the light
         curves in the two channels). Only relevant for "frac" normalization
 
-    n_ph: int or float
+    n_ph : int or float
         The number of counts in the light curve used to calculate
         the unnormalized periodogram. Only relevant for Leahy normalization.
 
-    variance: float
+    variance : float
         The average variance of the measurements in light curve (if a cross
         spectrum,  the geometrical mean of the variances in the two channels).
         **NOT** the variance of the light curve, but of each flux measurement
@@ -473,7 +594,7 @@ def normalize_periodograms(
 
     Returns
     -------
-    power: numpy.nd.array
+    power : numpy.nd.array
         The normalized co-spectrum (real part of the cross spectrum). For
         'none' normalization, imaginary part is returned as well.
     """
@@ -511,27 +632,27 @@ def unnormalize_periodograms(
 
     Parameters
     ----------
-    norm_power: numpy.ndarray
+    norm_power : numpy.ndarray
         The normalized cross-spectrum or poisson noise
 
-    dt: float
+    dt : float
         The sampling time of the light curve
 
-    n_bin: int
+    n_bin : int
         The number of bins in the light curve
 
     Other parameters
     ----------------
-    mean_flux: float
+    mean_flux : float
         The mean of the light curve used to calculate the powers
         (If a cross spectrum, the geometrical mean of the light
         curves in the two channels). Only relevant for "frac" normalization
 
-    n_ph: int or float
+    n_ph : int or float
         The number of counts in the light curve used to calculate
         the unnormalized periodogram. Only relevant for Leahy normalization.
 
-    variance: float
+    variance : float
         The average variance of the measurements in light curve (if a cross
         spectrum,  the geometrical mean of the variances in the two channels).
         **NOT** the variance of the light curve, but of each flux measurement
@@ -551,7 +672,7 @@ def unnormalize_periodograms(
 
     Returns
     -------
-    power: numpy.nd.array
+    power : numpy.nd.array
         The normalized co-spectrum (real part of the cross spectrum). For
         'none' normalization, imaginary part is returned as well.
     """
@@ -581,6 +702,22 @@ def unnormalize_periodograms(
     raise ValueError("Unrecognized power type")
 
 
+@vectorize(
+    [
+        "float64(float64, float64, float64, float64, int64, float64)",
+        "float64(float64, float64, float64, float64, float64, float64)",
+    ],
+    nopython=True,
+)
+def _bias_term(power1, power2, power1_noise, power2_noise, n_ave, input_intrinsic_coherence):
+    if n_ave > 500:
+        return 0.0
+    bsq = power1 * power2 - input_intrinsic_coherence * (power1 - power1_noise) * (
+        power2 - power2_noise
+    )
+    return bsq / n_ave
+
+
 def bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=1.0):
     """
     Bias term needed to calculate the coherence.
@@ -603,7 +740,7 @@ def bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coher
         Poisson noise level of the sub-band periodogram
     power2_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
 
     Other Parameters
@@ -616,16 +753,77 @@ def bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coher
     bias : float `np.array`, same shape as ``power1`` and ``power2``
         The bias term
     """
-    if (isinstance(n_ave, Iterable) and np.all(n_ave > 500)) or (
-        not isinstance(n_ave, Iterable) and n_ave > 500
-    ):
-        return 0.0 * power1
-    bsq = power1 * power2 - intrinsic_coherence * (power1 - power1_noise) * (power2 - power2_noise)
-    return bsq / n_ave
+
+    return _bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence)
 
 
-def raw_coherence(
-    cross_power, power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=1
+@vectorize(["float64(float64, float64, float64)"], nopython=True)
+def _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty):
+    """
+    Apply a low limit to the uncertainty on the coherence, to avoid zero or negative uncertainties.
+
+    Parameters
+    ----------
+    coherence : float or float `np.array`
+        The coherence values at all frequencies.
+    uncertainty : float or float `np.array`
+        The uncertainty on the coherence at all frequencies. Must have the same
+        shape as `coherence`.
+    min_uncertainty : float or float `np.array`
+        The minimum uncertainty to apply. Can be a single value or an array of
+        the same shape as `coherence` and `uncertainty`.
+
+    Returns
+    -------
+    uncertainty : float or float `np.array`
+        The uncertainty on the coherence, with the low limit applied.
+
+    Examples
+    --------
+    >>> coherence = np.array([0.5, 0.0, 0.5])
+    >>> uncertainty = np.array([0.1, 0.0, 0.05])
+    >>> min_uncertainty = 0.01
+    >>> expected = np.array([0.1, 0.01, 0.05])
+    >>> res = _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty)
+    >>> assert np.allclose(res, expected)
+
+    # The same, but with a different minimum uncertainty for each frequency.
+    >>> min_uncertainty = np.array([0.01, 0.1, 0.1])
+    >>> res = _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty)
+    >>> expected = np.array([0.1, 0.1, 0.1])
+    >>> assert np.allclose(res, expected)
+
+    # All the same, but with scalar inputs.
+    >>> coherence = 0.5
+    >>> uncertainty = 0.0
+    >>> min_uncertainty = 0.01
+    >>> expected = 0.01
+    >>> res = _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty)
+    >>> assert np.isclose(res, expected)
+
+    """
+
+    bad = (coherence == 0) | (uncertainty < min_uncertainty)
+    if bad:
+        uncertainty = min_uncertainty
+    return uncertainty
+
+
+@vectorize(
+    [
+        "float64(complex128, float64, float64, float64, float64, int64, float64)",
+        "float64(complex128, float64, float64, float64, float64, float64, float64)",
+    ],
+    nopython=True,
+)
+def _raw_coherence(
+    cross_power,
+    power1,
+    power2,
+    power1_noise,
+    power2_noise,
+    n_ave,
+    intrinsic_coherence,
 ):
     """
     Raw coherence estimations from cross and power spectra.
@@ -644,81 +842,589 @@ def raw_coherence(
         Poisson noise level of the sub-band periodogram
     power2_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
 
     Other Parameters
     ----------------
     intrinsic_coherence : float, default 1
         If known, the intrinsic coherence.
+    return_uncertainty : bool, default False
+        Whether to return the uncertainty on the coherence, calculated according to VN97
 
     Returns
     -------
     coherence : float `np.array`
         The raw coherence values at all frequencies.
     """
-    bsq = bias_term(
-        power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=intrinsic_coherence
-    )
+    bsq = _bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence)
     num = (cross_power * np.conj(cross_power)).real - bsq
-    if isinstance(num, Iterable):
-        num[num < 0] = (cross_power * np.conj(cross_power)).real[num < 0]
-    elif num < 0:
-        warnings.warn("Negative numerator in raw_coherence calculation. Setting bias term to 0")
-        num = (cross_power * np.conj(cross_power)).real
+    if num < 0:
+        num = 0
+
     den = power1 * power2
-    return num / den
+
+    coherence = num / den
+
+    return coherence
 
 
-def _estimate_intrinsic_coherence_single(
-    cross_power, power1, power2, power1_noise, power2_noise, n_ave
+def raw_coherence(
+    cross_power,
+    power1,
+    power2,
+    power1_noise,
+    power2_noise,
+    n_ave,
+    intrinsic_coherence=1.0,
+    return_uncertainty=False,
 ):
-    """
-    Estimate intrinsic coherence.
+    r"""
+    Raw coherence estimations from cross and power spectra.
 
-    Use the iterative procedure from sec. 5 of
+    The function is defined as (see Ingram 2019 [#]_ :
 
-    Ingram 2019, MNRAS 489, 392
+    .. math::
+
+        \tilde{g}^2(f) = \frac{|\langle \tilde{C}(f) \rangle|^2 - \tilde{b}^2}
+        {\langle \tilde{P}_1(f) \rangle \langle \tilde{P}_2(f) \rangle}
+
+    where :math:`\tilde{b}^2` is the bias term that accounts for the contribution of Poisson
+    noise to the cross spectrum (see :func:`stingray.fourier.bias_term`), and tilde generally indicates noisy
+    measurements of the cross spectrum :math:`C` and the power spectra :math:`P_n`.
 
     Parameters
     ----------
-    cross_power : complex
+    cross_power : complex `np.array`
         cross spectrum
-    power1 : float
-        sub-band power
-    power2 : float
-        reference-band power
+    power1 : float `np.array`
+        sub-band periodogram
+    power2 : float `np.array`
+        reference-band periodogram
     power1_noise : float
         Poisson noise level of the sub-band periodogram
     power2_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
+
+    Other Parameters
+    ----------------
+    intrinsic_coherence : float, default 1
+        If known, the intrinsic coherence.
+    return_uncertainty : bool, default False
+        Whether to return the uncertainty on the coherence, calculated according to VN97
 
     Returns
     -------
     coherence : float `np.array`
-        The estimated intrinsic coherence, at all frequencies.
+        The raw coherence values at all frequencies.
+
+    References
+    ----------
+    .. [#] https://doi.org/10.1093/mnras/stz2409
     """
-    new_coherence = 1
-    old_coherence = 0
-    count = 0
-    while not np.isclose(new_coherence, old_coherence, atol=0.01) and count < 40:
-        old_coherence = new_coherence
-        bsq = bias_term(
-            power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence=new_coherence
+
+    coherence = _raw_coherence(
+        cross_power,
+        power1,
+        power2,
+        power1_noise,
+        power2_noise,
+        n_ave,
+        intrinsic_coherence,
+    )
+    if return_uncertainty:
+        min_uncertainty = 1 / n_ave
+        uncertainty = (2**0.5 * coherence * (1 - coherence)) / (np.sqrt(coherence) * n_ave**0.5)
+        uncertainty = _apply_low_lim_to_coherence_uncertainty(
+            coherence, uncertainty, min_uncertainty
         )
-        den = (power1 - power1_noise) * (power2 - power2_noise)
+        return coherence, uncertainty
+    return coherence
+
+
+@njit
+def _intrinsic_coherence_uncertainties(
+    bsq, num, power1_sub, power2_sub, power1_noise, power2_noise, coherence, n_ave
+):
+    """Calculate the uncertainty on the intrinsic coherence, according to VN97, eq. 8.
+
+    Parameters
+    ----------
+    bsq : float
+        The bias term squared, calculated according to the bias_term function.
+    num : float
+        The numerator of the coherence calculation, i.e. (cross_power * np.conj(cross_power)).real - bsq.
+    power1_sub : float
+        The subtracted power of the first band, i.e. power1 - power1_noise
+    power2_sub : float
+        The subtracted power of the second band, i.e. power2 - power2_noise
+    power1_noise : float
+        The Poisson noise level of the first band periodogram
+    power2_noise : float
+        The Poisson noise level of the second band periodogram
+    coherence : float
+        The intrinsic coherence calculated according to the _intrinsic_coherence function.
+    n_ave : int or float
+        The number of intervals that have been averaged to obtain the input spectra
+    """
+    # Terms from VN97, eq. 8, for the uncertainty on the coherence.
+    err1 = 2.0 * (bsq**2) * n_ave / (num - bsq) ** 2
+    err2 = (power1_noise / power1_sub) ** 2 + (power2_noise / power2_sub) ** 2
+    err3 = 2.0 * ((1 - coherence) / (coherence**1.5)) ** 2
+    uncertainty = coherence / np.sqrt(n_ave) * np.sqrt(err1 + err2 + err3)
+    return uncertainty
+
+
+@vectorize(
+    [
+        "bool(float64, float64, float64, float64, int64, float64)",
+        "bool(float64, float64, float64, float64, float64, float64)",
+    ],
+    nopython=True,
+)
+def check_powers_for_intrinsic_coherence(
+    power1, power2, power1_noise, power2_noise, n_ave, threshold
+):
+    """Check if the powers are above the threshold for the intrinsic coherence to be well defined.
+
+    Parameters
+    ----------
+    power1 : float `np.array`
+        sub-band periodogram
+    power2 : float `np.array`
+        reference-band periodogram
+    power1_noise : float
+        Poisson noise level of the sub-band periodogram
+    power2_noise : float
+        Poisson noise level of the reference-band periodogram
+    n_ave : int or float
+        number of intervals that have been averaged to obtain the input spectra
+    threshold : float
+        The threshold in sigma above the noise level for the powers to be considered "high".
+
+    Returns
+    -------
+    low_power1 : bool `np.array`
+        Whether the powers of the first band are below the threshold.
+    low_power2 : bool `np.array`
+        Whether the powers of the second band are below the threshold.
+
+    """
+    # Consider low power when the power is less than 3 sigma above the noise level.
+    # This is somewhat arbitrary, better criteria suggestions are welcome.
+    low_power1 = (power1 - power1_noise) <= threshold * power1_noise / np.sqrt(n_ave)
+    low_power2 = (power2 - power2_noise) <= threshold * power2_noise / np.sqrt(n_ave)
+    return low_power1 or low_power2
+
+
+@njit
+def _intrinsic_coherence(
+    cross_power,
+    power1,
+    power2,
+    power1_noise,
+    power2_noise,
+    n_ave,
+):
+    """
+    Intrinsic coherence estimations from cross and power spectra.
+
+    Vaughan & Nowak 1997, ApJ 474, L43
+
+    For errors, assumes **high powers, high coherence**. See eq. 8 of the paper.
+    Powers below 3 sigma above the noise level (P_noise / sqrt(MW)) are considered too low,
+    and the coherence will be set to NaN.
+
+    TODO: implement a more general treatment of the uncertainty.
+
+    Parameters
+    ----------
+    cross_power : complex `np.array`
+        cross spectrum
+    power1 : float `np.array`
+        sub-band periodogram
+    power2 : float `np.array`
+        reference-band periodogram
+    power1_noise : float
+        Poisson noise level of the sub-band periodogram
+    power2_noise : float
+        Poisson noise level of the reference-band periodogram
+    n_ave : int or float
+        number of intervals that have been averaged to obtain the input spectra
+
+    Other Parameters
+    ----------------
+    return_uncertainty : bool, default False
+        Whether to return the uncertainty on the coherence, calculated according to
+        Vaughan & Nowak 1997, ApJ 474, L43, eq. 8.
+
+    Returns
+    -------
+    coherence : float `np.array` or tuple of two float `np.array`
+        The intrinsic coherence values at all frequencies. It is 0 if the numerator
+        of the coherence calculation is negative, and NaN if the powers are too low compared
+        to the noise level.
+    uncertainty : float `np.array`, optional
+        The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
+        1997, ApJ 474, L43, eq. 8.
+    """
+
+    if check_powers_for_intrinsic_coherence(power1, power2, power1_noise, power2_noise, n_ave, 3):
+        # If the powers are too close to the noise level, the coherence is not well defined.
+        return np.nan, np.nan
+
+    bsq = _bias_term(power1, power2, power1_noise, power2_noise, n_ave, 1)
+    num = (cross_power * np.conj(cross_power)).real - bsq
+    if num < 0:
+        return 0.0, np.nan
+
+    power1_sub = power1 - power1_noise
+    power2_sub = power2 - power2_noise
+
+    den = power1_sub * power2_sub
+
+    coherence = num / den
+
+    uncertainty = _intrinsic_coherence_uncertainties(
+        bsq, num, power1_sub, power2_sub, power1_noise, power2_noise, coherence, n_ave
+    )
+
+    return coherence, uncertainty
+
+
+@njit
+def _intrinsic_coherence_with_adjusted_bias(
+    cross_power,
+    power1,
+    power2,
+    power1_noise,
+    power2_noise,
+    n_ave,
+    atol=0.01,
+):
+    """
+    Intrinsic coherence estimations from cross and power spectra, with adjusted bias term.
+
+    Follows the procedure from sec. 5 of Ingram 2019, MNRAS 489, 3927, which iteratively
+    adjusts the bias term
+
+    For errors, assumes **high powers, high coherence**. See eq. 8 of Vaughan & Nowak 1997.
+    Powers below 3 sigma above the noise level (P_noise / sqrt(MW)) are considered too low,
+    and the coherence will be set to NaN.
+
+    Parameters
+    ----------
+    cross_power : complex `np.array`
+        cross spectrum
+    power1 : float `np.array`
+        sub-band periodogram
+    power2 : float `np.array`
+        reference-band periodogram
+    power1_noise : float
+        Poisson noise level of the sub-band periodogram
+    power2_noise : float
+        Poisson noise level of the reference-band periodogram
+    n_ave : int or float
+        number of intervals that have been averaged to obtain the input spectra
+
+    Other Parameters
+    ----------------
+    atol : float, default 0.01
+        The absolute tolerance for the convergence of the iterative procedure to adjust
+        the bias term.
+
+    Returns
+    -------
+    coherence : float `np.array` or tuple of two float `np.array`
+        The intrinsic coherence values at all frequencies. It is 0 if the numerator
+        of the coherence calculation is negative, and NaN if the powers are too low compared
+        to the noise level.
+    uncertainty : float `np.array`, optional
+        The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
+        1997, ApJ 474, L43, eq. 8.
+    not_converged_flag : bool `np.array`
+        Whether the bias term adjustment procedure converged (False) or not (True).
+
+    """
+
+    if check_powers_for_intrinsic_coherence(power1, power2, power1_noise, power2_noise, n_ave, 3):
+        # If the powers are too close to the noise level, the coherence is not well defined.
+        return np.nan, np.nan, False
+
+    # Consider low power when the power is less than 3 sigma above the noise level.
+    # This is somewhat arbitrary, better criteria suggestions are welcome.
+    power1_sub = power1 - power1_noise
+    power2_sub = power2 - power2_noise
+
+    current_coherence = 1.0
+
+    converged = False
+    for _ in range(40):
+        bsq = _bias_term(power1, power2, power1_noise, power2_noise, n_ave, current_coherence)
         num = (cross_power * np.conj(cross_power)).real - bsq
-        if num < 0:
-            num = (cross_power * np.conj(cross_power)).real
-        new_coherence = num / den
-        count += 1
-    return new_coherence
+        if num <= 0:
+            # if the current coherence still drops, the bias term increases,
+            # so at this point it is useless to keep iterating.
+            return 0.0, np.nan, False
+
+        den = power1_sub * power2_sub
+
+        coherence = num / den
+        if np.abs(current_coherence - coherence) < atol:
+            converged = True
+            break
+        current_coherence = coherence
+
+    uncertainty = _intrinsic_coherence_uncertainties(
+        bsq, num, power1_sub, power2_sub, power1_noise, power2_noise, coherence, n_ave
+    )
+    return coherence, uncertainty, not converged
 
 
-# This is the vectorized version of the function above.
-estimate_intrinsic_coherence_vec = np.vectorize(_estimate_intrinsic_coherence_single)
+@njit
+def _intrinsic_coherence_array(
+    cross_power,
+    power1,
+    power2,
+    power1_noise,
+    power2_noise,
+    n_ave,
+    adjust_bias=False,
+    atol=0.01,
+):
+    r"""
+    Intrinsic coherence estimations from cross and power spectra.
+
+    Vaughan & Nowak 1997, ApJ 474, L43
+
+    .. math::
+
+        \tilde{\gamma}^2(f) = \frac{|\langle \tilde{C}(f) \rangle|^2 - \tilde{b}^2}
+        {(\langle \tilde{P}_1(f) \rangle - \tilde{P}_{1, \rm noise})
+        (\langle \tilde{P}_2(f) \rangle - \tilde{P}_{2, \rm noise})}
+
+    where :math:`\tilde{b}^2` is the bias term that accounts for the contribution of Poisson
+    noise to the cross spectrum (see :func:`stingray.fourier.bias_term`), and tilde generally
+    indicates noisy measurements of the cross spectrum :math:`C` and the power spectra :math:`P_n`.
+    The terms :math:`\tilde{P}_{\rm n, \rm noise}` are the estimates of the contribution of
+    Poisson noise to the power spectra.
+
+    The bias term depends on the intrinsic coherence itself, so it can be calculated iteratively
+    following the procedure from sec. 5 of Ingram 2019, MNRAS 489, 3927, which adjusts the bias
+    term until convergence is reached. This is done if ``adjust_bias`` is set to True. It is
+    typically a very small correction.
+
+    For errors, assumes **high powers, high coherence**. See eq. 8 of the paper.
+    Powers below 3 sigma above the noise level (P_noise / sqrt(MW)) are considered too low,
+    and the coherence will be set to NaN.
+
+    TODO: implement a more general treatment of the uncertainty.
+
+    Parameters
+    ----------
+    cross_power : complex `np.array`
+        Cross spectrum
+    power1 : float `np.array`
+        Sub-band periodogram. Must have the same shape as `cross_power`.
+    power2 : float `np.array`
+        Reference-band periodogram. Must have the same shape as `cross_power`.
+    power1_noise : float `np.array`
+        Poisson noise level of the sub-band periodogram. Can have a single value
+        or the same shape as `cross_power`.
+    power2_noise : float `np.array`
+        Poisson noise level of the reference-band periodogram. Can have a single value
+        or the same shape as `cross_power`.
+    n_ave : int or float `np.array`
+        number of intervals that have been averaged to obtain the input spectra. Can have
+        a single value or the same shape as `cross_power`.
+
+    Other Parameters
+    ----------------
+    adjust_bias : bool, default False
+        Whether to adjust the bias term iteratively following the procedure from sec. 5 of
+        Ingram 2019, MNRAS 489, 3927. It is typically a very small correction, but it can be
+        relevant for low coherence values and/or low number of averaged intervals
+    atol : float, default 0.01
+        The absolute tolerance for the convergence of the iterative procedure to adjust
+        the bias term. Only relevant if ``adjust_bias`` is True.
+
+    Returns
+    -------
+    coherence : float `np.array`
+        The intrinsic coherence values at all frequencies. It is 0 if the numerator
+        of the coherence calculation is negative, and NaN if the powers are too low compared
+        to the noise level.
+    uncertainty : float `np.array`
+        The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
+        1997, ApJ 474, L43, eq. 8.
+    no_conversion_flags : `list` of int
+        List of indices of ``coherence`` corresponding to frequencies where the bias term
+        adjustment procedure did not converge. Only relevant if ``adjust_bias`` is True.
+
+    """
+
+    coherence = np.empty(cross_power.shape, dtype=np.float64)
+    uncertainty = np.empty(cross_power.shape, dtype=np.float64)
+    no_conversion_flags = []
+
+    for i in range(cross_power.size):
+        if np.size(power1_noise) == np.size(cross_power):
+            p1_n = float(power1_noise[i])
+        else:
+            p1_n = float(power1_noise[0])
+
+        if np.size(power2_noise) == np.size(cross_power):
+            p2_n = float(power2_noise[i])
+        else:
+            p2_n = float(power2_noise[0])
+
+        if np.size(n_ave) == np.size(cross_power):
+            n_a = int(n_ave[i])
+        else:
+            n_a = int(n_ave[0])
+
+        if adjust_bias:
+            coherence[i], uncertainty[i], flag = _intrinsic_coherence_with_adjusted_bias(
+                cross_power[i], power1[i], power2[i], p1_n, p2_n, n_a, atol=atol
+            )
+            if flag:
+                no_conversion_flags.append(i)
+
+        else:
+            coherence[i], uncertainty[i] = _intrinsic_coherence(
+                cross_power[i], power1[i], power2[i], p1_n, p2_n, n_a
+            )
+
+    return coherence, uncertainty, no_conversion_flags
+
+
+def intrinsic_coherence(
+    cross_power,
+    power1,
+    power2,
+    power1_noise,
+    power2_noise,
+    n_ave,
+    return_uncertainty=False,
+    adjust_bias=False,
+    atol=0.01,
+):
+    r"""
+    Intrinsic coherence estimations from cross and power spectra.
+
+    Vaughan & Nowak 1997, ApJ 474, L43
+
+    .. math::
+
+        \tilde{\gamma}^2(f) = \frac{|\langle \tilde{C}(f) \rangle|^2 - \tilde{b}^2}
+        {(\langle \tilde{P}_1(f) \rangle - \tilde{P}_{1, \rm noise})
+        (\langle \tilde{P}_2(f) \rangle - \tilde{P}_{2, \rm noise})}
+
+    where :math:`\tilde{b}^2` is the bias term that accounts for the contribution of Poisson
+    noise to the cross spectrum (see :func:`stingray.fourier.bias_term`), and tilde generally
+    indicates noisy measurements of the cross spectrum :math:`C` and the power spectra :math:`P_n`.
+    The terms :math:`\tilde{P}_{\rm n, \rm noise}` are the estimates of the contribution of
+    Poisson noise to the power spectra.
+
+    The bias term depends on the intrinsic coherence itself, so it can be calculated iteratively
+    following the procedure from sec. 5 of Ingram 2019, MNRAS 489, 3927, which adjusts the bias
+    term until convergence is reached. This is done if ``adjust_bias`` is set to True. It is
+    typically a very small correction.
+
+    For errors, assumes **high powers, high coherence**. See eq. 8 of the paper.
+    Powers below 3 sigma above the noise level (P_noise / sqrt(MW)) are considered too low,
+    and the coherence will be set to NaN.
+
+    TODO: implement a more general treatment of the uncertainty.
+
+    Parameters
+    ----------
+    cross_power : complex `np.array`
+        Cross spectrum
+    power1 : float `np.array`
+        Sub-band periodogram. Must have the same shape as `cross_power`.
+    power2 : float `np.array`
+        Reference-band periodogram. Must have the same shape as `cross_power`.
+    power1_noise : float or float `np.array` of the same shape as `cross_power`
+        Poisson noise level of the sub-band periodogram
+    power2_noise : float or float `np.array` of the same shape as `cross_power`
+        Poisson noise level of the reference-band periodogram
+    n_ave : int or float or int `np.array` of the same shape as `cross_power`
+        number of intervals that have been averaged to obtain the input spectra
+
+    Other Parameters
+    ----------------
+    return_uncertainty : bool, default False
+        Whether to return the uncertainty on the coherence, calculated according to
+        Vaughan & Nowak 1997, ApJ 474, L43, eq. 8.
+    atol : float, default 0.01
+        The absolute tolerance for the convergence of the iterative procedure to adjust
+        the bias term.Only relevant if ``adjust_bias`` is True.
+
+    Returns
+    -------
+    coherence : float `np.array` or tuple of two float `np.array`
+        The intrinsic coherence values at all frequencies. It is 0 if the numerator
+        of the coherence calculation is negative, and NaN if the powers are too low compared
+        to the noise level.
+    uncertainty : float `np.array`, optional
+        The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
+        1997, ApJ 474, L43, eq. 8.
+
+    """
+    single_power = False
+    if not isinstance(cross_power, np.ndarray):
+        cross_power = np.asanyarray([cross_power])
+        power1 = np.asanyarray([power1])
+        power2 = np.asanyarray([power2])
+        single_power = True
+
+    if not isinstance(power1_noise, Iterable):
+        power1_noise = np.asanyarray([power1_noise])
+    if not isinstance(power2_noise, Iterable):
+        power2_noise = np.asanyarray([power2_noise])
+    if not isinstance(n_ave, Iterable):
+        n_ave = np.asanyarray([n_ave])
+
+    coherence, uncertainty, flagged = _intrinsic_coherence_array(
+        cross_power,
+        power1,
+        power2,
+        power1_noise,
+        power2_noise,
+        n_ave,
+        adjust_bias=adjust_bias,
+        atol=atol,
+    )
+
+    if len(flagged) > 0:
+        warnings.warn(
+            "The iterative procedure to adjust the bias term did not converge after 40 "
+            "iterations. Consider rebinning the spectra to increase the signal-to-noise "
+            "ratio, or to use a more permissive tolerance (``atol`` parameter)."
+        )
+    if np.any(np.isnan(coherence)):
+        warnings.warn(
+            "NaN values detected in intrinsic_coherence calculation. This happens when the powers "
+            "are too close to the noise level, and the coherence is not well defined. Consider "
+            "rebinning the spectra to increase the signal-to-noise ratio."
+        )
+    if np.any(np.isclose(coherence, 0)):
+        warnings.warn(
+            "Zero values detected in intrinsic_coherence calculation. This usually happens"
+            " when the bias term is larger than the cross spectrum, and the coherence is not"
+            " well defined. "
+        )
+
+    if single_power:
+        coherence = coherence[0]
+        uncertainty = uncertainty[0]
+
+    if return_uncertainty:
+        return coherence, uncertainty
+    return coherence
 
 
 def estimate_intrinsic_coherence(cross_power, power1, power2, power1_noise, power2_noise, n_ave):
@@ -741,7 +1447,7 @@ def estimate_intrinsic_coherence(cross_power, power1, power2, power1_noise, powe
         Poisson noise level of the sub-band periodogram
     power2_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
 
     Returns
@@ -749,10 +1455,178 @@ def estimate_intrinsic_coherence(cross_power, power1, power2, power1_noise, powe
     coherence : float `np.array`
         The estimated intrinsic coherence, at all frequencies.
     """
-    new_coherence = estimate_intrinsic_coherence_vec(
-        cross_power, power1, power2, power1_noise, power2_noise, n_ave
+    warnings.warn(
+        "estimate_intrinsic_coherence is deprecated. Use intrinsic_coherence with adjust_bias=True instead.",
+        DeprecationWarning,
+    )
+    new_coherence = intrinsic_coherence(
+        cross_power,
+        power1,
+        power2,
+        power1_noise,
+        power2_noise,
+        n_ave,
+        return_uncertainty=False,
+        adjust_bias=True,
     )
     return new_coherence
+
+
+def get_rms_from_rms_norm_periodogram(power_sqrms, poisson_noise_sqrms, df, M, low_M_buffer_size=4):
+    r"""Calculate integrated rms spectrum (frac or abs).
+
+    If M=1, it starts by rebinning the powers slightly in order to get a slightly
+    better approximation for the error bars.
+
+    Parameters
+    ----------
+    power_sqrms : array-like
+        Powers, in units of fractional rms ($(rms/mean)^2 Hz{-1}$)
+    poisson_noise_sqrms : float
+        Poisson noise level, in units of fractional rms ($(rms/mean)^2 Hz{-1}$
+    df : float or ``np.array``, same dimension of ``power_sqrms``
+        The frequency resolution of each power
+    M : int or ``np.array``, same dimension of ``power_sqrms``
+        The number of powers averaged to obtain each value of power.
+
+    Other Parameters
+    ----------------
+    low_M_buffer_size : int, default 4
+        If M=1, the powers are rebinned to have a minimum of ``low_M_buffer_size`` powers
+        in each bin. This is done to get a better estimate of the error bars.
+    """
+    from stingray.utils import rebin_data
+
+    m_is_iterable = isinstance(M, Iterable)
+    df_is_iterable = isinstance(df, Iterable)
+
+    # if M is an iterable but all values are the same, let's simplify
+    if m_is_iterable and len(list(set(M))) == 1:
+        M = M[0]
+        m_is_iterable = False
+    # the same with df
+    if df_is_iterable and len(list(set(df))) == 1:
+        df = df[0]
+        df_is_iterable = False
+
+    low_M_values = M < 30
+
+    if np.any(M < 30):
+        quantity = "Some"
+        if not m_is_iterable or np.count_nonzero(low_M_values) == M.size:
+            quantity = "All"
+        warnings.warn(
+            f"{quantity} power spectral bins have M<30. The error bars on the rms might be wrong. "
+            "In some cases one might try to increase the number of segments, for example by "
+            "reducing the segment size, in order to obtain at least 30 segments."
+        )
+    # But they cannot be of different kind. There would be something wrong with the data
+    if m_is_iterable != df_is_iterable:
+        raise ValueError("M and df must be either both constant, or none of them.")
+
+    # If powers are not rebinned and M=1, we rebin them slightly. The error on the power is tricky,
+    # because powers follow a non-central chi squared distribution. If we combine powers with
+    # very different underlying signal level, the error bars will be completely wrong. But
+    # nearby powers have a higher chance of having similar values, and so, by combining them,
+    # we have a higher chance of obtaining sensible quasi-Gaussian error bars, easier to
+    # propagate through standard quadrature summation
+    if not m_is_iterable and M == 1 and power_sqrms.size > low_M_buffer_size:
+        _, local_power_sqrms, _, local_M = rebin_data(
+            np.arange(power_sqrms.size) * df,
+            power_sqrms,
+            df * low_M_buffer_size,
+            yerr=None,
+            method="average",
+            dx=df,
+        )
+        local_df = df * local_M
+        total_local_powers = local_M * local_power_sqrms.size
+        total_power_err = np.sqrt(np.sum(local_power_sqrms**2 * local_df**2 / local_M))
+        total_power_err *= power_sqrms.size / total_local_powers
+    else:
+        total_power_err = np.sqrt(np.sum(power_sqrms**2 * df**2 / M))
+
+    powers_sub = power_sqrms - poisson_noise_sqrms
+
+    total_power_sub = np.sum(powers_sub * df)
+
+    if total_power_sub < 0:
+        # By the definition, it makes no sense to define an error bar here.
+        warnings.warn("Poisson-subtracted power is below 0")
+        return 0.0, 0.0
+
+    rms = np.sqrt(total_power_sub)
+
+    high_snr_err = 0.5 / rms * total_power_err
+
+    return rms, high_snr_err
+
+
+def get_rms_from_unnorm_periodogram(
+    unnorm_powers,
+    nphots_per_segment,
+    df,
+    M=1,
+    poisson_noise_unnorm=None,
+    segment_size=None,
+    kind="frac",
+):
+    """Calculate the fractional rms amplitude from unnormalized powers.
+
+    We assume the powers come from an unnormalized Bartlett periodogram.
+    If so, the Poisson noise level is ``nphots_per_segment``, but the user
+    can specify otherwise (e.g. if the Poisson noise level is altered by dead time).
+    The ``segment_size`` and ``nphots_per_segment`` parameters refer to the length
+    and averaged counts of each segment of data used for the Bartlett periodogram.
+
+    Parameters
+    ----------
+    unnorm_powers : np.ndarray
+        The unnormalized power spectrum
+    nphots_per_segment : float
+        The averaged number of photons per segment of the data used for the Bartlett periodogram
+    df : float
+        The frequency resolution of the periodogram
+
+    Other parameters
+    ----------------
+    poisson_noise_unnorm : float
+        The unnormalized Poisson noise level
+    segment_size : float
+        The size of the segment, in seconds
+    M : int
+        The number of segments averaged to obtain the periodogram
+    kind : str
+        One of "frac" or "abs"
+    """
+    if segment_size is None:
+        segment_size = 1 / np.min(df)
+
+    if poisson_noise_unnorm is None:
+        poisson_noise_unnorm = nphots_per_segment
+
+    meanrate = nphots_per_segment / segment_size
+
+    def to_leahy(powers):
+        return powers * 2.0 / nphots_per_segment
+
+    def to_frac(powers):
+        return to_leahy(powers) / meanrate
+
+    def to_abs(powers):
+        return to_leahy(powers) * meanrate
+
+    if kind.startswith("frac"):
+        to_norm = to_frac
+    elif kind.startswith("abs"):
+        to_norm = to_abs
+    else:
+        raise ValueError("Only 'frac' or 'abs' rms are supported.")
+
+    poisson = to_norm(poisson_noise_unnorm)
+    powers = to_norm(unnorm_powers)
+
+    return get_rms_from_rms_norm_periodogram(powers, poisson, df, M)
 
 
 def rms_calculation(
@@ -764,7 +1638,7 @@ def rms_calculation(
     M_freqs,
     K_freqs,
     freq_bins,
-    poisson_noise_unnrom,
+    poisson_noise_unnorm,
     deadtime=0.0,
 ):
     """
@@ -774,74 +1648,67 @@ def rms_calculation(
 
     Parameters
     ----------
-    unnrom_powers: array of float
+    unnorm_powers : array of float
         unnormalised power or cross spectrum, the array has already been
         filtered for the given frequency range
 
-    min_freq: float
+    min_freq : float
         The lower frequency bound for the calculation (from the freq grid).
 
-    max_freq: float
+    max_freq : float
         The upper frequency bound for the calculation (from the freq grid).
 
-    nphots: float
+    nphots : float
         Number of photons for the full power or cross spectrum
 
-    T: float
+    T : float
         Time length of the light curve
 
-    M_freq: scalar or array of float
+    M_freq : scalar or array of float
         If scalar, it is the number of segments in the AveragedCrossspectrum
         If array, it is the number of segments times the rebinning sample
         in the given frequency range.
 
-    K_freq: scalar or array of float
+    K_freq : scalar or array of float
         If scalar, the power or cross spectrum is not rebinned (K_freq = 1)
         If array,  the power or cross spectrum is rebinned and it is the
         rebinned sample in the given frequency range.
 
-    freq_bins: integer
+    freq_bins : integer
         if the cross or power spectrum is rebinned freq_bins = 1,
         if it NOT rebinned freq_bins is the number of frequency bins
         in the given frequency range.
 
-    poisson_noise_unnrom : float
+    poisson_noise_unnorm : float
         This is the Poisson noise level unnormalised.
 
     Other parameters
     ----------------
-    deadtime: float
+    deadtime : float
         Deadtime of the instrument
 
     Returns
     -------
-    rms: float
+    rms : float
         The fractional rms amplitude contained between ``min_freq`` and
         ``max_freq``.
 
-    rms_err: float
+    rms_err : float
         The error on the fractional rms amplitude.
 
     """
-    rms_squared = (
-        np.sum((unnorm_powers - poisson_noise_unnrom) * 1 / T * K_freqs) * 2 * T / nphots**2
+    warnings.warn(
+        "The rms_calculation function is deprecated. Use get_rms_from_unnorm_periodogram instead.",
+        DeprecationWarning,
     )
+    rms_norm_powers = unnorm_powers * 2 * T / nphots**2
+    rms_poisson_noise = poisson_noise_unnorm * 2 * T / nphots**2
 
-    if rms_squared < 0.0:
-        rms_err = np.sqrt(
-            np.var((unnorm_powers - poisson_noise_unnrom) * 1 / T * K_freqs) * 2 * T / nphots**2
-        )
-        return 0.0, rms_err
-    rms = np.sqrt(rms_squared)
+    df = 1 / T * K_freqs
 
-    rms_noise_squared = (
-        poisson_noise_unnrom * (max_freq - min_freq) * 2 * T / nphots**2
-    )  # rms of the noise
-    rms_err_squared = (2 * rms_squared * rms_noise_squared + rms_noise_squared**2) / (
-        2 * np.sum(M_freqs) * freq_bins * rms_squared
+    rms, rms_err = get_rms_from_rms_norm_periodogram(
+        rms_norm_powers, rms_poisson_noise, df, M_freqs
     )
-    rms_err = np.sqrt(rms_err_squared)
-
     return rms, rms_err
 
 
@@ -849,7 +1716,14 @@ def error_on_averaged_cross_spectrum(
     cross_power, seg_power, ref_power, n_ave, seg_power_noise, ref_power_noise, common_ref=False
 ):
     """
-    Error on cross spectral quantities, From Ingram 2019.
+    Error on cross spectral quantities.
+
+    `Ingram 2019<https://ui.adsabs.harvard.edu/abs/2019MNRAS.489.3927I/abstract>`__ details
+    the derivation of the corrected formulas when the subject band is included in the reference
+    band (and photons are presents in both bands, so this does _not_ involve overlapping bands from
+    different detectors).
+    The keyword argument ``common_ref`` indicates if the reference band also contains the photons
+    of the subject band.
 
     Note: this is only valid for a very large number of averaged powers.
     Beware if n_ave < 50 or so.
@@ -866,7 +1740,7 @@ def error_on_averaged_cross_spectrum(
         Poisson noise level of the sub-band periodogram
     ref_power_noise : float
         Poisson noise level of the reference-band periodogram
-    n_ave : int
+    n_ave : int or float
         number of intervals that have been averaged to obtain the input spectra
 
     Other Parameters
@@ -913,8 +1787,15 @@ def error_on_averaged_cross_spectrum(
         PrPs = ref_power * seg_power
         dRe = np.sqrt((PrPs + cross_power.real**2 - cross_power.imag**2) / two_n_ave)
         dIm = np.sqrt((PrPs - cross_power.real**2 + cross_power.imag**2) / two_n_ave)
+
         gsq = raw_coherence(
-            cross_power, seg_power, ref_power, seg_power_noise, ref_power_noise, n_ave
+            cross_power,
+            seg_power,
+            ref_power,
+            seg_power_noise,
+            ref_power_noise,
+            n_ave,
+            return_uncertainty=False,
         )
         dphi = np.sqrt((1 - gsq) / (2 * gsq * n_ave))
         dG = np.sqrt(PrPs / n_ave)
@@ -946,7 +1827,7 @@ def cross_to_covariance(cross_power, ref_power, ref_power_noise, delta_nu):
 
     Returns
     -------
-    covariance: complex `np.array`
+    covariance : complex `np.array`
         The cross spectrum, normalized as a covariance.
 
     """
@@ -966,7 +1847,14 @@ def _which_segment_idx_fun(binned=False, dt=None):
     """
     # Make function interface equal (fluxes gets ignored)
     if not binned:
-        fun = generate_indices_of_segment_boundaries_unbinned
+        # Define a new function, make sure that, by default, the sort check
+        # is disabled.
+        def fun(*args, **kwargs):
+            check_sorted = kwargs.pop("check_sorted", False)
+            return generate_indices_of_segment_boundaries_unbinned(
+                *args, check_sorted=check_sorted, **kwargs
+            )
+
     else:
         # Define a new function, so that we can pass the correct dt as an
         # argument.
@@ -1008,13 +1896,11 @@ def get_average_ctrate(times, gti, segment_size, counts=None):
     Examples
     --------
     >>> times = np.sort(np.random.uniform(0, 1000, 1000))
-    >>> gti = np.asarray([[0, 1000]])
+    >>> gti = np.asanyarray([[0, 1000]])
     >>> counts, _ = np.histogram(times, bins=np.linspace(0, 1000, 11))
     >>> bin_times = np.arange(50, 1000, 100)
-    >>> get_average_ctrate(bin_times, gti, 1000, counts=counts)
-    1.0
-    >>> get_average_ctrate(times, gti, 1000)
-    1.0
+    >>> assert get_average_ctrate(bin_times, gti, 1000, counts=counts) == 1.0
+    >>> assert get_average_ctrate(times, gti, 1000) == 1.0
     """
     n_ph = 0
     n_intvs = 0
@@ -1054,7 +1940,7 @@ def get_flux_iterable_from_segments(
     gti : [[gti00, gti01], [gti10, gti11], ...]
         good time intervals
     segment_size : float
-        length of segments
+        length of segments. If ``None``, the full light curve is used.
 
     Other parameters
     ----------------
@@ -1084,23 +1970,30 @@ def get_flux_iterable_from_segments(
     cast_kind = float
     if dt is None and binned:
         dt = np.median(np.diff(times[:100]))
+
     if binned:
-        fluxes = np.asarray(fluxes)
+        fluxes = np.asanyarray(fluxes)
         if np.iscomplexobj(fluxes):
             cast_kind = complex
 
-    fun = _which_segment_idx_fun(binned, dt)
+    if segment_size is None:
+        segment_size = gti[-1, 1] - gti[0, 0]
+
+        def fun(times, gti, segment_size):
+            return [[gti[0, 0], gti[-1, 1], 0, times.size]]
+
+    else:
+        fun = _which_segment_idx_fun(binned, dt)
 
     for s, e, idx0, idx1 in fun(times, gti, segment_size):
         if idx1 - idx0 < 2:
             yield None
             continue
         if not binned:
-            event_times = times[idx0:idx1]
             # astype here serves to avoid integer rounding issues in Windows,
             # where long is a 32-bit integer.
             cts = histogram(
-                (event_times - s).astype(float), bins=n_bin, range=[0, segment_size]
+                (times[idx0:idx1] - s).astype(float), bins=n_bin, range=[0, segment_size]
             ).astype(float)
             cts = np.array(cts)
         else:
@@ -1109,6 +2002,225 @@ def get_flux_iterable_from_segments(
                 cts = cts, errors[idx0:idx1].astype(cast_kind)
 
         yield cts
+
+
+@njit()
+def _safe_array_slice_indices(input_size, input_center_idx, nbins):
+    """Calculate the indices needed to extract a n-bin slice of an array, centered at an index.
+
+    Let us say we have an array of size ``input_size`` and we want to extract a slice of
+    ``nbins`` centered at index ``input_center_idx``. We should be robust when the slice goes
+    beyond the edges of the input array, possibly leaving missing values in the output array.
+    This function calculates the indices needed to extract the slice from the input array, and
+    the indices in the output array that will be filled.
+
+    In the most common case, the slice is entirely contained within the input array, so that the
+    output slice will just be ``[0:nbins]`` and the input slice
+    ``[input_center_idx - nbins // 2: input_center_idx - nbins // 2 + nbins]``.
+
+    Parameters
+    ----------
+    input_size : int
+        Input array size
+    center_idx : int
+        Index of the center of the slice
+    nbins : int
+        Number of bins to extract
+
+    Returns
+    -------
+    input_slice : list
+        Indices to extract the slice from the input array
+    output_slice : list
+        Indices to fill the output array
+
+    Examples
+    --------
+    >>> _safe_array_slice_indices(input_size=10, input_center_idx=5, nbins=3)
+    ([4, 7], [0, 3])
+
+    If the slice goes beyond the right edge: the output slice will only cover
+    the first two bins of the output array, and up to the end of the input array.
+    >>> _safe_array_slice_indices(input_size=6, input_center_idx=5, nbins=3)
+    ([4, 6], [0, 2])
+
+    """
+
+    minbin = input_center_idx - nbins // 2
+    maxbin = minbin + nbins
+
+    if minbin < 0:
+        output_slice = [-minbin, min(nbins, input_size - minbin)]
+        input_slice = [0, minbin + nbins]
+    elif maxbin > input_size:
+        output_slice = [0, nbins - (maxbin - input_size)]
+        input_slice = [minbin, input_size]
+    else:
+        output_slice = [0, nbins]
+        input_slice = [minbin, maxbin]
+
+    return input_slice, output_slice
+
+
+@njit()
+def extract_pds_slice_around_freq(freqs, powers, f0, nbins=100):
+    """Extract a slice of PDS around a given frequency.
+
+    This function extracts a slice of the power spectrum around a given frequency.
+    The slice has a length of ``nbins``. If the slice goes beyond the edges of the
+    power spectrum, the missing values are filled with NaNs.
+
+    Parameters
+    ----------
+    freqs : np.array
+        Array of frequencies, the same for all powers
+    powers : np.array
+        Array of powers
+    f0 : float
+        Central frequency
+
+    Other parameters
+    ----------------
+    nbins : int, default 100
+        Number of bins to extract
+
+    Examples
+    --------
+    >>> freqs = np.arange(1, 100) * 0.1
+    >>> powers = 10 / freqs
+    >>> f0 = 0.3
+    >>> p = extract_pds_slice_around_freq(freqs, powers, f0)
+    >>> assert np.isnan(p[0])
+    >>> assert not np.any(np.isnan(p[48:]))
+    """
+    powers = np.asarray(powers)
+    chunk = np.zeros(nbins) + np.nan
+    # fchunk = np.zeros(nbins)
+
+    start_f_idx = np.searchsorted(freqs, f0)
+
+    input_slice, output_slice = _safe_array_slice_indices(powers.size, start_f_idx, nbins)
+    chunk[output_slice[0] : output_slice[1]] = powers[input_slice[0] : input_slice[1]]
+    return chunk
+
+
+@njit()
+def _shift_and_average_core(input_array_list, weight_list, center_indices, nbins):
+    """Core function to shift_and_add, JIT-compiled for your convenience.
+
+    Parameters
+    ----------
+    input_array_list : list of np.array
+        List of input arrays
+    weight_list : list of float
+        List of weights for each input array
+    center_indices : list of int
+        Central indices of the slice of each input array to be summed
+    nbins : int
+        Number of bins to extract around the central index of each input array
+
+    Returns
+    -------
+    output_array : np.array
+        Average of the input arrays, weighted by the weights
+    sum_of_weights : np.array
+        Sum of the weights at each output bin
+    """
+    input_size = input_array_list[0].size
+    output_array = np.zeros(nbins)
+    sum_of_weights = np.zeros(nbins)
+    for idx, array, weight in zip(center_indices, input_array_list, weight_list):
+        input_slice, output_slice = _safe_array_slice_indices(input_size, idx, nbins)
+
+        for i in range(input_slice[1] - input_slice[0]):
+            output_array[output_slice[0] + i] += array[input_slice[0] + i] * weight
+
+            sum_of_weights[output_slice[0] + i] += weight
+
+    output_array = output_array / sum_of_weights
+
+    return output_array, sum_of_weights
+
+
+def shift_and_add(freqs, power_list, f0_list, nbins=100, rebin=None, df=None, M=None):
+    """Add a list of power spectra, centered on different frequencies.
+
+    This is the basic operation for the shift-and-add operation used to track
+    kHz QPOs in X-ray binaries (e.g. Méndez et al. 1998, ApJ, 494, 65).
+
+    Parameters
+    ----------
+    freqs : np.array
+        Array of frequencies, the same for all powers. Must be sorted and on a uniform
+        grid.
+    power_list : list of np.array
+        List of power spectra. Each power spectrum must have the same length
+        as the frequency array.
+    f0_list : list of float
+        List of central frequencies
+
+    Other parameters
+    ----------------
+    nbins : int, default 100
+        Number of bins to extract
+    rebin : int, default None
+        Rebin the final spectrum by this factor. At the moment, the rebinning
+        is linear.
+    df : float, default None
+        Frequency resolution of the power spectra. If not given, it is calculated
+        from the input frequencies.
+    M : int or list of int, default None
+        Number of segments used to calculate each power spectrum. If a list is
+        given, it must have the same length as the power list.
+
+    Returns
+    -------
+    f : np.array
+        Array of output frequencies
+    p : np.array
+        Array of output powers
+    n : np.array
+        Number of contributing power spectra at each frequency
+
+    Examples
+    --------
+    >>> power_list = [[2, 5, 2, 2, 2], [1, 1, 5, 1, 1], [3, 3, 3, 5, 3]]
+    >>> freqs = np.arange(5) * 0.1
+    >>> f0_list = [0.1, 0.2, 0.3, 0.4]
+    >>> f, p, n = shift_and_add(freqs, power_list, f0_list, nbins=5)
+    >>> assert np.array_equal(n, [2, 3, 3, 3, 2])
+    >>> assert np.array_equal(p, [2. , 2. , 5. , 2. , 1.5])
+    >>> assert np.allclose(f, [0.05, 0.15, 0.25, 0.35, 0.45])
+    """
+
+    # Check if the input list of power contains numpy arrays
+    if not hasattr(power_list[0], "size"):
+        power_list = np.asarray(power_list)
+    # input_size = np.size(power_list[0])
+    freqs = np.asarray(freqs)
+
+    # mid_idx = np.searchsorted(freqs, np.mean(f0_list))
+    if M is None:
+        M = 1
+    if not isinstance(M, Iterable):
+        M = np.ones(len(power_list)) * M
+
+    center_f_indices = np.searchsorted(freqs, f0_list)
+
+    final_powers, count = _shift_and_average_core(power_list, M, center_f_indices, nbins)
+
+    if df is None:
+        df = freqs[1] - freqs[0]
+
+    final_freqs = np.arange(-nbins // 2, nbins // 2 + 1)[:nbins] * df
+    final_freqs = final_freqs - (final_freqs[0] + final_freqs[-1]) / 2 + np.mean(f0_list)
+
+    if rebin is not None:
+        _, count, _, _ = rebin_data(final_freqs, count, rebin * df)
+        final_freqs, final_powers, _, _ = rebin_data(final_freqs, final_powers, rebin * df)
+        final_powers = final_powers / rebin
+
+    return final_freqs, final_powers, count
 
 
 def avg_pds_from_iterable(
@@ -1217,7 +2329,7 @@ def avg_pds_from_iterable(
 
         # If the user wants to normalize using the mean of the total
         # lightcurve, normalize it here
-        cs_seg = unnorm_power
+        cs_seg = copy.deepcopy(unnorm_power)
         if not use_common_mean:
             mean = n_ph / n_bin
 
@@ -1348,7 +2460,7 @@ def avg_cs_from_iterables_quick(flux_iterable1, flux_iterable2, dt, norm="frac")
 
     """
     # Initialize stuff
-    unnorm_cross = unnorm_pds1 = unnorm_pds2 = None
+    unnorm_cross = None
     n_ave = 0
 
     sum_of_photons1 = sum_of_photons2 = 0
@@ -1577,7 +2689,7 @@ def avg_cs_from_iterables(
         ft1 = fft(flux1)
         ft2 = fft(flux2)
 
-        # Calculate the sum of each light curve, to calculate the mean
+        # Calculate the sum of each light curve chunk, to calculate the mean
         n_ph1 = flux1.sum()
         n_ph2 = flux2.sum()
         n_ph = np.sqrt(n_ph1 * n_ph2)
@@ -1603,7 +2715,7 @@ def avg_cs_from_iterables(
                 unnorm_pd1 = unnorm_pd1[fgt0]
                 unnorm_pd2 = unnorm_pd2[fgt0]
 
-        cs_seg = unnorm_power
+        cs_seg = copy.deepcopy(unnorm_power)
         p1_seg = unnorm_pd1
         p2_seg = unnorm_pd2
 
@@ -1785,7 +2897,15 @@ def avg_cs_from_iterables(
     return results
 
 
-def avg_pds_from_events(
+def avg_pds_from_events(*args, **kwargs):
+    warnings.warn(
+        "avg_pds_from_events is deprecated, use avg_cs_from_timeseries instead", DeprecationWarning
+    )
+
+    return avg_pds_from_timeseries(*args, **kwargs)
+
+
+def avg_pds_from_timeseries(
     times,
     gti,
     segment_size,
@@ -1804,7 +2924,7 @@ def avg_pds_from_events(
     If the input is a light curve, the time array needs to be uniformly sampled
     inside GTIs (it can have gaps outside), and the fluxes need to be passed
     through the ``fluxes`` array.
-    Otherwise, times are interpeted as photon arrival times.
+    Otherwise, times are interpreted as photon arrival times.
 
     Parameters
     ----------
@@ -1813,7 +2933,7 @@ def avg_pds_from_events(
     gti : [[gti00, gti01], [gti10, gti11], ...]
         Good time intervals.
     segment_size : float
-        Length of segments.
+        Length of segments. If ``None``, the full light curve is used.
     dt : float
         Time resolution of the light curves used to produce periodograms.
 
@@ -1846,18 +2966,19 @@ def avg_pds_from_events(
         The normalized periodogram powers
     n_bin : int
         the number of bins in the light curves used in each segment
-    n_ave : int
+    n_ave : int or float
         the number of averaged periodograms
     mean : float
         the mean flux
     """
-    if segment_size is None:
-        segment_size = gti.max() - gti.min()
-    n_bin = int(segment_size / dt)
-    if fluxes is None:
-        dt = segment_size / n_bin
+    binned = fluxes is not None
+    if segment_size is not None:
+        segment_size, n_bin = fix_segment_size_to_integer_samples(segment_size, dt)
+    elif binned and segment_size is None:
+        n_bin = fluxes.size
     else:
-        segment_size = n_bin * dt
+        _, n_bin = fix_segment_size_to_integer_samples(gti.max() - gti.min(), dt)
+
     flux_iterable = get_flux_iterable_from_segments(
         times, gti, segment_size, n_bin, dt=dt, fluxes=fluxes, errors=errors
     )
@@ -1874,7 +2995,14 @@ def avg_pds_from_events(
     return cross
 
 
-def avg_cs_from_events(
+def avg_cs_from_events(*args, **kwargs):
+    warnings.warn(
+        "avg_cs_from_events is deprecated, use avg_cs_from_timeseries instead", DeprecationWarning
+    )
+    return avg_cs_from_timeseries(*args, **kwargs)
+
+
+def avg_cs_from_timeseries(
     times1,
     times2,
     gti,
@@ -1899,7 +3027,7 @@ def avg_cs_from_events(
     If the input is a light curve, the time arrays need to be uniformly sampled
     inside GTIs (they can have gaps outside), and the fluxes need to be passed
     through the ``fluxes1`` and ``fluxes2`` arrays.
-    Otherwise, times are interpeted as photon arrival times
+    Otherwise, times are interpreted as photon arrival times
 
     Parameters
     ----------
@@ -1910,7 +3038,7 @@ def avg_cs_from_events(
     gti : [[gti00, gti01], [gti10, gti11], ...]
         common good time intervals
     segment_size : float
-        length of segments
+        length of segments. If ``None``, the full light curve is used.
     dt : float
         Time resolution of the light curves used to produce periodograms
 
@@ -1952,23 +3080,24 @@ def avg_cs_from_events(
         The normalized periodogram powers
     n_bin : int
         the number of bins in the light curves used in each segment
-    n_ave : int
+    n_ave : int or float
         the number of averaged periodograms
     """
-    if segment_size is None:
-        segment_size = gti.max() - gti.min()
-    n_bin = int(segment_size / dt)
-    # adjust dt
-    # dt = segment_size / n_bin
-    if fluxes1 is None and fluxes2 is None:
-        dt = segment_size / n_bin
+
+    binned = fluxes1 is not None and fluxes2 is not None
+
+    if segment_size is not None:
+        segment_size, n_bin = fix_segment_size_to_integer_samples(segment_size, dt)
+    elif binned and segment_size is None:
+        n_bin = fluxes1.size
     else:
-        segment_size = n_bin * dt
+        _, n_bin = fix_segment_size_to_integer_samples(gti.max() - gti.min(), dt)
+
     flux_iterable1 = get_flux_iterable_from_segments(
-        times1, gti, segment_size, n_bin, dt=dt, fluxes=fluxes1, errors=errors1
+        times1, gti, segment_size, n_bin=n_bin, dt=dt, fluxes=fluxes1, errors=errors1
     )
     flux_iterable2 = get_flux_iterable_from_segments(
-        times2, gti, segment_size, n_bin, dt=dt, fluxes=fluxes2, errors=errors2
+        times2, gti, segment_size, n_bin=n_bin, dt=dt, fluxes=fluxes2, errors=errors2
     )
 
     is_events = np.all([val is None for val in (fluxes1, fluxes2, errors1, errors2)])
@@ -2014,6 +3143,8 @@ def lsft_fast(
     Calculates the Lomb-Scargle Fourier transform of a light curve.
     Only considers non-negative frequencies.
     Subtracts mean from data as it is required for the working of the algorithm.
+
+    Adapted from original Matlab code by J. D. Scargle, using Astropy's ``trig_sum`` for speed.
 
     Parameters
     ----------
@@ -2112,6 +3243,8 @@ def lsft_slow(
     Only considers non-negative frequencies.
     Subtracts mean from data as it is required for the working of the algorithm.
 
+    Adapted from original Matlab code by J. D. Scargle.
+
     Parameters
     ----------
     y : a `:class:numpy.array` of floats
@@ -2135,7 +3268,7 @@ def lsft_slow(
         An array of Fourier transformed data.
     """
     y_ = y - np.mean(y)
-    freqs = np.asarray(freqs[np.asarray(freqs) >= 0])
+    freqs = np.asanyarray(freqs[np.asanyarray(freqs) >= 0])
 
     ft_real = np.zeros_like(freqs)
     ft_imag = np.zeros_like(freqs)
