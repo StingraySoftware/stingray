@@ -677,11 +677,15 @@ class TestStingrayTimeseries:
         lc_new = lc.truncate(start=2, stop=8, method="index")
         assert np.allclose(lc_new.counts, [30, 40, 50, 60, 70, 80])
         assert np.array_equal(lc_new.time, [3, 4, 5, 6, 7, 8])
+        assert lc_new.tstart == 2.5
+        assert lc_new.tseg == 6.0
 
         # Truncation can also be done by time values
         lc_new = lc.truncate(start=6, method="time")
         assert np.array_equal(lc_new.time, [6, 7, 8, 9])
         assert np.allclose(lc_new.counts, [60, 70, 80, 90])
+        assert lc_new.tstart == 5.5
+        assert lc_new.tseg == 4.0
 
     def test_truncate_not_str(self):
         with pytest.raises(TypeError, match="The method keyword argument"):

@@ -237,8 +237,77 @@ class TestCCF(object):
         assert np.all(np.isclose(error_ccf, np.zeros(shape=error_ccf.shape), atol=0.01))
 
     def test_get_mean_phase_difference(self):
-        _, a, b, _ = spec.get_parameters(self.ref_aps.lc1.counts, self.ref_aps.lc1.dt, self.model)
-        assert a == b
+        avg_psi, std = spec.get_mean_phase_difference(self.ref_aps, self.model)
+        assert np.isclose(avg_psi, 0, atol=0.1)
+
+
+class TestPhaseLag(object):
+    @classmethod
+    def setup_class(cls):
+        cls.dt = 0.1
+        cls.f0 = 1.0
+        cls.times = np.arange(0, 1000, cls.dt)
+        cls.n_seg = 10
+        cls.segment_size = 100
+
+        # We want to create two light curves with known phase lag and harmonic phase difference
+        # ref = 10 + cos(2*pi*f0*t) + 0.5 * cos(4*pi*f0*t)
+        # ci = 10 + cos(2*pi*f0*t - phi1) + 0.5 * cos(4*pi*f0*t - phi2)
+        # small_psi = phi2/2 - phi1
+
+        cls.phi1 = 0.0
+        cls.phi2 = 0.0
+        # small_psi = 0/2 - 0 = 0
+
+        cls.ref_counts = 10 + np.cos(2 * np.pi * cls.f0 * cls.times) + 0.5 * np.cos(
+            4 * np.pi * cls.f0 * cls.times
+        )
+        cls.ci_counts = 10 + np.cos(2 * np.pi * cls.f0 * cls.times - cls.phi1) + 0.5 * np.cos(
+            4 * np.pi * cls.f0 * cls.times - cls.phi2
+        )
+
+        cls.ref_lc = Lightcurve(cls.times, cls.ref_counts, dt=cls.dt)
+        cls.ci_lc = Lightcurve(cls.times, cls.ci_counts, dt=cls.dt)
+
+        cls.cs = AveragedCrossspectrum(
+            cls.ci_lc, cls.ref_lc, segment_size=cls.segment_size, norm="leahy"
+        )
+
+        cls.model = models.Lorentz1D(amplitude=1, x_0=cls.f0, fwhm=0.1) + models.Lorentz1D(
+            amplitude=0.5, x_0=2 * cls.f0, fwhm=0.1
+        )
+
+    def test_get_mean_phase_difference(self):
+        # AveragedCrossspectrum(ci, ref) gives delta_E = phi
+        # retrieved angle1 = delta_E_1 = phi1
+        # retrieved angle2 = delta_E_2 = phi2
+        # retrieved psi = (angle2/2 - angle1) % pi = (phi2/2 - phi1) % pi
+        expected_psi = (self.phi2 / 2 - self.phi1) % np.pi
+        avg_psi, std = spec.get_mean_phase_difference(self.cs, self.model)
+        assert np.isclose(avg_psi, expected_psi, atol=0.1)
+
+    def test_get_phase_lag(self):
+        # get_phase_lag returns cap_phi_1, cap_phi_2, avg_psi
+        cap_phi_1, cap_phi_2, avg_psi = spec.get_phase_lag(self.cs, self.model)
+
+        expected_psi = (self.phi2 / 2 - self.phi1) % np.pi
+        assert np.isclose(avg_psi, expected_psi, atol=0.1)
+
+        # Let's verify consistency of the returned phases
+        # cap_phi_1 = pi/2 + delta_E_1
+        # delta_E_1 is the angle of Crossspectrum at the fundamental frequency
+        # For ci = cos(2*pi*f*t - phi1) and ref = cos(2*pi*f*t)
+        # delta_E_1 should be ~ phi1
+        _, idx_0 = spec.find_nearest(self.cs.freq, self.f0)
+        delta_E_1 = np.angle(self.cs.power[idx_0])
+        assert np.isclose(cap_phi_1, np.pi / 2 + delta_E_1, atol=1e-5)
+
+        # cap_phi_2 = 2 * (cap_phi_1 + avg_psi) + delta_E_2
+        # delta_E_2 is the angle of Crossspectrum at the second harmonic frequency
+        _, idx_1 = spec.find_nearest(self.cs.freq, 2 * self.f0)
+        delta_E_2 = np.angle(self.cs.power[idx_1])
+
+        assert np.isclose(cap_phi_2, 2 * (cap_phi_1 + avg_psi) + delta_E_2, atol=1e-5)
 
 
 def test_load_lc_fits():
