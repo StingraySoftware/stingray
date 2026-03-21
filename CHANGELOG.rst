@@ -1,3 +1,12 @@
+v2.3.2 (2026-03-13)
+-------------------
+
+Internal Changes
+^^^^^^^^^^^^^^^^
+
+- Compatible with Numpy 2.5 and new Astropy (`#972 <https://github.com/StingraySoftware/stingray/pull/972>`__)
+
+
 v2.3.1 (2026-03-02)
 -------------------
 
