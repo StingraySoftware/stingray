@@ -113,7 +113,7 @@ class TestAll(object):
 
     def test_search_wrong_key_fails(self):
         with pytest.raises(
-            ValueError, match=r"Unidentified keyword\(s\) to fold_events: fdot, fddot"
+            TypeError, match=r"fold_events\(\) got an unexpected keyword argument 'fdot'"
         ):
             phase, prof, _ = fold_events(self.event_times, self.pulse_frequency, fdot=12, fddot=34)
 
