@@ -1,0 +1,1 @@
+Added method to smoothen lightcurve using spline transformation `sklearn.preprocessing.SplineTransformer` with poisson regression `sklearn.linear_model.PoissonRegressor` 
