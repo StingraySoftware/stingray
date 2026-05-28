@@ -1,0 +1,1 @@
+The tests `test_get_mean_gaussian` and `test_get_mean_skew_gaussian` used exact floating-point equality (`==`) to compare results, which broke in JAX 0.10.x due to a 1-ULP change in how XLA compiles broadcast array division; replaced with `np.testing.assert_allclose`.
