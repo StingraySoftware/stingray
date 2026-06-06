@@ -24,4 +24,4 @@ def sample_data():
     counts = data[0 : len(data), 1]
 
     # Return class:`Lightcurve` object
-    return lightcurve.Lightcurve(dates, counts, dt=dt, skip_checks=True)
+    return lightcurve.Lightcurve(dates, counts, dt=dt, skip_checks=True, err_dist="poisson")
