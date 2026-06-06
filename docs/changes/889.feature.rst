@@ -1,0 +1,1 @@
+Added two new analytical model classes, `GeneralizedLorentz1D` and `SmoothBrokenPowerLaw`, to `stingray.simulator.models`.
