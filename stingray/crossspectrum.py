@@ -3068,12 +3068,12 @@ def crossspectrum_from_lightcurve(
     error_flux_attr = None
 
     if lc1.err_dist == "gauss":
-        error_flux_attr = "_counts_err"
+        error_flux_attr = "counts_err"
 
     return crossspectrum_from_timeseries(
         lc1,
         lc2,
-        "_counts",
+        "counts",
         error_flux_attr=error_flux_attr,
         segment_size=segment_size,
         norm=norm,
