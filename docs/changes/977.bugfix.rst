@@ -1,0 +1,1 @@
+Fixed averaged cross spectra for light curves initialized with ``input_counts=False``.
