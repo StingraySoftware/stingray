@@ -1071,6 +1071,19 @@ class TestAveragedCrossspectrum(object):
         assert np.allclose(cs1.power, cs2.power)
         assert np.allclose(cs1.freq, cs2.freq)
 
+    def test_input_countrate_matches_pds_for_identical_lightcurves(self):
+        dt = 1 / 64
+        time = np.arange(0.5 * dt, 64, dt)
+        countrate = 100 + 3 * np.sin(2 * np.pi * 4 * time) + 2 * np.cos(2 * np.pi * 7 * time)
+        err = np.zeros_like(countrate)
+        lc = Lightcurve(time, countrate, input_counts=False, err=err, err_dist="gauss", dt=dt)
+
+        cs = AveragedCrossspectrum(lc, lc, segment_size=1, norm="frac", silent=True)
+        pds = AveragedPowerspectrum(lc, segment_size=1, norm="frac", silent=True)
+
+        assert not np.allclose(cs.power, 0)
+        assert np.allclose(cs.power.real, pds.power)
+
     def test_make_empty_crossspectrum(self):
         cs = AveragedCrossspectrum()
         assert cs.freq is None
