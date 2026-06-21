@@ -1811,8 +1811,14 @@ class StingrayTimeseries(StingrayObject):
             new_ts = self._truncate_by_index(start, stop)
         else:
             new_ts = self._truncate_by_time(start, stop)
-        new_ts.tstart = new_ts.gti[0, 0]
-        new_ts.tseg = new_ts.gti[-1, 1] - new_ts.gti[0, 0]
+        dtstart = dtstop = new_ts.dt
+        if isinstance(new_ts.dt, Iterable):
+            dtstart = new_ts.dt[0]
+            dtstop = new_ts.dt[-1]
+
+        tstart = new_ts.time[0] - 0.5 * dtstart
+        new_ts.tstart = tstart
+        new_ts.tseg = new_ts.time[-1] - tstart + 0.5 * dtstop
         return new_ts
 
     def _truncate_by_index(self, start, stop):
