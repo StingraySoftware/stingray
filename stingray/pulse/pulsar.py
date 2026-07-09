@@ -209,7 +209,17 @@ def phase_exposure(start_time, stop_time, period, nbin=16, gti=None):
     return expo / np.max(expo)
 
 
-def fold_events(times, *frequency_derivatives, **opts):
+def fold_events(
+    times,
+    *frequency_derivatives,
+    mode="ef",
+    nbin=16,
+    weights=1,
+    gti=None,
+    ref_time=0,
+    expocorr=False,
+    variances=None,
+):
     """Epoch folding with exposure correction.
 
     By default, the keyword `times` accepts a list of
@@ -232,21 +242,21 @@ def fold_events(times, *frequency_derivatives, **opts):
     nbin : int, optional, default 16
         The number of bins in the pulse profile
 
-    weights : float or array of floats, optional
+    weights : float or array of floats, optional, default 1
         The weights of the data. It can either be specified as a single value
         for all points, or an array with the same length as ``time``
 
-    gti : [[gti0_0, gti0_1], [gti1_0, gti1_1], ...], optional
+    gti : [[gti0_0, gti0_1], [gti1_0, gti1_1], ...], optional, default None
         Good time intervals
 
     ref_time : float, optional, default 0
         Reference time for the timing solution
 
-    expocorr : bool, default False
+    expocorr : bool, optional, default False
         Correct each bin for exposure (use when the period of the pulsar is
         comparable to that of GTIs)
 
-    mode : str, ["ef", "pdm"], default "ef"
+    mode : str, ["ef", "pdm"], optional, default "ef"
         Whether to calculate the epoch folding or phase dispersion
         minimization folded profile. For "ef", it calculates the (weighted)
         sum of the data points in each phase bin, for "pdm", the variance
@@ -264,23 +274,12 @@ def fold_events(times, *frequency_derivatives, **opts):
         The uncertainties on the pulse profile
     """
 
-    mode = opts.pop("mode", "ef")
-    nbin = opts.pop("nbin", 16)
-    weights = opts.pop("weights", 1)
     # If no key is passed, *or gti is None*, defaults to the
     # initial and final event
-    gti = opts.pop("gti", None)
     if gti is None:
         gti = [[times[0], times[-1]]]
     # Be safe if gtis are a list
     gti = np.asanyarray(gti)
-    ref_time = opts.pop("ref_time", 0)
-    expocorr = opts.pop("expocorr", False)
-
-    if opts:
-        raise ValueError(
-            f"Unidentified keyword(s) to fold_events: {', '.join([k for k in opts.keys()])} \n Please refer to the description of the function for optional parameters."
-        )
 
     if not isinstance(weights, Iterable):
         weights *= np.ones(len(times))
@@ -315,23 +314,38 @@ def fold_events(times, *frequency_derivatives, **opts):
         raw_profile_err = raw_profile_err / expo_norm
 
     elif mode == "pdm":
+        # Convert the weights to a numpy array just in case it is a list
+        weights = np.asarray(weights)
         if np.allclose(weights, 1.0):
             raise ValueError(
                 "Can only calculate PDM for binned light curves!"
                 + "`weights` attribute must be set to fluxes!"
             )
 
-        raw_profile, bins, bin_idx = scipy.stats.binned_statistic(
-            phases, weights, statistic=np.var, bins=np.linspace(0, 1, nbin + 1)
+        # For weighted pdm, the measured uncertainties (variances) for each event are required
+        # set the event_weights as 1/variances or else 1s if variances=None
+        event_weights = (
+            (1.0 / np.asarray(variances)) if variances is not None else np.ones_like(weights)
         )
 
-        # I need the variance uncorrected for the number of data points in each
-        # bin, so I need to find that first, and then multiply
-        # bin_idx should be from the list [1, ..., nbin], although some might not appear
-        # histogram bin-edges set as [0.5, 1.5, ..., nbin - 0.5, nbin + 0.5]
-        # to include the bin_idx int values
-        bincounts, _ = np.histogram(bin_idx, bins=np.arange(0.5, nbin + 1.5))
-        raw_profile = raw_profile * bincounts
+        bins = np.linspace(0, 1, nbin + 1)
+        # phases are already fractional values in [0, 1]
+        # casting float to int removes the fractional part
+        bin_indices = (phases * nbin).astype(int)
+        # to wrap: for phase = 1 then bin_index = nbin; clipping changes it to bin_index = 0
+        bin_indices = np.clip(bin_indices, 0, nbin - 1)
+
+        # for efficiency, the sum-of-squared deviations for each bin is split
+        # sosdev = sum_in_bin( (values_in_bin - mean_in_bin)**2 )
+        # mean_in_bin = sum_in_bin(values_in_bin) / n_in_bin
+        # so need n_in_bin, sum_in_bin, sos_in_bin (sum-of-squares)
+        # now compute the stats for each bin using bincount
+        # minlength=nbin prevents array shortening when a bin index is not represented in bin_indices
+        n_in_bin = np.bincount(bin_indices, weights=event_weights, minlength=nbin)
+        sum_in_bin = np.bincount(bin_indices, weights=weights * event_weights, minlength=nbin)
+        sos_in_bin = np.bincount(bin_indices, weights=weights**2 * event_weights, minlength=nbin)
+        # put it together to make sum-of-squared deviations: sosdev
+        raw_profile = sos_in_bin - sum_in_bin**2 / n_in_bin
 
         # dummy array for the error, which we don't have for the variance
         raw_profile_err = np.zeros_like(raw_profile)
@@ -369,18 +383,19 @@ def ef_profile_stat(profile, err=None):
     return np.sum((profile - mean) ** 2 / err**2)
 
 
-def pdm_profile_stat(profile, sample_var, nsample):
+def pdm_profile_stat(profile, sum_dev2, nsample):
     """Calculate the phase dispersion minimization
     statistic following Stellingwerf (1978)
 
     Parameters
     ----------
     profile : array
-        The PDM pulse profile (variance as a function
-        of phase)
+        The PDM pulse profile (normalised sum-of-squared-deviations),
+        which uses the within bin means
 
-    sample_var : float
-        The total population variance of the sample
+    sum_dev2 : float
+        The sum-of-squared-deviations of the whole sample,
+        which uses the grand (whole sample together) mean
 
     nsample : int
         The number of time bins in the initial time
@@ -391,8 +406,14 @@ def pdm_profile_stat(profile, sample_var, nsample):
     stat : float
         The epoch folding statistics
     """
-    s2 = np.sum(profile) / (nsample - len(profile))
-    stat = s2 / sample_var
+    # Get the mean-of-squared-deviations from sum-of-squared-deviations by
+    # considering the number of degrees of freedom:
+    # - (nsample - nbin) since there are nbin means used for
+    #   the within bin sum-of-squared-deviations, which is stored in the profile
+    # - (nsample - 1) for the grand sum_dev2 because there is 1 grand mean used
+    mean_dev2_in_bin = np.sum(profile) / (nsample - len(profile))
+    mean_dev2_grand = sum_dev2 / (nsample - 1)
+    stat = mean_dev2_in_bin / mean_dev2_grand
     return stat
 
 
