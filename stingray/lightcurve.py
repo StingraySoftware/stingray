@@ -54,7 +54,7 @@ class Lightcurve(StingrayTimeseries):
     time: Iterable, `:class:astropy.time.Time`, or `:class:astropy.units.Quantity` object
         A list or array of time stamps for a light curve. Must be a type that
         can be cast to `:class:np.array` or `:class:List` of floats, or that
-        has a `value` attribute that does (e.g. a
+        has a `value` attribute that does (e.g., a
         `:class:astropy.units.Quantity` or `:class:astropy.time.Time` object).
 
     counts: iterable, optional, default ``None``
@@ -66,8 +66,8 @@ class Lightcurve(StingrayTimeseries):
     err: iterable, optional, default ``None``
         A list or array of the uncertainties in each bin corresponding to
         the bins defined in ``time`` (note: use ``input_counts=False`` to
-        input the count rage, i.e. counts/second, otherwise use
-        counts/bin). If ``None``, we assume the data is poisson distributed
+        input the count range, i.e. counts/second, otherwise, use
+        counts/bin). If ``None``, we assume the data is Poisson distributed
         and calculate the error from the average of the lower and upper
         1-sigma confidence intervals for the Poissonian distribution with
         mean equal to ``counts``.
@@ -86,7 +86,7 @@ class Lightcurve(StingrayTimeseries):
     err_dist: str, optional, default ``None``
         Statistical distribution used to calculate the
         uncertainties and other statistical values appropriately.
-        Default makes no assumptions and keep errors equal to zero.
+        Default makes no assumptions and keeps errors equal to zero.
 
     bg_counts: iterable,`:class:numpy.array` or `:class:List` of floats, optional, default ``None``
         A list or array of background counts detected in the background extraction region
@@ -105,19 +105,19 @@ class Lightcurve(StingrayTimeseries):
 
     dt: float or array of floats. Default median(diff(time))
         Time resolution of the light curve. Can be an array of the same dimension
-        as ``time`` specifying width of each bin.
+        as ``time`` specifying the width of each bin.
 
     skip_checks: bool
-        If True, the user specifies that data are already sorted and contain no
+        If True, the user specifies that the data are already sorted and contain no
         infinite or nan points. Use at your own risk
 
     low_memory: bool
-        If True, all the lazily evaluated attribute (e.g., countrate and
+        If True, all the lazily evaluated attributes (e.g., countrate and
         countrate_err if input_counts is True) will _not_ be stored in memory,
         but calculated every time they are requested.
 
     mission : str
-        Mission that recorded the data (e.g. NICER)
+        Mission that recorded the data (e.g., NICER)
 
     instr : str
         Instrument onboard the mission
@@ -134,10 +134,10 @@ class Lightcurve(StingrayTimeseries):
         The array of midpoints of time bins.
 
     bin_lo: numpy.ndarray
-        The array of lower time stamp of time bins.
+        The array of lower time stamps of time bins.
 
     bin_hi: numpy.ndarray
-        The array of higher time stamp of time bins.
+        The array of higher time stamps of time bins.
 
     counts: numpy.ndarray
         The counts per bin corresponding to the bins in ``time``.
@@ -188,18 +188,18 @@ class Lightcurve(StingrayTimeseries):
         to be used during the analysis of the light curve.
 
     err_dist: string
-        Statistic of the Lightcurve, it is used to calculate the
+        Statistics of the Lightcurve, it is used to calculate the
         uncertainties and other statistical values appropriately.
         It propagates to Spectrum classes.
 
     mission : str
-        Mission that recorded the data (e.g. NICER)
+        Mission that recorded the data (e.g., NICER)
 
     instr : str
         Instrument onboard the mission
 
     detector_id : iterable
-        The detector that recoded each photon, if relevant (e.g. XMM, Chandra)
+        The detector that recoded each photon, if relevant (e.g., XMM, Chandra)
 
     header : str
         The full header of the original FITS file, if relevant
@@ -561,7 +561,7 @@ class Lightcurve(StingrayTimeseries):
 
     def _operation_with_other_obj(self, other, operation):
         """
-        Helper method to codify an operation of one light curve with another (e.g. add, subtract, ...).
+        Helper method to codify an operation of one light curve with another (e.g., add, subtract, ...).
         Takes into account the GTIs correctly, and returns a new :class:`Lightcurve` object.
 
         Parameters
@@ -1386,7 +1386,7 @@ class Lightcurve(StingrayTimeseries):
         """
         Returns a `lightkurve.LightCurve` object.
         This feature requires ``Lightkurve`` to be installed
-        (e.g. ``pip install lightkurve``).  An `ImportError` will
+        (e.g., ``pip install lightkurve``).  An `ImportError` will
         be raised if this package is not available.
 
         Returns
@@ -1700,7 +1700,7 @@ class Lightcurve(StingrayTimeseries):
         ----------------
 
         err_dist: str, default='gauss'
-            Default error distribution if not specified in the file (e.g. for
+            Default error distribution if not specified in the file (e.g., for
             ASCII files). The default is 'gauss' just because it is likely
             that people using ASCII light curves will want to specify Gaussian
             error bars, if any.
