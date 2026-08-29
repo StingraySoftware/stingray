@@ -78,13 +78,14 @@ except ImportError:
         return None
 
     float32 = float64 = int32 = int64 = generic
+    boolean = generic  # pragma: no cover
 
     def prange(x):
         return range(x)
 
 
 if HAS_NUMBA:
-    from numba import njit, prange, vectorize, float32, float64, int32, int64
+    from numba import njit, prange, vectorize, float32, float64, int32, int64, boolean
 
     from numba.core.errors import NumbaValueError, NumbaNotImplementedError, TypingError
 
