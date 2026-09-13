@@ -1,0 +1,1 @@
+Fix an issue with the z values in accelsearch, making z=0 always present in the list and dealing with non-integer multiples of delta_z
