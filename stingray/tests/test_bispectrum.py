@@ -26,6 +26,15 @@ from stingray.fourier import (
     BICOHERENCE_NORMS,
     _bispectrum_frequency_grid,
 )
+import stingray.bispectrum as bispectrum_module
+
+# The bispectrum module emits a one-time UserWarning about the changed interface
+# the first time any bispectrum object is constructed. Fixtures and tests build
+# such objects, which would otherwise fire the notice at an unpredictable point
+# (an error under ``filterwarnings = ["error", ...]``). Pre-set the once-flag so
+# the suite stays quiet; ``TestBispectrum.test_interface_change_warning_emitted``
+# resets it to assert the notice is actually raised.
+bispectrum_module._INTERFACE_CHANGE_WARNED = True
 
 
 def clear_all_figs():
@@ -106,6 +115,18 @@ class TestBispectrum(object):
             np.sort(rng.uniform(0, cls.n * cls.dt, 5000)), gti=[[0, cls.n * cls.dt]]
         )
         cls.bs = Bispectrum(cls.lc)
+
+    def test_interface_change_warning_emitted(self):
+        # The interface-change notice is shown once, on the first bispectrum
+        # object constructed in a session. Reset the module flag so we can assert
+        # the notice is raised, then restore it so the rest of the suite stays
+        # quiet (the warning is otherwise an error under filterwarnings=error).
+        bispectrum_module._INTERFACE_CHANGE_WARNED = False
+        try:
+            with pytest.warns(UserWarning, match="bispectrum interface has changed"):
+                Bispectrum(self.lc)
+        finally:
+            bispectrum_module._INTERFACE_CHANGE_WARNED = True
 
     @pytest.mark.parametrize("skip_checks", [True, False])
     def test_initialize_empty(self, skip_checks):

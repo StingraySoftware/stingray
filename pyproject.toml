@@ -184,8 +184,8 @@ filterwarnings = [
     "ignore:.*Pyarrow:",
     "ignore:.*Creating an ndarray from ragged nested sequences:",
     "ignore:.*the tpfmodel submodule is not available without oktopus.*:UserWarning",
-    "ignore:.*chararray",
-    "ignore:The stingray bispectrum interface has changed:UserWarning",
+    "ignore:.*chararray"
+
 ]
 
 [tool.towncrier]
