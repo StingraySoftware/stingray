@@ -1069,6 +1069,11 @@ def test_shift_and_add_orbit(ntimes):
 
 
 def test_raw_coherence_float32_computed_in_float64():
+    """Same check as test_vectorized_float32_computed_in_float64 in test_stats, for the only
+    vectorized function with a complex input.
+
+    This test fails if complex64 inputs are computed in single precision.
+    """
     rng = np.random.default_rng(0)
     power1 = rng.uniform(3, 10, 10).astype(np.float32)
     power2 = rng.uniform(3, 10, 10).astype(np.float32)
@@ -1076,7 +1081,6 @@ def test_raw_coherence_float32_computed_in_float64():
         np.complex64
     )
     res32 = raw_coherence(cross, power1, power2, 2.0, 2.0, 10)
-    # The float32 values are converted to float64 before the calculation
     expected = raw_coherence(
         cross.astype(np.complex128),
         power1.astype(np.float64),
