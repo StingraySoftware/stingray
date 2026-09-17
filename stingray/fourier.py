@@ -713,6 +713,7 @@ def unnormalize_periodograms(
         "float64(float64, float64, float64, float64, float64, float64)",
     ],
     nopython=True,
+    cache=True,
 )
 def _bias_term(power1, power2, power1_noise, power2_noise, n_ave, input_intrinsic_coherence):
     if n_ave > 500:
@@ -762,7 +763,7 @@ def bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coher
     return _bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence)
 
 
-@vectorize(["float64(float64, float64, float64)"], nopython=True)
+@vectorize(["float64(float64, float64, float64)"], nopython=True, cache=True)
 def _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty):
     """
     Apply a low limit to the uncertainty on the coherence, to avoid zero or negative uncertainties.
@@ -820,6 +821,7 @@ def _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertai
         "float64(complex128, float64, float64, float64, float64, float64, float64)",
     ],
     nopython=True,
+    cache=True,
 )
 def _raw_coherence(
     cross_power,
@@ -988,6 +990,7 @@ def _intrinsic_coherence_uncertainties(
         "bool(float64, float64, float64, float64, float64, float64)",
     ],
     nopython=True,
+    cache=True,
 )
 def check_powers_for_intrinsic_coherence(
     power1, power2, power1_noise, power2_noise, n_ave, threshold
