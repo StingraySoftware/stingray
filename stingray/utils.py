@@ -149,7 +149,7 @@ if HAS_NUMBA:
             # Called from Python when no loop accepts the inputs. After compiling, the
             # call is repeated, and NumPy chooses the loop (or raises) as for any ufunc
             if not self._compile_lazy_signatures():
-                return super()._compile_for_args(*args, **kws)
+                return super()._compile_for_args(*args, **kws)  # pragma: no cover
 
         def _compile_for_argtys(self, argtys, return_type=None):
             # Called when typing a call from Numba-compiled code, and by ``add``
