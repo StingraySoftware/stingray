@@ -1,0 +1,5 @@
+Importing Stingray is faster (about 1.5 s less), because the Numba-accelerated functions of
+``stingray.stats`` and ``stingray.fourier`` are now compiled the first time they are used, and
+cached on disk, instead of being compiled at every import. The new decorator
+``stingray.utils.lazy_vectorize`` does the same for any ``numba.vectorize`` function with
+signatures.

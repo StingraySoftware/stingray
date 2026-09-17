@@ -337,3 +337,38 @@ class TestClassicalSignificances(object):
         vals = np.random.uniform(0, maxval, 10)
         for val in vals:
             assert np.isclose(power_upper_limit(val, c=c, n=n, summed_flag=summed_flag), 0.0)
+
+
+@pytest.mark.parametrize(
+    "func,args",
+    [
+        ("_extended_equiv_gaussian_Nsigma", [[-50.0, -300.0, -1000.0]]),
+        ("_log_asymptotic_gamma", [[20.1, 75.3, 400.7]]),
+        ("_log_asymptotic_incomplete_gamma", [[2.0, 8.5, 20.0], [60.3, 200.1, 900.9]]),
+    ],
+)
+def test_vectorized_float32_computed_in_float64(func, args):
+    """The vectorized functions of stats have only float64 signatures, so float32 inputs have to be
+    computed in float64, with and without Numba.
+
+    This test fails if float32 signatures are added, or if the calculation is done in float32.
+    """
+    import stingray.stats as st
+
+    func = getattr(st, func)
+    res32 = func(*[np.asarray(a, dtype=np.float32) for a in args])
+    expected = func(*[np.asarray(a, dtype=np.float32).astype(np.float64) for a in args])
+    assert res32.dtype == np.float64
+    assert np.array_equal(res32, expected)
+
+
+def test_z2_n_logprobability_many_trials():
+    """With int32 signatures listed before int64 ones, a Python integer above 2**31 as number of
+    trials raised OverflowError.
+
+    This test fails if int32 signatures are listed before int64 ones again.
+    """
+    logp = z2_n_logprobability(np.array([100.0]), 2, ntrial=3_000_000_000)
+    logp_int64 = z2_n_logprobability(np.array([100.0]), 2, ntrial=np.int64(3_000_000_000))
+    assert np.isfinite(logp[0])
+    assert logp[0] == logp_int64[0]

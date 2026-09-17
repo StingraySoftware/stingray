@@ -602,3 +602,120 @@ def test_numba_compiled_or_mocked():
     bla_1()
     bla_2()
     bla_3(1.0)
+
+
+def _make_lazy_log():
+    @utils.lazy_vectorize(["float32(float32, float32)", "float64(float64, float64)"])
+    def lazy_log(a, z):
+        return a * np.log(z)
+
+    return lazy_log
+
+
+def test_lazy_vectorize_results():
+    """Check the results of a function decorated with lazy_vectorize, with and without Numba.
+
+    It is the only test of lazy_vectorize that also runs on the np.vectorize fallback.
+    """
+    lazy_log = _make_lazy_log()
+    assert np.allclose(lazy_log(np.array([1.0, 2.0]), 0.1), [np.log(0.1), 2 * np.log(0.1)])
+
+
+@pytest.mark.skipif("not HAS_NUMBA")
+class TestLazyVectorize:
+    def test_not_compiled_before_first_call(self):
+        """Not compiling at import is the purpose of lazy_vectorize.
+
+        This test fails if the signatures are compiled when the function is defined.
+        """
+        lazy_log = _make_lazy_log()
+        assert lazy_log.types == []
+        lazy_log(1.0, 0.1)
+        assert lazy_log.types == ["ff->f", "dd->d"]
+
+    def test_float64_never_computed_in_float32(self):
+        """Without fixed signatures, after a call with float32 and float64 arrays, a float64 array
+        and a Python float are computed in float32.
+
+        This test fails if lazy_vectorize compiles loops for the input types instead of the
+        signatures.
+        """
+        lazy_log = _make_lazy_log()
+        a64 = np.array([1.0])
+        assert lazy_log(a64, np.array([0.1], dtype=np.float32)).dtype == np.float64
+        res = lazy_log(a64, 0.1)
+        assert res.dtype == np.float64
+        assert res[0] == np.log(0.1)
+
+    def test_unsupported_types(self):
+        """After the first call no other loops are compiled, so that unsupported types raise an
+        error as with numba.vectorize with signatures.
+
+        Without this, a complex input would silently compile a new loop.
+        """
+        lazy_log = _make_lazy_log()
+        with pytest.raises(TypeError):
+            lazy_log(np.array([1.0 + 1j]), 0.1)
+        # The other signatures are not compiled
+        assert lazy_log.types == ["ff->f", "dd->d"]
+
+    def test_first_call_from_numba(self):
+        """Calls from Numba-compiled code reach the compilation through a different method than
+        calls from Python.
+
+        This test fails if only the Python calls compile the signatures.
+        """
+        lazy_log = _make_lazy_log()
+
+        @utils.njit
+        def call_lazy_log(a):
+            return lazy_log(a, 0.1)
+
+        res = call_lazy_log(np.array([1.0]))
+        assert res[0] == np.log(0.1)
+        assert lazy_log.types == ["ff->f", "dd->d"]
+
+    def test_add_after_first_call(self):
+        """As with numba.vectorize with signatures, no signature can be added after compilation.
+
+        This test fails if ``add`` compiles a new loop after the first call.
+        """
+        lazy_log = _make_lazy_log()
+        lazy_log(1.0, 0.1)
+        with pytest.raises(RuntimeError, match="compilation disabled"):
+            lazy_log.add("complex128(complex128, complex128)")
+
+    def test_first_call_from_numba_other_types(self):
+        """From Numba-compiled code, inputs that can be safely cast to a signature are accepted and
+        the others raise an error.
+
+        This test fails if the first call from Numba only accepts exact matches of a signature.
+        """
+        int_log = _make_lazy_log()
+        complex_log = _make_lazy_log()
+
+        @utils.njit
+        def call_int_log(a):
+            return int_log(a, 1)
+
+        @utils.njit
+        def call_complex_log(a):
+            return complex_log(a, 1j)
+
+        res = call_int_log(np.array([1, 2]))
+        assert res.dtype == np.float64
+        assert np.all(res == 0.0)
+
+        with pytest.raises(TypeError, match="does not support the input types"):
+            call_complex_log(np.array([1.0]))
+
+    def test_pickle_before_first_call(self):
+        """Pickling keeps the signatures that are not compiled yet.
+
+        This test fails if they are lost when pickling, and the unpickled function can't compile.
+        """
+        import pickle
+
+        unpickled = pickle.loads(pickle.dumps(_make_lazy_log()))
+        assert unpickled(np.array([1.0]), 0.1)[0] == np.log(0.1)
+        assert unpickled.types == ["ff->f", "dd->d"]

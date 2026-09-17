@@ -74,6 +74,29 @@ except ImportError:
 
         return decorator
 
+    def _to_double_precision(value):
+        """Convert float and complex values with less than double precision to double precision."""
+        value = np.asarray(value)
+        if value.dtype.kind == "f" and value.dtype.itemsize < 8:
+            return value.astype(np.float64)
+        if value.dtype.kind == "c" and value.dtype.itemsize < 16:
+            return value.astype(np.complex128)
+        return value
+
+    def lazy_vectorize(signatures, **kwargs):
+        # As the Numba version with float64 signatures, compute float32 inputs in float64
+        def decorator(func):
+            vectorized = np.vectorize(func)
+
+            def wrapper(*args):
+                return vectorized(*[_to_double_precision(arg) for arg in args])
+
+            wrapper.__name__ = func.__name__
+            wrapper.__doc__ = func.__doc__
+            return wrapper
+
+        return decorator
+
     def generic(*args, **kwargs):
         return None
 
@@ -87,6 +110,90 @@ if HAS_NUMBA:
     from numba import njit, prange, vectorize, float32, float64, int32, int64
 
     from numba.core.errors import NumbaValueError, NumbaNotImplementedError, TypingError
+    from numba.core import sigutils
+    from numba.np.numpy_support import ufunc_find_matching_loop
+    from numba.np.ufunc.dufunc import DUFunc
+
+    class _LazyDUFunc(DUFunc):
+        """Vectorized function compiled for a fixed list of signatures at its first call.
+
+        With a list of signatures, ``numba.vectorize`` compiles all of them when the
+        module is imported, which takes time even when they are loaded from the cache.
+        Without signatures, it compiles a new loop for each new combination of input
+        types, and NumPy uses the first loop that accepts the inputs: e.g., after a call
+        with a float64 and a float32 array, a call with a float64 array and a Python
+        float would compute in float32.
+
+        This class compiles all the signatures, in the given order, the first time the
+        function is called (from Python or from Numba-compiled code), and then disables
+        the compilation of other signatures, as ``numba.vectorize`` does when the
+        signatures are given.
+        """
+
+        def __init__(self, py_func, signatures, **kwargs):
+            super().__init__(py_func, **kwargs)
+            self._lazy_signatures = list(signatures)
+
+        def _compile_lazy_signatures(self):
+            """Compile the signatures, if not done yet. Return True if they were compiled now."""
+            signatures = getattr(self, "_lazy_signatures", None)
+            if not signatures:
+                return False
+            for sig in signatures:
+                super()._compile_for_argtys(*sigutils.normalize_signature(sig))
+            self._lazy_signatures = None
+            self.disable_compile()
+            return True
+
+        def _compile_for_args(self, *args, **kws):
+            # Called from Python when no loop accepts the inputs. After compiling, the
+            # call is repeated, and NumPy chooses the loop (or raises) as for any ufunc
+            if not self._compile_lazy_signatures():
+                return super()._compile_for_args(*args, **kws)  # pragma: no cover
+
+        def _compile_for_argtys(self, argtys, return_type=None):
+            # Called when typing a call from Numba-compiled code, and by ``add``
+            if not self._compile_lazy_signatures():
+                return super()._compile_for_argtys(argtys, return_type)
+
+            # Numba-compiled callers expect a loop for these types
+            if ufunc_find_matching_loop(self, argtys) is None:
+                raise TypeError(f"{self.__name__} does not support the input types {argtys}")
+            for sig, cres in self._dispatcher.overloads.items():
+                if sig.args == argtys:
+                    return cres
+            return None
+
+        def _reduce_states(self):
+            return dict(super()._reduce_states(), signatures=self._lazy_signatures)
+
+        @classmethod
+        def _rebuild(cls, signatures, **states):
+            self = super()._rebuild(**states)
+            self._lazy_signatures = signatures
+            return self
+
+    def lazy_vectorize(signatures, identity=None, cache=False, **targetoptions):
+        """Like ``numba.vectorize`` with signatures, but compile at the first call.
+
+        Parameters
+        ----------
+        signatures : list
+            The signatures to compile, in order of preference: NumPy uses the first
+            one that accepts the input types without losing precision.
+
+        Other Parameters
+        ----------------
+        identity, cache, **targetoptions :
+            As in ``numba.vectorize``
+        """
+
+        def decorator(func):
+            return _LazyDUFunc(
+                func, signatures, identity=identity, cache=cache, targetoptions=targetoptions
+            )
+
+        return decorator
 
 
 try:
