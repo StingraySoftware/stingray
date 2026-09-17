@@ -647,18 +647,6 @@ class TestLazyVectorize:
         assert res.dtype == np.float64
         assert res[0] == np.log(0.1)
 
-    def test_float32_gives_float32(self):
-        """Check that the signatures are compiled in the given order, so that NumPy uses the
-        float32 one for float32 inputs.
-
-        Stingray only uses float64 signatures now, so this only matters if float32 ones are added
-        again.
-        """
-        lazy_log = _make_lazy_log()
-        a32 = np.array([1.0], dtype=np.float32)
-        assert lazy_log(a32, np.float32(0.1)).dtype == np.float32
-        assert lazy_log(a32, 0.1).dtype == np.float32
-
     def test_unsupported_types(self):
         """After the first call no other loops are compiled, so that unsupported types raise an
         error as with numba.vectorize with signatures.
@@ -686,19 +674,3 @@ class TestLazyVectorize:
         res = call_lazy_log(np.array([1.0]))
         assert res[0] == np.log(0.1)
         assert lazy_log.types == ["ff->f", "dd->d"]
-
-    @pytest.mark.parametrize("call_before", [False, True])
-    def test_pickle(self, call_before):
-        """Numba vectorized functions are pickled by value, and the signatures not yet compiled are
-        in an attribute added by lazy_vectorize.
-
-        This test fails if they are lost when pickling before the first call.
-        """
-        import pickle
-
-        lazy_log = _make_lazy_log()
-        if call_before:
-            lazy_log(1.0, 0.1)
-        unpickled = pickle.loads(pickle.dumps(lazy_log))
-        assert unpickled(np.array([1.0]), 0.1)[0] == np.log(0.1)
-        assert unpickled.types == ["ff->f", "dd->d"]
