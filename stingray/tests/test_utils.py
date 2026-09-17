@@ -674,3 +674,48 @@ class TestLazyVectorize:
         res = call_lazy_log(np.array([1.0]))
         assert res[0] == np.log(0.1)
         assert lazy_log.types == ["ff->f", "dd->d"]
+
+    def test_add_after_first_call(self):
+        """As with numba.vectorize with signatures, no signature can be added after compilation.
+
+        This test fails if ``add`` compiles a new loop after the first call.
+        """
+        lazy_log = _make_lazy_log()
+        lazy_log(1.0, 0.1)
+        with pytest.raises(RuntimeError, match="compilation disabled"):
+            lazy_log.add("complex128(complex128, complex128)")
+
+    def test_first_call_from_numba_other_types(self):
+        """From Numba-compiled code, inputs that can be safely cast to a signature are accepted and
+        the others raise an error.
+
+        This test fails if the first call from Numba only accepts exact matches of a signature.
+        """
+        int_log = _make_lazy_log()
+        complex_log = _make_lazy_log()
+
+        @utils.njit
+        def call_int_log(a):
+            return int_log(a, 1)
+
+        @utils.njit
+        def call_complex_log(a):
+            return complex_log(a, 1j)
+
+        res = call_int_log(np.array([1, 2]))
+        assert res.dtype == np.float64
+        assert np.all(res == 0.0)
+
+        with pytest.raises(TypeError, match="does not support the input types"):
+            call_complex_log(np.array([1.0]))
+
+    def test_pickle_before_first_call(self):
+        """Pickling keeps the signatures that are not compiled yet.
+
+        This test fails if they are lost when pickling, and the unpickled function can't compile.
+        """
+        import pickle
+
+        unpickled = pickle.loads(pickle.dumps(_make_lazy_log()))
+        assert unpickled(np.array([1.0]), 0.1)[0] == np.log(0.1)
+        assert unpickled.types == ["ff->f", "dd->d"]
