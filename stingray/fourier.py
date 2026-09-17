@@ -708,12 +708,7 @@ def unnormalize_periodograms(
 
 
 @lazy_vectorize(
-    [
-        "float32(float32, float32, float32, float32, int64, float32)",
-        "float32(float32, float32, float32, float32, float32, float32)",
-        "float64(float64, float64, float64, float64, int64, float64)",
-        "float64(float64, float64, float64, float64, float64, float64)",
-    ],
+    ["float64(float64, float64, float64, float64, float64, float64)"],
     nopython=True,
     cache=True,
 )
@@ -766,7 +761,7 @@ def bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coher
 
 
 @lazy_vectorize(
-    ["float32(float32, float32, float32)", "float64(float64, float64, float64)"],
+    ["float64(float64, float64, float64)"],
     nopython=True,
     cache=True,
 )
@@ -822,12 +817,7 @@ def _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertai
 
 
 @lazy_vectorize(
-    [
-        "float32(complex64, float32, float32, float32, float32, int64, float32)",
-        "float32(complex64, float32, float32, float32, float32, float32, float32)",
-        "float64(complex128, float64, float64, float64, float64, int64, float64)",
-        "float64(complex128, float64, float64, float64, float64, float64, float64)",
-    ],
+    ["float64(complex128, float64, float64, float64, float64, float64, float64)"],
     nopython=True,
     cache=True,
 )
@@ -993,10 +983,7 @@ def _intrinsic_coherence_uncertainties(
 
 
 @lazy_vectorize(
-    [
-        "bool(float64, float64, float64, float64, int64, float64)",
-        "bool(float64, float64, float64, float64, float64, float64)",
-    ],
+    ["bool(float64, float64, float64, float64, float64, float64)"],
     nopython=True,
     cache=True,
 )

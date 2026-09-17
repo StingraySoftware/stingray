@@ -21,6 +21,7 @@ from stingray.stats import (
     amplitude_upper_limit,
     power_confidence_limits,
 )
+from stingray.utils import HAS_NUMBA
 
 
 @pytest.mark.parametrize("ntrial", [1, 10, 100, 1000, 10000, 100000])
@@ -337,3 +338,32 @@ class TestClassicalSignificances(object):
         vals = np.random.uniform(0, maxval, 10)
         for val in vals:
             assert np.isclose(power_upper_limit(val, c=c, n=n, summed_flag=summed_flag), 0.0)
+
+
+@pytest.mark.skipif("not HAS_NUMBA")
+@pytest.mark.parametrize(
+    "func,args",
+    [
+        ("_extended_equiv_gaussian_Nsigma", [[-50.0, -300.0, -1000.0]]),
+        ("_log_asymptotic_gamma", [[20.1, 75.3, 400.7]]),
+        ("_log_asymptotic_incomplete_gamma", [[2.0, 8.5, 20.0], [60.3, 200.1, 900.9]]),
+    ],
+)
+def test_vectorized_float32_computed_in_float64(func, args):
+    import stingray.stats as st
+
+    func = getattr(st, func)
+    res64 = func(*[np.asarray(a, dtype=np.float64) for a in args])
+    res32 = func(*[np.asarray(a, dtype=np.float32) for a in args])
+    # The float32 values are converted to float64 before the calculation
+    expected = func(*[np.asarray(a, dtype=np.float32).astype(np.float64) for a in args])
+    assert res64.dtype == res32.dtype == np.float64
+    assert np.array_equal(res32, expected)
+
+
+def test_z2_n_logprobability_many_trials():
+    # Python integers that do not fit in int32 are accepted as number of trials
+    logp = z2_n_logprobability(np.array([100.0]), 2, ntrial=3_000_000_000)
+    logp_int64 = z2_n_logprobability(np.array([100.0]), 2, ntrial=np.int64(3_000_000_000))
+    assert np.isfinite(logp[0])
+    assert logp[0] == logp_int64[0]
