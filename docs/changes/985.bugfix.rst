@@ -1,0 +1,4 @@
+The multi-trial probabilities in ``stingray.stats`` (e.g. ``z2_n_logprobability``) no longer raise
+``OverflowError`` when the number of trials is a Python integer above 2**31. Single-precision inputs
+to these statistics, and to ``raw_coherence``, are now computed in double precision, also when Numba
+is not installed.
