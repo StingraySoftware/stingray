@@ -1,3 +1,6 @@
+import builtins
+import importlib.util
+
 import pytest
 import numpy as np
 import stingray.utils as utils
@@ -5,6 +8,24 @@ from stingray.utils import HAS_NUMBA
 from scipy.stats import sem
 
 np.random.seed(20150907)
+
+
+def test_utils_import_without_numba(monkeypatch):
+    original_import = builtins.__import__
+
+    def import_without_numba(name, *args, **kwargs):
+        if name == "numba" or name.startswith("numba."):
+            raise ImportError
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", import_without_numba)
+    spec = importlib.util.spec_from_file_location("stingray._utils_without_numba", utils.__file__)
+    module = importlib.util.module_from_spec(spec)
+
+    with pytest.warns(UserWarning, match="numba package is not installed"):
+        spec.loader.exec_module(module)
+
+    assert module.boolean is module.generic
 
 
 class TestRebinData(object):

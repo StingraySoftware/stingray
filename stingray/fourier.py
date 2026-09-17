@@ -23,6 +23,9 @@ from .utils import (
     rebin_data,
     njit,
     vectorize,
+    boolean,
+    float64,
+    int64,
 )
 
 __all__ = [
@@ -984,8 +987,8 @@ def _intrinsic_coherence_uncertainties(
 
 @vectorize(
     [
-        "bool(float64, float64, float64, float64, int64, float64)",
-        "bool(float64, float64, float64, float64, float64, float64)",
+        boolean(float64, float64, float64, float64, int64, float64),
+        boolean(float64, float64, float64, float64, float64, float64),
     ],
     nopython=True,
 )
