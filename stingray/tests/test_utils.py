@@ -602,3 +602,70 @@ def test_numba_compiled_or_mocked():
     bla_1()
     bla_2()
     bla_3(1.0)
+
+
+def _make_lazy_log():
+    @utils.lazy_vectorize(["float32(float32, float32)", "float64(float64, float64)"])
+    def lazy_log(a, z):
+        return a * np.log(z)
+
+    return lazy_log
+
+
+def test_lazy_vectorize_results():
+    lazy_log = _make_lazy_log()
+    assert np.allclose(lazy_log(np.array([1.0, 2.0]), 0.1), [np.log(0.1), 2 * np.log(0.1)])
+
+
+@pytest.mark.skipif("not HAS_NUMBA")
+class TestLazyVectorize:
+    def test_not_compiled_before_first_call(self):
+        lazy_log = _make_lazy_log()
+        assert lazy_log.types == []
+        lazy_log(1.0, 0.1)
+        assert lazy_log.types == ["ff->f", "dd->d"]
+
+    def test_float64_never_computed_in_float32(self):
+        lazy_log = _make_lazy_log()
+        a64 = np.array([1.0])
+        # Without fixed signatures, this call would compile a (float64, float32) loop, and the
+        # next call would compute log(0.1) in float32
+        assert lazy_log(a64, np.array([0.1], dtype=np.float32)).dtype == np.float64
+        res = lazy_log(a64, 0.1)
+        assert res.dtype == np.float64
+        assert res[0] == np.log(0.1)
+
+    def test_float32_gives_float32(self):
+        lazy_log = _make_lazy_log()
+        a32 = np.array([1.0], dtype=np.float32)
+        assert lazy_log(a32, np.float32(0.1)).dtype == np.float32
+        assert lazy_log(a32, 0.1).dtype == np.float32
+
+    def test_unsupported_types(self):
+        lazy_log = _make_lazy_log()
+        with pytest.raises(TypeError):
+            lazy_log(np.array([1.0 + 1j]), 0.1)
+        # The other signatures are not compiled
+        assert lazy_log.types == ["ff->f", "dd->d"]
+
+    def test_first_call_from_numba(self):
+        lazy_log = _make_lazy_log()
+
+        @utils.njit
+        def call_lazy_log(a):
+            return lazy_log(a, 0.1)
+
+        res = call_lazy_log(np.array([1.0]))
+        assert res[0] == np.log(0.1)
+        assert lazy_log.types == ["ff->f", "dd->d"]
+
+    @pytest.mark.parametrize("call_before", [False, True])
+    def test_pickle(self, call_before):
+        import pickle
+
+        lazy_log = _make_lazy_log()
+        if call_before:
+            lazy_log(1.0, 0.1)
+        unpickled = pickle.loads(pickle.dumps(lazy_log))
+        assert unpickled(np.array([1.0]), 0.1)[0] == np.log(0.1)
+        assert unpickled.types == ["ff->f", "dd->d"]
