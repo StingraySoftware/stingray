@@ -613,6 +613,10 @@ def _make_lazy_log():
 
 
 def test_lazy_vectorize_results():
+    """Check the results of a function decorated with lazy_vectorize, with and without Numba.
+
+    It is the only test of lazy_vectorize that also runs on the np.vectorize fallback.
+    """
     lazy_log = _make_lazy_log()
     assert np.allclose(lazy_log(np.array([1.0, 2.0]), 0.1), [np.log(0.1), 2 * np.log(0.1)])
 
@@ -620,28 +624,47 @@ def test_lazy_vectorize_results():
 @pytest.mark.skipif("not HAS_NUMBA")
 class TestLazyVectorize:
     def test_not_compiled_before_first_call(self):
+        """Not compiling at import is the purpose of lazy_vectorize.
+
+        This test fails if the signatures are compiled when the function is defined.
+        """
         lazy_log = _make_lazy_log()
         assert lazy_log.types == []
         lazy_log(1.0, 0.1)
         assert lazy_log.types == ["ff->f", "dd->d"]
 
     def test_float64_never_computed_in_float32(self):
+        """Without fixed signatures, after a call with float32 and float64 arrays, a float64 array
+        and a Python float are computed in float32.
+
+        This test fails if lazy_vectorize compiles loops for the input types instead of the
+        signatures.
+        """
         lazy_log = _make_lazy_log()
         a64 = np.array([1.0])
-        # Without fixed signatures, this call would compile a (float64, float32) loop, and the
-        # next call would compute log(0.1) in float32
         assert lazy_log(a64, np.array([0.1], dtype=np.float32)).dtype == np.float64
         res = lazy_log(a64, 0.1)
         assert res.dtype == np.float64
         assert res[0] == np.log(0.1)
 
     def test_float32_gives_float32(self):
+        """Check that the signatures are compiled in the given order, so that NumPy uses the
+        float32 one for float32 inputs.
+
+        Stingray only uses float64 signatures now, so this only matters if float32 ones are added
+        again.
+        """
         lazy_log = _make_lazy_log()
         a32 = np.array([1.0], dtype=np.float32)
         assert lazy_log(a32, np.float32(0.1)).dtype == np.float32
         assert lazy_log(a32, 0.1).dtype == np.float32
 
     def test_unsupported_types(self):
+        """After the first call no other loops are compiled, so that unsupported types raise an
+        error as with numba.vectorize with signatures.
+
+        Without this, a complex input would silently compile a new loop.
+        """
         lazy_log = _make_lazy_log()
         with pytest.raises(TypeError):
             lazy_log(np.array([1.0 + 1j]), 0.1)
@@ -649,6 +672,11 @@ class TestLazyVectorize:
         assert lazy_log.types == ["ff->f", "dd->d"]
 
     def test_first_call_from_numba(self):
+        """Calls from Numba-compiled code reach the compilation through a different method than
+        calls from Python.
+
+        This test fails if only the Python calls compile the signatures.
+        """
         lazy_log = _make_lazy_log()
 
         @utils.njit
@@ -661,6 +689,11 @@ class TestLazyVectorize:
 
     @pytest.mark.parametrize("call_before", [False, True])
     def test_pickle(self, call_before):
+        """Numba vectorized functions are pickled by value, and the signatures not yet compiled are
+        in an attribute added by lazy_vectorize.
+
+        This test fails if they are lost when pickling before the first call.
+        """
         import pickle
 
         lazy_log = _make_lazy_log()

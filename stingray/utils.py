@@ -74,8 +74,28 @@ except ImportError:
 
         return decorator
 
+    def _to_double_precision(value):
+        """Convert float and complex values with less than double precision to double precision."""
+        value = np.asarray(value)
+        if value.dtype.kind == "f" and value.dtype.itemsize < 8:
+            return value.astype(np.float64)
+        if value.dtype.kind == "c" and value.dtype.itemsize < 16:
+            return value.astype(np.complex128)
+        return value
+
     def lazy_vectorize(signatures, **kwargs):
-        return vectorize(signatures, **kwargs)
+        # As the Numba version with float64 signatures, compute float32 inputs in float64
+        def decorator(func):
+            vectorized = np.vectorize(func)
+
+            def wrapper(*args):
+                return vectorized(*[_to_double_precision(arg) for arg in args])
+
+            wrapper.__name__ = func.__name__
+            wrapper.__doc__ = func.__doc__
+            return wrapper
+
+        return decorator
 
     def generic(*args, **kwargs):
         return None
