@@ -1066,3 +1066,24 @@ def test_shift_and_add_orbit(ntimes):
     # original series
     assert np.max(p) == 1
     assert np.max(n) == times.size
+
+
+def test_raw_coherence_float32_computed_in_float64():
+    rng = np.random.default_rng(0)
+    power1 = rng.uniform(3, 10, 10).astype(np.float32)
+    power2 = rng.uniform(3, 10, 10).astype(np.float32)
+    cross = (np.sqrt(power1 * power2) * 0.9 * np.exp(1j * rng.uniform(0, 1, 10))).astype(
+        np.complex64
+    )
+    res32 = raw_coherence(cross, power1, power2, 2.0, 2.0, 10)
+    # The float32 values are converted to float64 before the calculation
+    expected = raw_coherence(
+        cross.astype(np.complex128),
+        power1.astype(np.float64),
+        power2.astype(np.float64),
+        2.0,
+        2.0,
+        10,
+    )
+    assert res32.dtype == np.float64
+    assert np.array_equal(res32, expected)
