@@ -21,7 +21,6 @@ from stingray.stats import (
     amplitude_upper_limit,
     power_confidence_limits,
 )
-from stingray.utils import HAS_NUMBA
 
 
 @pytest.mark.parametrize("ntrial", [1, 10, 100, 1000, 10000, 100000])
@@ -340,7 +339,6 @@ class TestClassicalSignificances(object):
             assert np.isclose(power_upper_limit(val, c=c, n=n, summed_flag=summed_flag), 0.0)
 
 
-@pytest.mark.skipif("not HAS_NUMBA")
 @pytest.mark.parametrize(
     "func,args",
     [
@@ -350,19 +348,26 @@ class TestClassicalSignificances(object):
     ],
 )
 def test_vectorized_float32_computed_in_float64(func, args):
+    """The vectorized functions of stats have only float64 signatures, so float32 inputs have to be
+    computed in float64, with and without Numba.
+
+    This test fails if float32 signatures are added, or if the calculation is done in float32.
+    """
     import stingray.stats as st
 
     func = getattr(st, func)
-    res64 = func(*[np.asarray(a, dtype=np.float64) for a in args])
     res32 = func(*[np.asarray(a, dtype=np.float32) for a in args])
-    # The float32 values are converted to float64 before the calculation
     expected = func(*[np.asarray(a, dtype=np.float32).astype(np.float64) for a in args])
-    assert res64.dtype == res32.dtype == np.float64
+    assert res32.dtype == np.float64
     assert np.array_equal(res32, expected)
 
 
 def test_z2_n_logprobability_many_trials():
-    # Python integers that do not fit in int32 are accepted as number of trials
+    """With int32 signatures listed before int64 ones, a Python integer above 2**31 as number of
+    trials raised OverflowError.
+
+    This test fails if int32 signatures are listed before int64 ones again.
+    """
     logp = z2_n_logprobability(np.array([100.0]), 2, ntrial=3_000_000_000)
     logp_int64 = z2_n_logprobability(np.array([100.0]), 2, ntrial=np.int64(3_000_000_000))
     assert np.isfinite(logp[0])
