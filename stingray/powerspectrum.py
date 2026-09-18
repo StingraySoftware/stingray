@@ -976,7 +976,8 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
          units the ``time`` array in the :class:`Lightcurve`` object uses).
 
     norm: {"leahy" | "frac" | "abs" | "none" }, optional, default "frac"
-        The normaliation of the periodogram to be used.
+        The normaliation of the periodogram to be used. The mean count rate that
+        enters the normalization is selected with ``use_common_mean``.
 
     Other Parameters
     ----------------
@@ -992,6 +993,19 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
         Compulsory for input :class:`stingray.EventList` data. The time resolution of the
         lightcurve that is created internally from the input event lists. Drives the
         Nyquist frequency.
+
+    use_common_mean: bool, default True
+        Select the mean count rate used to normalize each segment. If ``True``,
+        every segment is normalized by the mean count rate of the whole
+        observation, so a change of count rate between segments shows up in the
+        normalized powers. If ``False``, each segment is normalized by its own
+        mean count rate. The latter is usually what one wants when comparing the
+        columns of a dynamical spectrum with each other: with ``norm="frac"`` it
+        removes the effect of a varying count rate at constant fractional rms,
+        as produced by an rms-flux relation. Note that with ``use_common_mean``
+        set to ``False`` the Poisson noise level follows each segment's own count
+        rate, so a single noise level no longer applies to the whole matrix, and
+        ``meanrate`` remains the mean over the whole observation.
 
     Attributes
     ----------
@@ -1026,13 +1040,26 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
 
     m: int
         The number of averaged cross spectra.
+
+    use_common_mean: bool
+        Whether the normalization uses the mean count rate of the whole
+        observation (``True``) or of each segment (``False``).
     """
 
-    def __init__(self, lc=None, segment_size=None, norm="frac", gti=None, sample_time=None):
+    def __init__(
+        self,
+        lc=None,
+        segment_size=None,
+        norm="frac",
+        gti=None,
+        sample_time=None,
+        use_common_mean=True,
+    ):
         self.segment_size = segment_size
         self.sample_time = sample_time
         self.gti = gti
         self.norm = norm
+        self.use_common_mean = use_common_mean
 
         if segment_size is None and lc is None:
             self._initialize_empty()
@@ -1125,10 +1152,14 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
             segment_size=self.segment_size,
             norm=self.norm,
             gti=self.gti,
+            use_common_mean=self.use_common_mean,
             save_all=True,
         )
-        conv = avg.cs_all / avg.unnorm_cs_all
-        self.unnorm_conversion = np.nanmean(conv)
+        conv = np.asarray(avg.cs_all) / np.asarray(avg.unnorm_cs_all)
+        if self.use_common_mean:
+            self.unnorm_conversion = np.nanmean(conv)
+        else:
+            self.unnorm_conversion = np.nanmean(conv, axis=1)
         self.dyn_ps = np.array(avg.cs_all).T
         self.freq = avg.freq
         current_gti = avg.gti
@@ -1178,6 +1209,14 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
             The power colors for each spectrum and their respective errors
         """
         if poisson_power is None:
+            if not getattr(self, "use_common_mean", True):
+                warnings.warn(
+                    "The default Poisson level is calculated from the mean count rate of "
+                    "the whole observation. With use_common_mean=False each segment is "
+                    "normalized by its own mean count rate, so this level does not apply "
+                    "to every column. Pass poisson_power explicitly.",
+                    UserWarning,
+                )
             poisson_power = poisson_level(
                 norm=self.norm,
                 meanrate=self.meanrate,

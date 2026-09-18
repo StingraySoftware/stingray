@@ -2352,7 +2352,8 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
          units the ``time`` array in the :class:`Lightcurve`` object uses).
 
     norm: {"leahy" | "frac" | "abs" | "none" }, optional, default "frac"
-        The normaliation of the periodogram to be used.
+        The normaliation of the periodogram to be used. The mean count rate that
+        is used in the fractional normalization is selected with ``use_common_mean``.
 
     Other Parameters
     ----------------
@@ -2368,6 +2369,18 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         Compulsory for input :class:`stingray.EventList` data. The time resolution of the
         lightcurve that is created internally from the input event lists. Drives the
         Nyquist frequency.
+
+    use_common_mean: bool, default True
+        Select the mean count rate used to normalize each segment. If ``True``,
+        every segment is normalized by the mean count rate of the whole
+        observation, so a change of count rate between segments shows up in the
+        normalized powers. If ``False``, each segment is normalized by its own
+        mean count rate. The latter is usually what one wants when comparing the
+        columns of a dynamical spectrum with each other: with ``norm="frac"`` it
+        removes the effect of a varying count rate at constant fractional rms,
+        as produced by an rms-flux relation. Note that with ``use_common_mean``
+        set to ``False`` the Poisson noise level follows each segment's own count
+        rate, so a single noise level no longer applies to the whole matrix.
 
     Attributes
     ----------
@@ -2402,15 +2415,27 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
 
     m: int
         The number of averaged powers in each spectral bin (initially 1, it changes after rebinning).
+
+    use_common_mean: bool
+        Whether the normalization uses the mean count rate of the whole
+        observation (``True``) or of each segment (``False``).
     """
 
     def __init__(
-        self, data1=None, data2=None, segment_size=None, norm="frac", gti=None, sample_time=None
+        self,
+        data1=None,
+        data2=None,
+        segment_size=None,
+        norm="frac",
+        gti=None,
+        sample_time=None,
+        use_common_mean=True,
     ):
         self.segment_size = segment_size
         self.sample_time = sample_time
         self.gti = gti
         self.norm = norm
+        self.use_common_mean = use_common_mean
 
         if segment_size is None and data1 is None and data2 is None:
             self._initialize_empty()
@@ -2456,11 +2481,15 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
             segment_size=self.segment_size,
             norm=self.norm,
             gti=self.gti,
+            use_common_mean=self.use_common_mean,
             save_all=True,
         )
         self.dyn_ps = np.array(avg.cs_all).T
-        conv = avg.cs_all / avg.unnorm_cs_all
-        self.unnorm_conversion = np.nanmean(conv)
+        conv = np.asarray(avg.cs_all) / np.asarray(avg.unnorm_cs_all)
+        if self.use_common_mean:
+            self.unnorm_conversion = np.nanmean(conv)
+        else:
+            self.unnorm_conversion = np.nanmean(conv, axis=1)
         self.freq = avg.freq
         current_gti = avg.gti
         self.nphots1 = avg.nphots1
@@ -2556,6 +2585,10 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         new_dynspec_object.dyn_ps = np.array(dynspec_new)
         new_dynspec_object.dt = dt_new
         new_dynspec_object.m = int(step) * self.m
+        if np.size(getattr(self, "unnorm_conversion", 1)) > 1:
+            new_dynspec_object.unnorm_conversion = rebin_data(
+                self.time, self.unnorm_conversion, dt_new, method="average", dx=self.dt
+            )[1]
         return new_dynspec_object
 
     def rebin_by_n_intervals(self, n, method="average"):
@@ -2617,6 +2650,10 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         new_dynspec_object.dyn_ps = np.array(dynspec_new).T
         new_dynspec_object.dt *= n
         new_dynspec_object.m = n * self.m
+        if np.size(getattr(self, "unnorm_conversion", 1)) > 1:
+            conv = np.asarray(self.unnorm_conversion)
+            nkeep = (conv.size // n) * n
+            new_dynspec_object.unnorm_conversion = conv[:nkeep].reshape(-1, n).mean(axis=1)
 
         return new_dynspec_object
 
@@ -2805,8 +2842,8 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
             The error on the fractional rms amplitude.
 
         """
+        conversion = np.atleast_1d(self.unnorm_conversion)
         dyn_ps_unnorm = self.dyn_ps / self.unnorm_conversion
-        poisson_noise_unnrom = poisson_noise_level / self.unnorm_conversion
         if not hasattr(self, "nphots"):
             nphots = (self.nphots1 * self.nphots2) ** 0.5
         else:
@@ -2821,13 +2858,17 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         rmss = []
         rms_errs = []
 
-        for unnorm_powers in dyn_ps_unnorm.T:
+        for i, unnorm_powers in enumerate(dyn_ps_unnorm.T):
+            # With ``use_common_mean=False`` the conversion factor, and hence
+            # the unnormalized Poisson level, differs from segment to segment.
+            conv = conversion[i] if conversion.size > 1 else conversion[0]
+            poisson_noise_unnorm = poisson_noise_level / conv
             r, re = get_rms_from_unnorm_periodogram(
                 unnorm_powers[good],
                 nphots,
                 self.df,
                 M=M_freq,
-                poisson_noise_unnorm=poisson_noise_unnrom,
+                poisson_noise_unnorm=poisson_noise_unnorm,
                 segment_size=self.segment_size,
                 kind="frac",
             )
