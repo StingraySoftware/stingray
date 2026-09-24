@@ -1,0 +1,1 @@
+Added unit tests for get_mean_phase_difference and get_phase_lag in stingray/spectroscopy.py
