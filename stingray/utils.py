@@ -111,6 +111,7 @@ if HAS_NUMBA:
 
     from numba.core.errors import NumbaValueError, NumbaNotImplementedError, TypingError
     from numba.core import sigutils
+    from numba.core.compiler_lock import global_compiler_lock
     from numba.np.numpy_support import ufunc_find_matching_loop
     from numba.np.ufunc.dufunc import DUFunc
 
@@ -134,8 +135,17 @@ if HAS_NUMBA:
             super().__init__(py_func, **kwargs)
             self._lazy_signatures = list(signatures)
 
+        @global_compiler_lock
         def _compile_lazy_signatures(self):
-            """Compile the signatures, if not done yet. Return True if they were compiled now."""
+            """Compile the signatures, if not done yet. Return True if they were compiled now.
+
+            Numba's compiler lock makes compiling the signatures and freezing the function
+            atomic: without it, two threads calling the function for the first time could
+            both start compiling, and the one that gets there first would freeze the
+            function while the other is still compiling, raising a ``RuntimeError``. It is
+            the same lock that ``DUFunc._compile_for_argtys`` takes, and it is reentrant, so
+            taking it here cannot deadlock with the compilation of a Numba-compiled caller.
+            """
             signatures = getattr(self, "_lazy_signatures", None)
             if not signatures:
                 return False
@@ -148,11 +158,16 @@ if HAS_NUMBA:
         def _compile_for_args(self, *args, **kws):
             # Called from Python when no loop accepts the inputs. After compiling, the
             # call is repeated, and NumPy chooses the loop (or raises) as for any ufunc
-            if not self._compile_lazy_signatures():
-                return super()._compile_for_args(*args, **kws)  # pragma: no cover
+            if self._compile_lazy_signatures() or self._frozen:
+                # NumPy does not hold any lock here, so another thread may have compiled
+                # the signatures in the meantime: there is nothing left to compile
+                return
+            return super()._compile_for_args(*args, **kws)  # pragma: no cover
 
         def _compile_for_argtys(self, argtys, return_type=None):
-            # Called when typing a call from Numba-compiled code, and by ``add``
+            # Called when typing a call from Numba-compiled code, and by ``add``. Numba only
+            # gets here if the function is not frozen yet, and it holds the compiler lock from
+            # that check to this call, so no other thread can have frozen it in between
             if not self._compile_lazy_signatures():
                 return super()._compile_for_argtys(argtys, return_type)
 

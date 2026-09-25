@@ -719,3 +719,44 @@ class TestLazyVectorize:
         unpickled = pickle.loads(pickle.dumps(_make_lazy_log()))
         assert unpickled(np.array([1.0]), 0.1)[0] == np.log(0.1)
         assert unpickled.types == ["ff->f", "dd->d"]
+
+    def test_compilation_and_freezing_are_atomic(self, monkeypatch):
+        """The signatures are compiled, and the function frozen, while holding Numba's compiler
+        lock, so that two threads calling the function for the first time cannot interleave.
+
+        This test fails if the lazy compilation is not protected by the lock: one thread could
+        then freeze the function while the other is still compiling, raising a RuntimeError.
+        """
+        from numba.core.compiler_lock import global_compiler_lock
+        from numba.np.ufunc.dufunc import DUFunc
+
+        locked = []
+
+        def spy(method):
+            # ``is_locked`` is true only if the *calling* thread already owns the lock, and
+            # these two methods are called before they take it themselves
+            def wrapper(self, *args, **kwargs):
+                locked.append(global_compiler_lock.is_locked())
+                return method(self, *args, **kwargs)
+
+            return wrapper
+
+        monkeypatch.setattr(DUFunc, "_compile_for_argtys", spy(DUFunc._compile_for_argtys))
+        monkeypatch.setattr(DUFunc, "disable_compile", spy(DUFunc.disable_compile))
+
+        lazy_log = _make_lazy_log()
+        lazy_log(1.0, 0.1)
+
+        # One call per signature, plus the call that freezes the function
+        assert locked == [True, True, True]
+
+    def test_compile_for_args_after_another_thread_compiled(self):
+        """A thread whose call finds no loop, while another thread is compiling the signatures,
+        has nothing left to compile once it gets the lock: NumPy then repeats its call.
+
+        This test fails if it tries to compile the frozen function, raising a RuntimeError. It
+        reproduces that state without threads, which would need a lucky interleaving.
+        """
+        lazy_log = _make_lazy_log()
+        lazy_log(1.0, 0.1)
+        assert lazy_log._compile_for_args(np.array([1.0]), np.array([0.1])) is None
