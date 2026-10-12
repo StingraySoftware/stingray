@@ -1656,9 +1656,11 @@ def check_allclose_and_print(
         v2 = np.asanyarray(v2)
         bad = np.abs(v1 - v2) >= (atol + rtol * np.abs(v2))
 
-        raise AssertionError(f"Different values in the arrays check by allclose: \
+        raise AssertionError(
+            f"Different values in the arrays check by allclose: \
                         {v1[bad]} vs {v2[bad]}, indices are {np.where(v1[bad])[0]}\
-                        and {np.where(v2[bad])[0]}")
+                        and {np.where(v2[bad])[0]}"
+        )
 
 
 @njit(nogil=True, parallel=False)
