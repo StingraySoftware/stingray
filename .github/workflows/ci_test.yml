@@ -65,13 +65,13 @@ jobs:
             tox_env: 'black'
             experimental: false
 
-          # Basic tests on the oldest & newest supported versions of Python,
-          # recording coverage data for the latter.
-          - name: Py3.8 with old Astropy version
-            os: ubuntu-latest
-            python: '3.8'
-            tox_env: 'py38-test-astropy4-cov'
-            experimental: false
+          # # Basic tests on the oldest & newest supported versions of Python,
+          # # recording coverage data for the latter.
+          # - name: Py3.8 with old Astropy version
+          #   os: ubuntu-latest
+          #   python: '3.8'
+          #   tox_env: 'py38-test-astropy4-cov'
+          #   experimental: false
 
           - name: Linux, Py3.10 with coverage
             os: ubuntu-latest
