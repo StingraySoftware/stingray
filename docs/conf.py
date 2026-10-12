@@ -167,6 +167,7 @@ linkcheck_ignore = [
     r"https://opensource.org/",
     r"https://www.mathworks.com/",
     r"http.*://stackoverflow.com/questions/.*",
+    r"http.*://stingraysoftware.slack.com/.*",
 ]
 
 # -- Options for the edit_on_github extension ---------------------------------

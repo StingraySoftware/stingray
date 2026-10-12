@@ -1050,7 +1050,7 @@ def contiguous_regions(condition):
 
     Notes
     -----
-    .. [so-contiguous] http://stackoverflow.com/questions/4494404/find-large-number-of-consecutive-values-fulfilling-condition-in-a-numpy-array
+    .. [so-contiguous] https://stackoverflow.com/questions/4494404/find-large-number-of-consecutive-values-fulfilling-condition-in-a-numpy-array
     """
     # Find the indices of changes in "condition"
     diff = np.logical_xor(condition[1:], condition[:-1])
@@ -1158,7 +1158,7 @@ def _als(y, lam, p, niter=10):
     References
     ----------
     .. [eilers-2005] https://www.researchgate.net/publication/228961729_Technical_Report_Baseline_Correction_with_Asymmetric_Least_Squares_Smoothing
-    .. [so-als] http://stackoverflow.com/questions/29156532/python-baseline-correction-library
+    .. [so-als] https://stackoverflow.com/questions/29156532/python-baseline-correction-library
 
     """
     from scipy import sparse
@@ -1656,11 +1656,9 @@ def check_allclose_and_print(
         v2 = np.asanyarray(v2)
         bad = np.abs(v1 - v2) >= (atol + rtol * np.abs(v2))
 
-        raise AssertionError(
-            f"Different values in the arrays check by allclose: \
+        raise AssertionError(f"Different values in the arrays check by allclose: \
                         {v1[bad]} vs {v2[bad]}, indices are {np.where(v1[bad])[0]}\
-                        and {np.where(v2[bad])[0]}"
-        )
+                        and {np.where(v2[bad])[0]}")
 
 
 @njit(nogil=True, parallel=False)

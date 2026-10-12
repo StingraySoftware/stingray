@@ -508,7 +508,7 @@ class AveragedCovariancespectrum(Covariancespectrum):
 
     References
     ----------
-    .. [covar spectrum] http://arxiv.org/pdf/1405.6575v2.pdf
+    .. [covar spectrum] https://arxiv.org/pdf/1405.6575v2.pdf
     """
 
     def __init__(
