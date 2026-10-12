@@ -168,6 +168,7 @@ linkcheck_ignore = [
     r"https://www.mathworks.com/",
     r"http.*://stackoverflow.com/questions/.*",
     r"http.*://stingraysoftware.slack.com/.*",
+    r"https://join\.slack\.com/t/stingraysoftware/shared_invite/.*",
 ]
 
 # -- Options for the edit_on_github extension ---------------------------------
