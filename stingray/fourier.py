@@ -3996,9 +3996,9 @@ def lsft_fast(
     # Angular Frequency
     w = freqs * 2 * np.pi
 
-    # Summation of cos(2wt) and sin(2wt)
-    csum, ssum = trig_sum(
-        t, np.ones_like(y_) / len(y_), df, N, f0, freq_factor=2, oversampling=oversampling
+    # trig_sum returns the sine sum, then the cosine sum.
+    ssum, csum = trig_sum(
+        t, np.ones_like(y_) / num_xt, df, N, f0, freq_factor=2, oversampling=oversampling
     )
 
     wtau = 0.5 * np.arctan2(ssum, csum)
@@ -4013,7 +4013,7 @@ def lsft_fast(
         oversampling=oversampling,
     )
 
-    const = np.sqrt(0.5) * np.sqrt(num_ww)
+    const = np.sqrt(0.5 * num_xt)
 
     coswtau = np.cos(wtau)
     sinwtau = np.sin(wtau)
@@ -4024,8 +4024,8 @@ def lsft_fast(
     cos2wtau = np.cos(2 * wtau)
     sin2wtau = np.sin(2 * wtau)
 
-    scos2 = 0.5 * (N + C2 * cos2wtau + S2 * sin2wtau)
-    ssin2 = 0.5 * (N - C2 * cos2wtau - S2 * sin2wtau)
+    scos2 = 0.5 * (num_xt + C2 * cos2wtau + S2 * sin2wtau)
+    ssin2 = 0.5 * (num_xt - C2 * cos2wtau - S2 * sin2wtau)
 
     ft_real = const * sumr / np.sqrt(scos2)
     ft_imag = const * np.sign(sign) * sumi / np.sqrt(ssin2)
