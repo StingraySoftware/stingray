@@ -1,0 +1,1 @@
+Fixed ``lsft_fast`` so the phase and the amplitude follow ``lsft_slow`` when the frequency grid is shorter than the data.
