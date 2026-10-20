@@ -242,6 +242,31 @@ class TestLombScargleCrossspectrum:
         ]
         assert np.allclose(measured_phase_lag, measured_time_lag, atol=1e-1)
 
+    @pytest.mark.parametrize("phase_offset", [0.3, -0.5])
+    def test_fast_matches_slow_phase_lag(self, phase_offset):
+        # Sanity check: fast and slow cross spectra agree on peak bin, power and
+        # phase lag. Shared phase errors cancel in the cross product, so this does
+        # not guard against the lsft_fast phase bugs; lsft tests cover those.
+        rng_ = np.random.default_rng(7)
+        times = np.arange(0, 1000, 1.0)
+        f = 0.05
+        noise1 = 0.5 * rng_.normal(size=times.size)
+        noise2 = 0.5 * rng_.normal(size=times.size)
+        s1 = 10 + np.sin(2 * np.pi * f * times) + noise1
+        s2 = 10 + np.sin(2 * np.pi * f * times - phase_offset) + noise2
+        lc1 = Lightcurve(times, s1, dt=1)
+        lc2 = Lightcurve(times, s2, dt=1)
+
+        # Exact-Nyquist handling is out of scope for this interior-frequency check.
+        slow = LombScargleCrossspectrum(lc1, lc2, method="slow", max_freq=0.49)
+        fast = LombScargleCrossspectrum(lc1, lc2, method="fast", oversampling=10, max_freq=0.49)
+        i = np.argmax(slow.power)
+        assert np.argmax(fast.power) == i
+        # Cross power carries the normalization, so check its magnitude too.
+        assert np.isclose(fast.power[i], slow.power[i], rtol=1e-2)
+        lag_diff = fast.phase_lag()[i] - slow.phase_lag()[i]
+        assert np.abs(np.angle(np.exp(1j * lag_diff))) < 1e-2
+
 
 class TestLombScarglePowerspectrum:
     def setup_class(self):

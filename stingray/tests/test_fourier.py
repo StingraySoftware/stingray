@@ -790,18 +790,24 @@ def test_lsft_slow_fast():
     rand = np.random.default_rng(42)
     n = 1000
     t = np.sort(rand.random(n)) * np.sqrt(n)
-    y = np.sin(2 * np.pi * 3.0 * t)
+    y = np.sin(2 * np.pi * 3.0 * t) + 0.5 * np.cos(2 * np.pi * 7.5 * t + 0.3)
     sub = np.min(y)
     y -= sub
     freqs = np.fft.fftfreq(n, np.median(np.diff(t, 1)))
     freqs = freqs[freqs >= 0]
     lsftslow = lsft_slow(y, t, freqs, sign=1)
     lsftfast = lsft_fast(y, t, freqs, sign=1, oversampling=10)
-    assert np.argmax(lsftslow) == np.argmax(lsftfast)
-    assert round(freqs[np.argmax(lsftslow)], 1) == round(freqs[np.argmax(lsftfast)], 1) == 3.0
-    assert np.allclose((lsftslow * np.conjugate(lsftslow)).imag, [0]) & np.allclose(
-        (lsftfast * np.conjugate(lsftfast)).imag, 0
-    )
+    assert np.argmax(np.abs(lsftslow)) == np.argmax(np.abs(lsftfast))
+    peak_slow = freqs[np.argmax(np.abs(lsftslow))]
+    peak_fast = freqs[np.argmax(np.abs(lsftfast))]
+    assert round(peak_slow, 1) == round(peak_fast, 1) == 3.0
+    # Compare amplitude and phase, not only the peak, on bins with real signal.
+    ok = np.abs(lsftslow) > 1e-3 * np.max(np.abs(lsftslow))
+    amp_err = np.max(np.abs(np.abs(lsftfast[ok]) - np.abs(lsftslow[ok])))
+    amp_err /= np.max(np.abs(lsftslow))
+    phase_err = np.max(np.abs(np.angle(lsftfast[ok] * np.conj(lsftslow[ok]))))
+    assert amp_err < 1e-3
+    assert phase_err < 1e-2
 
 
 def test_impose_symmetry_lsft():
