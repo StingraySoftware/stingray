@@ -3951,7 +3951,7 @@ def lsft_fast(
     t: npt.ArrayLike,
     freqs: npt.ArrayLike,
     sign: Optional[int] = 1,
-    oversampling: Optional[int] = 5,
+    oversampling: Optional[int] = 10,
 ) -> npt.NDArray:
     """
     Calculates the Lomb-Scargle Fourier transform of a light curve.
@@ -3977,7 +3977,7 @@ def lsft_fast(
     fullspec : bool, optional, default: False
         Return LSFT values for full frequency array (True) or just positive frequencies (False).
 
-    oversampling : float, optional, default: 5
+    oversampling : float, optional, default: 10
         Interpolation Oversampling Factor
 
     Returns
