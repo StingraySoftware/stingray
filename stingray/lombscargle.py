@@ -131,7 +131,7 @@ class LombScargleCrossspectrum(Crossspectrum):
         and `slow` are the allowed values. Default is `fast`. fast uses the optimized Press
         and Rybicki O(n*log(n))
 
-    oversampling : float, optional, default: 5
+    oversampling : float, optional, default: 10
         Interpolation Oversampling Factor (for the fast algorithm)
 
     Attributes
@@ -190,7 +190,7 @@ class LombScargleCrossspectrum(Crossspectrum):
         max_freq: float = None,
         df: float = None,
         method: str = "fast",
-        oversampling: int = 5,
+        oversampling: int = 10,
     ):
         self._type = None
 
@@ -556,7 +556,7 @@ class LombScarglePowerspectrum(LombScargleCrossspectrum):
         and `slow` are the allowed values. Default is `fast`. fast uses the optimized Press
         and Rybicki O(n*log(n))
 
-    oversampling : float, optional, default: 5
+    oversampling : float, optional, default: 10
         Interpolation Oversampling Factor (for the fast algorithm)
 
     Attributes
@@ -601,7 +601,7 @@ class LombScarglePowerspectrum(LombScargleCrossspectrum):
         max_freq: Optional[float] = None,
         df: Optional[float] = None,
         method: Optional[str] = "fast",
-        oversampling: Optional[int] = 5,
+        oversampling: Optional[int] = 10,
     ):
         self._type = None
         if data is None:
@@ -649,7 +649,7 @@ def lscrossspectrum_from_lightcurve(
     max_freq=None,
     df=None,
     method="fast",
-    oversampling=5,
+    oversampling=10,
     nyquist_factor=1,
 ):
     """Creates a Lomb Scargle Cross Spectrum from two light curves
@@ -684,7 +684,7 @@ def lscrossspectrum_from_lightcurve(
         optimized Press and Rybicki O(n*log(n)) algorithm, while slow uses the original
         O(n^2) algorithm.
 
-    oversampling : int, default 5
+    oversampling : int, default 10
         Interpolation Oversampling Factor (for the fast algorithm)
     nyquist_factor : int, default 1
         How many times the Nyquist frequency to use as the maximum frequency
@@ -755,7 +755,7 @@ def _ls_cross(
     freq=None,
     fullspec=False,
     method="fast",
-    oversampling=5,
+    oversampling=10,
 ):
     """
     Lomb-Scargle Fourier transform the two light curves, then compute the cross spectrum.
