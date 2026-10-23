@@ -22,7 +22,7 @@ from .utils import (
     fix_segment_size_to_integer_samples,
     rebin_data,
     njit,
-    vectorize,
+    lazy_vectorize,
 )
 
 __all__ = [
@@ -707,12 +707,10 @@ def unnormalize_periodograms(
     raise ValueError("Unrecognized power type")
 
 
-@vectorize(
-    [
-        "float64(float64, float64, float64, float64, int64, float64)",
-        "float64(float64, float64, float64, float64, float64, float64)",
-    ],
+@lazy_vectorize(
+    ["float64(float64, float64, float64, float64, float64, float64)"],
     nopython=True,
+    cache=True,
 )
 def _bias_term(power1, power2, power1_noise, power2_noise, n_ave, input_intrinsic_coherence):
     if n_ave > 500:
@@ -762,7 +760,11 @@ def bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coher
     return _bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence)
 
 
-@vectorize(["float64(float64, float64, float64)"], nopython=True)
+@lazy_vectorize(
+    ["float64(float64, float64, float64)"],
+    nopython=True,
+    cache=True,
+)
 def _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertainty):
     """
     Apply a low limit to the uncertainty on the coherence, to avoid zero or negative uncertainties.
@@ -814,12 +816,10 @@ def _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertai
     return uncertainty
 
 
-@vectorize(
-    [
-        "float64(complex128, float64, float64, float64, float64, int64, float64)",
-        "float64(complex128, float64, float64, float64, float64, float64, float64)",
-    ],
+@lazy_vectorize(
+    ["float64(complex128, float64, float64, float64, float64, float64, float64)"],
     nopython=True,
+    cache=True,
 )
 def _raw_coherence(
     cross_power,
@@ -982,12 +982,10 @@ def _intrinsic_coherence_uncertainties(
     return uncertainty
 
 
-@vectorize(
-    [
-        "bool(float64, float64, float64, float64, int64, float64)",
-        "bool(float64, float64, float64, float64, float64, float64)",
-    ],
+@lazy_vectorize(
+    ["bool(float64, float64, float64, float64, float64, float64)"],
     nopython=True,
+    cache=True,
 )
 def check_powers_for_intrinsic_coherence(
     power1, power2, power1_noise, power2_noise, n_ave, threshold

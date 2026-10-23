@@ -1,0 +1,8 @@
+The multi-trial probabilities in ``stingray.stats`` (e.g. ``z2_n_logprobability``) no longer raise
+``OverflowError`` when the number of trials is a Python integer above 2**31. Single-precision inputs
+to these statistics, and to ``raw_coherence``, are now computed in double precision, also when Numba
+is not installed.
+
+The lazily compiled functions of ``stingray.stats`` and ``stingray.fourier`` are safe to call from
+multiple threads: the first call no longer risks a ``RuntimeError``, or the compilation of only
+some of the signatures, when two threads reach it at the same time.
