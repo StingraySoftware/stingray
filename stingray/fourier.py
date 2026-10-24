@@ -4027,8 +4027,25 @@ def lsft_fast(
     scos2 = 0.5 * (len(y_) + C2 * cos2wtau + S2 * sin2wtau)
     ssin2 = 0.5 * (len(y_) - C2 * cos2wtau - S2 * sin2wtau)
 
-    ft_real = const * sumr / np.sqrt(scos2)
-    ft_imag = const * np.sign(sign) * sumi / np.sqrt(ssin2)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ft_real = const * sumr / np.sqrt(scos2)
+        ft_imag = const * np.sign(sign) * sumi / np.sqrt(ssin2)
+
+    # Zero imag only where the sine basis is truly degenerate (numerator and
+    # denominator both vanish, e.g. exact Nyquist on integer grids); small
+    # denominators with real signal keep the direct denominator.
+    tiny = np.flatnonzero(ssin2 < 0.1 * len(y_))
+    if tiny.size:
+        t_arr = np.asanyarray(t, dtype=float)
+        arg = w[tiny, None] * t_arr[None, :] - wtau[tiny, None]
+        ssin2_direct = np.sum(np.sin(arg) ** 2, axis=1)
+        sumi_direct = np.sum((y_[None, :] * np.sin(arg)), axis=1)
+        degenerate = (ssin2_direct <= 1e-3 * len(y_)) & (
+            np.abs(sumi_direct) <= 1e-3 * np.sum(np.abs(y_))
+        )
+        ft_imag[tiny[degenerate]] = 0.0
+        keep = tiny[~degenerate]
+        ft_imag[keep] = const * np.sign(sign) * sumi[keep] / np.sqrt(ssin2_direct[~degenerate])
 
     ft_real[freqs == 0] = sum_xx / np.sqrt(num_xt)
     ft_imag[freqs == 0] = 0

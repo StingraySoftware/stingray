@@ -810,6 +810,31 @@ def test_lsft_slow_fast():
     assert phase_err < 1e-2
 
 
+def test_lsft_fast_exact_nyquist_integer_grid():
+    # Integer grid at exact Nyquist: sine basis is identically zero.
+    rng = np.random.default_rng(0)
+    t = np.arange(50, dtype=float)
+    y = rng.normal(size=t.size)
+    freqs = np.linspace(0.05, 0.5, 11)
+    assert freqs[-1] == 0.5 / np.median(np.diff(t))
+    fast = lsft_fast(y, t, freqs, sign=1, oversampling=10)
+    assert np.all(np.isfinite(fast))
+    # Guard zeroes pre-rotation imag; the phase factor leaves a small residual.
+    assert abs(fast[-1].imag) < 1e-3 * np.max(np.abs(fast))
+
+
+def test_lsft_fast_small_sine_norm_keeps_signal():
+    # Tiny but legitimate sine norm (~3e-4 N) with real signal: keep, don't zero.
+    t = np.sort(np.random.default_rng(3).uniform(0, 1, 100))
+    y = np.random.default_rng(0).normal(size=t.size)
+    freqs = np.linspace(0.01, 5.0, 200)
+    slow = lsft_slow(y, t, freqs, sign=1)
+    fast = lsft_fast(y, t, freqs, sign=1, oversampling=10)
+    i = 0  # lowest bin: smallest sine norm on this grid
+    assert np.isfinite(fast[i])
+    assert abs(fast[i].imag) > 0.5 * abs(slow[i].imag)
+
+
 def test_impose_symmetry_lsft():
     np.random.seed(0)
     rand = np.random.default_rng(42)
