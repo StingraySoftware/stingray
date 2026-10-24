@@ -66,6 +66,9 @@ class TestLombScargleCrossspectrum:
         assert np.all(ev_lscs.freq == lc_lscs.freq)
         assert np.all(ev_lscs.power == lc_lscs.power)
         assert ev_lscs.freq[np.argmax(ev_lscs.power)] == lc_lscs.freq[np.argmax(lc_lscs.power)] != 0
+        # Same integer grid ends at Nyquist: cross power must stay finite there.
+        assert ev_lscs.freq[-1] == 0.5 / lc1.dt
+        assert np.all(np.isfinite(ev_lscs.power))
 
     @pytest.mark.parametrize("skip_checks", [True, False])
     def test_initialize_empty(self, skip_checks):
@@ -191,13 +194,16 @@ class TestLombScargleCrossspectrum:
     def test_valid_method(self):
         lscs_s = LombScargleCrossspectrum(self.lc1, self.lc2, method="slow")
         assert lscs_s.method == "slow"
-        lscs_f = LombScargleCrossspectrum(self.lc1, self.lc2, method="fast", oversampling=5)
+        lscs_f = LombScargleCrossspectrum(self.lc1, self.lc2, method="fast", oversampling=10)
         assert lscs_f.method == "fast"
-        assert (
-            np.sum(np.isclose(lscs_f.unnorm_power, lscs_s.unnorm_power, rtol=0.1, atol=1))
-            / lscs_f.power.shape[0]
-            > 0.9
-        )
+        # Amplitude guards the normalization (Bug 2) end to end; the lag check
+        # only exercises the lag plumbing, since a shared FT phase error
+        # cancels in FT1*conj(FT2) (phase coverage lives in test_lsft_slow_fast).
+        ok = np.abs(lscs_s.unnorm_power) > 1e-3 * np.max(np.abs(lscs_s.unnorm_power))
+        amp = np.abs(np.abs(lscs_f.unnorm_power[ok]) - np.abs(lscs_s.unnorm_power[ok]))
+        assert np.max(amp) / np.max(np.abs(lscs_s.unnorm_power)) < 5e-2
+        dphi = np.angle(lscs_f.unnorm_power[ok] * np.conj(lscs_s.unnorm_power[ok]))
+        assert np.max(np.abs(dphi)) < 2e-2
 
     @pytest.mark.parametrize(
         "func_name",
@@ -312,6 +318,25 @@ class TestLombScarglePowerspectrum:
         lc = Lightcurve(times, counts, dt=1)
         ps = LombScarglePowerspectrum(lc)
         assert np.allclose(ps.power.imag, np.zeros_like(ps.power.imag), atol=1e-4)
+        # Integer grid ends exactly at Nyquist: the degenerate bin must stay
+        # finite (guarded) rather than NaN.
+        assert ps.freq[-1] == 0.5 / lc.dt
+        assert np.all(np.isfinite(ps.power))
+
+    def test_ps_uneven_fast_matches_slow(self):
+        # Issue #988 repro shape: uneven sampling through the class plumbing.
+        rng_ = np.random.default_rng(42)
+        t = np.sort(rng_.uniform(0, 100, 300))
+        y = rng_.normal(size=t.size)
+        with pytest.warns(UserWarning, match="Bin sizes in input time array"):
+            lc = Lightcurve(t, y, dt=0.01)
+        slow = LombScarglePowerspectrum(lc, method="slow")
+        fast = LombScarglePowerspectrum(lc, method="fast", oversampling=10)
+        assert np.all(np.isfinite(fast.power))
+        assert np.argmax(np.abs(fast.power)) == np.argmax(np.abs(slow.power))
+        ok = np.abs(slow.power) > 1e-3 * np.max(np.abs(slow.power))
+        amp = np.abs(np.abs(fast.power[ok]) - np.abs(slow.power[ok]))
+        assert np.max(amp) / np.max(np.abs(slow.power)) < 1e-2
 
 
 class TestRMS(object):
