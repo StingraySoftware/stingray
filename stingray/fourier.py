@@ -3945,7 +3945,7 @@ def lsft_fast(
     t: npt.ArrayLike,
     freqs: npt.ArrayLike,
     sign: Optional[int] = 1,
-    oversampling: Optional[int] = 5,
+    oversampling: Optional[int] = 10,
 ) -> npt.NDArray:
     """
     Calculates the Lomb-Scargle Fourier transform of a light curve.
@@ -3971,7 +3971,7 @@ def lsft_fast(
     fullspec : bool, optional, default: False
         Return LSFT values for full frequency array (True) or just positive frequencies (False).
 
-    oversampling : float, optional, default: 5
+    oversampling : float, optional, default: 10
         Interpolation Oversampling Factor
 
     Returns
@@ -3997,11 +3997,9 @@ def lsft_fast(
     w = freqs * 2 * np.pi
 
     # Summation of cos(2wt) and sin(2wt)
-    csum, ssum = trig_sum(
+    ssum, csum = trig_sum(
         t, np.ones_like(y_) / len(y_), df, N, f0, freq_factor=2, oversampling=oversampling
     )
-
-    wtau = 0.5 * np.arctan2(ssum, csum)
 
     S2, C2 = trig_sum(
         t,
@@ -4013,7 +4011,9 @@ def lsft_fast(
         oversampling=oversampling,
     )
 
-    const = np.sqrt(0.5) * np.sqrt(num_ww)
+    wtau = 0.5 * np.arctan2(ssum, csum)
+
+    const = np.sqrt(0.5) * np.sqrt(len(y_))
 
     coswtau = np.cos(wtau)
     sinwtau = np.sin(wtau)
@@ -4024,11 +4024,28 @@ def lsft_fast(
     cos2wtau = np.cos(2 * wtau)
     sin2wtau = np.sin(2 * wtau)
 
-    scos2 = 0.5 * (N + C2 * cos2wtau + S2 * sin2wtau)
-    ssin2 = 0.5 * (N - C2 * cos2wtau - S2 * sin2wtau)
+    scos2 = 0.5 * (len(y_) + C2 * cos2wtau + S2 * sin2wtau)
+    ssin2 = 0.5 * (len(y_) - C2 * cos2wtau - S2 * sin2wtau)
 
-    ft_real = const * sumr / np.sqrt(scos2)
-    ft_imag = const * np.sign(sign) * sumi / np.sqrt(ssin2)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ft_real = const * sumr / np.sqrt(scos2)
+        ft_imag = const * np.sign(sign) * sumi / np.sqrt(ssin2)
+
+    # Zero imag only where the sine basis is truly degenerate (numerator and
+    # denominator both vanish, e.g. exact Nyquist on integer grids); small
+    # denominators with real signal keep the direct denominator.
+    tiny = np.flatnonzero(ssin2 < 0.1 * len(y_))
+    if tiny.size:
+        t_arr = np.asanyarray(t, dtype=float)
+        arg = w[tiny, None] * t_arr[None, :] - wtau[tiny, None]
+        ssin2_direct = np.sum(np.sin(arg) ** 2, axis=1)
+        sumi_direct = np.sum((y_[None, :] * np.sin(arg)), axis=1)
+        degenerate = (ssin2_direct <= 1e-3 * len(y_)) & (
+            np.abs(sumi_direct) <= 1e-3 * np.sum(np.abs(y_))
+        )
+        ft_imag[tiny[degenerate]] = 0.0
+        keep = tiny[~degenerate]
+        ft_imag[keep] = const * np.sign(sign) * sumi[keep] / np.sqrt(ssin2_direct[~degenerate])
 
     ft_real[freqs == 0] = sum_xx / np.sqrt(num_xt)
     ft_imag[freqs == 0] = 0
