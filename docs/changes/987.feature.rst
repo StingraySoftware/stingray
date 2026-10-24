@@ -1,0 +1,6 @@
+``DynamicalPowerspectrum`` and ``DynamicalCrossspectrum`` now accept ``use_common_mean``,
+the option that ``AveragedPowerspectrum`` and ``AveragedCrossspectrum`` already had. With
+the default, ``True``, every segment is normalized by the mean count rate of the whole
+observation, exactly as before. With ``False``, each segment is normalized by its own mean
+count rate, which removes the effect of a changing count rate at constant fractional rms
+and makes the columns of the matrix directly comparable with each other.

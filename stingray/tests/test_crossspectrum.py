@@ -1595,6 +1595,43 @@ class TestDynamicalCrossspectrum(object):
         assert np.isclose(rms[0], rms2)
         assert np.isclose(rmse[0], rmse2, rtol=0.01)
 
+    @pytest.mark.parametrize("use_common_mean", [True, False])
+    def test_use_common_mean_matches_averaged_crossspectrum(self, use_common_mean):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            dcs = DynamicalCrossspectrum(
+                self.lc, self.lc, segment_size=3, norm="frac", use_common_mean=use_common_mean
+            )
+            acs = AveragedCrossspectrum(
+                self.lc,
+                self.lc,
+                segment_size=3,
+                norm="frac",
+                use_common_mean=use_common_mean,
+                save_all=True,
+                silent=True,
+            )
+        assert np.allclose(dcs.dyn_ps, np.array(acs.cs_all).T)
+
+    def test_use_common_mean_defaults_to_true(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            default = DynamicalCrossspectrum(self.lc, self.lc, segment_size=3, norm="frac")
+            common = DynamicalCrossspectrum(
+                self.lc, self.lc, segment_size=3, norm="frac", use_common_mean=True
+            )
+        assert default.use_common_mean is True
+        assert np.array_equal(default.dyn_ps, common.dyn_ps)
+        assert np.ndim(default.unnorm_conversion) == 0
+
+    def test_per_segment_conversion_is_an_array(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            dcs = DynamicalCrossspectrum(
+                self.lc, self.lc, segment_size=3, norm="frac", use_common_mean=False
+            )
+        assert np.size(dcs.unnorm_conversion) == dcs.dyn_ps.shape[1]
+
     def test_works_with_events_and_its_complex(self):
         lc = copy.deepcopy(self.lc)
         lc.counts = np.random.poisson(10, size=lc.counts.size)
