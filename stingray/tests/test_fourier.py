@@ -804,6 +804,21 @@ def test_lsft_slow_fast():
     )
 
 
+def test_lsft_fast_agrees_with_slow_on_a_shorter_frequency_grid():
+    rand = np.random.default_rng(42)
+    t = np.sort(rand.uniform(0, 100, 300))
+    y = rand.normal(size=300)
+    freqs = np.linspace(0.001, 0.5, 200)
+    slow = lsft_slow(y, t, freqs)
+    fast = lsft_fast(y, t, freqs, oversampling=10)
+    comparable = np.abs(slow) > 1e-3 * np.max(np.abs(slow))
+    rel = np.max(np.abs(fast[comparable] - slow[comparable])) / np.max(np.abs(slow))
+    phase = np.max(np.abs(np.angle(fast[comparable] * np.conj(slow[comparable]))))
+    assert np.isfinite(fast).all()
+    assert rel < 0.05
+    assert phase < 0.05
+
+
 def test_impose_symmetry_lsft():
     np.random.seed(0)
     rand = np.random.default_rng(42)
