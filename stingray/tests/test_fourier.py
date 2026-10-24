@@ -810,6 +810,26 @@ def test_lsft_slow_fast():
     assert phase_err < 1e-2
 
 
+@pytest.mark.parametrize("sign", [1, -1])
+def test_lsft_slow_fast_sign(sign):
+    # The sign flips the imaginary part (direct vs inverse transform); both
+    # paths share the wtau/normalization code, so pin both.
+    rand = np.random.default_rng(42)
+    n = 1000
+    t = np.sort(rand.random(n)) * np.sqrt(n)
+    y = np.sin(2 * np.pi * 3.0 * t)
+    y -= np.min(y)
+    freqs = np.fft.fftfreq(n, np.median(np.diff(t, 1)))
+    freqs = freqs[freqs >= 0]
+    slow = lsft_slow(y, t, freqs, sign=sign)
+    fast = lsft_fast(y, t, freqs, sign=sign, oversampling=10)
+    ok = np.abs(slow) > 1e-3 * np.max(np.abs(slow))
+    amp = np.max(np.abs(np.abs(fast[ok]) - np.abs(slow[ok]))) / np.max(np.abs(slow))
+    assert amp < 1e-3
+    dphi = np.max(np.abs(np.angle(fast[ok] * np.conj(slow[ok]))))
+    assert dphi < 1e-2
+
+
 def test_lsft_fast_exact_nyquist_integer_grid():
     # Integer grid at exact Nyquist: sine basis is identically zero.
     rng = np.random.default_rng(0)
