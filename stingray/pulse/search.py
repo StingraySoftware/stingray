@@ -41,7 +41,10 @@ def _folding_search(
     start_times = np.arange(times[0], times[-1], segment_size)
     count = 0
     for s in start_times:
-        good = (times >= s) & (times < s + segment_size)
+        if s + segment_size >= times[-1]:
+            good = (times >= s) & (times <= s + segment_size)
+        else:
+            good = (times >= s) & (times < s + segment_size)
         ts = times[good]
         if len(ts) < 1 or ts[-1] - ts[0] < 0.2 * segment_size:
             continue
