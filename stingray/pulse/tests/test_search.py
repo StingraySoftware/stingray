@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from stingray.pulse import epoch_folding_search, z_n_search
 from stingray.pulse import phase_dispersion_search
 from stingray.pulse import phaseogram, plot_phaseogram
-from stingray.pulse.search import _profile_fast
+from stingray.pulse.search import _folding_search, _profile_fast
 from stingray.pulse import plot_profile
 from stingray.pulse import fold_events
 from stingray import Lightcurve
@@ -144,6 +144,49 @@ class TestAll(object):
         test_phase = np.arange(0, 1, 1 / 16)
         prof = _profile_fast(test_phase, nbin=16)
         assert np.allclose(prof, np.ones(16))
+
+    def test_folding_search_keeps_last_point(self):
+        """The last point must not be lost when the data length is a multiple of
+        segment_size (which is always the case for the default
+        segment_size=np.inf).
+
+        Regression test for
+        https://github.com/StingraySoftware/stingray/issues/995
+        """
+        times = np.arange(11.0)
+        n_used = []
+
+        def stat_func(t, f, fd=0, **kwargs):
+            n_used.append(len(t))
+            return 0
+
+        _folding_search(stat_func, times, [1.0], use_times=True)
+        assert sum(n_used) == len(times)
+
+    def test_folding_search_keeps_last_point_phases(self):
+        """Same as above, but on the branch that works on folded phases."""
+        times = np.arange(11.0)
+        n_used = []
+
+        def stat_func(phases):
+            n_used.append(len(phases))
+            return 0
+
+        _folding_search(stat_func, times, [1.0])
+        assert sum(n_used) == len(times)
+
+    @pytest.mark.parametrize("segment_size", [3, 5, 10, 11, 100, np.inf])
+    def test_folding_search_no_lost_or_double_counted_points(self, segment_size):
+        """Each point must be used exactly once, whatever the segment size."""
+        times = np.arange(11.0)
+        n_used = []
+
+        def stat_func(t, f, fd=0, **kwargs):
+            n_used.append(len(t))
+            return 0
+
+        _folding_search(stat_func, times, [1.0], segment_size=segment_size, use_times=True)
+        assert sum(n_used) == len(times)
 
     def test_epoch_folding_search(self):
         """Test pulse phase calculation, frequency only."""

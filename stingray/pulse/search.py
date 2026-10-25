@@ -40,8 +40,19 @@ def _folding_search(
         segment_size = length
     start_times = np.arange(times[0], times[-1], segment_size)
     count = 0
-    for s in start_times:
-        good = (times >= s) & (times < s + segment_size)
+    n_start = len(start_times)
+    for start_index, s in enumerate(start_times):
+        segment_end = s + segment_size
+        # The last segment is closed on the right-hand side. Otherwise, when
+        # the data length is an exact multiple of segment_size (which is always
+        # the case for the default segment_size=np.inf, where segment_size is
+        # set to the length of the data), the last data point would fall exactly
+        # on the right boundary of the last segment and be silently discarded
+        # (see https://github.com/StingraySoftware/stingray/issues/995).
+        if start_index == n_start - 1:
+            good = (times >= s) & (times <= segment_end)
+        else:
+            good = (times >= s) & (times < segment_end)
         ts = times[good]
         if len(ts) < 1 or ts[-1] - ts[0] < 0.2 * segment_size:
             continue
