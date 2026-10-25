@@ -1,0 +1,4 @@
+``epoch_folding_search``, ``z_n_search`` and ``phase_dispersion_search`` no longer
+discard the last data point of the observation when the length of the data is an
+exact multiple of ``segment_size``. This was always the case with the default
+``segment_size=np.inf``, which reduces to the full length of the data.
