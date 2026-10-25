@@ -37,10 +37,20 @@ jobs:
     - name: Check out the tested revision
       # Codecov matches the paths in the reports against the files of this
       # commit. Nothing from it is executed.
+      #
+      # actions/checkout refuses by default to check out the code of a pull
+      # request opened from a fork when the workflow was triggered by
+      # workflow_run, because such a workflow carries the base repository's
+      # secrets and token, and executing a fork's code there would hand them to
+      # whoever opened the pull request. That is not what happens here: no step
+      # below runs anything from the checked out tree, the token is not left
+      # behind in it, and the only thing read from it is the list of file names
+      # that Codecov needs. See https://gh.io/securely-using-pull_request_target
       uses: actions/checkout@v4
       with:
         ref: ${{ github.event.workflow_run.head_sha }}
         persist-credentials: false
+        allow-unsafe-pr-checkout: true
 
     - name: Download the coverage reports of the test run
       # A run that was skipped or that failed before any test finished leaves no
