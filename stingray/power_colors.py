@@ -112,11 +112,12 @@ def _limit_angle_to_360(angle):
 def _hue_line_data(center, angle, ref_angle=3 * np.pi / 4):
     plot_angle = (-angle + ref_angle) % (np.pi * 2)
 
-    m = np.tan(plot_angle)
-    if np.isinf(m):
-        x = np.zeros_like(x) + center[0]
-        y = np.linspace(-4, 4, 20)
+    # tan() never returns inf for a float angle, so test the cosine instead
+    if np.isclose(np.cos(plot_angle), 0, atol=1e-10):
+        x = np.zeros(20) + center[0]
+        y = center[1] + np.linspace(0, 4, 20) * np.sign(np.sin(plot_angle))
     else:
+        m = np.tan(plot_angle)
         x = np.linspace(0, 4, 20) * np.sign(np.cos(plot_angle)) + center[0]
         y = center[1] + m * (x - center[0])
     return x, y
@@ -128,7 +129,7 @@ def _trace_states(ax, configuration=DEFAULT_COLOR_CONFIGURATION, **kwargs):
         color = configuration["state_definitions"][state]["color"]
         hue0, hue1 = configuration["state_definitions"][state]["hue_limits"]
         hue_mean = (hue0 + hue1) / 2
-        hue_angle = (-np.radians(hue_mean) + 3 * np.pi / 4) % (np.pi * 2)
+        hue_angle = (-np.radians(hue_mean) + configuration["ref_angle"]) % (np.pi * 2)
 
         radius = 1.4
         txt_x = radius * np.cos(hue_angle) + center[0]
