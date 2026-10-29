@@ -115,8 +115,9 @@ jobs:
             tox_env: 'py313-test-cov'
             experimental: false
 
-          # Early warning for the next Python. Allowed to fail, because optional
-          # dependencies (Numba in particular) lag new Python releases.
+          # Early warning for the newest Python. Allowed to fail: it is the
+          # release dependencies publish wheels for last, so a red run here is
+          # usually the ecosystem catching up rather than a problem in Stingray.
           - name: Linux, Py3.14 basic dependencies and coverage
             os: ubuntu-latest
             python: '3.14'
