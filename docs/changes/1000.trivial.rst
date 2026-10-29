@@ -54,5 +54,7 @@ Infrastructure maintenance:
   bibliography now point at SciX (``scixplorer.org``), which has replaced the ADS
   interface. Three of them still used the ``#abs/`` form of the pre-2019 ADS site,
   whose hash-based router no longer exists. The bibcodes are unchanged, so the
-  targets are the same papers. ``linkcheck`` still skips ADS as well, because the
+  targets are the same papers. One of them had never worked as a link: it was missing
+  the space that reStructuredText requires before the URL, so it rendered as literal
+  text instead of a hyperlink. ``linkcheck`` still skips ADS as well, because the
   tutorial notebooks come from their own repository and have not been updated yet.
