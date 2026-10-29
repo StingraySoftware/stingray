@@ -40,6 +40,13 @@ __all__ = [
     "split_gtis_by_exposure",
     "split_gtis_at_indices",
     "find_large_bad_time_intervals",
+    "gti_len",
+    "hdu_contains_gti",
+    "join_equal_gti_boundaries",
+    "merge_gtis",
+    "calculate_segment_bin_start",
+    "generate_indices_of_boundaries",
+    "eliminate_short_gtis",
 ]
 
 logger = setup_logger()

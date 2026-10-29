@@ -35,16 +35,36 @@ __all__ = [
     "normalize_leahy_poisson",
     "normalize_periodograms",
     "unnormalize_periodograms",
+    "get_rms_from_unnorm_periodogram",
     "bias_term",
     "raw_coherence",
     "intrinsic_coherence",
     "error_on_averaged_cross_spectrum",
+    "cross_to_covariance",
+    "get_average_ctrate",
+    "get_flux_iterable_from_segments",
+    "shift_and_add",
+    "avg_pds_from_iterable",
+    "avg_pds_from_timeseries",
+    "avg_cs_from_iterables",
+    "avg_cs_from_timeseries",
+    "lsft_fast",
+    "lsft_slow",
+    "impose_symmetry_lsft",
     "avg_bispectrum_from_iterable",
     "avg_bispectrum_from_timeseries",
     "avg_cross_bispectrum_from_iterables",
     "avg_cross_bispectrum_from_timeseries",
     "bicoherence_from_sums",
     "BICOHERENCE_NORMS",
+    "check_powers_for_intrinsic_coherence",
+    "estimate_intrinsic_coherence",
+    "get_rms_from_rms_norm_periodogram",
+    "rms_calculation",
+    "extract_pds_slice_around_freq",
+    "avg_cs_from_iterables_quick",
+    "avg_pds_from_events",
+    "avg_cs_from_events",
 ]
 
 
@@ -2262,6 +2282,7 @@ def avg_pds_from_iterable(
     -------
     results : :class:`astropy.table.Table`
         Table containing the following columns:
+
         freq : `np.array`
             The periodogram frequencies
         power : `np.array`
@@ -2273,6 +2294,7 @@ def avg_pds_from_iterable(
         all attributes needed to allocate Powerspectrum objects, such as all
         the input arguments of this function (``dt``, ``segment_size``), and,
         e.g.
+
         n : int
             the number of bins in the light curves used in each segment
         m : int
@@ -2443,6 +2465,7 @@ def avg_cs_from_iterables_quick(flux_iterable1, flux_iterable2, dt, norm="frac")
     -------
     results : :class:`astropy.table.Table`
         Table containing the following columns:
+
         freq : `np.array`
             The periodogram frequencies
         power : `np.array`
@@ -2454,6 +2477,7 @@ def avg_cs_from_iterables_quick(flux_iterable1, flux_iterable2, dt, norm="frac")
         all attributes needed to allocate Crossspectrum objects, such as all
         the input arguments of this function (``dt``, ``segment_size``), and,
         e.g.
+
         n : int
             the number of bins in the light curves used in each segment
         m : int
@@ -2616,6 +2640,7 @@ def avg_cs_from_iterables(
     -------
     results : :class:`astropy.table.Table`
         Table containing the following columns:
+
         freq : `np.array`
             The frequencies.
         power : `np.array`
@@ -2633,6 +2658,7 @@ def avg_cs_from_iterables(
         all attributes needed to allocate Crossspectrum objects, such as all
         the input arguments of this function (``dt``, ``segment_size``), and,
         e.g.
+
         n : int
             The number of bins in the light curves used in each segment.
         m : int

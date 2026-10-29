@@ -20,7 +20,10 @@ from .lightcurve import Lightcurve
 from .utils import simon, njit
 from .utils import histogram
 
-__all__ = ["EventList"]
+__all__ = [
+    "EventList",
+    "simple_events_from_lc",
+]
 
 logger = setup_logger()
 

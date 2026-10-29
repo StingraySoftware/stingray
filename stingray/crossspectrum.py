@@ -34,6 +34,12 @@ __all__ = [
     "time_lag",
     "coherence",
     "get_flux_generator",
+    "normalize_crossspectrum_gauss",
+    "crossspectrum_from_time_array",
+    "crossspectrum_from_events",
+    "crossspectrum_from_lightcurve",
+    "crossspectrum_from_timeseries",
+    "crossspectrum_from_lc_iterable",
 ]
 
 

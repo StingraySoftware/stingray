@@ -22,7 +22,17 @@ from .fourier import poisson_level
 from .fourier import get_rms_from_unnorm_periodogram
 
 
-__all__ = ["Powerspectrum", "AveragedPowerspectrum", "DynamicalPowerspectrum"]
+__all__ = [
+    "Powerspectrum",
+    "AveragedPowerspectrum",
+    "DynamicalPowerspectrum",
+    "GtiCorrPowerspectrum",
+    "powerspectrum_from_time_array",
+    "powerspectrum_from_events",
+    "powerspectrum_from_lightcurve",
+    "powerspectrum_from_timeseries",
+    "powerspectrum_from_lc_iterable",
+]
 
 
 class Powerspectrum(Crossspectrum):

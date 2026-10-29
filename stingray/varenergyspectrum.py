@@ -27,6 +27,7 @@ __all__ = [
     "CovarianceSpectrum",
     "ComplexCovarianceSpectrum",
     "CountSpectrum",
+    "get_non_overlapping_ref_band",
 ]
 
 
