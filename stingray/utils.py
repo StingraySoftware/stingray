@@ -118,7 +118,8 @@ def mad(data, c=0.6744897501960817, axis=0):
 
     Equivalent to ``statsmodels.robust.mad``, which this used to be imported
     from. Importing statsmodels costs about half a second, and this is the only
-    thing stingray needed from it at import time.
+    thing stingray needed from it at import time. Extended-precision input is
+    handled better than statsmodels handled it: see the note below.
 
     Parameters
     ----------
@@ -137,7 +138,19 @@ def mad(data, c=0.6744897501960817, axis=0):
     Examples
     --------
     >>> assert np.isclose(mad([1.0, 1.0, 2.0, 2.0]), 0.7413011092528009)
+
+    Notes
+    -----
+    The medians are taken in at least double precision, as statsmodels took them.
+    Left in single precision they are visibly worse: for float32 samples around
+    1e8, where the spacing between representable values is 8, the result comes out
+    half as large again. Promoting rather than casting to float64 means that input
+    carrying *more* than double precision keeps it, which statsmodels did not do --
+    it reduced float128 to float64 and so threw away the very precision the caller
+    had gone to the trouble of providing.
     """
+    data = np.asanyarray(data)
+    data = data.astype(np.promote_types(data.dtype, np.float64), copy=False)
     return median_abs_deviation(data, axis=axis, scale=c)
 
 

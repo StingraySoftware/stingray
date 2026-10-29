@@ -613,15 +613,36 @@ def test_numba_import_warning_quotes_the_error():
 
 
 def test_mad_matches_statsmodels():
-    """``mad`` is computed locally now instead of imported from statsmodels, so check
-    it still returns bit-for-bit what statsmodels did, for 1-D and 2-D data on each axis."""
+    """``mad`` is computed locally now instead of imported from statsmodels, so check it
+    still returns bit-for-bit what statsmodels did, for 1-D and 2-D data on each axis and
+    for float32, whose medians statsmodels took in double precision."""
     statsmodels_mad = pytest.importorskip("statsmodels.robust").mad
     rng = np.random.default_rng(20150907)
-    for data in (rng.normal(size=101), rng.normal(size=(17, 13))):
+    # Around 1e8 the spacing between float32 values is 8, so taking the medians in
+    # float32 rather than double changes this answer from 11.86 to 17.79.
+    float32_data = np.array([100000000, 100000008, 100000016, 100000040], dtype=np.float32)
+    for data in (rng.normal(size=101), rng.normal(size=(17, 13)), float32_data):
         for axis in (0, 1, None):
             if axis == 1 and data.ndim == 1:
                 continue
             assert np.array_equal(utils.mad(data, axis=axis), statsmodels_mad(data, axis=axis))
+
+
+@pytest.mark.skipif(
+    np.dtype(np.longdouble).itemsize <= np.dtype(np.float64).itemsize,
+    reason="this platform's longdouble is no wider than float64",
+)
+def test_mad_keeps_extended_precision():
+    """Input carrying more than double precision must keep it. statsmodels reduced
+    float128 to float64, and simply casting to float64 would reintroduce that loss."""
+    # At 1e18 the spacing between float64 values is 128, so float64 cannot tell these
+    # four apart at all and their MAD collapses to zero.
+    data = np.longdouble(10) ** 18 + np.array([0, 1, 2, 4], dtype=np.longdouble)
+    result = utils.mad(data)
+
+    assert np.asarray(result).dtype == np.dtype(np.longdouble)
+    assert result > 1.0
+    assert utils.mad(data.astype(np.float64)) == 0.0
 
 
 def test_mad_does_not_come_from_statsmodels():

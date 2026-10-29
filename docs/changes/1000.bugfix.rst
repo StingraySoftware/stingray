@@ -4,6 +4,11 @@ when available and otherwise fell back to a local copy that defaulted to ``axis=
 instead of the documented ``axis=0``, and that rounded the normalization constant to
 ``0.6745``. There is now a single implementation, built on
 ``scipy.stats.median_abs_deviation``, which returns exactly what ``statsmodels`` did.
+The medians are taken in at least double precision, as statsmodels took them: left in
+single precision the MAD of float32 samples around 1e8 comes out half as large again.
+Input carrying *more* than double precision now keeps it, which is a genuine
+improvement rather than a restoration -- statsmodels reduced float128 input to float64,
+discarding the precision such a caller has deliberately asked for.
 As a side effect ``import stingray`` no longer pulls in ``statsmodels``, which it was
 doing only for this one function, and is about half a second faster.
 
