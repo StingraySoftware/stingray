@@ -1721,7 +1721,7 @@ def error_on_averaged_cross_spectrum(
     """
     Error on cross spectral quantities.
 
-    `Ingram 2019<https://ui.adsabs.harvard.edu/abs/2019MNRAS.489.3927I/abstract>`__ details
+    `Ingram 2019<https://scixplorer.org/abs/2019MNRAS.489.3927I/abstract>`__ details
     the derivation of the corrected formulas when the subject band is included in the reference
     band (and photons are presents in both bands, so this does _not_ involve overlapping bands from
     different detectors).
