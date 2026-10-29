@@ -46,6 +46,16 @@ __all__ = [
     "AveragedBispectrum",
     "DynamicalCrossBispectrum",
     "DynamicalBispectrum",
+    "bispectrum_from_time_array",
+    "bispectrum_from_events",
+    "bispectrum_from_lightcurve",
+    "bispectrum_from_stingray_timeseries",
+    "bispectrum_from_lc_iterable",
+    "crossbispectrum_from_time_array",
+    "crossbispectrum_from_events",
+    "crossbispectrum_from_lightcurve",
+    "crossbispectrum_from_stingray_timeseries",
+    "crossbispectrum_from_lc_iterable",
 ]
 
 #: Set once the interface-change notice has been emitted, so it is shown only

@@ -24,7 +24,11 @@ from .lightcurve import Lightcurve
 from .utils import simon
 
 
-__all__ = ["LombScarglePowerspectrum", "LombScargleCrossspectrum"]
+__all__ = [
+    "LombScarglePowerspectrum",
+    "LombScargleCrossspectrum",
+    "lscrossspectrum_from_lightcurve",
+]
 
 
 def _autofrequency(min_freq=None, max_freq=None, df=None, dt=None, length=None, nyquist_factor=1):

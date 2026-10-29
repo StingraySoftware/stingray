@@ -34,6 +34,7 @@ __all__ = [
     "ssig_from_a",
     "ssig_from_pf",
     "amplitude_upper_limit",
+    "pds_logprobability",
 ]
 
 

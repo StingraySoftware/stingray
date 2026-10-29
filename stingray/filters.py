@@ -7,7 +7,13 @@ import numpy.random as ra
 from .utils import njit
 from .loggingconfig import setup_logger
 
-__all__ = ["Window1D", "Optimal1D"]
+__all__ = [
+    "Window1D",
+    "Optimal1D",
+    "DeadtimeFilterOutput",
+    "get_deadtime_mask",
+    "filter_for_deadtime",
+]
 
 logger = setup_logger()
 
