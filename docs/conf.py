@@ -37,11 +37,7 @@ except ImportError:
     print("ERROR: the documentation requires the sphinx-astropy package to be installed")
     sys.exit(1)
 
-try:
-    import tomllib
-except ImportError:
-    # Help users on older alphas
-    import tomli as tomllib
+import tomllib
 from pathlib import Path
 
 # Grab minversion from pyproject.toml
