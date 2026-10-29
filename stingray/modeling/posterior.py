@@ -38,21 +38,22 @@ __all__ = [
     "LaplacePosterior",
     "PriorUndefinedError",
     "LikelihoodUndefinedError",
+    "IncorrectParameterError",
 ]
 
 logmin = -10000000000000000.0
 
 
 class PriorUndefinedError(Exception):
-    pass
+    """Raised when a :class:`Posterior` object has no ``logprior`` method."""
 
 
 class LikelihoodUndefinedError(Exception):
-    pass
+    """Raised when a :class:`Posterior` object has no ``loglikelihood`` method."""
 
 
 class IncorrectParameterError(Exception):
-    pass
+    """Raised when the parameters passed in do not match those of the model."""
 
 
 def set_logprior(lpost, priors):

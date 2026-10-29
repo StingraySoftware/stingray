@@ -160,6 +160,14 @@ def _non_paralyzable_dead_time(event_list, dead_time):
 
 
 class DeadtimeFilterOutput(object):
+    """Container for the extra output of :func:`get_deadtime_mask`.
+
+    All attributes are ``None`` until that function is called with ``return_all=True``,
+    which fills in the unfiltered event list (``uf_events``), a flag separating signal
+    from background events (``is_event``), the ``deadtime`` values, the ``mask`` and the
+    filtered background event list (``bkg``).
+    """
+
     uf_events = None
     is_event = None
     deadtime = None
