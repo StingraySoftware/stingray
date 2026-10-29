@@ -56,5 +56,6 @@ Infrastructure maintenance:
   whose hash-based router no longer exists. The bibcodes are unchanged, so the
   targets are the same papers. One of them had never worked as a link: it was missing
   the space that reStructuredText requires before the URL, so it rendered as literal
-  text instead of a hyperlink. ``linkcheck`` still skips ADS as well, because the
-  tutorial notebooks come from their own repository and have not been updated yet.
+  text instead of a hyperlink. The tutorial notebooks, which live in their own
+  repository, were updated to match, so the two ADS exceptions ``linkcheck`` carried
+  are gone as well -- the built documentation no longer contains a single ADS link.
