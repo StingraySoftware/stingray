@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 import stingray.utils as utils
 from stingray.utils import HAS_NUMBA
+from stingray.exceptions import StingrayWarning
 from scipy.stats import sem
 
 np.random.seed(20150907)
@@ -627,3 +628,18 @@ def test_mad_does_not_come_from_statsmodels():
     """Importing statsmodels just for ``mad`` cost half a second at every ``import
     stingray``, so the local implementation has to stay in place."""
     assert utils.mad.__module__ == "stingray.utils"
+
+
+def test_simon_warns_a_stingray_warning():
+    """Stingray's own warnings carry a class of their own, so they can be silenced
+    without silencing every other UserWarning in the process."""
+    with pytest.warns(StingrayWarning, match="SIMON says: beware"):
+        utils.simon("beware")
+
+
+def test_stingray_warning_still_matches_userwarning_filters():
+    """StingrayWarning subclasses UserWarning, so filters and ``pytest.warns`` calls
+    written before it existed keep working."""
+    assert issubclass(StingrayWarning, UserWarning)
+    with pytest.warns(UserWarning, match="SIMON says: beware"):
+        utils.simon("beware")

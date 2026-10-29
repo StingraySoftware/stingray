@@ -16,6 +16,7 @@ from numpy import histogram as histogram_np
 from numpy import histogram2d as histogram2d_np
 from numpy import histogramdd as histogramdd_np
 from astropy.io import fits
+from .exceptions import StingrayWarning
 from .loggingconfig import setup_logger
 
 logger = setup_logger()
@@ -498,9 +499,11 @@ def simon(message, **kwargs):
         The message that is thrown
 
     kwargs : dict
-        The rest of the arguments that are passed to ``warnings.warn``
+        The rest of the arguments that are passed to ``warnings.warn``.
+        ``category`` defaults to :class:`stingray.exceptions.StingrayWarning`.
     """
 
+    kwargs.setdefault("category", StingrayWarning)
     warnings.warn("SIMON says: {0}".format(message), **kwargs)
 
 
