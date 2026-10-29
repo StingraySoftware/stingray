@@ -46,7 +46,7 @@ jobs:
       # below runs anything from the checked out tree, the token is not left
       # behind in it, and the only thing read from it is the list of file names
       # that Codecov needs. See https://gh.io/securely-using-pull_request_target
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         ref: ${{ github.event.workflow_run.head_sha }}
         persist-credentials: false
@@ -56,7 +56,7 @@ jobs:
       # A run that was skipped or that failed before any test finished leaves no
       # artifacts behind. That is not an error, so do not fail the job here.
       continue-on-error: true
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         run-id: ${{ github.event.workflow_run.id }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -95,7 +95,7 @@ jobs:
 
     - name: Upload to Codecov
       if: steps.reports.outputs.found == 'true'
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ${{ steps.reports.outputs.files }}

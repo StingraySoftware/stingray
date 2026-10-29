@@ -24,7 +24,7 @@ jobs:
     # the entire workflow.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{github.event.pull_request.head.repo.full_name}}
@@ -153,13 +153,13 @@ jobs:
 
     steps:
     - name: Check out repository
-      uses: actions/checkout@v5
+      uses: actions/checkout@v7
       with:
         submodules: true
     - name: Check out that no sensitive environment variable is shared
       run: env
     - name: Set up Python ${{ matrix.python }}
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: ${{ matrix.python }}
     - name: Install base dependencies
@@ -194,7 +194,7 @@ jobs:
     # the separate codecov_upload.yml workflow, which picks these artifacts up.
     - name: Store the coverage report
       if: "endsWith(matrix.tox_env, '-cov')"
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: coverage-${{ matrix.tox_env }}-${{ matrix.os }}${{ matrix.slow && '-slow' || '' }}
         path: ./coverage.xml

@@ -20,13 +20,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           submodules: true
       - name: Check out that no sensitive environment variable is shared
         run: env
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - name: Install base dependencies
@@ -55,13 +55,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           submodules: true
       - name: Check out that no sensitive environment variable is shared
         run: env
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - name: Install base dependencies
