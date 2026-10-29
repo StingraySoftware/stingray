@@ -249,19 +249,13 @@ select = ["E9", "F632", "F702", "F706", "F707", "F811", "F821"]
 
     [tool.coverage.run]
         omit = [
-            "stingray/_astropy_init*",
             "stingray/conftest.py",
-            "stingray/*setup_package*",
             "stingray/tests/*",
             "stingray/*/tests/*",
-            "stingray/extern/*",
             "stingray/_version*",
-            "*/stingray/_astropy_init*",
             "*/stingray/conftest.py",
-            "*/stingray/*setup_package*",
             "*/stingray/tests/*",
             "*/stingray/*/tests/*",
-            "*/stingray/extern/*",
             "*/stingray/_version*",
         ]
 

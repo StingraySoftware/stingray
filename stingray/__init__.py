@@ -1,11 +1,11 @@
 # Licensed under MIT license - see LICENSE.rst
 
-# Affiliated packages may add whatever they like to this file, but
-# should keep this content at the top.
-# ----------------------------------------------------------------------------
-from ._astropy_init import *
-
-# ----------------------------------------------------------------------------
+try:
+    from ._version import version as __version__
+except ImportError:
+    # Written by setuptools_scm at build time, so absent in a source tree that
+    # has never been installed.
+    __version__ = ""
 
 from stingray.base import *
 from stingray.events import *
