@@ -1039,6 +1039,19 @@ class TestDynamicalPowerspectrum(object):
         test_counts = [2, 3, 1, 3, 1, 5, 2, 1, 4, 2, 2, 2, 3, 4, 1, 7]
         cls.lc_test = Lightcurve(test_times, test_counts)
 
+        # A 2 Hz sinusoid of constant fractional rms on a mean count rate that
+        # doubles halfway through. With norm="frac" and a per-segment mean, the
+        # columns of the dynamical power spectrum should not change across the step.
+        dt = 1 / 64
+        tseg = 512.0
+        times = (np.arange(int(tseg / dt)) + 0.5) * dt
+        mean_rate = np.where(times < tseg / 2, 200.0, 400.0)
+        rate = mean_rate * (1 + 0.1 * np.sqrt(2) * np.sin(2 * np.pi * 2.0 * times))
+        counts = np.random.RandomState(12345).poisson(rate * dt).astype(float)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            cls.lc_step = Lightcurve(times, counts, dt=dt, skip_checks=True, gti=[[0, tseg]])
+
     def test_bad_args(self):
         with pytest.raises(TypeError, match=".must all be specified"):
             _ = DynamicalPowerspectrum(1)
@@ -1186,24 +1199,6 @@ class TestDynamicalPowerspectrum(object):
         assert np.allclose(new_dps.dyn_ps, rebin_dps, atol=0.00001)
         assert np.isclose(new_dps.df, df_new)
 
-    def _rate_step_lc(self, rate_lo=200.0, rate_hi=400.0, seed=12345):
-        """A light curve with a constant fractional rms and a count rate step.
-
-        A 2 Hz sinusoid of fixed fractional rms sits on a mean count rate that
-        doubles halfway through, so with ``norm="frac"`` the columns of the
-        dynamical power spectrum should not change across the step.
-        """
-        dt = 1 / 64
-        tseg = 512.0
-        nbin = int(tseg / dt)
-        times = (np.arange(nbin) + 0.5) * dt
-        mean_rate = np.where(times < tseg / 2, rate_lo, rate_hi)
-        rate = mean_rate * (1 + 0.1 * np.sqrt(2) * np.sin(2 * np.pi * 2.0 * times))
-        counts = np.random.RandomState(seed).poisson(rate * dt).astype(float)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=UserWarning)
-            return Lightcurve(times, counts, dt=dt, skip_checks=True, gti=[[0, tseg]])
-
     @pytest.mark.parametrize("use_common_mean", [True, False])
     def test_use_common_mean_matches_averaged_powerspectrum(self, use_common_mean):
         with warnings.catch_warnings():
@@ -1234,7 +1229,7 @@ class TestDynamicalPowerspectrum(object):
         assert np.ndim(default.unnorm_conversion) == 0
 
     def test_per_segment_mean_removes_count_rate_dependence(self):
-        lc = self._rate_step_lc()
+        lc = self.lc_step
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=UserWarning)
             common = DynamicalPowerspectrum(lc, segment_size=8.0, norm="frac")
@@ -1265,8 +1260,8 @@ class TestDynamicalPowerspectrum(object):
             dps.dyn_ps.mean(), poisson_level(norm="frac", meanrate=meanrate), rtol=0.05
         )
 
-    def test_compute_rms_does_not_depend_on_common_mean(self):
-        lc = self._rate_step_lc()
+    def test_compute_rms_without_noise_does_not_depend_on_common_mean(self):
+        lc = self.lc_step
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=UserWarning)
             common = DynamicalPowerspectrum(lc, segment_size=8.0, norm="frac")
@@ -1279,7 +1274,7 @@ class TestDynamicalPowerspectrum(object):
         assert np.allclose(err_common, err_seg)
 
     def test_per_segment_conversion_follows_rebinning(self):
-        lc = self._rate_step_lc()
+        lc = self.lc_step
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=UserWarning)
             dps = DynamicalPowerspectrum(lc, segment_size=8.0, norm="frac", use_common_mean=False)
@@ -1293,7 +1288,7 @@ class TestDynamicalPowerspectrum(object):
 
     @pytest.mark.parametrize("norm", ["frac", "abs", "leahy", "none"])
     def test_per_segment_poisson_power(self, norm):
-        lc = self._rate_step_lc()
+        lc = self.lc_step
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=UserWarning)
             common = DynamicalPowerspectrum(lc, segment_size=8.0, norm=norm)
@@ -1308,13 +1303,15 @@ class TestDynamicalPowerspectrum(object):
         assert np.isclose(ratio[~first].mean(), 1.0, atol=0.04)
 
     def test_per_segment_nphots_from_averaged_powerspectrum(self):
-        lc = self._rate_step_lc()
-        aps = AveragedPowerspectrum(lc, segment_size=8.0, save_all=True, silent=True)
+        lc = self.lc_step
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            aps = AveragedPowerspectrum(lc, segment_size=8.0, save_all=True, silent=True)
         assert np.size(aps.nphots_all) == len(aps.cs_all)
         assert np.isclose(np.mean(aps.nphots_all), aps.nphots)
 
     def test_power_colors_use_per_segment_poisson_power(self):
-        lc = self._rate_step_lc()
+        lc = self.lc_step
         freq_edges = [1 / 8, 1 / 2, 1, 4, 16]
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=UserWarning)
@@ -1343,7 +1340,7 @@ class TestDynamicalPowerspectrum(object):
 
     @pytest.mark.parametrize("method", ["average", "sum"])
     def test_per_segment_poisson_power_follows_rebinning(self, method):
-        lc = self._rate_step_lc()
+        lc = self.lc_step
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=UserWarning)
             dps = DynamicalPowerspectrum(lc, segment_size=8.0, norm="frac", use_common_mean=False)
