@@ -2,3 +2,10 @@ Stingray now requires Python 3.11 or later. The versions of NumPy, SciPy, Astrop
 Matplotlib that Stingray is tested against no longer support Python 3.10, which itself
 reaches end of life in October 2026. ``pip`` reads this requirement, so users still on
 Python 3.10 keep being offered the last compatible release instead of a broken install.
+
+The declared minimum versions of the core dependencies are raised to NumPy 1.24,
+Astropy 5.3, SciPy 1.10 and Matplotlib 3.7. The previous floors (NumPy 1.17, Astropy
+4.0, SciPy 1.1, Matplotlib 3.0) predated Python 3.11 and so could never have been
+installed alongside it; nothing had tested them for years. The new floors are the
+oldest releases of each that support Python 3.11, and a ``py311-test-oldestdeps`` job
+now installs exactly those versions in CI, so the claim is checked rather than assumed.

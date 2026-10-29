@@ -36,10 +36,13 @@ keywords = [
     "science",
 ]
 dependencies = [
-    "numpy>=1.17",
-    "astropy>=4.0",
-    "scipy>=1.1.0",
-    "matplotlib>=3.0,!=3.4.00",
+    # The oldest release of each that supports Python 3.11, which is the oldest
+    # Python supported here. The py311-test-oldestdeps tox environment installs
+    # exactly these, and CI runs it, so these are tested rather than assumed.
+    "numpy>=1.24",
+    "astropy>=5.3",
+    "scipy>=1.10",
+    "matplotlib>=3.7",
 ]
 
 

@@ -72,6 +72,14 @@ jobs:
             tox_env: 'py311-test-cov'
             experimental: false
 
+          # The floors declared in pyproject.toml are only a claim until
+          # something installs them. This job does.
+          - name: Linux, Py3.11 with oldest supported dependencies
+            os: ubuntu-latest
+            python: '3.11'
+            tox_env: 'py311-test-oldestdeps'
+            experimental: false
+
           # Basic tests on alternative operating systems.
           - name: Windows, Py3.11 with coverage
             os: windows-latest
