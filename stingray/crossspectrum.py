@@ -2484,7 +2484,7 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
             save_all=True,
         )
         self.dyn_ps = np.array(avg.cs_all).T
-        conv = np.asarray(avg.cs_all) / np.asarray(avg.unnorm_cs_all)
+        conv = np.asanyarray(avg.cs_all) / np.asanyarray(avg.unnorm_cs_all)
         if self.use_common_mean:
             self.unnorm_conversion = np.nanmean(conv)
         else:
@@ -2588,6 +2588,10 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
             new_dynspec_object.unnorm_conversion = rebin_data(
                 self.time, self.unnorm_conversion, dt_new, method="average", dx=self.dt
             )[1]
+        if getattr(self, "poisson_power", None) is not None:
+            new_dynspec_object.poisson_power = rebin_data(
+                self.time, self.poisson_power, dt_new, method=method, dx=self.dt
+            )[1]
         return new_dynspec_object
 
     def rebin_by_n_intervals(self, n, method="average"):
@@ -2650,9 +2654,16 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         new_dynspec_object.dt *= n
         new_dynspec_object.m = n * self.m
         if np.size(getattr(self, "unnorm_conversion", 1)) > 1:
-            conv = np.asarray(self.unnorm_conversion)
+            conv = np.asanyarray(self.unnorm_conversion)
             nkeep = (conv.size // n) * n
             new_dynspec_object.unnorm_conversion = conv[:nkeep].reshape(-1, n).mean(axis=1)
+        if getattr(self, "poisson_power", None) is not None:
+            level = np.asanyarray(self.poisson_power)
+            nkeep = (level.size // n) * n
+            level = level[:nkeep].reshape(-1, n).sum(axis=1)
+            if method in ["mean", "average"]:
+                level /= n
+            new_dynspec_object.poisson_power = level
 
         return new_dynspec_object
 
@@ -2782,7 +2793,8 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         poisson_power : float or iterable, optional, default 0
             The Poisson noise level of the power spectrum. If iterable, it should have the same
             length as ``freq``. (This might apply to the case of a power spectrum with a
-            strong dead time distortion)
+            strong dead time distortion). If 2-D, it should have the same shape as ``dyn_ps``,
+            and each column is used as the Poisson level of the corresponding spectrum.
 
         Returns
         -------
@@ -2796,7 +2808,8 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         if np.iscomplexobj(self.dyn_ps):
             warnings.warn("When using power_colors, complex powers will be cast to real.")
 
-        for ps in self.dyn_ps.T:
+        per_column = np.ndim(poisson_power) == 2
+        for i, ps in enumerate(self.dyn_ps.T):
             power_colors.append(
                 power_color(
                     self.freq,
@@ -2804,7 +2817,7 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
                     freq_edges=freq_edges,
                     freqs_to_exclude=freqs_to_exclude,
                     df=self.df,
-                    poisson_power=poisson_power,
+                    poisson_power=poisson_power[:, i] if per_column else poisson_power,
                     m=self.m,
                 )
             )

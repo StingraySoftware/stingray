@@ -4,3 +4,7 @@ the default, ``True``, every segment is normalized by the mean count rate of the
 observation, exactly as before. With ``False``, each segment is normalized by its own mean
 count rate, which removes the effect of a changing count rate at constant fractional rms
 and makes the columns of the matrix directly comparable with each other.
+In that case the Poisson noise level of each segment is stored in
+``DynamicalPowerspectrum.poisson_power`` and used by default in ``power_colors``. To
+support this, the averaged power spectrum now keeps the number of photons in each
+segment (``nphots_all``) when ``save_all=True``.

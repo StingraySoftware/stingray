@@ -1291,14 +1291,58 @@ class TestDynamicalPowerspectrum(object):
         assert np.size(by_n.unnorm_conversion) == by_n.dyn_ps.shape[1]
         assert np.size(in_freq.unnorm_conversion) == in_freq.dyn_ps.shape[1]
 
-    def test_power_colors_warns_with_per_segment_mean(self):
+    @pytest.mark.parametrize("norm", ["frac", "abs", "leahy", "none"])
+    def test_per_segment_poisson_power(self, norm):
+        lc = self._rate_step_lc()
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=UserWarning)
-            dps = DynamicalPowerspectrum(
-                self.lc, segment_size=10, norm="frac", use_common_mean=False
-            )
-        with pytest.warns(UserWarning, match="mean count rate of the whole observation"):
-            dps.power_colors(freq_edges=[1 / 5, 1 / 2, 1, 2.0, 16.0])
+            common = DynamicalPowerspectrum(lc, segment_size=8.0, norm=norm)
+            dps = DynamicalPowerspectrum(lc, segment_size=8.0, norm=norm, use_common_mean=False)
+        assert common.poisson_power is None
+        assert np.size(dps.poisson_power) == dps.dyn_ps.shape[1]
+        # Away from the 2 Hz signal, each column is at its own Poisson level,
+        # on both sides of the count rate step.
+        ratio = dps.dyn_ps[dps.freq > 8.0].mean(axis=0) / dps.poisson_power
+        first = dps.time < lc.tseg / 2
+        assert np.isclose(ratio[first].mean(), 1.0, atol=0.04)
+        assert np.isclose(ratio[~first].mean(), 1.0, atol=0.04)
+
+    def test_per_segment_nphots_from_averaged_powerspectrum(self):
+        lc = self._rate_step_lc()
+        aps = AveragedPowerspectrum(lc, segment_size=8.0, save_all=True, silent=True)
+        assert np.size(aps.nphots_all) == len(aps.cs_all)
+        assert np.isclose(np.mean(aps.nphots_all), aps.nphots)
+
+    def test_power_colors_use_per_segment_poisson_power(self):
+        lc = self._rate_step_lc()
+        freq_edges = [1 / 8, 1 / 2, 1, 4, 16]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            dps = DynamicalPowerspectrum(lc, segment_size=8.0, norm="frac", use_common_mean=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            default = dps.power_colors(freq_edges=freq_edges)
+        explicit = [
+            dps.power_colors(freq_edges=freq_edges, poisson_power=level)
+            for level in dps.poisson_power
+        ]
+        for i, level_result in enumerate(explicit):
+            for default_values, values in zip(default, level_result):
+                assert np.isclose(default_values[i], values[i])
+
+    @pytest.mark.parametrize("method", ["average", "sum"])
+    def test_per_segment_poisson_power_follows_rebinning(self, method):
+        lc = self._rate_step_lc()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            dps = DynamicalPowerspectrum(lc, segment_size=8.0, norm="frac", use_common_mean=False)
+            rebinned = dps.rebin_time(dt_new=32.0, method=method)
+            by_n = dps.rebin_by_n_intervals(4, method=method)
+        expected = dps.poisson_power.reshape(-1, 4).sum(axis=1)
+        if method == "average":
+            expected /= 4
+        assert np.allclose(rebinned.poisson_power, expected)
+        assert np.allclose(by_n.poisson_power, expected)
 
     def test_shift_and_add(self):
         power_list = [[2, 5, 2, 2, 2], [1, 1, 5, 1, 1], [3, 3, 3, 5, 3]]
