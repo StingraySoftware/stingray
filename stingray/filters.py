@@ -2,7 +2,6 @@ import numpy as np
 import warnings
 import copy
 
-import numpy as np
 import numpy.random as ra
 
 from .utils import njit

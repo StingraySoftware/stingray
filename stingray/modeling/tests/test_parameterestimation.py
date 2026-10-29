@@ -11,7 +11,7 @@ from stingray import Powerspectrum, AveragedPowerspectrum
 from stingray.modeling import ParameterEstimation, PSDParEst, OptimizationResults, SamplingResults
 from stingray.modeling import PSDPosterior, set_logprior, PSDLogLikelihood, LogLikelihood
 from stingray.modeling.posterior import fitter_to_model_params
-from stingray.loggingconfig import CustomFormatter, setup_logger
+from stingray.loggingconfig import CustomFormatter
 
 try:
     from statsmodels.tools.numdiff import approx_hess
@@ -28,8 +28,6 @@ except ImportError:
     can_sample = False
 
 import matplotlib.pyplot as plt
-
-logger = setup_logger()
 
 pytestmark = pytest.mark.slow
 
@@ -343,11 +341,18 @@ class TestOptimizationResults(object):
         assert np.isclose(test_bic, self.optres.bic)
         assert np.isclose(test_deviance, self.optres.deviance)
 
-    def test_compute_covariance_with_hess_inverse(self):
-        self.optres._compute_covariance(self.lpost, self.opt)
+    def test_compute_covariance_uses_hess_inv(self):
+        """When the fitting method reports an inverse Hessian, the covariance is taken
+        straight from it instead of being approximated with finite differences."""
+        # The rest of this class fits with Powell, which reports no inverse Hessian.
+        opt = scipy.optimize.minimize(
+            self.lpost, self.t0, method="L-BFGS-B", args=self.neg, tol=1.0e-10
+        )
+        optres = OptimizationResultsSubclassDummy(self.lpost, opt, neg=True)
+        optres._compute_covariance(self.lpost, opt)
 
-        assert np.allclose(self.optres.cov, np.asanyarray(self.opt.hess_inv))
-        assert np.allclose(self.optres.err, np.sqrt(np.diag(self.opt.hess_inv)))
+        assert np.allclose(optres.cov, np.asanyarray(opt.hess_inv.todense()))
+        assert np.allclose(optres.err, np.sqrt(np.diag(optres.cov)))
 
     @pytest.mark.skipif("comp_hessian")
     def test_compute_covariance_without_comp_hessian(self):

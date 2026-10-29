@@ -226,7 +226,7 @@ class TestMultitaper(object):
         with pytest.raises(ValueError):
             new_mtp = mtp.rebin(df=0.1)
 
-    def test_rebin(self):
+    def test_rebin_sets_requested_df(self):
         mtp = Multitaper(self.lc)
         new_mtp = mtp.rebin(df=1.5)
         assert new_mtp.df == 1.5

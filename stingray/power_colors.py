@@ -114,8 +114,8 @@ def _hue_line_data(center, angle, ref_angle=3 * np.pi / 4):
 
     m = np.tan(plot_angle)
     if np.isinf(m):
-        x = np.zeros_like(x) + center[0]
         y = np.linspace(-4, 4, 20)
+        x = np.zeros_like(y) + center[0]
     else:
         x = np.linspace(0, 4, 20) * np.sign(np.cos(plot_angle)) + center[0]
         y = center[1] + m * (x - center[0])

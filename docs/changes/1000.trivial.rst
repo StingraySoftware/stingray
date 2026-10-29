@@ -30,6 +30,13 @@ Infrastructure maintenance:
   on Python 3.10 or later. Which filters were still doing work was determined by
   recording every warning a full test run raises and matching the filters against it.
   The two deliberately broad entries that remain now say why they are broad.
+- Three problems a linter found are fixed. Two test methods shared a name with another
+  method in the same class, so the first of each pair had never run: one passes and is
+  now live, and the other turned out to be checking something its fixture could not
+  produce, so it now exercises the inverse-Hessian branch of ``_compute_covariance``
+  that nothing else covered. A vertical hue line in ``power_colors`` was built from a
+  variable that did not exist yet, which would have raised ``NameError`` had the branch
+  been reachable. Six imports that appeared twice in the same file were deduplicated.
 - The Codecov upload workflow now opts in explicitly to checking out the commit under
   test, which recent versions of ``actions/checkout`` refuse by default for pull
   requests opened from a fork. The workflow never executes anything from that commit;
