@@ -38,6 +38,7 @@ __all__ = [
     "bias_term",
     "raw_coherence",
     "intrinsic_coherence",
+    "error_on_averaged_cross_spectrum",
     "avg_bispectrum_from_iterable",
     "avg_bispectrum_from_timeseries",
     "avg_cross_bispectrum_from_iterables",
