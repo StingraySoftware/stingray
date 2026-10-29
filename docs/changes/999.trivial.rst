@@ -1,4 +1,0 @@
-The Codecov upload workflow now opts in explicitly to checking out the commit under
-test, which recent versions of ``actions/checkout`` refuse by default for pull
-requests opened from a fork. The workflow never executes anything from that commit;
-it only needs the list of file names that Codecov matches the reports against.

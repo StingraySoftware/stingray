@@ -1,8 +1,18 @@
-Infrastructure maintenance: the test matrix now covers Python 3.11 to 3.14 (3.14 allowed
-to fail, since optional dependencies lag new Python releases) and the Python 3.12 job is
-required rather than advisory; the dev-versions job moved to a Python the nightly wheels
-are actually built for, so it tests what it claims to; ``actions/checkout`` and
-``actions/setup-python`` moved off the deprecated Node 20 runtime, with Dependabot
-keeping them current; ``linkcheck`` runs only on the weekly schedule, so link rot on
-external sites no longer marks every pull request as unstable; and the license is
-declared as an SPDX expression, which setuptools will require from February 2027.
+Infrastructure maintenance:
+
+- The test matrix now covers Python 3.11 to 3.14. The Python 3.12 job is required rather
+  than advisory, and only the newest Python is allowed to fail, since it is the release
+  that dependencies publish wheels for last.
+- The dev-versions job moved to a Python the nightly wheels are actually built for.
+  On Python 3.11 there were none, so pip silently fell back to the latest regular
+  release and the job tested nothing new.
+- ``actions/checkout`` and ``actions/setup-python`` moved off the deprecated Node 20
+  runtime, and Dependabot now keeps the workflow actions current.
+- ``linkcheck`` runs only on the weekly schedule, so link rot on external sites no
+  longer marks every pull request as unstable.
+- The license is declared as an SPDX expression, which setuptools will require from
+  February 2027.
+- The Codecov upload workflow now opts in explicitly to checking out the commit under
+  test, which recent versions of ``actions/checkout`` refuse by default for pull
+  requests opened from a fork. The workflow never executes anything from that commit;
+  it only needs the list of file names that Codecov matches the reports against.
