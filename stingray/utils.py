@@ -1060,11 +1060,13 @@ def _als(y, lam, p, niter=10):
         (np.arange(0, L - 2).T, np.arange(0, L - 2).T + 1, np.arange(0, L - 2).T + 2)
     ).T.flatten()
     data = np.tile([1, -2, 1], L - 2)
-    D = sparse.csc_matrix((data, indices, indptr), shape=(L, L - 2))
+    D = sparse.csc_array((data, indices, indptr), shape=(L, L - 2))
 
     w = np.ones(L)
     for _ in range(niter):
-        W = sparse.spdiags(w, 0, L, L)
+        # ``dia_array`` rather than ``diags_array``, which only exists from
+        # scipy 1.11 and this package still supports 1.10.
+        W = sparse.dia_array((w[np.newaxis, :], [0]), shape=(L, L))
         Z = W + lam * D.dot(D.transpose())
         z = sparse.linalg.spsolve(Z, w * y)
         w = p * (y > z) + (1 - p) * (y < z)

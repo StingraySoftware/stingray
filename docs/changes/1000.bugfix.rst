@@ -6,3 +6,10 @@ instead of the documented ``axis=0``, and that rounded the normalization constan
 ``scipy.stats.median_abs_deviation``, which returns exactly what ``statsmodels`` did.
 As a side effect ``import stingray`` no longer pulls in ``statsmodels``, which it was
 doing only for this one function, and is about half a second faster.
+
+The baseline fitting in ``stingray.utils.baseline_als`` now builds its sparse matrices
+with SciPy's sparse *array* classes rather than the ``spmatrix`` classes SciPy is
+retiring. The old spelling raised a ``DeprecationWarning`` on development versions of
+SciPy, which the test suite escalates to an error. The replacement was checked to give
+bit-for-bit identical baselines on flat, sloped, noisy and spiky input, and on series
+too short for the offset correction.
