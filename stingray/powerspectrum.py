@@ -1065,6 +1065,7 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
         self.gti = gti
         self.norm = norm
         self.use_common_mean = use_common_mean
+        self.poisson_power = None
 
         if segment_size is None and lc is None:
             self._initialize_empty()
@@ -1177,7 +1178,6 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
         self.meanrate = avg.nphots / avg.n / avg.dt
         self.nphots = avg.nphots
         self.m = 1
-        self.poisson_power = None
         if not self.use_common_mean:
             # Each column is normalized by its own mean, so each has its own Poisson level.
             self.poisson_power = np.array(
@@ -1223,13 +1223,22 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
         pc1_err: np.ndarray
             The power colors for each spectrum and their respective errors
         """
-        if poisson_power is None and getattr(self, "poisson_power", None) is not None:
-            poisson_power = np.broadcast_to(self.poisson_power, self.dyn_ps.shape)
-        elif poisson_power is None:
-            poisson_power = poisson_level(
-                norm=self.norm,
-                meanrate=self.meanrate,
-                n_ph=self.nphots,
+        if poisson_power is None:
+            if self.poisson_power is not None:
+                poisson_power = np.broadcast_to(self.poisson_power, self.dyn_ps.shape)
+            else:
+                poisson_power = poisson_level(
+                    norm=self.norm,
+                    meanrate=self.meanrate,
+                    n_ph=self.nphots,
+                )
+        elif not self.use_common_mean and np.ndim(poisson_power) < 2:
+            warnings.warn(
+                "With use_common_mean=False each segment has its own Poisson level, "
+                "but a single level was given for all of them. Pass a 2-D poisson_power "
+                "with the shape of dyn_ps, or leave it as None to use the levels of "
+                "each segment.",
+                UserWarning,
             )
 
         return super().power_colors(

@@ -1322,13 +1322,24 @@ class TestDynamicalPowerspectrum(object):
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             default = dps.power_colors(freq_edges=freq_edges)
-        explicit = [
-            dps.power_colors(freq_edges=freq_edges, poisson_power=level)
-            for level in dps.poisson_power
-        ]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            explicit = [
+                dps.power_colors(freq_edges=freq_edges, poisson_power=level)
+                for level in dps.poisson_power
+            ]
         for i, level_result in enumerate(explicit):
             for default_values, values in zip(default, level_result):
                 assert np.isclose(default_values[i], values[i])
+
+    def test_power_colors_warns_with_single_poisson_power(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            dps = DynamicalPowerspectrum(
+                self.lc, segment_size=10, norm="frac", use_common_mean=False
+            )
+        with pytest.warns(UserWarning, match="a single level was given"):
+            dps.power_colors(freq_edges=[1 / 5, 1 / 2, 1, 2.0, 16.0], poisson_power=0.01)
 
     @pytest.mark.parametrize("method", ["average", "sum"])
     def test_per_segment_poisson_power_follows_rebinning(self, method):
