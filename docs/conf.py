@@ -159,10 +159,6 @@ linkcheck_ignore = [
     r"https://doi.org/",
     r"https://arxiv.org/",
     r"https://scixplorer.org/",
-    # The notebooks come from their own repository and still link to ADS, so these
-    # two stay until that repository is updated as well.
-    r"https://.*adsabs.harvard.edu/",
-    r"http://.*adsabs.harvard.edu/",
     r"https://zenodo.org/",
     r"https://opensource.org/",
     r"https://www.mathworks.com/",
