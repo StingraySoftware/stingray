@@ -14,6 +14,13 @@ Infrastructure maintenance:
   longer marks every pull request as unstable.
 - The license is declared as an SPDX expression, which setuptools will require from
   February 2027.
+- ``setup.py`` is gone, along with the version template it installed. That template
+  ran a ``setuptools_scm`` import and a ``git describe`` on every ``import stingray``,
+  costing about a third of a second; the version now comes from the ``stingray/_version.py``
+  that ``setuptools_scm`` already writes at build time, as astropy does. In a development
+  checkout ``stingray.__version__`` therefore reports the version as of the last install
+  rather than the current commit. ``MANIFEST.in`` no longer lists files that were removed
+  years ago, which were producing warnings on every build.
 - The Codecov upload workflow now opts in explicitly to checking out the commit under
   test, which recent versions of ``actions/checkout`` refuse by default for pull
   requests opened from a fork. The workflow never executes anything from that commit;

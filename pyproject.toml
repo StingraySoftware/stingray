@@ -246,14 +246,14 @@ line-length = 100
             "stingray/tests/*",
             "stingray/*/tests/*",
             "stingray/extern/*",
-            "stingray/version*",
+            "stingray/_version*",
             "*/stingray/_astropy_init*",
             "*/stingray/conftest.py",
             "*/stingray/*setup_package*",
             "*/stingray/tests/*",
             "*/stingray/*/tests/*",
             "*/stingray/extern/*",
-            "*/stingray/version*",
+            "*/stingray/_version*",
         ]
 
     [tool.coverage.report]

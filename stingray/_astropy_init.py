@@ -1,4 +1,4 @@
-# Licensed under a 3-clause BSD style license - see LICENSE.rst
+# Licensed under MIT license - see LICENSE.rst
 
 __all__ = ["__version__"]
 
@@ -11,6 +11,6 @@ except NameError:
     builtins._ASTROPY_SETUP_ = False
 
 try:
-    from .version import version as __version__
+    from ._version import version as __version__
 except ImportError:
     __version__ = ""
