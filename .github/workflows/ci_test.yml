@@ -61,22 +61,15 @@ jobs:
           # why it is useful.
           - name: Black test
             os: ubuntu-latest
-            python: '3.10'
+            python: '3.11'
             tox_env: 'black'
             experimental: false
 
-          # # Basic tests on the oldest & newest supported versions of Python,
-          # # recording coverage data for the latter.
-          # - name: Py3.8 with old Astropy version
-          #   os: ubuntu-latest
-          #   python: '3.8'
-          #   tox_env: 'py38-test-astropy4-cov'
-          #   experimental: false
-
-          - name: Linux, Py3.10 with coverage
+          # Basic tests on the oldest supported version of Python.
+          - name: Linux, Py3.11 with coverage
             os: ubuntu-latest
-            python: '3.10'
-            tox_env: 'py310-test-cov'
+            python: '3.11'
+            tox_env: 'py311-test-cov'
             experimental: false
 
           # Basic tests on alternative operating systems.
@@ -112,13 +105,31 @@ jobs:
             python: '3.12'
             tox_env: 'py312-test-cov'
             use_remote_data: true
+            experimental: false
+
+          # NumPy and SciPy only publish their newest releases for Python 3.12+,
+          # so the newest Python we fully support is tested as well.
+          - name: Linux, Py3.13 basic dependencies and coverage
+            os: ubuntu-latest
+            python: '3.13'
+            tox_env: 'py313-test-cov'
+            experimental: false
+
+          # Early warning for the next Python. Allowed to fail, because optional
+          # dependencies (Numba in particular) lag new Python releases.
+          - name: Linux, Py3.14 basic dependencies and coverage
+            os: ubuntu-latest
+            python: '3.14'
+            tox_env: 'py314-test-cov'
             experimental: true
 
-          # Development version of dependencies
-          - name: Linux, Py3.11 with dev versions of dependencies
+          # Development version of dependencies. This has to run on a Python the
+          # nightly wheels are actually built for, or pip silently falls back to
+          # the latest regular release and the job tests nothing new.
+          - name: Linux, Py3.13 with dev versions of dependencies
             os: ubuntu-latest
-            python: '3.11'
-            tox_env: 'py311-test-devdeps-cov'
+            python: '3.13'
+            tox_env: 'py313-test-devdeps-cov'
             experimental: false
 
           # Test with all optional dependencies installed.
