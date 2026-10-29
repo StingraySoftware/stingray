@@ -21,6 +21,9 @@ Infrastructure maintenance:
   checkout ``stingray.__version__`` therefore reports the version as of the last install
   rather than the current commit. ``MANIFEST.in`` no longer lists files that were removed
   years ago, which were producing warnings on every build.
+- The ``_ASTROPY_SETUP_`` flag is gone. It was set on ``builtins``, so every import of
+  stingray added a name to the interpreter's builtins, and the guards that read it were
+  always taken. It existed only so the old ``setup.py`` could import the package.
 - The Codecov upload workflow now opts in explicitly to checking out the commit under
   test, which recent versions of ``actions/checkout`` refuse by default for pull
   requests opened from a fork. The workflow never executes anything from that commit;

@@ -7,7 +7,5 @@ from .._astropy_init import *
 
 # ----------------------------------------------------------------------------
 
-# For egg_info test builds to pass, put package imports here.
-if not _ASTROPY_SETUP_:
-    from stingray.deadtime.fad import *
-    from stingray.deadtime.model import *
+from stingray.deadtime.fad import *
+from stingray.deadtime.model import *
