@@ -125,7 +125,7 @@ To install all required and recommended dependencies in a recent installation, y
 
     $ pip install astropy scipy matplotlib numpy h5py tqdm numba pint-pulsar emcee corner statsmodels pyfftw tbb
 
-For the Gaussian Process modeling in `stingray.modeling.gpmodeling`, you'll need the following extra packages
+For the Gaussian Process modeling in ``stingray.modeling.gpmodeling``, you'll need the following extra packages
 
 + jax
 + jaxns
@@ -135,7 +135,7 @@ For the Gaussian Process modeling in `stingray.modeling.gpmodeling`, you'll need
 + etils
 + typing_extensions
 
-For the Bexvar calculations in `stingray.bexvar` and `stingray.lightcurve`, you'll need `UltraNest <https://johannesbuchner.github.io/UltraNest/index.html>`_.
+For the Bexvar calculations in ``stingray.bexvar`` and ``stingray.lightcurve``, you'll need `UltraNest <https://johannesbuchner.github.io/UltraNest/index.html>`_.
 
 Most of these are installed via ``pip``, but if you have an Nvidia GPU available, you'll want to take special care
 following the installation instructions for jax and tensorflow(-probability) in order to enable GPU support and
@@ -233,7 +233,7 @@ you think might be bugs on our GitHub `Issues page <https://github.com/StingrayS
 Stingray uses `pytest <https://pytest.org>`_ and `tox
 <https://tox.readthedocs.io>`_ for testing.
 
-If you downloaded the source code, e.g. via `git clone`, run the tests with::
+If you downloaded the source code, e.g. via ``git clone``, run the tests with::
 
    $ tox -e test
 

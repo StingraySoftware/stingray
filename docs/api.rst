@@ -7,7 +7,7 @@ Library of Time Series Methods For Astronomical X-ray Data.
 
 Base Class
 ==========
-Most `stingray`` classes are subclasses of a single class, :class:`stingray.StingrayObject`, which
+Most ``stingray`` classes are subclasses of a single class, :class:`stingray.StingrayObject`, which
 implements most of the I/O functionality and common behavior (e.g. strategies to combine data and
 make operations such as the sum, difference, or negation). This class is not intended to be
 instantiated directly, but rather to be used as a base class for other classes. Any class wanting
@@ -77,8 +77,8 @@ EventList
 Fourier Products
 ================
 
-These classes implement commonly used Fourier analysis products, most importantly :class:`Crossspectrum` and
-:class:`Powerspectrum`, along with the variants for averaged cross/power spectra.
+These classes implement commonly used Fourier analysis products, most importantly :class:`~stingray.Crossspectrum` and
+:class:`~stingray.Powerspectrum`, along with the variants for averaged cross/power spectra.
 
 Crossspectrum
 -------------
@@ -170,7 +170,7 @@ Dead-Time Corrections
 Higher-Order Fourier and Spectral Timing Products
 =================================================
 
-These classes implement higher-order Fourier analysis products (e.g. :class:`Bispectrum`) and
+These classes implement higher-order Fourier analysis products (e.g. :class:`~stingray.bispectrum.Bispectrum`) and
 Spectral Timing related methods taking advantage of both temporal and spectral information in
 modern data sets.
 
