@@ -147,12 +147,14 @@ filterwarnings = [
     "error",
     "ignore:.*numpy.core.einsumfunc is deprecated.*:DeprecationWarning",
     "ignore:Unrecognized parfile line:UserWarning",
+    # Broad on purpose: which files the garbage collector has got round to closing
+    # when a test ends is not deterministic, so these cannot be made errors.
     "ignore:.*:ResourceWarning",
     "ignore:distutils Version classes are deprecated.:DeprecationWarning",
-    "ignore:unclosed .ssl.SSLSocket:ResourceWarning",
-    "ignore:.*set self.value directly:DeprecationWarning",
     "ignore:On Windows, the size of an integer is 32 bits:UserWarning",
     "ignore:.*Number of segments used in averaging.*:UserWarning",
+    # Broad on purpose: the unit strings in real observatory files are often
+    # non-standard, and the remote-data tests read real files.
     "ignore:.*:astropy.units.core.UnitsWarning",
     "ignore:.*cannot be added to FITS Header:astropy.utils.exceptions.AstropyUserWarning",
     "ignore:Numba is not being used:UserWarning",
@@ -160,13 +162,9 @@ filterwarnings = [
     "ignore:This platform does not support:RuntimeWarning",
     "ignore:Some error bars in the Averaged:UserWarning",
     "ignore:n_ave is below 30:UserWarning",
-    "ignore:pyfftw not installed:UserWarning",
-    "ignore:SIMON says. Errorbars on cross spectra are not thoroughly tested.:UserWarning",
     "ignore:SIMON says. Stingray only uses poisson err_dist at the moment.:UserWarning",
     "ignore:SIMON says. Looks like your lightcurve:UserWarning",
     "ignore:Matplotlib is currently using agg, which is a:UserWarning",
-    "ignore:Using or importing the ABCs from 'collections':DeprecationWarning",
-    "ignore:unclosed file:ResourceWarning",
     "ignore:numpy.ufunc size changed:RuntimeWarning",
     "ignore:numpy.ndarray size changed:RuntimeWarning",
     "ignore:invalid value encountered:RuntimeWarning",
@@ -174,7 +172,6 @@ filterwarnings = [
     "ignore:underflow encountered:RuntimeWarning",
     "ignore:overflow encountered:RuntimeWarning",
     "ignore:table path was not set via the path= argument; using default path:UserWarning",
-    "ignore:Large Datasets may not be processed efficiently:UserWarning",
     "ignore:.*is a deprecated alias for:DeprecationWarning",
     "ignore:.*HIERARCH card will be created.*:",
     "ignore:.*FigureCanvasAgg is non-interactive.*:UserWarning",
@@ -186,8 +183,7 @@ filterwarnings = [
     "ignore:.*Pyarrow:",
     "ignore:.*Creating an ndarray from ragged nested sequences:",
     "ignore:.*the tpfmodel submodule is not available without oktopus.*:UserWarning",
-    "ignore:.*chararray"
-
+    "ignore:.*chararray",
 ]
 
 [tool.towncrier]

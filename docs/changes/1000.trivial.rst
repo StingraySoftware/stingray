@@ -24,6 +24,12 @@ Infrastructure maintenance:
 - The ``_ASTROPY_SETUP_`` flag is gone. It was set on ``builtins``, so every import of
   stingray added a name to the interpreter's builtins, and the guards that read it were
   always taken. It existed only so the old ``setup.py`` could import the package.
+- Seven dead pytest warning filters are gone. Three suppressed warnings stingray no
+  longer emits, two were already covered by a broader entry, one suppressed an astropy
+  deprecation removed long ago, and one suppressed a Python warning that cannot occur
+  on Python 3.10 or later. Which filters were still doing work was determined by
+  recording every warning a full test run raises and matching the filters against it.
+  The two deliberately broad entries that remain now say why they are broad.
 - The Codecov upload workflow now opts in explicitly to checking out the commit under
   test, which recent versions of ``actions/checkout`` refuse by default for pull
   requests opened from a fork. The workflow never executes anything from that commit;
