@@ -602,3 +602,10 @@ def test_numba_compiled_or_mocked():
     bla_1()
     bla_2()
     bla_3(1.0)
+
+
+def test_numba_import_warning_quotes_the_error():
+    """An installed Numba that fails to load must not be reported as missing: the
+    warning has to carry the real import error, e.g. the NumPy version mismatch."""
+    message = utils._numba_import_warning(ImportError("Numba needs NumPy 2.4 or less"))
+    assert "Numba needs NumPy 2.4 or less" in message

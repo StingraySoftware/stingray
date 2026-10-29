@@ -155,7 +155,7 @@ filterwarnings = [
     "ignore:.*Number of segments used in averaging.*:UserWarning",
     "ignore:.*:astropy.units.core.UnitsWarning",
     "ignore:.*cannot be added to FITS Header:astropy.utils.exceptions.AstropyUserWarning",
-    "ignore:The recommended numba package is not installed:UserWarning",
+    "ignore:Numba is not being used:UserWarning",
     "ignore:More than 20 figures have been opened.:RuntimeWarning",
     "ignore:This platform does not support:RuntimeWarning",
     "ignore:Some error bars in the Averaged:UserWarning",

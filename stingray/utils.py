@@ -46,14 +46,27 @@ except ImportError:
 # If numba is installed, import jit. Otherwise, define an empty decorator with
 # the same name.
 
+
+def _numba_import_warning(error):
+    """Explain that numba is not being used, quoting the error that says why.
+
+    Numba usually lags new NumPy releases, so an *installed* numba often fails to
+    import with something like "Numba needs NumPy 2.4 or less". Reporting that as
+    a missing package sends users looking in the wrong place, so the original
+    error is part of the message.
+    """
+    return (
+        f"Numba is not being used, so some functionality might be slower. "
+        f"Importing it failed with: {error}"
+    )
+
+
 try:
     from numba import jit
 
     HAS_NUMBA = True
-except ImportError:
-    warnings.warn(
-        "The recommended numba package is not installed. Some functionality might be slower."
-    )
+except ImportError as e:
+    warnings.warn(_numba_import_warning(e))
     HAS_NUMBA = False
     NumbaValueError = NumbaNotImplementedError = TypingError = Exception
 
