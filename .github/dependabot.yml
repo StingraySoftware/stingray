@@ -1,0 +1,13 @@
+# Keep the GitHub Actions used by the workflows up to date. GitHub retires the
+# Node runtimes the actions run on, so old majors first warn and then stop
+# working; without this file nothing notices until CI breaks.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "no-changelog-entry-needed"
+    commit-message:
+      prefix: "CI"

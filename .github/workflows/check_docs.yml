@@ -29,13 +29,13 @@ jobs:  # This job is used to check that the documentation builds correctly.
             tox_env: 'linkcheck'
     steps:
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
         with:
           submodules: true
       - name: Check out that no sensitive environment variable is shared
         run: env
       - name: Set up Python ${{ matrix.python }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
       - name: Install base dependencies
