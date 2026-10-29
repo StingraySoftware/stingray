@@ -59,10 +59,10 @@ jobs:
           # we select only a few, in order to conserve resources. If you add
           # an additional environment, please include a comment to indicate
           # why it is useful.
-          - name: Black test
+          - name: Code style
             os: ubuntu-latest
             python: '3.11'
-            tox_env: 'black'
+            tox_env: 'codestyle'
             experimental: false
 
           # Basic tests on the oldest supported version of Python.

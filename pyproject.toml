@@ -229,8 +229,18 @@ filterwarnings = [
       name = "Internal Changes"
       showcontent = true
 
-[tool.black]
+[tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
+# Selected explicitly rather than relying on ruff's defaults, which widen between
+# releases. These are the rules that flag mistakes rather than style: syntax that
+# cannot run, names used before they exist, and names that silently overwrite an
+# earlier definition -- which is what had quietly disabled two tests. The noisier
+# families flake8 would also have reported (unused imports and variables, import
+# order, lambda assignments) come to a few hundred findings and are left for a
+# pull request of their own.
+select = ["E9", "F632", "F702", "F706", "F707", "F811", "F821"]
 
 [tool.coverage]
 
@@ -268,12 +278,3 @@ line-length = 100
             # Don't complain about IPython completion helper
             "def _ipython_key_completions_",
         ]
-
-[tool.flake8]
-max-line-length = 100
-exclude = ".git,__pycache__,docs/source/conf.py,old,build,dist,*.egg-info"
-extend-ignore = "E203, W503, W605"
-
-[tool.pycodestyle]
-max-line-length = 100
-exclude = ".git,__pycache__,docs/source/conf.py,old,build,dist,*.egg-info"

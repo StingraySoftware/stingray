@@ -108,7 +108,7 @@ class TestParameterEstimation(object):
         llike = PSDLogLikelihood(self.ps.freq, self.ps.power, self.model, m=self.ps.m)
         pe = ParameterEstimation()
         res = pe.fit(llike, [2.0])
-        assert isinstance(res, OptimizationResults), "res must be of " "type OptimizationResults"
+        assert isinstance(res, OptimizationResults), "res must be of type OptimizationResults"
 
     def test_fit_fails_when_object_is_not_posterior_or_likelihood(self):
         x = np.ones(10)
@@ -265,7 +265,7 @@ class TestOptimizationResults(object):
 
         mean_model = np.ones_like(self.lpost.x) * self.opt.x[0]
         assert np.allclose(res.mfit, mean_model), (
-            "res.model should be exactly " "the model for the data."
+            "res.model should be exactly the model for the data."
         )
 
     def test_compute_criteria_works_correctly(self):
@@ -295,7 +295,7 @@ class TestOptimizationResults(object):
         self.optres._compute_model(self.lpost)
 
         assert hasattr(self.optres, "mfit"), (
-            "OptimizationResult object should have mfit " "attribute at this point!"
+            "OptimizationResult object should have mfit attribute at this point!"
         )
 
         fitter_to_model_params(self.model, self.opt.x)
@@ -381,8 +381,8 @@ class TestOptimizationResults(object):
         assert "Fitting statistics" in caplog.text
         assert "number of data points" in caplog.text
         assert "Deviance [-2 log L] D =" in caplog.text
-        assert "The Akaike Information Criterion of " "the model is" in caplog.text
-        assert "The Bayesian Information Criterion of " "the model is" in caplog.text
+        assert "The Akaike Information Criterion of the model is" in caplog.text
+        assert "The Bayesian Information Criterion of the model is" in caplog.text
         assert "The figure-of-merit function for this model" in caplog.text
         assert "Summed Residuals S =" in caplog.text
         assert "Expected S" in caplog.text
@@ -660,7 +660,7 @@ class TestPSDParEst(object):
         lpost = PSDPosterior(self.ps.freq, self.ps.power, self.model, self.priors, m=self.ps.m)
         t0 = [2.0, 1, 1, 1]
         res = pe.fit(lpost, t0)
-        assert isinstance(res, OptimizationResults), "res must be of type " "OptimizationResults"
+        assert isinstance(res, OptimizationResults), "res must be of type OptimizationResults"
 
         pe.plotfits(res, save_plot=True)
 

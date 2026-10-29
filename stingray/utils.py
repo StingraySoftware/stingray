@@ -576,9 +576,7 @@ def rebin_data(x, y, dx_new, yerr=None, method="sum", dx=None):
         dx_old = np.array([dx])
 
     if np.any(dx_new < dx_old):
-        raise ValueError(
-            "New frequency resolution must be larger than " "old frequency resolution."
-        )
+        raise ValueError("New frequency resolution must be larger than old frequency resolution.")
 
     # left and right bin edges
     # assumes that the points given in `x` correspond to
@@ -627,8 +625,7 @@ def rebin_data(x, y, dx_new, yerr=None, method="sum", dx=None):
 
     else:
         raise ValueError(
-            "Method for summing or averaging not recognized. "
-            "Please enter either 'sum' or 'mean'."
+            "Method for summing or averaging not recognized. Please enter either 'sum' or 'mean'."
         )
 
     tseg = x[-1] - x[0] + dx_old[-1]
@@ -1173,7 +1170,7 @@ def baseline_als(x, y, lam=None, p=None, niter=10, return_baseline=False, offset
         if len(x[good]) < 10:
             good = np.ones(len(x), dtype=bool)
             warnings.warn(
-                "Too few bins to perform baseline offset correction" " precisely. Beware of results"
+                "Too few bins to perform baseline offset correction precisely. Beware of results"
             )
         offset = offset_fit(x[good], ysub[good], 0)
 
@@ -2174,8 +2171,7 @@ def _wrap_histograms(numba_func, weight_numba_func, np_func, *args, **kwargs):
         return weight_numba_func(*args, weights=weights, use_memmap=use_memmap, tmp=tmp, **kwargs)
     except (NumbaValueError, NumbaNotImplementedError, TypingError, TypeError):
         warnings.warn(
-            "Cannot calculate the histogram with the numba implementation. "
-            "Trying standard numpy."
+            "Cannot calculate the histogram with the numba implementation. Trying standard numpy."
         )
 
         return np_func(*args, weights=weights, **kwargs)[0]

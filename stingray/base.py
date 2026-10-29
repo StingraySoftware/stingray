@@ -282,7 +282,7 @@ class StingrayObject(object):
 
             if func_to_apply is not None and attr in attrs_to_apply:
                 new_value, new_label = func_to_apply(items[attr])
-                label += f"\n{attr + ' (' +new_label + ')':<15}: {new_value}"
+                label += f"\n{attr + ' (' + new_label + ')':<15}: {new_value}"
 
             results += label + "\n"
         return results
@@ -1092,7 +1092,7 @@ class StingrayObject(object):
             stop = assign_value_if_none(index.stop, len(self))
             step = assign_value_if_none(index.step, 1)
         else:
-            raise IndexError("The index must be either an integer or a slice " "object !")
+            raise IndexError("The index must be either an integer or a slice object !")
 
         new_ts = type(self)()
 
@@ -2134,7 +2134,7 @@ class StingrayTimeseries(StingrayObject):
         """
 
         if f is None and dt_new is None:
-            raise ValueError("You need to specify at least one between f and " "dt_new")
+            raise ValueError("You need to specify at least one between f and dt_new")
         elif f is not None:
             dt_new = f * self.dt
 

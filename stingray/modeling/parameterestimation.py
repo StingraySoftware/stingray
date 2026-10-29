@@ -394,7 +394,7 @@ class ParameterEstimation(object):
         """
 
         if not isinstance(lpost, Posterior) and not isinstance(lpost, LogLikelihood):
-            raise TypeError("lpost must be a subclass of " "Posterior or LogLikelihoood.")
+            raise TypeError("lpost must be a subclass of Posterior or LogLikelihoood.")
 
         newmod = lpost.model.copy()
 
@@ -403,7 +403,7 @@ class ParameterEstimation(object):
         # p0 will be shorter than t0, if there are any frozen/tied parameters
         # this has to match with the npar attribute.
         if not len(p0) == lpost.npar:
-            raise ValueError("Parameter set t0 must be of right " "length for model in lpost.")
+            raise ValueError("Parameter set t0 must be of right length for model in lpost.")
 
         args = (neg,)
 
@@ -729,11 +729,11 @@ class ParameterEstimation(object):
         """
 
         assert isinstance(lpost, LogLikelihood) or isinstance(lpost, Posterior), (
-            "lpost must be of type LogLikelihood or Posterior or one of its " "subclasses!"
+            "lpost must be of type LogLikelihood or Posterior or one of its subclasses!"
         )
 
         # assert pars is of correct length
-        assert len(pars) == lpost.npar, "pars must be a list " "of %i parameters" % lpost.npar
+        assert len(pars) == lpost.npar, "pars must be a list of %i parameters" % lpost.npar
         # get the model
         m = lpost.model
 
@@ -1463,7 +1463,7 @@ class PSDParEst(ParameterEstimation):
         """
 
         assert lpost1.__class__ == lpost2.__class__, (
-            "Both LogLikelihood or " "Posterior objects must be " "of the same class!"
+            "Both LogLikelihood or Posterior objects must be of the same class!"
         )
 
         nsim = s_all.shape[0]
@@ -1504,7 +1504,7 @@ class PSDParEst(ParameterEstimation):
                     sim_lpost1, t1, sim_lpost2, t2, neg=neg, max_post=max_post
                 )
             except RuntimeError:
-                logger.warning("Fitting was unsuccessful. " "Skipping this simulation!")
+                logger.warning("Fitting was unsuccessful. Skipping this simulation!")
                 continue
 
         return lrt_sim
@@ -1721,7 +1721,7 @@ class PSDParEst(ParameterEstimation):
                 max_y, maxfreq, maxind = self._compute_highest_outlier(sim_lpost, res, nmax=1)
                 max_y_all[i] = max_y[0]
             except RuntimeError:
-                logger.warning("Fitting unsuccessful! " "Skipping this simulation!")
+                logger.warning("Fitting unsuccessful! Skipping this simulation!")
                 continue
 
         return np.hstack(max_y_all)

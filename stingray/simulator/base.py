@@ -229,9 +229,7 @@ def simulate_with_inverse_cdf(
         edges = np.linspace(x_range[0], x_range[1], binned_pdf.size + 1)
 
     if np.any(binned_pdf < 0):
-        raise ValueError(
-            "simulate_with_inverse_cdf only works on positive-definite input " "curves"
-        )
+        raise ValueError("simulate_with_inverse_cdf only works on positive-definite input curves")
 
     if len(binned_pdf) == 1:  # Corner case: a single bin
         vals = np.random.uniform(x_range[0], x_range[1], N)

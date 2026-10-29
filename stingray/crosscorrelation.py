@@ -95,7 +95,7 @@ class CrossCorrelation(object):
         # Populate all attributes by ``None` if user passes no lightcurve data
         if lc1 is None or lc2 is None:
             if lc1 is not None or lc2 is not None:
-                raise TypeError("You can't do a cross correlation with just one " "light curve!")
+                raise TypeError("You can't do a cross correlation with just one light curve!")
 
             else:
                 if cross is None:
@@ -169,7 +169,7 @@ class CrossCorrelation(object):
             raise TypeError("lc2 must be a lightcurve.Lightcurve object")
 
         if not np.isclose(lc1.dt, lc2.dt):
-            raise StingrayError("Light curves do not have " "same time binning dt.")
+            raise StingrayError("Light curves do not have same time binning dt.")
         else:
             # ignore very small differences in dt neglected by np.isclose()
             lc1.dt = lc2.dt
@@ -314,10 +314,10 @@ class CrossCorrelation(object):
                 ax.set_xlabel(labels[0])
                 ax.set_ylabel(labels[1])
             except TypeError:
-                utils.simon("``labels`` must be either a list or tuple with " "x and y labels.")
+                utils.simon("``labels`` must be either a list or tuple with x and y labels.")
                 raise
             except IndexError:
-                utils.simon("``labels`` must have two labels for x and y " "axes.")
+                utils.simon("``labels`` must have two labels for x and y axes.")
                 # Not raising here because in case of len(labels)==1, only
                 # x-axis will be labelled.
 

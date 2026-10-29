@@ -102,9 +102,7 @@ class Powerspectrum(Crossspectrum):
     def __init__(self, data=None, norm="frac", gti=None, dt=None, lc=None, skip_checks=False):
         self._type = None
         if lc is not None:
-            warnings.warn(
-                "The lc keyword is now deprecated. Use data " "instead", DeprecationWarning
-            )
+            warnings.warn("The lc keyword is now deprecated. Use data instead", DeprecationWarning)
         if data is None:
             data = lc
 
@@ -303,7 +301,7 @@ class Powerspectrum(Crossspectrum):
 
         """
         if not self.norm == "leahy":
-            raise ValueError("This method only works on " "Leahy-normalized power spectra!")
+            raise ValueError("This method only works on Leahy-normalized power spectra!")
 
         if trial_correction:
             ntrial = self.power.shape[0]
@@ -896,9 +894,7 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
     ):
         self._type = None
         if lc is not None:
-            warnings.warn(
-                "The lc keyword is now deprecated. Use data " "instead", DeprecationWarning
-            )
+            warnings.warn("The lc keyword is now deprecated. Use data instead", DeprecationWarning)
         # Backwards compatibility: user might have supplied lc instead
         if data is None:
             data = lc
@@ -1048,8 +1044,7 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
             sample_time = lc.dt
             if segment_size > lc.tseg:
                 raise ValueError(
-                    "Length of the segment is too long to create "
-                    "any segments of the light curve!"
+                    "Length of the segment is too long to create any segments of the light curve!"
                 )
         if segment_size < 2 * sample_time:
             raise ValueError("Length of the segment is too short to form a light curve!")

@@ -144,7 +144,7 @@ class Covariancespectrum(object):
         # if we don't have light curves already, make them:
         if not self.use_lc:
             if not np.all(np.diff(data, axis=0).T[0] >= 0):
-                utils.simon("The event list must be sorted with respect to " "times of arrivals.")
+                utils.simon("The event list must be sorted with respect to times of arrivals.")
                 data = data[data[:, 0].argsort()]
 
             self.lcs = self._make_lightcurves(data)

@@ -37,6 +37,13 @@ Infrastructure maintenance:
   that nothing else covered. A vertical hue line in ``power_colors`` was built from a
   variable that did not exist yet, which would have raised ``NameError`` had the branch
   been reachable. Six imports that appeared twice in the same file were deduplicated.
+- Code style is now checked with ruff, in place of black 23.1 and a ``[tool.flake8]``
+  section that flake8 never read, since flake8 does not parse ``pyproject.toml``. The
+  ``black`` tox environment is replaced by ``codestyle``, and pre-commit runs ruff's
+  linter and formatter over the package. The linter's rule selection is pinned to the
+  rules that catch mistakes rather than style; the hundreds of findings from the noisier
+  rule families are deliberately left for their own pull request. Reformatting with
+  ruff instead of black 23.1 changed 25 files, none of them behaviourally.
 - The Codecov upload workflow now opts in explicitly to checking out the commit under
   test, which recent versions of ``actions/checkout`` refuse by default for pull
   requests opened from a fork. The workflow never executes anything from that commit;

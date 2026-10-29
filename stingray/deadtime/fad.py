@@ -256,7 +256,7 @@ def FAD(
         warnings.warn(verbose_string)
 
     if strict and not is_compliant:
-        raise RuntimeError("Results are not compliant, and `strict` mode " "selected. Exiting.")
+        raise RuntimeError("Results are not compliant, and `strict` mode selected. Exiting.")
 
     results = Table()
 
