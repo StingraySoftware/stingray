@@ -1,0 +1,8 @@
+Infrastructure maintenance: the test matrix now covers Python 3.11 to 3.14 (3.14 allowed
+to fail, since optional dependencies lag new Python releases) and the Python 3.12 job is
+required rather than advisory; the dev-versions job moved to a Python the nightly wheels
+are actually built for, so it tests what it claims to; ``actions/checkout`` and
+``actions/setup-python`` moved off the deprecated Node 20 runtime, with Dependabot
+keeping them current; ``linkcheck`` runs only on the weekly schedule, so link rot on
+external sites no longer marks every pull request as unstable; and the license is
+declared as an SPDX expression, which setuptools will require from February 2027.
