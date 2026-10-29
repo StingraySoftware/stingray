@@ -609,3 +609,21 @@ def test_numba_import_warning_quotes_the_error():
     warning has to carry the real import error, e.g. the NumPy version mismatch."""
     message = utils._numba_import_warning(ImportError("Numba needs NumPy 2.4 or less"))
     assert "Numba needs NumPy 2.4 or less" in message
+
+
+def test_mad_matches_statsmodels():
+    """``mad`` is computed locally now instead of imported from statsmodels, so check
+    it still returns bit-for-bit what statsmodels did, for 1-D and 2-D data on each axis."""
+    statsmodels_mad = pytest.importorskip("statsmodels.robust").mad
+    rng = np.random.default_rng(20150907)
+    for data in (rng.normal(size=101), rng.normal(size=(17, 13))):
+        for axis in (0, 1, None):
+            if axis == 1 and data.ndim == 1:
+                continue
+            assert np.array_equal(utils.mad(data, axis=axis), statsmodels_mad(data, axis=axis))
+
+
+def test_mad_does_not_come_from_statsmodels():
+    """Importing statsmodels just for ``mad`` cost half a second at every ``import
+    stingray``, so the local implementation has to stay in place."""
+    assert utils.mad.__module__ == "stingray.utils"

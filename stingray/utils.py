@@ -11,6 +11,7 @@ from collections.abc import Iterable
 
 import numpy as np
 import scipy
+from scipy.stats import median_abs_deviation
 from numpy import histogram as histogram_np
 from numpy import histogram2d as histogram2d_np
 from numpy import histogramdd as histogramdd_np
@@ -110,35 +111,33 @@ except ImportError:
         return a
 
 
-try:
-    from statsmodels.robust import mad as mad  # pylint: disable=unused-import
-except ImportError:
+def mad(data, c=0.6744897501960817, axis=0):
+    """
+    Median Absolute Deviation (MAD) along an axis.
 
-    def mad(data, c=0.6745, axis=None):
-        """
-        Mean Absolute Deviation (MAD) along an axis.
+    Equivalent to ``statsmodels.robust.mad``, which this used to be imported
+    from. Importing statsmodels costs about half a second, and this is the only
+    thing stingray needed from it at import time.
 
-        Straight from statsmodels's source code, adapted
+    Parameters
+    ----------
+    data : iterable
+        The data along which to calculate the MAD
 
-        Parameters
-        ----------
-        data : iterable
-            The data along which to calculate the MAD
+    c : float, optional
+        The normalization constant, ``scipy.stats.norm.ppf(3/4.)``. Dividing by
+        it makes the result a consistent estimator of the standard deviation of
+        normally distributed data.
 
-        c : float, optional
-            The normalization constant. Defined as
-            ``scipy.stats.norm.ppf(3/4.)``, which is approximately ``.6745``.
+    axis : int or None, optional, default ``0``
+        Axis along which to calculate ``mad``. Pass ``None`` to calculate it
+        over the flattened array.
 
-        axis : int, optional, default ``0``
-            Axis along which to calculate ``mad``. Default is ``0``, can also
-            be ``None``
-        """
-        data = np.asanyarray(data)
-        if axis is not None:
-            center = np.apply_over_axes(np.median, data, axis)
-        else:
-            center = np.median(data)
-        return np.median((np.fabs(data - center)) / c, axis=axis)
+    Examples
+    --------
+    >>> assert np.isclose(mad([1.0, 1.0, 2.0, 2.0]), 0.7413011092528009)
+    """
+    return median_abs_deviation(data, axis=axis, scale=c)
 
 
 __all__ = [
