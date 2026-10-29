@@ -8,11 +8,11 @@ readme = "README.rst"
 authors = [
     { name = "Stingray Developers", email = "spectraltiming-stingray@googlegroups.com" }
 ]
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE.rst"]
 requires-python = ">=3.11"
 classifiers = [
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
@@ -101,7 +101,7 @@ documentation = "https://docs.stingray.science"
 repository = "https://github.com/stingraysoftware/stingray"
 
 [build-system]
-requires = ["setuptools",
+requires = ["setuptools>=77",
             "setuptools_scm",
             "wheel"]
 
@@ -109,7 +109,6 @@ build-backend = 'setuptools.build_meta'
 
 [tool.setuptools]
 include-package-data = true
-license-files = ["LICENSE.rst"]
 
 [tool.setuptools.packages.find]
 include = ["stingray*"]
