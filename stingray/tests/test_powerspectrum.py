@@ -1260,7 +1260,7 @@ class TestDynamicalPowerspectrum(object):
             dps.dyn_ps.mean(), poisson_level(norm="frac", meanrate=meanrate), rtol=0.05
         )
 
-    def test_compute_rms_without_noise_does_not_depend_on_common_mean(self):
+    def test_compute_rms_with_per_segment_mean(self):
         lc = self.lc_step
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=UserWarning)
@@ -1268,10 +1268,18 @@ class TestDynamicalPowerspectrum(object):
             per_segment = DynamicalPowerspectrum(
                 lc, segment_size=8.0, norm="frac", use_common_mean=False
             )
-            rms_common, err_common = common.compute_rms(0.5, 16.0, poisson_noise_level=0)
-            rms_seg, err_seg = per_segment.compute_rms(0.5, 16.0, poisson_noise_level=0)
-        assert np.allclose(rms_common, rms_seg)
-        assert np.allclose(err_common, err_seg)
+            rms_common, _ = common.compute_rms(1.5, 2.5)
+            rms_seg, _ = per_segment.compute_rms(
+                1.5, 2.5, poisson_noise_level=per_segment.poisson_power
+            )
+        rms_common = np.asarray(rms_common)
+        rms_seg = np.asarray(rms_seg)
+        first = common.time < lc.tseg / 2
+        # With a common mean, the rms is relative to the mean of the whole observation.
+        assert rms_common[~first].mean() / rms_common[first].mean() > 1.5
+        # With a per-segment mean, the injected 10% rms is recovered on both sides.
+        assert np.isclose(rms_seg[first].mean(), 0.1, atol=0.01)
+        assert np.isclose(rms_seg[~first].mean(), 0.1, atol=0.01)
 
     def test_per_segment_conversion_follows_rebinning(self):
         lc = self.lc_step
@@ -1285,6 +1293,8 @@ class TestDynamicalPowerspectrum(object):
         assert np.size(rebinned.unnorm_conversion) == rebinned.dyn_ps.shape[1]
         assert np.size(by_n.unnorm_conversion) == by_n.dyn_ps.shape[1]
         assert np.size(in_freq.unnorm_conversion) == in_freq.dyn_ps.shape[1]
+        assert np.size(rebinned.nphots_all) == rebinned.dyn_ps.shape[1]
+        assert np.size(by_n.nphots_all) == by_n.dyn_ps.shape[1]
 
     @pytest.mark.parametrize("norm", ["frac", "abs", "leahy", "none"])
     def test_per_segment_poisson_power(self, norm):

@@ -2379,7 +2379,9 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         removes the effect of a varying count rate at constant fractional rms,
         as produced by an rms-flux relation. Note that with ``use_common_mean``
         set to ``False`` the Poisson noise level follows each segment's own count
-        rate, so a single noise level no longer applies to the whole matrix.
+        rate, so a single noise level no longer applies to the whole matrix, and
+        ``compute_rms`` returns the fractional rms of each segment relative to its
+        own mean count rate.
 
     Attributes
     ----------
@@ -2418,6 +2420,10 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
     use_common_mean: bool
         Whether the normalization uses the mean count rate of the whole
         observation (``True``) or of each segment (``False``).
+
+    nphots_all: numpy.ndarray
+        The number of photons in each segment. For a cross spectrum, the
+        geometric mean of the two light curves.
     """
 
     def __init__(
@@ -2435,6 +2441,7 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         self.gti = gti
         self.norm = norm
         self.use_common_mean = use_common_mean
+        self.nphots_all = None
 
         if segment_size is None and data1 is None and data2 is None:
             self._initialize_empty()
@@ -2493,6 +2500,7 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         current_gti = avg.gti
         self.nphots1 = avg.nphots1
         self.nphots2 = avg.nphots2
+        self.nphots_all = avg.nphots_all
 
         tstart, _ = time_intervals_from_gtis(current_gti, self.segment_size)
 
@@ -2588,6 +2596,10 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
             new_dynspec_object.unnorm_conversion = rebin_data(
                 self.time, self.unnorm_conversion, dt_new, method="average", dx=self.dt
             )[1]
+        if self.nphots_all is not None:
+            new_dynspec_object.nphots_all = rebin_data(
+                self.time, self.nphots_all, dt_new, method="average", dx=self.dt
+            )[1]
         if getattr(self, "poisson_power", None) is not None:
             new_dynspec_object.poisson_power = rebin_data(
                 self.time, self.poisson_power, dt_new, method=method, dx=self.dt
@@ -2657,6 +2669,10 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
             conv = np.asanyarray(self.unnorm_conversion)
             nkeep = (conv.size // n) * n
             new_dynspec_object.unnorm_conversion = conv[:nkeep].reshape(-1, n).mean(axis=1)
+        if self.nphots_all is not None:
+            nphots_all = np.asanyarray(self.nphots_all)
+            nkeep = (nphots_all.size // n) * n
+            new_dynspec_object.nphots_all = nphots_all[:nkeep].reshape(-1, n).mean(axis=1)
         if getattr(self, "poisson_power", None) is not None:
             level = np.asanyarray(self.poisson_power)
             nkeep = (level.size // n) * n
@@ -2840,26 +2856,35 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
 
         Other parameters
         ----------------
-        poisson_noise_level : float, default is None
+        poisson_noise_level : float or iterable, default 0
             This is the Poisson noise level of the PDS with same
-            normalization as the PDS.
+            normalization as the PDS. If iterable, it should contain one level
+            per spectrum, e.g. ``poisson_power`` of a ``DynamicalPowerspectrum``
+            with ``use_common_mean=False``.
 
         Returns
         -------
         rms: float
             The fractional rms amplitude contained between ``min_freq`` and
-            ``max_freq``.
+            ``max_freq``. If ``use_common_mean`` is ``True``, it is relative to the
+            mean count rate of the whole observation, otherwise to the mean count
+            rate of each segment.
 
         rms_err: float
             The error on the fractional rms amplitude.
 
         """
-        conversion = np.atleast_1d(self.unnorm_conversion)
+        nspec = self.dyn_ps.shape[1]
+        conversion = np.broadcast_to(self.unnorm_conversion, nspec)
+        noise_levels = np.broadcast_to(poisson_noise_level, nspec)
         dyn_ps_unnorm = self.dyn_ps / self.unnorm_conversion
-        if not hasattr(self, "nphots"):
+        if not self.use_common_mean:
+            nphots = self.nphots_all
+        elif not hasattr(self, "nphots"):
             nphots = (self.nphots1 * self.nphots2) ** 0.5
         else:
             nphots = self.nphots
+        nphots = np.broadcast_to(nphots, nspec)
 
         good = (self.freq >= min_freq) & (self.freq <= max_freq)
 
@@ -2871,13 +2896,12 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         rms_errs = []
 
         for i, unnorm_powers in enumerate(dyn_ps_unnorm.T):
-            # With ``use_common_mean=False`` the conversion factor, and hence
-            # the unnormalized Poisson level, differs from segment to segment.
-            conv = conversion[i] if conversion.size > 1 else conversion[0]
-            poisson_noise_unnorm = poisson_noise_level / conv
+            # With ``use_common_mean=False`` the conversion factor, the Poisson
+            # level and the number of photons differ from segment to segment.
+            poisson_noise_unnorm = noise_levels[i] / conversion[i]
             r, re = get_rms_from_unnorm_periodogram(
                 unnorm_powers[good],
-                nphots,
+                nphots[i],
                 self.df,
                 M=M_freq,
                 poisson_noise_unnorm=poisson_noise_unnorm,
@@ -3402,6 +3426,7 @@ def _create_crossspectrum_from_result_table(table, force_averaged=False, channel
     if "subcs" in table.meta:
         cs.cs_all = np.array(table.meta["subcs"])
         cs.unnorm_cs_all = np.array(table.meta["unnorm_subcs"])
+        cs.nphots_all = np.array(table.meta["nphots_subcs"])
 
     for attr, val in table.meta.items():
         if not attr.endswith("subcs"):

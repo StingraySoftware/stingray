@@ -1006,7 +1006,8 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
         set to ``False`` the Poisson noise level follows each segment's own count
         rate, so a single noise level no longer applies to the whole matrix. The
         level of each segment is stored in ``poisson_power``, while ``meanrate``
-        remains the mean over the whole observation.
+        remains the mean over the whole observation. ``compute_rms`` returns the
+        fractional rms of each segment relative to its own mean count rate.
 
     Attributes
     ----------
@@ -1049,6 +1050,9 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
     poisson_power: numpy.ndarray or None
         The Poisson noise level of each segment, in the normalization of
         ``dyn_ps``, if ``use_common_mean`` is ``False``. ``None`` otherwise.
+
+    nphots_all: numpy.ndarray
+        The number of photons in each segment.
     """
 
     def __init__(
@@ -1065,6 +1069,7 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
         self.gti = gti
         self.norm = norm
         self.use_common_mean = use_common_mean
+        self.nphots_all = None
         self.poisson_power = None
 
         if segment_size is None and lc is None:
@@ -1177,6 +1182,7 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
         self.dt = self.segment_size
         self.meanrate = avg.nphots / avg.n / avg.dt
         self.nphots = avg.nphots
+        self.nphots_all = avg.nphots_all
         self.m = 1
         if not self.use_common_mean:
             # Each column is normalized by its own mean, so each has its own Poisson level.

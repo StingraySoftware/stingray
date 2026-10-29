@@ -2615,7 +2615,8 @@ def avg_cs_from_iterables(
     return_auxil : bool, default False
         Return the auxiliary unnormalized PDSs from the two separate channels
     return_subcs : bool, default False
-        Return all sub spectra from each light curve chunk
+        Return all sub spectra from each light curve chunk, and the number of
+        photons in each chunk (``nphots_subcs`` in the metadata)
 
     Returns
     -------
@@ -2663,6 +2664,7 @@ def avg_cs_from_iterables(
     if return_subcs:
         subcs = []
         unnorm_subcs = []
+        nphots_subcs = []
 
     for flux1, flux2 in local_show_progress(zip(flux_iterable1, flux_iterable2)):
         if flux1 is None or flux2 is None or np.all(flux1 == 0) or np.all(flux2 == 0):
@@ -2773,6 +2775,7 @@ def avg_cs_from_iterables(
         if return_subcs:
             subcs.append(cs_seg)
             unnorm_subcs.append(unnorm_power)
+            nphots_subcs.append(n_ph)
 
         # Initialize or accumulate final averaged spectra
         cross = sum_if_not_none_or_initialize(cross, cs_seg)
@@ -2902,6 +2905,7 @@ def avg_cs_from_iterables(
     if return_subcs:
         results.meta["subcs"] = np.array(subcs)
         results.meta["unnorm_subcs"] = np.array(unnorm_subcs)
+        results.meta["nphots_subcs"] = np.array(nphots_subcs)
 
     return results
 

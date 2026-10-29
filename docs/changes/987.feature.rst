@@ -8,3 +8,6 @@ In that case the Poisson noise level of each segment is stored in
 ``DynamicalPowerspectrum.poisson_power`` and used by default in ``power_colors``. To
 support this, the averaged power spectrum now keeps the number of photons in each
 segment (``nphots_all``) when ``save_all=True``.
+``compute_rms`` then returns the fractional rms of each segment relative to its own mean
+count rate, and accepts one Poisson level per segment. The averaged cross spectrum also
+keeps the number of photons in each segment when ``save_all=True``.
