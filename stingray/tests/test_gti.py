@@ -103,6 +103,18 @@ class TestGTI(object):
 
         assert np.all(bti == [[0, 1], [2, 4], [5, 7], [10, 11], [11.2, 12.2], [13.2, 14]])
 
+    def test_bti_list_input(self):
+        """GTIs given as a plain list of lists are accepted."""
+        bti = get_btis([[1, 2], [4, 5], [7, 10]], start_time=0, stop_time=12)
+        assert np.allclose(bti, [[0, 1], [2, 4], [5, 7], [10, 12]])
+
+    def test_star_import(self):
+        """Every name in ``stingray.gti.__all__`` exists, so ``import *`` works."""
+        import stingray.gti
+
+        for name in stingray.gti.__all__:
+            assert hasattr(stingray.gti, name), name
+
     def test_bti_empty_valid(self):
         gti = np.array([])
 

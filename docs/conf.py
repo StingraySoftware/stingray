@@ -163,10 +163,14 @@ linkcheck_ignore = [
     r"https://doi.org/",
     r"https://arxiv.org/",
     r"https://.*adsabs.harvard.edu/",
+    r"http://.*adsabs.harvard.edu/",
     r"https://zenodo.org/",
     r"https://opensource.org/",
     r"https://www.mathworks.com/",
+    r"https://www.researchgate.net/",
     r"http.*://stackoverflow.com/questions/.*",
+    r"http.*://stingraysoftware.slack.com/.*",
+    r"https://join\.slack\.com/t/stingraysoftware/shared_invite/.*",
 ]
 
 # -- Options for the edit_on_github extension ---------------------------------

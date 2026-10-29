@@ -1,13 +1,48 @@
-codecov:
-    notify: false
-    # do not notify (default notification is email)
-
 comment:
-    after_n_builds: 7
-    # will leave a comment on the pull request after 7 (out of 9)
-    # continuous integration tests have completed
+    after_n_builds: 1
+    # The coverage reports of all the test jobs are sent together, as a single
+    # upload, by the codecov_upload.yml workflow, so there is one build to wait
+    # for before commenting.
+
+    behavior: new
+    # Post a fresh comment at the bottom of the conversation on every update,
+    # rather than quietly editing the previous one in place. A drop in coverage
+    # should be hard to miss.
+    require_changes: false
+    # Comment even when coverage is unchanged, so its absence always means
+    # something went wrong with the upload rather than "nothing to report".
+    layout: "condensed_header, diff, flags, files, footer"
+    # Show the per-file breakdown in the comment itself, so a contributor can
+    # see which of their files lost coverage without leaving the pull request.
 
 coverage:
   round: nearest
   # rounds the coverage percentage to the nearest value,
   # instead of always rounding down (former default behaviour)
+
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 0.5%
+        informational: false
+        # Total coverage may not fall more than 0.5% below the commit the pull
+        # request is based on. The tolerance absorbs the small differences
+        # between platforms, not real regressions.
+    patch:
+      default:
+        target: 80%
+        informational: false
+        # The lines a pull request adds or changes must be 80% covered, so that
+        # new code arrives with tests.
+
+# These two checks are meant to warn, not to block: they go red when a pull
+# request loses coverage, but they are deliberately not listed as required
+# status checks in the branch protection rules, so a maintainer can still merge.
+# Setting informational: true above would be the quiet option instead, forcing
+# the checks green and only reporting the number.
+#
+# Note also that there is deliberately no `codecov:` section. It used to hold
+# `notify: false`, which is not valid (notify must be a mapping) and made
+# Codecov reject this whole file and fall back to its defaults. Email
+# notifications are an account setting, not a repository one.

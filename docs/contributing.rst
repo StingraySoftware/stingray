@@ -337,6 +337,29 @@ To run the tests, you will need to make sure you have the pytest package
    directory, scripts that gather various data analysis tasks into
    longer procedures into a /scripts folder in the same location.
 
+Test Coverage
+~~~~~~~~~~~~~
+
+Test coverage is measured by the test environments whose name ends in ``-cov``
+(for example ``py311-test-alldeps-cov``) and is reported to
+`Codecov <https://codecov.io/gh/StingraySoftware/stingray>`__.
+
+Sending a report to Codecov needs a repository upload token, and GitHub does not
+make repository secrets available to workflow runs started by a pull request
+opened from a fork. For that reason the reports are not sent from the ``CI
+Tests`` workflow. Each coverage job stores its ``coverage.xml`` as a build
+artifact instead, and a second workflow, ``codecov_upload.yml``, is triggered
+once ``CI Tests`` has finished. That workflow runs in the context of the main
+repository rather than the fork, so it has the token, and it sends every report
+of the run to Codecov in a single upload.
+
+As a contributor there is nothing to do differently: your coverage will be
+reported on your pull request a little after the tests themselves have
+finished, by a separate ``Upload coverage to Codecov`` workflow run. Because
+GitHub only runs the version of a ``workflow_run`` workflow that is on the
+default branch, changes to ``codecov_upload.yml`` itself only take effect once
+they are merged into ``main``.
+
 Community Guidelines
 --------------------
 

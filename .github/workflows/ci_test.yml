@@ -65,13 +65,13 @@ jobs:
             tox_env: 'black'
             experimental: false
 
-          # Basic tests on the oldest & newest supported versions of Python,
-          # recording coverage data for the latter.
-          - name: Py3.8 with old Astropy version
-            os: ubuntu-latest
-            python: '3.8'
-            tox_env: 'py38-test-astropy4-cov'
-            experimental: false
+          # # Basic tests on the oldest & newest supported versions of Python,
+          # # recording coverage data for the latter.
+          # - name: Py3.8 with old Astropy version
+          #   os: ubuntu-latest
+          #   python: '3.8'
+          #   tox_env: 'py38-test-astropy4-cov'
+          #   experimental: false
 
           - name: Linux, Py3.10 with coverage
             os: ubuntu-latest
@@ -176,10 +176,15 @@ jobs:
       run: |
         pip install pytest-remotedata
         tox -e ${{ matrix.tox_env }} -- --remote-data=any -m slow --run-slow
-    - name: Upload coverage to codecov
+    # The report is not sent to Codecov from here. Pull requests opened from a
+    # fork do not get repository secrets, so CODECOV_TOKEN would be empty and
+    # the upload would be anonymous (and rate limited). The upload is done by
+    # the separate codecov_upload.yml workflow, which picks these artifacts up.
+    - name: Store the coverage report
       if: "endsWith(matrix.tox_env, '-cov')"
-      uses: codecov/codecov-action@v3
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      uses: actions/upload-artifact@v4
       with:
-        file: ./coverage.xml
+        name: coverage-${{ matrix.tox_env }}-${{ matrix.os }}${{ matrix.slow && '-slow' || '' }}
+        path: ./coverage.xml
+        if-no-files-found: error
+        retention-days: 1

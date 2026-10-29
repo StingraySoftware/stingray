@@ -38,7 +38,7 @@ __all__ = [
     "generate_indices_of_segment_boundaries_unbinned",
     "generate_indices_of_segment_boundaries_binned",
     "split_gtis_by_exposure",
-    "split_gtis_at_index",
+    "split_gtis_at_indices",
     "find_large_bad_time_intervals",
 ]
 
@@ -833,6 +833,7 @@ def get_btis(gtis, start_time=None, stop_time=None):
             raise ValueError("Empty GTI and no valid start_time " "and stop_time. BAD!")
 
         return np.asanyarray([[start_time, stop_time]])
+    gtis = np.asanyarray(gtis)
     check_gtis(gtis)
 
     start_time = assign_value_if_none(start_time, gtis[0][0])

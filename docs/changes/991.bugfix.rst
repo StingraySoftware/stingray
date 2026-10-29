@@ -1,0 +1,1 @@
+Fixed ``from stingray.gti import *`` failing because ``__all__`` listed a misspelled function name, and ``get_btis`` now accepts GTIs given as a plain list.

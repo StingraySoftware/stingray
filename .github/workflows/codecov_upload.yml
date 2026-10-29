@@ -1,0 +1,98 @@
+name: Upload coverage to Codecov
+
+# Why this is a separate workflow.
+#
+# The CI Tests workflow runs on pull_request. For a pull request opened from a
+# fork, GitHub deliberately withholds repository secrets, so
+# ${{ secrets.CODECOV_TOKEN }} expands to an empty string there and the upload
+# to Codecov goes out anonymously. Anonymous uploads are rate limited, and once
+# the limit is hit Codecov answers with HTTP 429 and the report is dropped,
+# which is what made coverage show up as 0% on pull requests.
+#
+# A workflow_run trigger fires after CI Tests has finished and runs in the
+# context of *this* repository instead of the fork, so the token is available.
+# This workflow only downloads the coverage reports that CI Tests stored as
+# artifacts and hands them to Codecov. It never checks out or executes any code
+# from the pull request, so having the token here is safe.
+#
+# Note that GitHub only ever runs the copy of this file that is on the default
+# branch, so changes to it take effect once they are merged, not while they are
+# still being reviewed in a pull request.
+
+on:
+  workflow_run:
+    workflows: ["CI Tests"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  upload:
+    name: Upload coverage reports
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion != 'cancelled'
+    steps:
+    - name: Check out the tested revision
+      # Codecov matches the paths in the reports against the files of this
+      # commit. Nothing from it is executed.
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.workflow_run.head_sha }}
+        persist-credentials: false
+
+    - name: Download the coverage reports of the test run
+      # A run that was skipped or that failed before any test finished leaves no
+      # artifacts behind. That is not an error, so do not fail the job here.
+      continue-on-error: true
+      uses: actions/download-artifact@v4
+      with:
+        run-id: ${{ github.event.workflow_run.id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        pattern: coverage-*
+        path: coverage-reports
+
+    - name: Gather the reports into a single list
+      id: reports
+      run: |
+        files=$(find coverage-reports -name coverage.xml | sort | paste -sd, -)
+        if [ -z "$files" ]; then
+          echo "The test run stored no coverage report; nothing to upload."
+          echo "found=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "Uploading $(echo "$files" | tr ',' '\n' | wc -l | tr -d ' ') report(s):"
+          echo "$files" | tr ',' '\n'
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Find the pull request the reports belong to
+      id: pr
+      if: steps.reports.outputs.found == 'true'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        REPO: ${{ github.repository }}
+        HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      run: |
+        # workflow_run does not report the pull request number when the run was
+        # started from a fork, so ask GitHub which pull request owns the commit.
+        # Pushes to main belong to no pull request, and an empty value is fine.
+        number=$(gh api "repos/$REPO/commits/$HEAD_SHA/pulls" \
+                   --jq 'map(select(.state == "open")) | first | .number // empty')
+        echo "Pull request: ${number:-none}"
+        echo "number=$number" >> "$GITHUB_OUTPUT"
+
+    - name: Upload to Codecov
+      if: steps.reports.outputs.found == 'true'
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ${{ steps.reports.outputs.files }}
+        # Taken from the test run, since this workflow runs on a different event
+        # and would otherwise report the default branch.
+        override_commit: ${{ github.event.workflow_run.head_sha }}
+        override_branch: ${{ github.event.workflow_run.head_branch }}
+        override_pr: ${{ steps.pr.outputs.number }}
+        # A silent failure here is what hid the problem for so long.
+        fail_ci_if_error: true
