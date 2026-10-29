@@ -836,8 +836,8 @@ def classical_pvalue(power, nspec):
     References
     ----------
 
-    * .. [Leahy 1983] https://ui.adsabs.harvard.edu/#abs/1983ApJ...266..160L/abstract
-    * .. [Groth 1975] https://ui.adsabs.harvard.edu/#abs/1975ApJS...29..285G/abstract
+    * .. [Leahy 1983] https://scixplorer.org/abs/1983ApJ...266..160L/abstract
+    * .. [Groth 1975] https://scixplorer.org/abs/1975ApJS...29..285G/abstract
 
     """
 

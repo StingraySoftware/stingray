@@ -416,8 +416,8 @@ def cospectra_pvalue(power, nspec):
     References
     ----------
 
-    * .. [Leahy 1983] https://ui.adsabs.harvard.edu/#abs/1983ApJ...266..160L/abstract
-    * .. [Huppenkothen 2017] https://ui.adsabs.harvard.edu/abs/2018ApJS..236...13H
+    * .. [Leahy 1983] https://scixplorer.org/abs/1983ApJ...266..160L/abstract
+    * .. [Huppenkothen 2017] https://scixplorer.org/abs/2018ApJS..236...13H
 
     """
     if not np.all(np.isfinite(power)):
