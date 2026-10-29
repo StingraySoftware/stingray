@@ -1,0 +1,12 @@
+- Forty-seven public functions and classes that were missing from their modules'
+  ``__all__`` are now listed there, so ``automodule`` gives each of them a documentation
+  page and cross-references to them resolve. Six classes that had no documentation at
+  all -- ``DeadtimeFilterOutput``, ``EventReadOutput``, ``FITSTimeseriesReader`` and the
+  three exceptions in ``stingray.modeling.posterior`` -- now have docstrings.
+- Broken cross-references in the reStructuredText documentation are fixed. Sphinx is
+  configured with ``default_role = 'obj'``, so every single-backtick span is an attempted
+  Python object reference: the spans that were never meant to be links are now literals,
+  and the ones that were meant to be links now carry the role and the module path they
+  need. Two of them render as links for the first time. Such a failure is silent, so
+  these were found by building with Sphinx's ``-n`` flag, which reports every reference
+  that does not resolve.
