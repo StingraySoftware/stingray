@@ -49,8 +49,9 @@ def get_kernel(kernel_type, kernel_params):
     ----------
     kernel_type: string
         The type of kernel to be used for the Gaussian Process
-        To be selected from the kernels already implemented:
-        ["RN", "QPO", "QPO_plus_RN"]
+        To be selected from the kernels already implemented::
+
+            ["RN", "QPO", "QPO_plus_RN"]
 
     kernel_params: dict
         Dictionary containing the parameters for the kernel
@@ -98,9 +99,10 @@ def get_mean(mean_type, mean_params):
     ----------
     mean_type: string
         The type of mean to be used for the Gaussian Process
-        To be selected from the mean functions already implemented:
-        ["gaussian", "exponential", "constant", "skew_gaussian",
-         "skew_exponential", "fred"]
+        To be selected from the mean functions already implemented::
+
+            ["gaussian", "exponential", "constant", "skew_gaussian",
+             "skew_exponential", "fred"]
 
     mean_params: dict
         Dictionary containing the parameters for the mean
@@ -112,11 +114,13 @@ def get_mean(mean_type, mean_params):
 
     Examples
     --------
-    Unimodal Gaussian Mean Function:
+    Unimodal Gaussian Mean Function::
+
         mean_params = {"A": 3.0, "t0": 0.2,  "sig": 0.1}
         mean = get_mean("gaussian", mean_params)
 
-    Multimodal Skew Gaussian Mean Function:
+    Multimodal Skew Gaussian Mean Function::
+
         mean_params = {"A": jnp.array([3.0, 4.0]), "t0": jnp.array([0.2, 1]),
                       "sig1": jnp.array([0.1, 0.4]), "sig2": jnp.array([0.4, 0.1])}
         mean = get_mean("skew_gaussian", mean_params)
@@ -353,11 +357,11 @@ def _get_kernel_params(kernel_type):
     ----------
     kernel_type: string
         The type of kernel to be used for the Gaussian Process model
-        The parameters in log scale have a prefix of "log_"
+        The parameters in log scale have a prefix of ``log_``
 
     Returns
     -------
-        A list of the parameters for the kernel for the GP model
+    A list of the parameters for the kernel for the GP model
     """
     if kernel_type == "RN":
         return ["log_arn", "log_crn"]
@@ -377,11 +381,11 @@ def _get_mean_params(mean_type):
     ----------
     mean_type: string
         The type of mean to be used for the Gaussian Process model
-        The parameters in log scale have a prefix of "log_"
+        The parameters in log scale have a prefix of ``log_``
 
     Returns
     -------
-        A list of the parameters for the mean for the GP model
+    A list of the parameters for the mean for the GP model
     """
     if (mean_type == "gaussian") or (mean_type == "exponential"):
         return ["log_A", "t0", "log_sig"]
@@ -403,17 +407,19 @@ def get_gp_params(kernel_type, mean_type):
     Parameters
     ----------
     kernel_type: string
-        The type of kernel to be used for the Gaussian Process model:
-        ["RN", "QPO", "QPO_plus_RN"]
+        The type of kernel to be used for the Gaussian Process model::
+
+            ["RN", "QPO", "QPO_plus_RN"]
 
     mean_type: string
-        The type of mean to be used for the Gaussian Process model:
-        ["gaussian", "exponential", "constant", "skew_gaussian",
-         "skew_exponential", "fred"]
+        The type of mean to be used for the Gaussian Process model::
+
+            ["gaussian", "exponential", "constant", "skew_gaussian",
+             "skew_exponential", "fred"]
 
     Returns
     -------
-        A list of the parameters for the GP model
+    A list of the parameters for the GP model
 
     Examples
     --------
@@ -444,33 +450,34 @@ def get_prior(params_list, prior_dict):
         or special priors from jaxns.
         **Note**: If jaxns priors are used, then the name given to them should be the same as
         the corresponding name in the params_list.
-        Also, if a parameter is to be used in the log scale, it should have a prefix of "log_"
+        Also, if a parameter is to be used in the log scale, it should have a prefix of ``log_``
 
     Returns
     -------
     The Prior generator function.
     The arguments of the prior function are in the order of
-        Kernel arguments (RN arguments, QPO arguments),
-        Mean arguments
-        Miscellaneous arguments
+
+    * Kernel arguments (RN arguments, QPO arguments),
+    * Mean arguments
+    * Miscellaneous arguments
 
     Examples
     --------
-    A prior function for a Red Noise kernel and a Gaussian mean function
+    A prior function for a Red Noise kernel and a Gaussian mean function::
 
-    # Obtain the parameters list
-    params_list = get_gp_params("RN", "gaussian")
+        # Obtain the parameters list
+        params_list = get_gp_params("RN", "gaussian")
 
-    # Make a prior dictionary using tensorflow_probability distributions
-    prior_dict = {
-       "log_A": tfpd.Uniform(low = jnp.log(1e-1), high = jnp.log(2e+2)),
-       "t0": tfpd.Uniform(low = 0.0 - 0.1, high = 1 + 0.1),
-       "log_sig": tfpd.Uniform(low = jnp.log(0.5 * 1 / 20), high = jnp.log(2) ),
-       "log_arn": tfpd.Uniform(low = jnp.log(0.1) , high = jnp.log(2) ),
-       "log_crn": tfpd.Uniform(low = jnp.log(1 /5), high = jnp.log(20)),
-    }
+        # Make a prior dictionary using tensorflow_probability distributions
+        prior_dict = {
+           "log_A": tfpd.Uniform(low = jnp.log(1e-1), high = jnp.log(2e+2)),
+           "t0": tfpd.Uniform(low = 0.0 - 0.1, high = 1 + 0.1),
+           "log_sig": tfpd.Uniform(low = jnp.log(0.5 * 1 / 20), high = jnp.log(2) ),
+           "log_arn": tfpd.Uniform(low = jnp.log(0.1) , high = jnp.log(2) ),
+           "log_crn": tfpd.Uniform(low = jnp.log(1 /5), high = jnp.log(20)),
+        }
 
-    prior_model = get_prior(params_list, prior_dict)
+        prior_model = get_prior(params_list, prior_dict)
 
     """
     if not jax_avail:
@@ -504,7 +511,7 @@ def get_log_likelihood(params_list, kernel_type, mean_type, times, counts, **kwa
     parameters in the order of the parameters list, and calculates the
     log likelihood of the data given the parameters, and the model
     (kernel, mean) of the GP model. **Note** Any parameters with a prefix
-    of "log_" are taken to be in the log scale.
+    of ``log_`` are taken to be in the log scale.
 
     Parameters
     ----------
@@ -515,13 +522,15 @@ def get_log_likelihood(params_list, kernel_type, mean_type, times, counts, **kwa
         A dictionary of the priors of parameters to be used.
 
     kernel_type:
-        The type of kernel to be used in the model:
-        ["RN", "QPO", "QPO_plus_RN"]
+        The type of kernel to be used in the model::
+
+            ["RN", "QPO", "QPO_plus_RN"]
 
     mean_type:
-        The type of mean to be used in the model:
-        ["gaussian", "exponential", "constant", "skew_gaussian",
-         "skew_exponential", "fred"]
+        The type of mean to be used in the model::
+
+            ["gaussian", "exponential", "constant", "skew_gaussian",
+             "skew_exponential", "fred"]
 
     times: np.array or jnp.array
         The time array of the lightcurve

@@ -209,7 +209,8 @@ def get_deadtime_mask(
         event list.
     additional_output : object
         Object with all the following attributes. Only returned if
-        `return_all` is True
+        ``return_all`` is True
+
         uf_events : array-like
             Unfiltered event list (events + background)
         is_event : array-like

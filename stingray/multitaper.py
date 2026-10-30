@@ -116,6 +116,7 @@ class Multitaper(Powerspectrum):
     jk_var_deg_freedom: numpy.ndarray
         Array differs depending on whether
         the jackknife was used. It is either
+
         * The jackknife estimated variance of the log-psd, OR
         * The degrees of freedom in a chi2 model of how the estimated
           PSD is distributed about the true log-PSD (this is either
