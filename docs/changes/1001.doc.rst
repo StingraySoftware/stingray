@@ -10,3 +10,14 @@
   need. Two of them render as links for the first time. Such a failure is silent, so
   these were found by building with Sphinx's ``-n`` flag, which reports every reference
   that does not resolve.
+- Fourteen classes that had a docstring but no entry in ``api.rst`` now have one, so
+  they appear in the documentation at all: ``DeadtimeFilterOutput``, ``Window1D``,
+  ``Optimal1D``, ``Multitaper``, ``TransferFunction``, ``GPResult``, ``StingrayWarning``,
+  the three exceptions in ``stingray.modeling.posterior``, and ``RmsSpectrum``,
+  ``LagSpectrum``, ``CovarianceSpectrum`` and ``ComplexCovarianceSpectrum``. Four whole
+  modules were missing rather than one class each, so ``stingray.filters``,
+  ``stingray.multitaper``, ``stingray.simulator.transfer`` and
+  ``stingray.modeling.gpmodeling`` are now documented along with the public functions
+  they contain.
+- Thirteen reStructuredText errors in docstrings that had never been rendered are fixed,
+  in ``stingray.filters``, ``stingray.multitaper`` and ``stingray.modeling.gpmodeling``.

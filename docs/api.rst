@@ -136,6 +136,15 @@ Dynamical Powerspectrum
 
 ----
 
+Multitaper
+----------
+
+.. autoclass:: stingray.multitaper.Multitaper
+   :members:
+   :inherited-members:
+
+----
+
 CrossCorrelation
 ----------------
 
@@ -290,6 +299,42 @@ CountSpectrum
 
 ----
 
+RmsSpectrum
+-----------
+
+.. autoclass:: stingray.varenergyspectrum.RmsSpectrum
+   :members:
+   :inherited-members:
+
+----
+
+LagSpectrum
+-----------
+
+.. autoclass:: stingray.varenergyspectrum.LagSpectrum
+   :members:
+   :inherited-members:
+
+----
+
+CovarianceSpectrum
+------------------
+
+.. autoclass:: stingray.varenergyspectrum.CovarianceSpectrum
+   :members:
+   :inherited-members:
+
+----
+
+ComplexCovarianceSpectrum
+-------------------------
+
+.. autoclass:: stingray.varenergyspectrum.ComplexCovarianceSpectrum
+   :members:
+   :inherited-members:
+
+----
+
 Utilities
 =========
 
@@ -315,6 +360,12 @@ GTI Functionality
 .. automodule:: stingray.gti
    :members:
    :imported-members:
+
+Filter Functionality
+--------------------
+
+.. automodule:: stingray.filters
+   :members:
 
 I/O Functionality
 -----------------
@@ -465,6 +516,14 @@ help users set priors in their :class:`stingray.modeling.Posterior` subclass obj
 
 ----
 
+Gaussian Process Modeling
+-------------------------
+
+.. automodule:: stingray.modeling.gpmodeling
+   :members:
+
+----
+
 Pulsar
 ======
 
@@ -487,6 +546,9 @@ of stochastic processes.
    :members:
    :undoc-members:
 
+.. automodule:: stingray.simulator.transfer
+   :members:
+
 Exceptions
 ==========
 
@@ -495,3 +557,15 @@ Some basic Stingray-related errors and exceptions.
 .. autoclass:: stingray.exceptions.StingrayError
    :members:
    :undoc-members:
+
+.. autoclass:: stingray.exceptions.StingrayWarning
+   :members:
+
+.. autoclass:: stingray.modeling.posterior.PriorUndefinedError
+   :members:
+
+.. autoclass:: stingray.modeling.posterior.LikelihoodUndefinedError
+   :members:
+
+.. autoclass:: stingray.modeling.posterior.IncorrectParameterError
+   :members:
