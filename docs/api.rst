@@ -127,6 +127,15 @@ AveragedPowerspectrum
 
 ----
 
+Dynamical Crossspectrum
+-----------------------
+
+.. autoclass:: stingray.DynamicalCrossspectrum
+   :members:
+   :inherited-members:
+
+----
+
 Dynamical Powerspectrum
 -----------------------
 
@@ -136,10 +145,37 @@ Dynamical Powerspectrum
 
 ----
 
+GtiCorrPowerspectrum
+--------------------
+
+.. autoclass:: stingray.GtiCorrPowerspectrum
+   :members:
+   :inherited-members:
+
+----
+
 Multitaper
 ----------
 
 .. autoclass:: stingray.multitaper.Multitaper
+   :members:
+   :inherited-members:
+
+----
+
+Lomb-Scargle Crossspectrum
+--------------------------
+
+.. autoclass:: stingray.LombScargleCrossspectrum
+   :members:
+   :inherited-members:
+
+----
+
+Lomb-Scargle Powerspectrum
+--------------------------
+
+.. autoclass:: stingray.LombScarglePowerspectrum
    :members:
    :inherited-members:
 
