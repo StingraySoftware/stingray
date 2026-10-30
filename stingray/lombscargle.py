@@ -129,8 +129,8 @@ class LombScargleCrossspectrum(Crossspectrum):
         The frequency resolution of the final periodogram.
 
     method : str
-        The method to be used by the Lomb-Scargle Fourier Transformation function. `fast`
-        and `slow` are the allowed values. Default is `fast`. fast uses the optimized Press
+        The method to be used by the Lomb-Scargle Fourier Transformation function. ``fast``
+        and ``slow`` are the allowed values. Default is ``fast``. fast uses the optimized Press
         and Rybicki O(n*log(n))
 
     oversampling : float, optional, default: 5
@@ -556,8 +556,8 @@ class LombScarglePowerspectrum(LombScargleCrossspectrum):
         The time resolution of the light curve. Only needed where ``data`` is a :class`stingray.Eventlist` object
 
     method : str
-        The method to be used by the Lomb-Scargle Fourier Transformation function. `fast`
-        and `slow` are the allowed values. Default is `fast`. fast uses the optimized Press
+        The method to be used by the Lomb-Scargle Fourier Transformation function. ``fast``
+        and ``slow`` are the allowed values. Default is ``fast``. fast uses the optimized Press
         and Rybicki O(n*log(n))
 
     oversampling : float, optional, default: 5
@@ -686,7 +686,7 @@ def lscrossspectrum_from_lightcurve(
 
     method : str, default "fast"
         The method to be used by the Lomb-Scargle Fourier Transformation function.
-        `fast` and `slow` are the allowed values. Default is `fast`. fast uses the
+        ``fast`` and ``slow`` are the allowed values. Default is ``fast``. fast uses the
         optimized Press and Rybicki O(n*log(n)) algorithm, while slow uses the original
         O(n^2) algorithm.
 
@@ -783,8 +783,8 @@ def _ls_cross(
         If True, return the whole array of frequencies, or only positive frequencies (False).
 
     method : str
-        The method to be used by the Lomb-Scargle Fourier Transformation function. `fast`
-        and `slow` are the allowed values. Default is `fast`. fast uses the optimized Press
+        The method to be used by the Lomb-Scargle Fourier Transformation function. ``fast``
+        and ``slow`` are the allowed values. Default is ``fast``. fast uses the optimized Press
         and Rybicki O(n*log(n))
 
     Returns

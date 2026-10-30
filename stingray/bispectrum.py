@@ -2334,7 +2334,7 @@ class DynamicalCrossBispectrum(AveragedCrossBispectrum):
 
         Returns the array of frequency indices (into ``freq``) of the maximum
         diagonal bicoherence between ``min_freq`` and ``max_freq`` per bin -- the
-        bicoherence analogue of :meth:`DynamicalCrossspectrum.trace_maximum`.
+        bicoherence analogue of :meth:`~stingray.DynamicalCrossspectrum.trace_maximum`.
         """
         if min_freq is None:
             min_freq = np.min(self.freq)
