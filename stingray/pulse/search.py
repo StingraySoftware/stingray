@@ -557,8 +557,8 @@ def phaseogram(
 
     pepoch : float
         If the input pulse solution is referred to a given time, give it here.
-        It has no effect (just a phase shift of the pulse) if `fdot` is zero.
-        if `mjdref` is specified, pepoch MUST be in MJD
+        It has no effect (just a phase shift of the pulse) if ``fdot`` is zero.
+        if ``mjdref`` is specified, pepoch MUST be in MJD
 
     weights : array
         Weight for each time
@@ -582,7 +582,7 @@ def phaseogram(
 
     additional_info : dict
         Additional information, like the pulse profile and the axes to modify
-        the plot (the latter, only if `return_plot` is True)
+        the plot (the latter, only if ``return_plot`` is True)
     """
 
     use_mjdref = False

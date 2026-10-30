@@ -40,6 +40,13 @@ __all__ = [
     "split_gtis_by_exposure",
     "split_gtis_at_indices",
     "find_large_bad_time_intervals",
+    "gti_len",
+    "hdu_contains_gti",
+    "join_equal_gti_boundaries",
+    "merge_gtis",
+    "calculate_segment_bin_start",
+    "generate_indices_of_boundaries",
+    "eliminate_short_gtis",
 ]
 
 logger = setup_logger()
@@ -64,7 +71,7 @@ def get_gti_lengths(gti):
 
     Returns
     -------
-    lengths : `np.ndarray`
+    lengths : ``np.ndarray``
         List of GTI lengths.
 
     Examples
@@ -141,7 +148,7 @@ def get_gti_extensions_from_pattern(lchdulist, name_pattern="GTI"):
 
     Parameters
     ----------
-    lchdulist: `:class:astropy.io.fits.HDUList` object
+    lchdulist: :class:`~astropy.io.fits.HDUList` object
         The full content of a FITS file.
     name_pattern: str
         Pattern indicating all the GTI extensions.
@@ -202,7 +209,7 @@ def get_gti_from_hdu(gtihdu):
 
     Parameters
     ----------
-    gtihdu: `:class:astropy.io.fits.TableHDU` object
+    gtihdu: :class:`~astropy.io.fits.TableHDU` object
         The GTI HDU.
 
     Returns
@@ -243,7 +250,7 @@ def get_gti_from_all_extensions(lchdulist, accepted_gtistrings=["GTI"], det_numb
 
     Parameters
     ----------
-    lchdulist: `:class:astropy.io.fits.HDUList` object
+    lchdulist: :class:`~astropy.io.fits.HDUList` object
         The full content of a FITS file.
     accepted_gtistrings: list of str
         Base strings of GTI extensions. For missions adding the detector number
@@ -1229,7 +1236,7 @@ def time_intervals_from_gtis(gtis, segment_size, fraction_step=1, epsilon=1e-5):
 def calculate_segment_bin_start(startbin, stopbin, nbin, fraction_step=1):
     """Get the starting indices of intervals of equal length.
 
-    A bit like `np.arange`, but checks that the last number is
+    A bit like ``np.arange``, but checks that the last number is
     at least ``nbin`` less than ``stopbin``. Useful when getting
     starting intervals of equal chunks of a binned light curve.
 
@@ -1532,7 +1539,7 @@ def generate_indices_of_gti_boundaries(times, gti, dt=0):
 
     Parameters
     ----------
-    times : float `np.array`
+    times : float ``np.array``
         Array of times.
     gti : [[gti00, gti01], [gti10, gti11], ...]
         Good time intervals.
@@ -1552,7 +1559,7 @@ def generate_indices_of_gti_boundaries(times, gti, dt=0):
         Start index of the current GTI in the time array.
     stopidx: int
         End index of the current GTI in the time array. Note that this is
-        larger by one, so that `time[startidx:stopidx]` returns the correct
+        larger by one, so that ``time[startidx:stopidx]`` returns the correct
         time interval.
 
     Examples
@@ -1581,7 +1588,7 @@ def generate_indices_of_segment_boundaries_unbinned(times, gti, segment_size, ch
 
     Parameters
     ----------
-    times : float `np.array`
+    times : float ``np.array``
         Array of times.
     gti : [[gti00, gti01], [gti10, gti11], ...]
         Good time intervals.
@@ -1603,7 +1610,7 @@ def generate_indices_of_segment_boundaries_unbinned(times, gti, segment_size, ch
         Start index of the current segment in the time array.
     stopidx: int
         End index of the current segment in the time array. Note that this is
-        larger by one, so that `time[startidx:stopidx]` returns the correct
+        larger by one, so that ``time[startidx:stopidx]`` returns the correct
         time interval.
 
     Examples
@@ -1657,7 +1664,7 @@ def generate_indices_of_segment_boundaries_binned(times, gti, segment_size, dt=N
 
     Parameters
     ----------
-    times : float `np.array`
+    times : float ``np.array``
         Array of times, uniformly sampled
     gti : [[gti00, gti01], [gti10, gti11], ...]
         good time intervals
@@ -1674,7 +1681,7 @@ def generate_indices_of_segment_boundaries_binned(times, gti, segment_size, dt=N
         Start index of the current segment in the time array
     stopidx: int
         End index of the current segment in the time array. Note that this is
-        larger by one, so that `time[startidx:stopidx]` returns the correct
+        larger by one, so that ``time[startidx:stopidx]`` returns the correct
         time interval.
 
     Examples

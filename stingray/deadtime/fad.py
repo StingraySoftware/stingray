@@ -50,9 +50,9 @@ def FAD(
 
     Parameters
     ----------
-    data1 : `Lightcurve` or `EventList`
+    data1 : :class:`~stingray.Lightcurve` or :class:`~stingray.events.EventList`
         Input data for channel 1
-    data2 : `Lightcurve` or `EventList`
+    data2 : :class:`~stingray.Lightcurve` or :class:`~stingray.events.EventList`
         Input data for channel 2. Must be strictly simultaneous to ``data1``
         and, if a light curve, have the same binning time. Also, it must be
         strictly independent, e.g. from a different detector. There must be
@@ -74,7 +74,7 @@ def FAD(
     plot : bool, default False
         Plot diagnostics: check if the smoothed Fourier difference scatter is
         a good approximation of the data scatter.
-    ax : :class:`matplotlib.axes.axes` object
+    ax : :class:`~matplotlib.axes.Axes` object
         If not None and ``plot`` is True, use this axis object to produce
          the diagnostic plot. Otherwise, create a new figure.
     smoothing_alg : {'gauss', ...}
@@ -106,7 +106,7 @@ def FAD(
         The content of ``results`` depends on whether ``return_objects`` is
         True or False.
         If ``return_objects==False``,
-        ``results`` is a `Table` with the following columns:
+        ``results`` is a :class:`~astropy.table.Table` with the following columns:
 
         + pds1: the corrected PDS of ``lc1``
         + pds2: the corrected PDS of ``lc2``
@@ -115,8 +115,8 @@ def FAD(
 
         If ``return_objects`` is True, ``results`` is a ``dict``, with keys
         named like the columns
-        listed above but with `AveragePowerspectrum` or
-        `AverageCrossspectrum` objects instead of arrays.
+        listed above but with :class:`~stingray.AveragedPowerspectrum` or
+        :class:`~stingray.AveragedCrossspectrum` objects instead of arrays.
 
     """
     gti = cross_two_gtis(data1.gti, data2.gti)
@@ -348,7 +348,7 @@ def calculate_FAD_correction(
     plot : bool, default False
         Plot diagnostics: check if the smoothed Fourier difference scatter is
         a good approximation of the data scatter.
-    ax : :class:`matplotlib.axes.axes` object
+    ax : :class:`~matplotlib.axes.Axes` object
         If not None and ``plot`` is True, use this axis object to produce
          the diagnostic plot. Otherwise, create a new figure.
     smoothing_alg : {'gauss', ...}
@@ -380,7 +380,7 @@ def calculate_FAD_correction(
         The content of ``results`` depends on whether ``return_objects`` is
         True or False.
         If ``return_objects==False``,
-        ``results`` is a `Table` with the following columns:
+        ``results`` is a :class:`~astropy.table.Table` with the following columns:
 
         + pds1: the corrected PDS of ``lc1``
         + pds2: the corrected PDS of ``lc2``
@@ -389,8 +389,8 @@ def calculate_FAD_correction(
 
         If ``return_objects`` is True, ``results`` is a ``dict``, with keys
         named like the columns
-        listed above but with `AveragePowerspectrum` or
-        `AverageCrossspectrum` objects instead of arrays.
+        listed above but with :class:`~stingray.AveragedPowerspectrum` or
+        :class:`~stingray.AveragedCrossspectrum` objects instead of arrays.
 
     """
     return FAD(
@@ -425,7 +425,7 @@ def get_periodograms_from_FAD_results(FAD_results, kind="ptot"):
 
     Returns
     -------
-    results : `AveragedCrossspectrum` or `Averagedpowerspectrum` object
+    results : :class:`~stingray.AveragedCrossspectrum` or :class:`~stingray.AveragedPowerspectrum` object
         The periodogram.
     """
     if isinstance(FAD_results, str):

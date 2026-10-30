@@ -24,7 +24,11 @@ from .lightcurve import Lightcurve
 from .utils import simon
 
 
-__all__ = ["LombScarglePowerspectrum", "LombScargleCrossspectrum"]
+__all__ = [
+    "LombScarglePowerspectrum",
+    "LombScargleCrossspectrum",
+    "lscrossspectrum_from_lightcurve",
+]
 
 
 def _autofrequency(min_freq=None, max_freq=None, df=None, dt=None, length=None, nyquist_factor=1):
@@ -81,11 +85,9 @@ def _autofrequency(min_freq=None, max_freq=None, df=None, dt=None, length=None, 
 
 
 class LombScargleCrossspectrum(Crossspectrum):
-    main_array_attr = "freq"
-    type = "crossspectrum"
     """
     Make a cross spectrum from an unevenly sampled (binned) light curve.
-    You can also make an empty :class:`LombScargleCrossspectrum` object to populate with your
+    You can also make an empty :class:`~stingray.lombscargle.LombScargleCrossspectrum` object to populate with your
     own Fourier-transformed data (this can sometimes be useful when making
     binned power spectra).
 
@@ -111,7 +113,7 @@ class LombScargleCrossspectrum(Crossspectrum):
     dt: float
         The time resolution of the light curve. Only needed when constructing
         light curves in the case where ``data1``, ``data2`` are
-        :class:`EventList` objects
+        :class:`~stingray.events.EventList` objects
 
     skip_checks: bool
         Skip initial checks, for speed or other reasons (you need to trust your
@@ -127,8 +129,8 @@ class LombScargleCrossspectrum(Crossspectrum):
         The frequency resolution of the final periodogram.
 
     method : str
-        The method to be used by the Lomb-Scargle Fourier Transformation function. `fast`
-        and `slow` are the allowed values. Default is `fast`. fast uses the optimized Press
+        The method to be used by the Lomb-Scargle Fourier Transformation function. ``fast``
+        and ``slow`` are the allowed values. Default is ``fast``. fast uses the optimized Press
         and Rybicki O(n*log(n))
 
     oversampling : float, optional, default: 5
@@ -176,6 +178,9 @@ class LombScargleCrossspectrum(Crossspectrum):
     .. [2] Press W.H. and Rybicki, G.B, "Fast algorithm for spectral analysis
         of unevenly sampled data". ApJ 1:338, p277, 1989
     """
+
+    main_array_attr = "freq"
+    type = "crossspectrum"
 
     def __init__(
         self,
@@ -507,13 +512,12 @@ class LombScargleCrossspectrum(Crossspectrum):
 
 
 class LombScarglePowerspectrum(LombScargleCrossspectrum):
-    type = "powerspectrum"
     """
-    Make a :class:`LombScarglePowerspectrum` (also called periodogram) from a unevenly sampled (binned)
+    Make a :class:`~stingray.lombscargle.LombScarglePowerspectrum` (also called periodogram) from a unevenly sampled (binned)
     light curve. Periodograms can be normalized by either Leahy normalization,
     fractional rms normalization, absolute rms normalization, or not at all.
 
-    You can also make an empty :class:`LombScarglePowerspectrum` object to populate with
+    You can also make an empty :class:`~stingray.lombscargle.LombScarglePowerspectrum` object to populate with
     your own fourier-transformed data (this can sometimes be useful when making
     binned power spectra).
 
@@ -536,7 +540,7 @@ class LombScarglePowerspectrum(LombScargleCrossspectrum):
     dt: float
         The time resolution of the light curve. Only needed when constructing
         light curves in the case where ``data`` is a
-        :class:`EventList` object
+        :class:`~stingray.events.EventList` object
 
     skip_checks: bool
         Skip initial checks, for speed or other reasons (you need to trust your
@@ -552,8 +556,8 @@ class LombScarglePowerspectrum(LombScargleCrossspectrum):
         The time resolution of the light curve. Only needed where ``data`` is a :class`stingray.Eventlist` object
 
     method : str
-        The method to be used by the Lomb-Scargle Fourier Transformation function. `fast`
-        and `slow` are the allowed values. Default is `fast`. fast uses the optimized Press
+        The method to be used by the Lomb-Scargle Fourier Transformation function. ``fast``
+        and ``slow`` are the allowed values. Default is ``fast``. fast uses the optimized Press
         and Rybicki O(n*log(n))
 
     oversampling : float, optional, default: 5
@@ -588,6 +592,8 @@ class LombScarglePowerspectrum(LombScargleCrossspectrum):
     nphots: float
         The total number of photons in the light curve.
     """
+
+    type = "powerspectrum"
 
     def __init__(
         self,
@@ -680,7 +686,7 @@ def lscrossspectrum_from_lightcurve(
 
     method : str, default "fast"
         The method to be used by the Lomb-Scargle Fourier Transformation function.
-        `fast` and `slow` are the allowed values. Default is `fast`. fast uses the
+        ``fast`` and ``slow`` are the allowed values. Default is ``fast``. fast uses the
         optimized Press and Rybicki O(n*log(n)) algorithm, while slow uses the original
         O(n^2) algorithm.
 
@@ -777,8 +783,8 @@ def _ls_cross(
         If True, return the whole array of frequencies, or only positive frequencies (False).
 
     method : str
-        The method to be used by the Lomb-Scargle Fourier Transformation function. `fast`
-        and `slow` are the allowed values. Default is `fast`. fast uses the optimized Press
+        The method to be used by the Lomb-Scargle Fourier Transformation function. ``fast``
+        and ``slow`` are the allowed values. Default is ``fast``. fast uses the optimized Press
         and Rybicki O(n*log(n))
 
     Returns

@@ -51,11 +51,11 @@ class Lightcurve(StingrayTimeseries):
 
     Parameters
     ----------
-    time: Iterable, `:class:astropy.time.Time`, or `:class:astropy.units.Quantity` object
+    time: Iterable, :class:`~astropy.time.Time`, or :class:`~astropy.units.Quantity` object
         A list or array of time stamps for a light curve. Must be a type that
-        can be cast to `:class:np.array` or `:class:List` of floats, or that
-        has a `value` attribute that does (e.g., a
-        `:class:astropy.units.Quantity` or `:class:astropy.time.Time` object).
+        can be cast to ``np.array`` or ``list`` of floats, or that
+        has a ``value`` attribute that does (e.g., a
+        :class:`~astropy.units.Quantity` or :class:`~astropy.time.Time` object).
 
     counts: iterable, optional, default ``None``
         A list or array of the counts in each bin corresponding to the
@@ -88,16 +88,16 @@ class Lightcurve(StingrayTimeseries):
         uncertainties and other statistical values appropriately.
         Default makes no assumptions and keeps errors equal to zero.
 
-    bg_counts: iterable,`:class:numpy.array` or `:class:List` of floats, optional, default ``None``
+    bg_counts: iterable,``numpy.array`` or ``list`` of floats, optional, default ``None``
         A list or array of background counts detected in the background extraction region
         in each bin corresponding to the bins defined in `time`.
 
-    bg_ratio: iterable, `:class:numpy.array` or `:class:List` of floats, optional, default ``None``
+    bg_ratio: iterable, ``numpy.array`` or ``list`` of floats, optional, default ``None``
         A list or array of source region area to background region area ratio in each bin. These are
-        factors by which the `bg_counts` should be scaled to estimate background counts within the
+        factors by which the ``bg_counts`` should be scaled to estimate background counts within the
         source aperture.
 
-    frac_exp: iterable, `:class:numpy.array` or `:class:List` of floats, optional, default ``None``
+    frac_exp: iterable, ``numpy.array`` or ``list`` of floats, optional, default ``None``
         A list or array of fractional exposers in each bin.
 
     mjdref: float
@@ -1163,14 +1163,14 @@ class Lightcurve(StingrayTimeseries):
         For data with gaps, it can sometimes be useful to be able to split
         the light curve into separate, evenly sampled objects along those
         data gaps. This method allows to do this: it finds data gaps of a
-        specified minimum size, and produces a list of new `Lightcurve`
+        specified minimum size, and produces a list of new :class:`~stingray.Lightcurve`
         objects for each contiguous segment.
 
         Parameters
         ----------
         min_gap : float
             The length of a data gap, in the same units as the `time` attribute
-            of the `Lightcurve` object. Any smaller gaps will be ignored, any
+            of the :class:`~stingray.Lightcurve` object. Any smaller gaps will be ignored, any
             larger gaps will be identified and used to split the light curve.
 
         min_points : int, default 1
@@ -1179,7 +1179,7 @@ class Lightcurve(StingrayTimeseries):
 
         Returns
         -------
-        lc_split : iterable of `Lightcurve` objects
+        lc_split : iterable of :class:`~stingray.Lightcurve` objects
             The list of all contiguous light curves
 
         Examples
@@ -1342,7 +1342,7 @@ class Lightcurve(StingrayTimeseries):
         """Analyze segments of the light curve with any function.
 
         .. deprecated:: 2.0
-            Use :meth:`Lightcurve.analyze_segments(func, segment_size)` instead.
+            Use :meth:`~stingray.StingrayTimeseries.analyze_segments` instead.
 
         Parameters
         ----------
@@ -1381,14 +1381,14 @@ class Lightcurve(StingrayTimeseries):
 
     def to_lightkurve(self):
         """
-        Returns a `lightkurve.LightCurve` object.
+        Returns a ``lightkurve.LightCurve`` object.
         This feature requires ``Lightkurve`` to be installed
         (e.g., ``pip install lightkurve``).  An `ImportError` will
         be raised if this package is not available.
 
         Returns
         -------
-        lightcurve : `lightkurve.LightCurve`
+        lightcurve : ``lightkurve.LightCurve``
             A lightkurve LightCurve object.
         """
         try:
@@ -1403,11 +1403,11 @@ class Lightcurve(StingrayTimeseries):
     @staticmethod
     def from_lightkurve(lk, skip_checks=True):
         """
-        Creates a new `Lightcurve` from a `lightkurve.LightCurve`.
+        Creates a new :class:`~stingray.Lightcurve` from a ``lightkurve.LightCurve``.
 
         Parameters
         ----------
-        lk : `lightkurve.LightCurve`
+        lk : ``lightkurve.LightCurve``
             A lightkurve LightCurve object
         skip_checks: bool
             If True, the user specifies that data are already sorted and contain no
@@ -1690,7 +1690,7 @@ class Lightcurve(StingrayTimeseries):
             Path and file name for the file to be read.
 
         fmt: str
-            Available options are 'pickle', 'hea', and any `Table`-supported
+            Available options are 'pickle', 'hea', and any :class:`~astropy.table.Table`-supported
             format such as 'hdf5', 'ascii.ecsv', etc.
 
         Other parameters
@@ -1704,7 +1704,7 @@ class Lightcurve(StingrayTimeseries):
         skip_checks : bool
             See :class:`Lightcurve` documentation
         **fits_kwargs : additional keyword arguments
-            Any other arguments to be passed to `lcurve_from_fits` (only relevant
+            Any other arguments to be passed to :func:`~stingray.io.lcurve_from_fits` (only relevant
             for hea/ogip formats)
 
         Returns
@@ -1754,7 +1754,7 @@ class Lightcurve(StingrayTimeseries):
 
         Returns
         -------
-        lc_bexvar : iterable, `:class:numpy.array` of floats
+        lc_bexvar : iterable, ``numpy.array`` of floats
             An array of posterior samples of Bayesian excess variance (bexvar).
         """
 

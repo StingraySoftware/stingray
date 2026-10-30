@@ -7,7 +7,13 @@ import numpy.random as ra
 from .utils import njit
 from .loggingconfig import setup_logger
 
-__all__ = ["Window1D", "Optimal1D"]
+__all__ = [
+    "Window1D",
+    "Optimal1D",
+    "DeadtimeFilterOutput",
+    "get_deadtime_mask",
+    "filter_for_deadtime",
+]
 
 logger = setup_logger()
 
@@ -154,6 +160,14 @@ def _non_paralyzable_dead_time(event_list, dead_time):
 
 
 class DeadtimeFilterOutput(object):
+    """Container for the extra output of :func:`get_deadtime_mask`.
+
+    All attributes are ``None`` until that function is called with ``return_all=True``,
+    which fills in the unfiltered event list (``uf_events``), a flag separating signal
+    from background events (``is_event``), the ``deadtime`` values, the ``mask`` and the
+    filtered background event list (``bkg``).
+    """
+
     uf_events = None
     is_event = None
     deadtime = None
@@ -195,7 +209,8 @@ def get_deadtime_mask(
         event list.
     additional_output : object
         Object with all the following attributes. Only returned if
-        `return_all` is True
+        ``return_all`` is True
+
         uf_events : array-like
             Unfiltered event list (events + background)
         is_event : array-like
@@ -286,7 +301,7 @@ def filter_for_deadtime(event_list, deadtime, **kwargs):
     This function accepts either a list of times or a
     `stingray.events.EventList` object.
 
-    For the complete optional parameter list, see `get_deadtime_mask`
+    For the complete optional parameter list, see :func:`~stingray.filters.get_deadtime_mask`
 
     Parameters
     ----------
@@ -300,7 +315,7 @@ def filter_for_deadtime(event_list, deadtime, **kwargs):
     new_ev_list : class:`stingray.events.EventList` object
         The filtered event list
     additional_output : dict
-        See `get_deadtime_mask`
+        See :func:`~stingray.filters.get_deadtime_mask`
 
     """
     # Need to import here to avoid circular imports in the top module.

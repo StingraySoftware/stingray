@@ -25,6 +25,12 @@ __all__ = [
     "non_paralyzable_dead_time_model",
     "check_A",
     "check_B",
+    "e_m_x_x_over_factorial",
+    "A0",
+    "A_single_k",
+    "A",
+    "limit_A",
+    "B",
 ]
 
 
@@ -241,13 +247,13 @@ def check_A(rate, td, tb, max_k=100, save_to=None, linthresh=0.000001, rate_is_i
     This function produces a plot of :math:`A_k - r_0^2 t_b^2` vs :math:`k`, to visually check that
     :math:`A_k \rightarrow r_0^2 t_b^2` for :math:`k\rightarrow\infty`, as per Eq. 43 in Zhang+95.
 
-    With this function is possible to determine how many inner loops `k` (`limit_k` in function
+    With this function is possible to determine how many inner loops ``k`` (``limit_k`` in function
     pds_model_zhang) are necessary for a correct approximation of the dead time model
 
     Parameters
     ----------
     rate : float
-        Count rate, either incident or detected (use the `rate_is_incident` bool to specify)
+        Count rate, either incident or detected (use the ``rate_is_incident`` bool to specify)
     td : float
         Dead time
     tb : float
@@ -355,13 +361,13 @@ def check_B(rate, td, tb, max_k=100, save_to=None, linthresh=0.000001, rate_is_i
     This function produces a plot of :math:`B_k` vs :math:`k`, to visually check that
     :math:`B_k \rightarrow 0` for :math:`k\rightarrow\infty`, as per Eq. 43 in Zhang+95.
 
-    With this function is possible to determine how many inner loops `k` (`limit_k` in function
+    With this function is possible to determine how many inner loops ``k`` (``limit_k`` in function
     pds_model_zhang) are necessary for a correct approximation of the dead time model
 
     Parameters
     ----------
     rate : float
-        Count rate, either incident or detected (use the `rate_is_incident` bool to specify)
+        Count rate, either incident or detected (use the ``rate_is_incident`` bool to specify)
     td : float
         Dead time
     tb : float

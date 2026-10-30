@@ -31,7 +31,7 @@ class Simulator(object):
     mean : float, default 0
         mean value of the simulated light curve.
     rms : float, default 1
-        Fractional RMS amplitude of the light curve; actual RMS is `mean * rms`.
+        Fractional RMS amplitude of the light curve; actual RMS is ``mean * rms``.
     err : float, default 0
         the errorbars on the final light curves.
     red_noise : int, default 1
@@ -93,7 +93,7 @@ class Simulator(object):
 
         * x = simulate(s):
            For generating a light curve from user-provided spectrum.
-            **Note**: In this case, the `red_noise` parameter is provided.
+            **Note**: In this case, the ``red_noise`` parameter is provided.
             You can generate a longer light curve by providing a higher
             frequency resolution on the input power spectrum.
 
@@ -151,7 +151,7 @@ class Simulator(object):
 
         Returns
         -------
-        lightCurve : `LightCurve` object
+        lightCurve : ``LightCurve`` object
 
         """
         if isinstance(args[0], (numbers.Integral, float)) and len(args) == 1:
@@ -190,7 +190,7 @@ class Simulator(object):
 
         Returns
         -------
-            lightCurve : `LightCurve` object
+            lightCurve : ``LightCurve`` object
         """
 
         # Check that channel name does not already exist.
@@ -433,7 +433,7 @@ class Simulator(object):
 
         Returns
         -------
-        lightCurve : `LightCurve` object
+        lightCurve : ``LightCurve`` object
         """
         # Cast spectrum as numpy array
         pds_shape = np.zeros(s.size * self.red_noise)
@@ -454,7 +454,7 @@ class Simulator(object):
 
         Returns
         -------
-        lightCurve : :class:`stingray.lightcurve.LightCurve` object
+        lightCurve : :class:`~stingray.Lightcurve` object
         """
         # Frequencies at which the PSD is to be computed
         # (only positive frequencies, since the signal is real)
@@ -479,7 +479,7 @@ class Simulator(object):
 
         Returns
         -------
-        lightCurve : :class:`stingray.lightcurve.LightCurve` object
+        lightCurve : :class:`~stingray.Lightcurve` object
         """
         from . import models
 
@@ -525,7 +525,7 @@ class Simulator(object):
 
         Returns
         -------
-        lightCurve : :class:`stingray.lightcurve.LightCurve` object
+        lightCurve : :class:`~stingray.Lightcurve` object
         """
         lc = signal.fftconvolve(s, h)
 
@@ -607,7 +607,7 @@ class Simulator(object):
         Returns
         -------
         data : class instance
-            `TransferFunction` object
+            :class:`~stingray.simulator.transfer.TransferFunction` object
         """
         if fmt == "pickle":
             with open(filename, "rb") as fobj:

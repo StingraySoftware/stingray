@@ -50,3 +50,12 @@ Infrastructure maintenance:
   it only needs the list of file names that Codecov matches the reports against.
 - The coverage configuration no longer excludes ``_astropy_init``, ``setup_package``
   and ``extern``, none of which exist in the package any more.
+- The ADS links in the documentation, the docstrings and the first JOSS paper's
+  bibliography now point at SciX (``scixplorer.org``), which has replaced the ADS
+  interface. Three of them still used the ``#abs/`` form of the pre-2019 ADS site,
+  whose hash-based router no longer exists. The bibcodes are unchanged, so the
+  targets are the same papers. One of them had never worked as a link: it was missing
+  the space that reStructuredText requires before the URL, so it rendered as literal
+  text instead of a hyperlink. The tutorial notebooks, which live in their own
+  repository, were updated to match, so the two ADS exceptions ``linkcheck`` carried
+  are gone as well -- the built documentation no longer contains a single ADS link.

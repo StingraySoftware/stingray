@@ -1,7 +1,7 @@
 """
-Definition of :class:`EventList`.
+Definition of :class:`~stingray.events.EventList`.
 
-:class:`EventList` is used to handle photon arrival times.
+:class:`~stingray.events.EventList` is used to handle photon arrival times.
 """
 
 import warnings
@@ -20,7 +20,10 @@ from .lightcurve import Lightcurve
 from .utils import simon, njit
 from .utils import histogram
 
-__all__ = ["EventList"]
+__all__ = [
+    "EventList",
+    "simple_events_from_lc",
+]
 
 logger = setup_logger()
 
@@ -54,7 +57,7 @@ def _from_lc_numba(times, counts, empty_times):
 
 def simple_events_from_lc(lc):
     """
-    Create an :class:`EventList` from a :class:`stingray.Lightcurve` object. Note that all
+    Create an :class:`~stingray.events.EventList` from a :class:`stingray.Lightcurve` object. Note that all
     events in a given time bin will have the same time stamp.
 
     Bins with negative counts will be ignored.
@@ -66,7 +69,7 @@ def simple_events_from_lc(lc):
 
     Returns
     -------
-    ev: :class:`EventList` object
+    ev: :class:`~stingray.events.EventList` object
         The resulting list of photon arrival times generated from the light curve.
 
     Examples
@@ -354,7 +357,7 @@ class EventList(StingrayTimeseries):
 
         Returns
         -------
-        lc_gen: `generator`
+        lc_gen: ``generator``
             Generates one :class:`stingray.Lightcurve` object for each GTI or segment
         """
 
@@ -399,7 +402,7 @@ class EventList(StingrayTimeseries):
     @staticmethod
     def from_lc(lc):
         """
-        Create an :class:`EventList` from a :class:`stingray.Lightcurve` object. Note that all
+        Create an :class:`~stingray.events.EventList` from a :class:`stingray.Lightcurve` object. Note that all
         events in a given time bin will have the same time stamp.
 
         Bins with negative counts will be ignored.
@@ -411,7 +414,7 @@ class EventList(StingrayTimeseries):
 
         Returns
         -------
-        ev: :class:`EventList` object
+        ev: :class:`~stingray.events.EventList` object
             The resulting list of photon arrival times generated from the light curve.
         """
         return simple_events_from_lc(lc)
@@ -419,7 +422,7 @@ class EventList(StingrayTimeseries):
     def simulate_times(self, lc, use_spline=False, bin_time=None):
         """Simulate times from an input light curve.
 
-        Randomly simulate photon arrival times to an :class:`EventList` from a
+        Randomly simulate photon arrival times to an :class:`~stingray.events.EventList` from a
         :class:`stingray.Lightcurve` object, using the inverse CDF method.
 
         ..note::
@@ -465,7 +468,7 @@ class EventList(StingrayTimeseries):
             second one. If the dimension of the energies is the same as
             spectrum, they are interpreted as bin centers.
             If it is longer by one, they are interpreted as proper bin edges
-            (similarly to the bins of `np.histogram`).
+            (similarly to the bins of ``np.histogram``).
             Note that for non-uniformly binned spectra, it is advisable to pass
             the exact edges.
         """
@@ -503,7 +506,7 @@ class EventList(StingrayTimeseries):
 
         Returns
         -------
-        eventlist : `EventList`
+        eventlist : :class:`~stingray.events.EventList`
             The sorted event list. If ``inplace=True``, it will be a shallow copy
             of ``self``.
 
@@ -533,15 +536,15 @@ class EventList(StingrayTimeseries):
 
     def join(self, other, strategy="infer"):
         """
-        Join two :class:`EventList` objects into one.
+        Join two :class:`~stingray.events.EventList` objects into one.
 
-        If both are empty, an empty :class:`EventList` is returned.
+        If both are empty, an empty :class:`~stingray.events.EventList` is returned.
 
         GTIs are crossed if the event lists are over a common time interval,
         and appended otherwise.
 
         Standard attributes such as ``pi`` and ``energy`` remain ``None`` if they are ``None``
-        in both. Otherwise, ``np.nan`` is used as a default value for the :class:`EventList` where
+        in both. Otherwise, ``np.nan`` is used as a default value for the :class:`~stingray.events.EventList` where
         they were None. Arbitrary attributes (e.g., Stokes parameters in polarimetric data) are
         created and joined using the same convention.
 
@@ -553,9 +556,9 @@ class EventList(StingrayTimeseries):
 
         Parameters
         ----------
-        other : :class:`EventList` object or class:`list` of :class:`EventList` objects
-            The other :class:`EventList` object which is supposed to be joined with.
-            If ``other`` is a list, it is assumed to be a list of :class:`EventList` objects
+        other : :class:`~stingray.events.EventList` object or class:`list` of :class:`~stingray.events.EventList` objects
+            The other :class:`~stingray.events.EventList` object which is supposed to be joined with.
+            If ``other`` is a list, it is assumed to be a list of :class:`~stingray.events.EventList` objects
             and they are all joined, one by one.
 
         Other parameters
@@ -571,15 +574,15 @@ class EventList(StingrayTimeseries):
 
         Returns
         -------
-        `ev_new` : :class:`EventList` object
-            The resulting :class:`EventList` object.
+        `ev_new` : :class:`~stingray.events.EventList` object
+            The resulting :class:`~stingray.events.EventList` object.
         """
 
         return self._join_timeseries(other, strategy=strategy, ignore_meta=["header", "ncounts"])
 
     @classmethod
     def read(cls, filename, fmt=None, rmf_file=None, **kwargs):
-        r"""Read a :class:`EventList` object from file.
+        r"""Read a :class:`~stingray.events.EventList` object from file.
 
         Currently supported formats are
 
@@ -603,7 +606,7 @@ class EventList(StingrayTimeseries):
             Path and file name for the file to be read.
 
         fmt: str
-            Available options are 'pickle', 'hea', and any `Table`-supported
+            Available options are 'pickle', 'hea', and any :class:`~astropy.table.Table`-supported
             format such as 'hdf5', 'ascii.ecsv', etc.
 
         Other parameters
@@ -619,8 +622,8 @@ class EventList(StingrayTimeseries):
 
         Returns
         -------
-        ev: :class:`EventList` object
-            The :class:`EventList` object reconstructed from file
+        ev: :class:`~stingray.events.EventList` object
+            The :class:`~stingray.events.EventList` object reconstructed from file
         """
         if fmt is None:
             for fits_ext in ["fits", "evt"]:
@@ -733,7 +736,7 @@ class EventList(StingrayTimeseries):
     def apply_deadtime(self, deadtime, inplace=False, **kwargs):
         """Apply deadtime filter to this event list.
 
-        Additional arguments in ``kwargs`` are passed to `get_deadtime_mask`
+        Additional arguments in ``kwargs`` are passed to :func:`~stingray.filters.get_deadtime_mask`
 
         Parameters
         ----------
@@ -745,11 +748,11 @@ class EventList(StingrayTimeseries):
 
         Returns
         -------
-        new_event_list : `EventList` object
-            Filtered event list. if `inplace` is True, this is the input object
+        new_event_list : :class:`~stingray.events.EventList` object
+            Filtered event list. if ``inplace`` is True, this is the input object
             filtered for deadtime, otherwise this is a new object.
         additional_output : object
-            Only returned if `return_all` is True. See `get_deadtime_mask` for
+            Only returned if ``return_all`` is True. See :func:`~stingray.filters.get_deadtime_mask` for
             more details.
 
         Examples
@@ -885,8 +888,16 @@ class EventList(StingrayTimeseries):
     def filter_detector_id(self, detector_id, inplace=False):
         """Filters the data selecting only a selected detector or a list of detectors.
 
-        Args:
-            detector_id (int, optional): The detector id on which the filtering needs to be applied. It can be a list.
+        Parameters
+        ----------
+        detector_id : int or list of int
+            The detector id, or list of detector ids, to select.
+
+        Other Parameters
+        ----------------
+        inplace : bool, default False
+            Do the change in place (modify current event list). Otherwise, copy
+            to a new event list.
         """
 
         mask = self.get_mask_for_filter_by_detector_id(detector_id)

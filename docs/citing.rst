@@ -42,7 +42,7 @@ If you are using Stingray 2.0 or newer, please cite both of the following papers
              archivePrefix = {arXiv},
              eprint = {1901.07681},
              primaryClass = {astro-ph.IM},
-             adsurl = {https://ui.adsabs.harvard.edu/abs/2019ApJ...881...39H},
+             adsurl = {https://scixplorer.org/abs/2019ApJ...881...39H},
              adsnote = {Provided by the SAO/NASA Astrophysics Data System}
            }`;
            const el = document.createElement('textarea');
@@ -83,7 +83,7 @@ If you are using Stingray 2.0 or newer, please cite both of the following papers
    <ul>
      <li>Huppenkothen et al., 2019. Astrophysical Journal, 881, 39.
          [<a href="https://doi.org/10.3847/1538-4357/ab258d">DOI</a>]
-         [<a href="https://ui.adsabs.harvard.edu/abs/2019ApJ...881...39H">ADS</a>]
+         [<a href="https://scixplorer.org/abs/2019ApJ...881...39H">ADS</a>]
          [<a onclick="copyApjBib()">Copy BibTeX to clipboard</a>]</li>
 
      <li>Bachetti et al., 2024. Journal of Open Source Software, 9(102), 7389.
@@ -130,7 +130,7 @@ Other Useful References
               year = 2016,
               month = aug,
               eid = {ascl:1608.001},
-              adsurl = {https://ui.adsabs.harvard.edu/abs/2016ascl.soft08001H},
+              adsurl = {https://scixplorer.org/abs/2016ascl.soft08001H},
               adsnote = {Provided by the SAO/NASA Astrophysics Data System}
             }
            }`;

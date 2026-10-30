@@ -331,11 +331,11 @@ def rxte_pca_event_file_interpretation(input_data, header=None, hduname=None):
 
     Other parameters
     ----------------
-    header : `fits.Header`, optional
+    header : ``fits.Header``, optional
         Compulsory if ``hdulist`` is not a class:`fits._BaseHDU`, a
-        :class:`fits.HDUList`, or a file name. The header of the relevant extension.
+        :class:`~astropy.io.fits.HDUList`, or a file name. The header of the relevant extension.
     hduname : str, optional
-        Name of the HDU (only relevant if hdulist is a :class:`fits.HDUList`),
+        Name of the HDU (only relevant if hdulist is a :class:`~astropy.io.fits.HDUList`),
         ignored otherwise.
 
     """

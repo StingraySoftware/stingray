@@ -7,7 +7,7 @@ Library of Time Series Methods For Astronomical X-ray Data.
 
 Base Class
 ==========
-Most `stingray`` classes are subclasses of a single class, :class:`stingray.StingrayObject`, which
+Most ``stingray`` classes are subclasses of a single class, :class:`stingray.StingrayObject`, which
 implements most of the I/O functionality and common behavior (e.g. strategies to combine data and
 make operations such as the sum, difference, or negation). This class is not intended to be
 instantiated directly, but rather to be used as a base class for other classes. Any class wanting
@@ -77,8 +77,8 @@ EventList
 Fourier Products
 ================
 
-These classes implement commonly used Fourier analysis products, most importantly :class:`Crossspectrum` and
-:class:`Powerspectrum`, along with the variants for averaged cross/power spectra.
+These classes implement commonly used Fourier analysis products, most importantly :class:`~stingray.Crossspectrum` and
+:class:`~stingray.Powerspectrum`, along with the variants for averaged cross/power spectra.
 
 Crossspectrum
 -------------
@@ -127,10 +127,55 @@ AveragedPowerspectrum
 
 ----
 
+Dynamical Crossspectrum
+-----------------------
+
+.. autoclass:: stingray.DynamicalCrossspectrum
+   :members:
+   :inherited-members:
+
+----
+
 Dynamical Powerspectrum
 -----------------------
 
 .. autoclass:: stingray.DynamicalPowerspectrum
+   :members:
+   :inherited-members:
+
+----
+
+GtiCorrPowerspectrum
+--------------------
+
+.. autoclass:: stingray.GtiCorrPowerspectrum
+   :members:
+   :inherited-members:
+
+----
+
+Multitaper
+----------
+
+.. autoclass:: stingray.multitaper.Multitaper
+   :members:
+   :inherited-members:
+
+----
+
+Lomb-Scargle Crossspectrum
+--------------------------
+
+.. autoclass:: stingray.LombScargleCrossspectrum
+   :members:
+   :inherited-members:
+
+----
+
+Lomb-Scargle Powerspectrum
+--------------------------
+
+.. autoclass:: stingray.LombScarglePowerspectrum
    :members:
    :inherited-members:
 
@@ -170,7 +215,7 @@ Dead-Time Corrections
 Higher-Order Fourier and Spectral Timing Products
 =================================================
 
-These classes implement higher-order Fourier analysis products (e.g. :class:`Bispectrum`) and
+These classes implement higher-order Fourier analysis products (e.g. :class:`~stingray.bispectrum.Bispectrum`) and
 Spectral Timing related methods taking advantage of both temporal and spectral information in
 modern data sets.
 
@@ -290,6 +335,42 @@ CountSpectrum
 
 ----
 
+RmsSpectrum
+-----------
+
+.. autoclass:: stingray.varenergyspectrum.RmsSpectrum
+   :members:
+   :inherited-members:
+
+----
+
+LagSpectrum
+-----------
+
+.. autoclass:: stingray.varenergyspectrum.LagSpectrum
+   :members:
+   :inherited-members:
+
+----
+
+CovarianceSpectrum
+------------------
+
+.. autoclass:: stingray.varenergyspectrum.CovarianceSpectrum
+   :members:
+   :inherited-members:
+
+----
+
+ComplexCovarianceSpectrum
+-------------------------
+
+.. autoclass:: stingray.varenergyspectrum.ComplexCovarianceSpectrum
+   :members:
+   :inherited-members:
+
+----
+
 Utilities
 =========
 
@@ -315,6 +396,12 @@ GTI Functionality
 .. automodule:: stingray.gti
    :members:
    :imported-members:
+
+Filter Functionality
+--------------------
+
+.. automodule:: stingray.filters
+   :members:
 
 I/O Functionality
 -----------------
@@ -465,6 +552,14 @@ help users set priors in their :class:`stingray.modeling.Posterior` subclass obj
 
 ----
 
+Gaussian Process Modeling
+-------------------------
+
+.. automodule:: stingray.modeling.gpmodeling
+   :members:
+
+----
+
 Pulsar
 ======
 
@@ -487,6 +582,9 @@ of stochastic processes.
    :members:
    :undoc-members:
 
+.. automodule:: stingray.simulator.transfer
+   :members:
+
 Exceptions
 ==========
 
@@ -495,3 +593,15 @@ Some basic Stingray-related errors and exceptions.
 .. autoclass:: stingray.exceptions.StingrayError
    :members:
    :undoc-members:
+
+.. autoclass:: stingray.exceptions.StingrayWarning
+   :members:
+
+.. autoclass:: stingray.modeling.posterior.PriorUndefinedError
+   :members:
+
+.. autoclass:: stingray.modeling.posterior.LikelihoodUndefinedError
+   :members:
+
+.. autoclass:: stingray.modeling.posterior.IncorrectParameterError
+   :members:

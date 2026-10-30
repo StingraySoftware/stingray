@@ -94,7 +94,7 @@ Internal Changes
 
 - Bump jinja2 version to 3.1.5 (`#878 <https://github.com/StingraySoftware/stingray/pull/878>`__)
 - Added a test to check ``profile``, when ``fold_events`` method called with ``mode= "pdm"`` after the bug fix #872. (`#880 <https://github.com/StingraySoftware/stingray/pull/880>`__)
-- Suppressed deprecation warnings related to `numpy.core.einsumfunc` as it is causing test failure described in (https://github.com/StingraySoftware/stingray/issues/882) (`#886 <https://github.com/StingraySoftware/stingray/pull/886>`__)
+- Suppressed deprecation warnings related to ``numpy.core.einsumfunc`` as it is causing test failure described in (https://github.com/StingraySoftware/stingray/issues/882) (`#886 <https://github.com/StingraySoftware/stingray/pull/886>`__)
 
 
 v2.2.7 (2025-04-08)
@@ -135,7 +135,7 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
-- The ``fold_events`` function now checks if the keyword arguments (`kwargs`) are in the list of optional parameters.
+- The ``fold_events`` function now checks if the keyword arguments (``kwargs``) are in the list of optional parameters.
   If any unidentified keys are present, it raises a `ValueError`.
   This fix ensures that the function only accepts valid optional parameters and provides a clear error message for unsupported keys. (`#837 <https://github.com/StingraySoftware/stingray/pull/837>`__)
 
@@ -183,7 +183,7 @@ New Features
 - Power colors à la Heil et al. 2015 (`#780 <https://github.com/StingraySoftware/stingray/pull/780>`__)
 - Calculate colors and intensities on a segment-by-segment basis in event lists (`#781 <https://github.com/StingraySoftware/stingray/pull/781>`__)
 - A function to randomize data in small bad time intervals (`#782 <https://github.com/StingraySoftware/stingray/pull/782>`__)
-- The Lomb Scargle Fourier Transform (fast and slow versions) and the corresponding :class:`LombScargleCrossspectrum` and :class:`LombScarglePowerspectrum` (`#737 <https://github.com/StingraySoftware/stingray/pull/737>`__)
+- The Lomb Scargle Fourier Transform (fast and slow versions) and the corresponding :class:`~stingray.LombScargleCrossspectrum` and :class:`~stingray.LombScarglePowerspectrum` (`#737 <https://github.com/StingraySoftware/stingray/pull/737>`__)
 - A JAX implementation of the Gaussian Process tool by `Hubener et al <https://arxiv.org/abs/2205.12716>`_
   for QPO detection and parameter analysis. (`#739 <https://github.com/StingraySoftware/stingray/pull/739>`__)
 - Extend join operation for events to arbitrary array attributes, not just pi and energy (`#742 <https://github.com/StingraySoftware/stingray/pull/742>`__)
@@ -194,8 +194,8 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
-- When rms is low, the calculation in compute_rms often gave `NaN`. We now check for this situation and give 0 with an uncertainty as a result. (`#736 <https://github.com/StingraySoftware/stingray/pull/736>`__)
-- Eliminates deprecated call to `enable_deprecations_as_warnings`, and contextually, changes the code to be much more robust in catching harmful warnings. (`#738 <https://github.com/StingraySoftware/stingray/pull/738>`__)
+- When rms is low, the calculation in compute_rms often gave ``NaN``. We now check for this situation and give 0 with an uncertainty as a result. (`#736 <https://github.com/StingraySoftware/stingray/pull/736>`__)
+- Eliminates deprecated call to ``enable_deprecations_as_warnings``, and contextually, changes the code to be much more robust in catching harmful warnings. (`#738 <https://github.com/StingraySoftware/stingray/pull/738>`__)
 - Changes Crossspectrum.plot() function to plot the actual real and imaginary parts instead of their absolute values. (`#747 <https://github.com/StingraySoftware/stingray/pull/747>`__)
 - Make commits marked as [docs only] skip all CI but the docs build (`#749 <https://github.com/StingraySoftware/stingray/pull/749>`__)
 - Update tstart and tseg when using Lightcurve.truncate() (`#753 <https://github.com/StingraySoftware/stingray/pull/753>`__)
@@ -204,7 +204,7 @@ Bug Fixes
 - Fix a bug when light curve segments contain complex values (`#760 <https://github.com/StingraySoftware/stingray/pull/760>`__)
 - Crossspectrum had "real" as default value. This meant that, for example, lags could not be calculated. Now the default value is "all", as it should be. (`#762 <https://github.com/StingraySoftware/stingray/pull/762>`__)
 - Fix plotting of spectra, avoiding the plot of imaginary parts of real numbers (`#763 <https://github.com/StingraySoftware/stingray/pull/763>`__)
-- Various bugfixes in `gti.py`, and a new function to interpret the mix of multiple GTIs. (`#774 <https://github.com/StingraySoftware/stingray/pull/774>`__)
+- Various bugfixes in ``gti.py``, and a new function to interpret the mix of multiple GTIs. (`#774 <https://github.com/StingraySoftware/stingray/pull/774>`__)
 - Fixed subcs duplication by adding a check in the for loop that copies the attributes from table's meta items. (`#776 <https://github.com/StingraySoftware/stingray/pull/776>`__)
 - Various bug fixes in DynamicalPowerspectrum, on event loading and time rebinning (`#779 <https://github.com/StingraySoftware/stingray/pull/779>`__)
 - Fix issue with the Poisson noise calculation in lag spectra, that produced NaN errors under some conditions (`#789 <https://github.com/StingraySoftware/stingray/pull/789>`__)
@@ -309,7 +309,7 @@ v1.0 (2022-03-29)
 TL,DR: these things will break your code with v1.0:
 
 - Python version < 3.8
-- The ``gtis`` keyword in `pulse/pulsar.py` (it is now ``gti``, without the 's')
+- The ``gtis`` keyword in ``pulse/pulsar.py`` (it is now ``gti``, without the 's')
 
 New
 ^^^

@@ -1,0 +1,68 @@
+- Forty-seven public functions and classes that were missing from their modules'
+  ``__all__`` are now listed there, so ``automodule`` gives each of them a documentation
+  page and cross-references to them resolve. Six classes that had no documentation at
+  all -- ``DeadtimeFilterOutput``, ``EventReadOutput``, ``FITSTimeseriesReader`` and the
+  three exceptions in ``stingray.modeling.posterior`` -- now have docstrings.
+- Broken cross-references in the reStructuredText documentation are fixed. Sphinx is
+  configured with ``default_role = 'obj'``, so every single-backtick span is an attempted
+  Python object reference: the spans that were never meant to be links are now literals,
+  and the ones that were meant to be links now carry the role and the module path they
+  need. Two of them render as links for the first time. Such a failure is silent, so
+  these were found by building with Sphinx's ``-n`` flag, which reports every reference
+  that does not resolve.
+- Fourteen classes that had a docstring but no entry in ``api.rst`` now have one, so
+  they appear in the documentation at all: ``DeadtimeFilterOutput``, ``Window1D``,
+  ``Optimal1D``, ``Multitaper``, ``TransferFunction``, ``GPResult``, ``StingrayWarning``,
+  the three exceptions in ``stingray.modeling.posterior``, and ``RmsSpectrum``,
+  ``LagSpectrum``, ``CovarianceSpectrum`` and ``ComplexCovarianceSpectrum``. Four whole
+  modules were missing rather than one class each, so ``stingray.filters``,
+  ``stingray.multitaper``, ``stingray.simulator.transfer`` and
+  ``stingray.modeling.gpmodeling`` are now documented along with the public functions
+  they contain.
+- Thirteen reStructuredText errors in docstrings that had never been rendered are fixed,
+  in ``stingray.filters``, ``stingray.multitaper`` and ``stingray.modeling.gpmodeling``.
+- The cross-references in the docstrings are fixed too, which is the bulk of this change.
+  Sphinx reported 509 unresolved references in docstrings; 24 are left, and they are
+  accounted for. Four kinds of mistake: a type name such as ``np.array`` in a
+  single-backtick span, which ``default_role`` turns into a request for an object of that
+  name; a stingray class or function written without the role and module path Sphinx
+  needs; a role whose backticks were put around the whole role instead of its argument,
+  or left off altogether; and a bare class name in a base class's docstring, which is
+  rendered again on every subclass page, where it no longer resolves. ``np.array`` alone
+  accounted for 155 spans.
+- ``conf.py`` gains a ``nitpick_ignore`` list for the ten names that appear in type
+  annotations and that no inventory documents. These are not docstring mistakes: autodoc
+  renders a function's annotations into its signature and makes a cross-reference out of
+  each one. Four things are going on, and the comment above the list in ``conf.py``
+  records them: a module that uses ``from __future__ import annotations`` with its
+  imports under ``if TYPE_CHECKING`` leaves the annotation as the short name that was
+  typed rather than the documented dotted path; a module without that import has its
+  annotations evaluated instead, which turns ``npt.ArrayLike`` into the private
+  ``numpy._typing.ArrayLike`` that numpy does not document; pandas, xarray and ``pint``
+  are not in ``intersphinx_mapping`` at all; and ``Tso`` is a ``TypeVar`` and ``TTime`` a
+  ``Union`` alias, so neither is an object with a page to point at. Only those exact
+  names are listed, so a genuine broken reference is still reported. With this in place
+  the nitpicky build is down to 22 warnings, from 686.
+- The six terms of the Zhang+95 dead-time model that ``stingray.deadtime.model``
+  exposes -- ``e_m_x_x_over_factorial``, ``A0``, ``A_single_k``, ``A``, ``limit_A`` and
+  ``B`` -- are listed in ``__all__`` and so have documentation pages. Two references to
+  ``check_A`` and ``check_B`` were written without a module path, in a docstring that
+  renders under ``stingray.crossspectrum``, and ``limit_k`` was written as a reference
+  although it is the name of a parameter. With these the nitpicky build is down to eight
+  warnings, seven of which are references to the four classes whose docstrings Python
+  currently discards.
+- Sixteen class docstrings are no longer thrown away. A string literal becomes a class's
+  ``__doc__`` only when it is the *first* statement in the class body, and these sixteen
+  classes -- among them ``Crossspectrum``, ``Powerspectrum``, ``AveragedCrossspectrum``,
+  the four bispectra and their dynamical and averaged variants, the two Lomb-Scargle
+  spectra and ``VarEnergySpectrum`` -- put a class-level assignment such as
+  ``main_array_attr = "freq"`` above the docstring, which turns it into a no-op
+  expression that Python discards at import. ``Crossspectrum.__doc__`` was ``None``.
+  Moving the docstring above those assignments restores 1206 lines of documentation,
+  including every ``Parameters`` and ``Attributes`` section these classes had. The text
+  is unchanged; only its position is. Four of the classes also had no ``api.rst`` entry,
+  having had no docstring to render, and now do: ``DynamicalCrossspectrum``,
+  ``GtiCorrPowerspectrum``, ``LombScargleCrossspectrum`` and ``LombScarglePowerspectrum``.
+  With the references in the newly rendered text fixed, and a Google-style parameter
+  block in ``EventList.filter_detector_id`` rewritten in the NumPy style the rest of the
+  file uses, the nitpicky build reports no unresolved references at all, down from eight.
