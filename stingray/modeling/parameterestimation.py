@@ -1044,7 +1044,7 @@ class SamplingResults(object):
 
         Parameters
         ----------
-        sampler : an `emcee.EnsembleSampler` object
+        sampler : an ``emcee.EnsembleSampler`` object
 
         References
         ----------

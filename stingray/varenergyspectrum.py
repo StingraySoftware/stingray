@@ -308,7 +308,7 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
 
         Parameters
         ----------
-        events : `EventList`
+        events : :class:`~stingray.events.EventList`
             Input event list
         erange : [e0, e1]
             Energy range in keV
@@ -320,7 +320,7 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
 
         Returns
         -------
-        out_ev : `EventList`
+        out_ev : :class:`~stingray.events.EventList`
             The filtered event list.
         """
         if use_pi:
@@ -335,13 +335,13 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
 
         Parameters
         ----------
-        freq : `np.array`, default None
+        freq : ``np.array``, default None
             The frequency array. If None, it will get calculated from the number
             of spectral bins using `np.fft.fftfreq`
 
         Returns
         -------
-        freq_mask : `np.array` of bool
+        freq_mask : ``np.array`` of bool
             The frequency mask.
         """
         if freq is None:

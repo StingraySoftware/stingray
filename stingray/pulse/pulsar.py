@@ -441,13 +441,13 @@ def _z_n_fast_cached_sums_unnorm(prof, ks, cached_sin, cached_cos):
 
     Parameters
     ----------
-    prof : :class:`numpy.array`
+    prof : ``numpy.array``
         The pulsed profile
-    ks : :class:`numpy.array` of int
+    ks : ``numpy.array`` of int
         The harmonic numbers, from 1 to n
-    cached_sin : :class:`numpy.array`
+    cached_sin : ``numpy.array``
         Cached sine values for each phase bin in the profile
-    cached_cos : :class:`numpy.array`
+    cached_cos : ``numpy.array``
         Cached cosine values for each phase bin in the profile
     """
 

@@ -278,7 +278,7 @@ def make_nd_into_arrays(array: np.ndarray, label: str) -> dict:
 
     Parameters
     ----------
-    array : `np.ndarray`
+    array : ``np.ndarray``
         Input data
     label : `str`
         Label for the array
@@ -358,7 +358,7 @@ def make_1d_arrays_into_nd(data: dict, label: str) -> np.ndarray:
 
     Returns
     -------
-    array : `np.array`
+    array : ``np.array``
         N-dimensional array that was stored in the data.
 
     Examples
@@ -2393,7 +2393,7 @@ def assign_if_not_finite(value, default):
 
     Parameters
     ----------
-    value : float, int or `np.array`
+    value : float, int or ``np.array``
         The input value
     default : float
         The default value

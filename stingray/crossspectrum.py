@@ -51,11 +51,11 @@ def get_flux_generator(data, segment_size, dt=None):
     this method with the information it needs to create the iterables,
     starting from an event list or a light curve.
 
-    Only accepts `Lightcurve`s and `EventList`s.
+    Only accepts :class:`~stingray.Lightcurve`s and :class:`~stingray.events.EventList`s.
 
     Parameters
     ----------
-    data : `Lightcurve` or `EventList`
+    data : :class:`~stingray.Lightcurve` or :class:`~stingray.events.EventList`
         Input data
     segment_size : float
         Segment size in seconds
@@ -138,7 +138,7 @@ def coherence(lc1, lc2):
     .. note::
 
         This function is deprecated because it does not make sense in the current
-        formulation. Please use the `raw_coherence` and `intrinsic_coherence` methods
+        formulation. Please use the :func:`~stingray.fourier.raw_coherence` and :func:`~stingray.fourier.intrinsic_coherence` methods
         of AveragedCrossspectrum, with the correct parameters.
 
     Parameters
@@ -157,7 +157,7 @@ def coherence(lc1, lc2):
 
     warnings.warn(
         "The coherence function, as implemented, does not work as expected. "
-        "Please use the `raw_coherence` function of AveragedCrossspectrum, with the "
+        "Please use the :func:`~stingray.fourier.raw_coherence` function of AveragedCrossspectrum, with the "
         "correct parameters.",
         DeprecationWarning,
     )
@@ -489,8 +489,8 @@ class Crossspectrum(StingrayObject):
     gti: [[gti0_0, gti0_1], [gti1_0, gti1_1], ...]
         Good Time intervals. Defaults to the common GTIs from the two input
         objects. Could throw errors if these GTIs have overlaps with the input
-        `Lightcurve` GTIs! If you're getting errors regarding your GTIs, don't
-        use this and only give GTIs to the `Lightcurve` objects before making
+        :class:`~stingray.Lightcurve` GTIs! If you're getting errors regarding your GTIs, don't
+        use this and only give GTIs to the :class:`~stingray.Lightcurve` objects before making
         the cross spectrum.
 
     lc1: :class:`stingray.Lightcurve`object OR iterable of :class:`stingray.Lightcurve` objects
@@ -1005,7 +1005,7 @@ class Crossspectrum(StingrayObject):
     def coherence(self):
         """Compute Raw Coherence function of the cross spectrum.
 
-        Deprecated. Please use the `raw_coherence` method of AveragedCrossspectrum, with the correct parameters.
+        Deprecated. Please use the :func:`~stingray.fourier.raw_coherence` method of AveragedCrossspectrum, with the correct parameters.
 
         Returns
         -------
@@ -1313,9 +1313,9 @@ class Crossspectrum(StingrayObject):
 
         Parameters
         ----------
-        times1 : `np.array`
+        times1 : ``np.array``
             Event arrival times of channel 1
-        times2 : `np.array`
+        times2 : ``np.array``
             Event arrival times of channel 2
         dt : float
             The time resolution of the intermediate light curves
@@ -1325,7 +1325,7 @@ class Crossspectrum(StingrayObject):
         ----------------
         segment_size : float
             The length, in seconds, of the light curve segments that will be
-            averaged. Only relevant (and required) for `AveragedCrossspectrum`.
+            averaged. Only relevant (and required) for :class:`~stingray.AveragedCrossspectrum`.
         gti : [[gti0, gti1], ...]
             Good Time intervals. Defaults to the common GTIs from the two input
             objects. Could throw errors if these GTIs have overlaps with the
@@ -1388,9 +1388,9 @@ class Crossspectrum(StingrayObject):
 
         Parameters
         ----------
-        events1 : `stingray.EventList`
+        events1 : :class:`~stingray.events.EventList`
             Events from channel 1
-        events2 : `stingray.EventList`
+        events2 : :class:`~stingray.events.EventList`
             Events from channel 2
         dt : float
             The time resolution of the intermediate light curves
@@ -1609,9 +1609,9 @@ class Crossspectrum(StingrayObject):
 
         Parameters
         ----------
-        iter_lc1 : iterable of `stingray.Lightcurve` objects or `np.array`
+        iter_lc1 : iterable of `stingray.Lightcurve` objects or ``np.array``
             Light curves from channel 1. If arrays, use them as counts
-        iter_lc1 : iterable of `stingray.Lightcurve` objects or `np.array`
+        iter_lc1 : iterable of `stingray.Lightcurve` objects or ``np.array``
             Light curves from channel 2. If arrays, use them as counts
         dt : float
             The time resolution of the light curves
@@ -1964,7 +1964,7 @@ class AveragedCrossspectrum(Crossspectrum):
 
     dt : float
         The time resolution of the light curve. Only needed when constructing
-        light curves in the case where data1 or data2 are of :class:EventList
+        light curves in the case where data1 or data2 are of :class:`EventList`
 
     power_type: string, optional, default ``all``
          Parameter to choose among complete, real part and magnitude of
@@ -2171,8 +2171,8 @@ class AveragedCrossspectrum(Crossspectrum):
 
         .. note::
 
-            This function is deprecated. Please use `raw_coherence` or
-            `intrinsic_coherence` instead, depending on your needs.
+            This function is deprecated. Please use :func:`~stingray.fourier.raw_coherence` or
+            :func:`~stingray.fourier.intrinsic_coherence` instead, depending on your needs.
 
         Note : The uncertainty in coherence function is strictly valid for Gaussian \
                statistics only.
@@ -2183,8 +2183,8 @@ class AveragedCrossspectrum(Crossspectrum):
             Tuple comprising the coherence function and uncertainty.
         """
         warnings.warn(
-            "The `coherence` method is deprecated. Please use `raw_coherence` or "
-            "`intrinsic_coherence` instead, depending on your needs.",
+            "The `coherence` method is deprecated. Please use :func:`~stingray.fourier.raw_coherence` or "
+            ":func:`~stingray.fourier.intrinsic_coherence` instead, depending on your needs.",
             DeprecationWarning,
         )
 
@@ -2269,7 +2269,7 @@ class AveragedCrossspectrum(Crossspectrum):
             If True, the bias term is adjusted to account for the fact that the bias term depends
             on the intrinsic coherence itself. This is done iteratively.
             See Ingram 2019, cited, for details on the bias term and its dependence on the intrinsic
-            coherence, and the documentation of `intrinsic_coherence`.
+            coherence, and the documentation of :func:`~stingray.fourier.intrinsic_coherence`.
 
         Returns
         -------
@@ -2859,9 +2859,9 @@ def crossspectrum_from_time_array(
 
     Parameters
     ----------
-    times1 : `np.array`
+    times1 : ``np.array``
         Event arrival times of channel 1
-    times2 : `np.array`
+    times2 : ``np.array``
         Event arrival times of channel 2
     dt : float
         The time resolution of the intermediate light curves
@@ -2899,7 +2899,7 @@ def crossspectrum_from_time_array(
 
     Returns
     -------
-    spec : `AveragedCrossspectrum` or `Crossspectrum`
+    spec : :class:`~stingray.AveragedCrossspectrum` or :class:`~stingray.Crossspectrum`
         The output cross spectrum.
     """
     force_averaged = segment_size is not None
@@ -2943,9 +2943,9 @@ def crossspectrum_from_events(
 
     Parameters
     ----------
-    events1 : `stingray.EventList`
+    events1 : :class:`~stingray.events.EventList`
         Events from channel 1
-    events2 : `stingray.EventList`
+    events2 : :class:`~stingray.events.EventList`
         Events from channel 2
     dt : float
         The time resolution of the intermediate light curves
@@ -2983,7 +2983,7 @@ def crossspectrum_from_events(
 
     Returns
     -------
-    spec : `AveragedCrossspectrum` or `Crossspectrum`
+    spec : :class:`~stingray.AveragedCrossspectrum` or :class:`~stingray.Crossspectrum`
         The output cross spectrum.
     """
 
@@ -3066,7 +3066,7 @@ def crossspectrum_from_lightcurve(
 
     Returns
     -------
-    spec : `AveragedCrossspectrum` or `Crossspectrum`
+    spec : :class:`~stingray.AveragedCrossspectrum` or :class:`~stingray.Crossspectrum`
         The output cross spectrum.
     """
     error_flux_attr = None
@@ -3155,7 +3155,7 @@ def crossspectrum_from_timeseries(
 
     Returns
     -------
-    spec : `AveragedCrossspectrum` or `Crossspectrum`
+    spec : :class:`~stingray.AveragedCrossspectrum` or :class:`~stingray.Crossspectrum`
         The output cross spectrum.
     """
     force_averaged = segment_size is not None
@@ -3211,9 +3211,9 @@ def crossspectrum_from_lc_iterable(
 
     Parameters
     ----------
-    iter_lc1 : iterable of `stingray.Lightcurve` objects or `np.array`
+    iter_lc1 : iterable of `stingray.Lightcurve` objects or ``np.array``
         Light curves from channel 1. If arrays, use them as counts
-    iter_lc1 : iterable of `stingray.Lightcurve` objects or `np.array`
+    iter_lc1 : iterable of `stingray.Lightcurve` objects or ``np.array``
         Light curves from channel 2. If arrays, use them as counts
     dt : float
         The time resolution of the light curves
@@ -3251,7 +3251,7 @@ def crossspectrum_from_lc_iterable(
 
     Returns
     -------
-    spec : `AveragedCrossspectrum` or `Crossspectrum`
+    spec : :class:`~stingray.AveragedCrossspectrum` or :class:`~stingray.Crossspectrum`
         The output cross spectrum.
     """
 
@@ -3302,7 +3302,7 @@ def crossspectrum_from_lc_iterable(
 def _create_crossspectrum_from_result_table(table, force_averaged=False, channels_overlap=False):
     """Copy the columns and metadata from the results of
     ``stingray.fourier.avg_cs_from_XX`` functions into
-    `AveragedCrossspectrum` or `Crossspectrum` objects.
+    :class:`~stingray.AveragedCrossspectrum` or :class:`~stingray.Crossspectrum` objects.
 
     By default, allocates a Crossspectrum object if the number of
     averaged spectra is 1, otherwise an AveragedCrossspectrum.
@@ -3326,7 +3326,7 @@ def _create_crossspectrum_from_result_table(table, force_averaged=False, channel
 
     Returns
     -------
-    spec : `AveragedCrossspectrum` or `Crossspectrum`
+    spec : :class:`~stingray.AveragedCrossspectrum` or :class:`~stingray.Crossspectrum`
         The output cross spectrum.
     """
     if table.meta["m"] > 1 or force_averaged:

@@ -36,17 +36,17 @@ def _lscg_gen(src_counts, bkg_counts, bkg_area, rate_conversion, density_gp):
 
     Parameters
     ----------
-    src_counts : iterable, `:class:numpy.array` or `:class:List` of floats
+    src_counts : iterable, ``numpy.array`` or ``list`` of floats
         A list or array of counts observed from source region in each bin.
 
-    bkg_counts : iterable, `:class:numpy.array` or `:class:List` of floats
+    bkg_counts : iterable, ``numpy.array`` or ``list`` of floats
         A list or array of counts observed from background region in each bin.
 
-    bkg_area : iterable, `:class:numpy.array` or `:class:List` of floats
+    bkg_area : iterable, ``numpy.array`` or ``list`` of floats
         A list or array of background area from where the ``bkg_counts`` were
         obtained for each bin.
 
-    rate_conversion : iterable, `:class:numpy.array` or `:class:List` of floats
+    rate_conversion : iterable, ``numpy.array`` or ``list`` of floats
         A list or array of rate conversion constants. Obtained by multipllying
         fractional exposer with time interval for each bin.
 
@@ -55,7 +55,7 @@ def _lscg_gen(src_counts, bkg_counts, bkg_area, rate_conversion, density_gp):
 
     Returns
     -------
-    log_src_crs_grid : iterable, `:class:numpy.array` of floats
+    log_src_crs_grid : iterable, ``numpy.array`` of floats
         An array of log(source count rates).
     """
     src_counts = np.asanyarray(src_counts, dtype=float)
@@ -96,7 +96,7 @@ def _estimate_source_cr_marginalised(
 
     Parameters
     ----------
-    log_src_crs_grid : iterable, `:class:numpy.array` of floats
+    log_src_crs_grid : iterable, ``numpy.array`` of floats
         An array of log(source count rates).
     src_counts : float
         Source region counts in one of the bin.
@@ -109,7 +109,7 @@ def _estimate_source_cr_marginalised(
 
     Returns
     -------
-    weights: iterable, `:class:numpy.array` of floats
+    weights: iterable, ``numpy.array`` of floats
     """
     # background counts give background count rates deterministically
     N = 1000
@@ -146,15 +146,15 @@ def _calculate_bexvar(log_src_crs_grid, pdfs):
 
     Parameters
     ----------
-    log_src_crs_grid : iterable, `:class:numpy.array` of floats
+    log_src_crs_grid : iterable, ``numpy.array`` of floats
         An array of log(source count rates).
-    pdfs : iterable, `:class:numpy.ndarray` of floats
+    pdfs : iterable, ``numpy.ndarray`` of floats
         An array of PDFs for each object defined over the
         log(source count rates) grid ``log_src_crs_grid``.
 
     Returns
     -------
-    log_sigma : iterable, `:class:numpy.array` of floats.
+    log_sigma : iterable, ``numpy.array`` of floats.
         An array of posterior samples of Bayesian excess variance (bexvar).
 
     """
@@ -198,13 +198,13 @@ def bexvar(time, time_del, src_counts, bg_counts=None, bg_ratio=None, frac_exp=N
 
     Parameters
     ----------
-    time : iterable, `:class:numpy.array` or `:class:List` of floats, optional, default ``None``
+    time : iterable, ``numpy.array`` or ``list`` of floats, optional, default ``None``
         A list or array of time stamps for a light curve.
 
-    time_del : iterable, `:class:numpy.array` or `:class:List` of floats
+    time_del : iterable, ``numpy.array`` or ``list`` of floats
         A list or array of time intervals for each bin of light curve.
 
-    src_counts : iterable, `:class:numpy.array` or `:class:List` of floats
+    src_counts : iterable, ``numpy.array`` or ``list`` of floats
         A list or array of counts observed from source region in each bin.
 
         **Note**: Each element of ``src_counts`` is a number of counts registered in each time bin.
@@ -215,22 +215,22 @@ def bexvar(time, time_del, src_counts, bg_counts=None, bg_ratio=None, frac_exp=N
         will be raised and function may produce unrealsitic likelihoods.
 
 
-    bg_counts : iterable, `:class:numpy.array` or `:class:List` of floats, optional, default ``None``
+    bg_counts : iterable, ``numpy.array`` or ``list`` of floats, optional, default ``None``
         A list or array of counts observed from background region in each bin. If ``None``
         we assume it as a numpy array of zeros, of length equal to length of ``src_counts``.
 
-    bg_ratio : iterable, `:class:numpy.array` or `:class:List` of floats, optional, default ``None``
+    bg_ratio : iterable, ``numpy.array`` or ``list`` of floats, optional, default ``None``
         A list or array of source region area to background region area ratio in each bin.
         If ``None`` we assume it as a numpy array of ones, of length equal to the length of
         ``src_counts``.
 
-    frac_exp : iterable, `:class:numpy.array` or `:class:List` of floats, optional, default ``None``
+    frac_exp : iterable, ``numpy.array`` or ``list`` of floats, optional, default ``None``
         A list or array of fractional exposers in each bin. If ``None`` we assume it as
         a numpy array of ones, of length equal to length of ``src_counts``.
 
     Returns
     -------
-    posterior_log_sigma_src_cr : iterable, `:class:numpy.array` of floats
+    posterior_log_sigma_src_cr : iterable, ``numpy.array`` of floats
         An array of posterior samples of Bayesian excess variance (bexvar).
     """
 

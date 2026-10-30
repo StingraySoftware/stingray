@@ -468,7 +468,7 @@ class EventList(StingrayTimeseries):
             second one. If the dimension of the energies is the same as
             spectrum, they are interpreted as bin centers.
             If it is longer by one, they are interpreted as proper bin edges
-            (similarly to the bins of `np.histogram`).
+            (similarly to the bins of ``np.histogram``).
             Note that for non-uniformly binned spectra, it is advisable to pass
             the exact edges.
         """
@@ -506,7 +506,7 @@ class EventList(StingrayTimeseries):
 
         Returns
         -------
-        eventlist : `EventList`
+        eventlist : :class:`~stingray.events.EventList`
             The sorted event list. If ``inplace=True``, it will be a shallow copy
             of ``self``.
 
@@ -606,7 +606,7 @@ class EventList(StingrayTimeseries):
             Path and file name for the file to be read.
 
         fmt: str
-            Available options are 'pickle', 'hea', and any `Table`-supported
+            Available options are 'pickle', 'hea', and any :class:`~astropy.table.Table`-supported
             format such as 'hdf5', 'ascii.ecsv', etc.
 
         Other parameters
@@ -736,7 +736,7 @@ class EventList(StingrayTimeseries):
     def apply_deadtime(self, deadtime, inplace=False, **kwargs):
         """Apply deadtime filter to this event list.
 
-        Additional arguments in ``kwargs`` are passed to `get_deadtime_mask`
+        Additional arguments in ``kwargs`` are passed to :func:`~stingray.filters.get_deadtime_mask`
 
         Parameters
         ----------
@@ -748,11 +748,11 @@ class EventList(StingrayTimeseries):
 
         Returns
         -------
-        new_event_list : `EventList` object
+        new_event_list : :class:`~stingray.events.EventList` object
             Filtered event list. if `inplace` is True, this is the input object
             filtered for deadtime, otherwise this is a new object.
         additional_output : object
-            Only returned if `return_all` is True. See `get_deadtime_mask` for
+            Only returned if `return_all` is True. See :func:`~stingray.filters.get_deadtime_mask` for
             more details.
 
         Examples

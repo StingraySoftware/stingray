@@ -89,7 +89,7 @@ class StingrayObject(object):
 
     ``main_array_attr`` is, e.g. ``time`` for :class:`StingrayTimeseries` and
     :class:`Lightcurve`, ``freq`` for :class:`Crossspectrum`, ``energy`` for
-    :class:`VarEnergySpectrum`, and so on. It is the array with which all other
+    :class:`~stingray.varenergyspectrum.VarEnergySpectrum`, and so on. It is the array with which all other
     attributes are compared: if they are of the same shape, they get saved as
     columns of the table/dataframe, otherwise as metadata.
     """
@@ -465,7 +465,7 @@ class StingrayObject(object):
         return cls
 
     def to_xarray(self) -> Dataset:
-        """Create an ``xarray`` Dataset from a `StingrayObject`.
+        """Create an ``xarray`` Dataset from a :class:`~stingray.base.StingrayObject`.
 
         Array attributes (e.g. ``time``, ``pi``, ``energy``, etc. for
         ``EventList``) are converted into columns, while meta attributes
@@ -491,7 +491,7 @@ class StingrayObject(object):
 
     @classmethod
     def from_xarray(cls: Type[Tso], ts: Dataset) -> Tso:
-        """Create a `StingrayObject` from data in an xarray Dataset.
+        """Create a :class:`~stingray.base.StingrayObject` from data in an xarray Dataset.
 
         The dataset MUST contain at least a column named like the
         ``main_array_attr``.
@@ -533,7 +533,7 @@ class StingrayObject(object):
         Since pandas does not support n-D data, multi-dimensional arrays are
         converted into columns before the conversion, with names ``<colname>_dimN_M_K`` etc.
 
-        See documentation of `make_nd_into_arrays` for details.
+        See documentation of :func:`~stingray.utils.make_nd_into_arrays` for details.
 
         """
         from pandas import DataFrame
@@ -558,7 +558,7 @@ class StingrayObject(object):
 
     @classmethod
     def from_pandas(cls: Type[Tso], ts: DataFrame) -> Tso:
-        """Create an `StingrayObject` object from data in a pandas DataFrame.
+        """Create an :class:`~stingray.base.StingrayObject` object from data in a pandas DataFrame.
 
         The dataframe MUST contain at least a column named like the
         ``main_array_attr``.
@@ -569,7 +569,7 @@ class StingrayObject(object):
         Since pandas does not support n-D data, multi-dimensional arrays can be
         specified as ``<colname>_dimN_M_K`` etc.
 
-        See documentation of `make_1d_arrays_into_nd` for details.
+        See documentation of :func:`~stingray.utils.make_1d_arrays_into_nd` for details.
 
         """
         import re
@@ -636,7 +636,7 @@ class StingrayObject(object):
             Path and file name for the file to be read.
 
         fmt: str
-            Available options are 'pickle', 'hea', and any `Table`-supported
+            Available options are 'pickle', 'hea', and any :class:`~astropy.table.Table`-supported
             format such as 'hdf5', 'ascii.ecsv', etc.
 
         Returns
@@ -1487,7 +1487,7 @@ class StingrayTimeseries(StingrayObject):
 
     @classmethod
     def from_astropy_timeseries(cls, ts: TimeSeries) -> StingrayTimeseries:
-        """Create a `StingrayTimeseries` from data in an Astropy TimeSeries
+        """Create a :class:`~stingray.base.StingrayTimeseries` from data in an Astropy TimeSeries
 
         The timeseries has to define at least a column called time,
         the rest of columns will form the array attributes of the
@@ -1502,7 +1502,7 @@ class StingrayTimeseries(StingrayObject):
 
         Returns
         -------
-        ts : `StingrayTimeseries`
+        ts : :class:`~stingray.base.StingrayTimeseries`
             Timeseries object
         """
 

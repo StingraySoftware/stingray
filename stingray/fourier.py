@@ -358,7 +358,7 @@ def normalize_frac(unnorm_power, dt, n_bin, mean_flux, background_flux=0):
 
     Parameters
     ----------
-    unnorm_power : `np.array` of `float` or `complex`
+    unnorm_power : ``np.array`` of `float` or `complex`
         The unnormalized (cross-)spectral powers
     dt : float
         The sampling time
@@ -376,7 +376,7 @@ def normalize_frac(unnorm_power, dt, n_bin, mean_flux, background_flux=0):
 
     Returns
     -------
-    power : `np.array` of the same kind and shape as `unnorm_power`
+    power : ``np.array`` of the same kind and shape as `unnorm_power`
         The normalized powers.
 
     Examples
@@ -434,7 +434,7 @@ def normalize_abs(unnorm_power, dt, n_bin):
 
     Parameters
     ----------
-    unnorm_power : `np.array` of `float` or `complex`
+    unnorm_power : ``np.array`` of `float` or `complex`
         The unnormalized (cross-)spectral powers
     dt : float
         The sampling time
@@ -443,7 +443,7 @@ def normalize_abs(unnorm_power, dt, n_bin):
 
     Returns
     -------
-    power : `np.array` of the same kind and shape as `unnorm_power`
+    power : ``np.array`` of the same kind and shape as `unnorm_power`
         The normalized powers.
 
     Examples
@@ -485,7 +485,7 @@ def normalize_leahy_from_variance(unnorm_power, variance, n_bin):
 
     Parameters
     ----------
-    unnorm_power : `np.array` of `float` or `complex`
+    unnorm_power : ``np.array`` of `float` or `complex`
         The unnormalized (cross-)spectral powers
     variance : float
         The mean variance of the light curve bins
@@ -494,7 +494,7 @@ def normalize_leahy_from_variance(unnorm_power, variance, n_bin):
 
     Returns
     -------
-    power : `np.array` of the same kind and shape as `unnorm_power`
+    power : ``np.array`` of the same kind and shape as `unnorm_power`
         The normalized powers.
 
     Examples
@@ -534,7 +534,7 @@ def normalize_leahy_poisson(unnorm_power, n_ph):
 
     Parameters
     ----------
-    unnorm_power : `np.array` of `float` or `complex`
+    unnorm_power : ``np.array`` of `float` or `complex`
         The unnormalized (cross-)spectral powers
     variance : float
         The mean variance of the light curve bins
@@ -543,7 +543,7 @@ def normalize_leahy_poisson(unnorm_power, n_ph):
 
     Returns
     -------
-    power : `np.array` of the same kind and shape as `unnorm_power`
+    power : ``np.array`` of the same kind and shape as `unnorm_power`
         The normalized powers.
 
     Examples
@@ -756,9 +756,9 @@ def bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coher
 
     Parameters
     ----------
-    power1 : float `np.array`
+    power1 : float ``np.array``
         sub-band periodogram
-    power2 : float `np.array`
+    power2 : float ``np.array``
         reference-band periodogram
     power1_noise : float
         Poisson noise level of the sub-band periodogram
@@ -774,7 +774,7 @@ def bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coher
 
     Returns
     -------
-    bias : float `np.array`, same shape as ``power1`` and ``power2``
+    bias : float ``np.array``, same shape as ``power1`` and ``power2``
         The bias term
     """
 
@@ -788,18 +788,18 @@ def _apply_low_lim_to_coherence_uncertainty(coherence, uncertainty, min_uncertai
 
     Parameters
     ----------
-    coherence : float or float `np.array`
+    coherence : float or float ``np.array``
         The coherence values at all frequencies.
-    uncertainty : float or float `np.array`
+    uncertainty : float or float ``np.array``
         The uncertainty on the coherence at all frequencies. Must have the same
         shape as `coherence`.
-    min_uncertainty : float or float `np.array`
+    min_uncertainty : float or float ``np.array``
         The minimum uncertainty to apply. Can be a single value or an array of
         the same shape as `coherence` and `uncertainty`.
 
     Returns
     -------
-    uncertainty : float or float `np.array`
+    uncertainty : float or float ``np.array``
         The uncertainty on the coherence, with the low limit applied.
 
     Examples
@@ -856,11 +856,11 @@ def _raw_coherence(
 
     Parameters
     ----------
-    cross_power : complex `np.array`
+    cross_power : complex ``np.array``
         cross spectrum
-    power1 : float `np.array`
+    power1 : float ``np.array``
         sub-band periodogram
-    power2 : float `np.array`
+    power2 : float ``np.array``
         reference-band periodogram
     power1_noise : float
         Poisson noise level of the sub-band periodogram
@@ -878,7 +878,7 @@ def _raw_coherence(
 
     Returns
     -------
-    coherence : float `np.array`
+    coherence : float ``np.array``
         The raw coherence values at all frequencies.
     """
     bsq = _bias_term(power1, power2, power1_noise, power2_noise, n_ave, intrinsic_coherence)
@@ -919,11 +919,11 @@ def raw_coherence(
 
     Parameters
     ----------
-    cross_power : complex `np.array`
+    cross_power : complex ``np.array``
         cross spectrum
-    power1 : float `np.array`
+    power1 : float ``np.array``
         sub-band periodogram
-    power2 : float `np.array`
+    power2 : float ``np.array``
         reference-band periodogram
     power1_noise : float
         Poisson noise level of the sub-band periodogram
@@ -941,7 +941,7 @@ def raw_coherence(
 
     Returns
     -------
-    coherence : float `np.array`
+    coherence : float ``np.array``
         The raw coherence values at all frequencies.
 
     References
@@ -1015,9 +1015,9 @@ def check_powers_for_intrinsic_coherence(
 
     Parameters
     ----------
-    power1 : float `np.array`
+    power1 : float ``np.array``
         sub-band periodogram
-    power2 : float `np.array`
+    power2 : float ``np.array``
         reference-band periodogram
     power1_noise : float
         Poisson noise level of the sub-band periodogram
@@ -1030,9 +1030,9 @@ def check_powers_for_intrinsic_coherence(
 
     Returns
     -------
-    low_power1 : bool `np.array`
+    low_power1 : bool ``np.array``
         Whether the powers of the first band are below the threshold.
-    low_power2 : bool `np.array`
+    low_power2 : bool ``np.array``
         Whether the powers of the second band are below the threshold.
 
     """
@@ -1065,11 +1065,11 @@ def _intrinsic_coherence(
 
     Parameters
     ----------
-    cross_power : complex `np.array`
+    cross_power : complex ``np.array``
         cross spectrum
-    power1 : float `np.array`
+    power1 : float ``np.array``
         sub-band periodogram
-    power2 : float `np.array`
+    power2 : float ``np.array``
         reference-band periodogram
     power1_noise : float
         Poisson noise level of the sub-band periodogram
@@ -1086,11 +1086,11 @@ def _intrinsic_coherence(
 
     Returns
     -------
-    coherence : float `np.array` or tuple of two float `np.array`
+    coherence : float ``np.array`` or tuple of two float ``np.array``
         The intrinsic coherence values at all frequencies. It is 0 if the numerator
         of the coherence calculation is negative, and NaN if the powers are too low compared
         to the noise level.
-    uncertainty : float `np.array`, optional
+    uncertainty : float ``np.array``, optional
         The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
         1997, ApJ 474, L43, eq. 8.
     """
@@ -1140,11 +1140,11 @@ def _intrinsic_coherence_with_adjusted_bias(
 
     Parameters
     ----------
-    cross_power : complex `np.array`
+    cross_power : complex ``np.array``
         cross spectrum
-    power1 : float `np.array`
+    power1 : float ``np.array``
         sub-band periodogram
-    power2 : float `np.array`
+    power2 : float ``np.array``
         reference-band periodogram
     power1_noise : float
         Poisson noise level of the sub-band periodogram
@@ -1161,14 +1161,14 @@ def _intrinsic_coherence_with_adjusted_bias(
 
     Returns
     -------
-    coherence : float `np.array` or tuple of two float `np.array`
+    coherence : float ``np.array`` or tuple of two float ``np.array``
         The intrinsic coherence values at all frequencies. It is 0 if the numerator
         of the coherence calculation is negative, and NaN if the powers are too low compared
         to the noise level.
-    uncertainty : float `np.array`, optional
+    uncertainty : float ``np.array``, optional
         The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
         1997, ApJ 474, L43, eq. 8.
-    not_converged_flag : bool `np.array`
+    not_converged_flag : bool ``np.array``
         Whether the bias term adjustment procedure converged (False) or not (True).
 
     """
@@ -1248,19 +1248,19 @@ def _intrinsic_coherence_array(
 
     Parameters
     ----------
-    cross_power : complex `np.array`
+    cross_power : complex ``np.array``
         Cross spectrum
-    power1 : float `np.array`
+    power1 : float ``np.array``
         Sub-band periodogram. Must have the same shape as `cross_power`.
-    power2 : float `np.array`
+    power2 : float ``np.array``
         Reference-band periodogram. Must have the same shape as `cross_power`.
-    power1_noise : float `np.array`
+    power1_noise : float ``np.array``
         Poisson noise level of the sub-band periodogram. Can have a single value
         or the same shape as `cross_power`.
-    power2_noise : float `np.array`
+    power2_noise : float ``np.array``
         Poisson noise level of the reference-band periodogram. Can have a single value
         or the same shape as `cross_power`.
-    n_ave : int or float `np.array`
+    n_ave : int or float ``np.array``
         number of intervals that have been averaged to obtain the input spectra. Can have
         a single value or the same shape as `cross_power`.
 
@@ -1276,11 +1276,11 @@ def _intrinsic_coherence_array(
 
     Returns
     -------
-    coherence : float `np.array`
+    coherence : float ``np.array``
         The intrinsic coherence values at all frequencies. It is 0 if the numerator
         of the coherence calculation is negative, and NaN if the powers are too low compared
         to the noise level.
-    uncertainty : float `np.array`
+    uncertainty : float ``np.array``
         The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
         1997, ApJ 474, L43, eq. 8.
     no_conversion_flags : `list` of int
@@ -1365,17 +1365,17 @@ def intrinsic_coherence(
 
     Parameters
     ----------
-    cross_power : complex `np.array`
+    cross_power : complex ``np.array``
         Cross spectrum
-    power1 : float `np.array`
+    power1 : float ``np.array``
         Sub-band periodogram. Must have the same shape as `cross_power`.
-    power2 : float `np.array`
+    power2 : float ``np.array``
         Reference-band periodogram. Must have the same shape as `cross_power`.
-    power1_noise : float or float `np.array` of the same shape as `cross_power`
+    power1_noise : float or float ``np.array`` of the same shape as `cross_power`
         Poisson noise level of the sub-band periodogram
-    power2_noise : float or float `np.array` of the same shape as `cross_power`
+    power2_noise : float or float ``np.array`` of the same shape as `cross_power`
         Poisson noise level of the reference-band periodogram
-    n_ave : int or float or int `np.array` of the same shape as `cross_power`
+    n_ave : int or float or int ``np.array`` of the same shape as `cross_power`
         number of intervals that have been averaged to obtain the input spectra
 
     Other Parameters
@@ -1389,11 +1389,11 @@ def intrinsic_coherence(
 
     Returns
     -------
-    coherence : float `np.array` or tuple of two float `np.array`
+    coherence : float ``np.array`` or tuple of two float ``np.array``
         The intrinsic coherence values at all frequencies. It is 0 if the numerator
         of the coherence calculation is negative, and NaN if the powers are too low compared
         to the noise level.
-    uncertainty : float `np.array`, optional
+    uncertainty : float ``np.array``, optional
         The uncertainty on the intrinsic coherence, calculated according to Vaughan & Nowak
         1997, ApJ 474, L43, eq. 8.
 
@@ -1461,11 +1461,11 @@ def estimate_intrinsic_coherence(cross_power, power1, power2, power1_noise, powe
 
     Parameters
     ----------
-    cross_power : complex `np.array`
+    cross_power : complex ``np.array``
         cross spectrum
-    power1 : float `np.array`
+    power1 : float ``np.array``
         sub-band periodogram
-    power2 : float `np.array`
+    power2 : float ``np.array``
         reference-band periodogram
     power1_noise : float
         Poisson noise level of the sub-band periodogram
@@ -1476,7 +1476,7 @@ def estimate_intrinsic_coherence(cross_power, power1, power2, power1_noise, powe
 
     Returns
     -------
-    coherence : float `np.array`
+    coherence : float ``np.array``
         The estimated intrinsic coherence, at all frequencies.
     """
     warnings.warn(
@@ -1754,11 +1754,11 @@ def error_on_averaged_cross_spectrum(
 
     Parameters
     ----------
-    cross_power : complex `np.array`
+    cross_power : complex ``np.array``
         cross spectrum
-    seg_power : float `np.array`
+    seg_power : float ``np.array``
         sub-band periodogram
-    ref_power : float `np.array`
+    ref_power : float ``np.array``
         reference-band periodogram
     seg_power_noise : float
         Poisson noise level of the sub-band periodogram
@@ -1774,13 +1774,13 @@ def error_on_averaged_cross_spectrum(
 
     Returns
     -------
-    dRe : float `np.array`
+    dRe : float ``np.array``
         Error on the real part of the cross spectrum
-    dIm : float `np.array`
+    dIm : float ``np.array``
         Error on the imaginary part of the cross spectrum
-    dphi : float `np.array`
+    dphi : float ``np.array``
         Error on the angle (or phase lag)
-    dG : float `np.array`
+    dG : float ``np.array``
         Error on the modulus of the cross spectrum
 
     """
@@ -1839,19 +1839,19 @@ def cross_to_covariance(cross_power, ref_power, ref_power_noise, delta_nu):
 
     Parameters
     ----------
-    cross_power : complex `np.array`
+    cross_power : complex ``np.array``
         cross spectrum
-    ref_power : float `np.array`
+    ref_power : float ``np.array``
         reference-band periodogram
     ref_power_noise : float
         Poisson noise level of the reference-band periodogram
-    delta_nu : float or `np.array`
+    delta_nu : float or ``np.array``
         spectral resolution. Can be a float, or an array if the spectral
         resolution is not constant throughout the periodograms
 
     Returns
     -------
-    covariance : complex `np.array`
+    covariance : complex ``np.array``
         The cross spectrum, normalized as a covariance.
 
     """
@@ -1900,7 +1900,7 @@ def get_average_ctrate(times, gti, segment_size, counts=None):
 
     Parameters
     ----------
-    times : float `np.array`
+    times : float ``np.array``
         Array of times
     gti : [[gti00, gti01], [gti10, gti11], ...]
         good time intervals
@@ -1909,7 +1909,7 @@ def get_average_ctrate(times, gti, segment_size, counts=None):
 
     Other parameters
     ----------------
-    counts : float `np.array`, default None
+    counts : float ``np.array``, default None
         Array of counts per bin
 
     Returns
@@ -1959,7 +1959,7 @@ def get_flux_iterable_from_segments(
 
     Parameters
     ----------
-    times : float `np.array`
+    times : float ``np.array``
         Array of times
     gti : [[gti00, gti01], [gti10, gti11], ...]
         good time intervals
@@ -1970,18 +1970,18 @@ def get_flux_iterable_from_segments(
     ----------------
     n_bin : int, default None
         Number of bins to divide the ``segment_size`` in
-    fluxes : float `np.array`, default None
+    fluxes : float ``np.array``, default None
         Array of fluxes.
-    errors : float `np.array`, default None
+    errors : float ``np.array``, default None
         Array of error bars corresponding to the flux values above.
     dt : float, default None
         Time resolution of the light curve used to produce periodograms
 
     Yields
     ------
-    flux : `np.array`
+    flux : ``np.array``
         Array of fluxes
-    err : `np.array`
+    err : ``np.array``
         (optional) if ``errors`` is None, an array of errors in the segment
 
     """
@@ -2255,7 +2255,7 @@ def avg_pds_from_iterable(
 
     Parameters
     ----------
-    flux_iterable : `iterable` of `np.array`s or of tuples (`np.array`, `np.array`)
+    flux_iterable : `iterable` of ``np.array``s or of tuples (``np.array``, ``np.array``)
         Iterable providing either equal-length series of count measurements,
         or of tuples (fluxes, errors). They must all be of the same length.
     dt : float
@@ -2283,11 +2283,11 @@ def avg_pds_from_iterable(
     results : :class:`astropy.table.Table`
         Table containing the following columns:
 
-        freq : `np.array`
+        freq : ``np.array``
             The periodogram frequencies
-        power : `np.array`
+        power : ``np.array``
             The normalized periodogram powers
-        unnorm_power : `np.array`
+        unnorm_power : ``np.array``
             The unnormalized periodogram powers
 
         And a number of other useful diagnostics in the metadata, including
@@ -2446,10 +2446,10 @@ def avg_cs_from_iterables_quick(flux_iterable1, flux_iterable2, dt, norm="frac")
 
     Parameters
     ----------
-    flux_iterable1 : `iterable` of `np.array`s or of tuples (`np.array`, `np.array`)
+    flux_iterable1 : `iterable` of ``np.array``s or of tuples (``np.array``, ``np.array``)
         Iterable providing either equal-length series of count measurements, or
         of tuples (fluxes, errors). They must all be of the same length.
-    flux_iterable2 : `iterable` of `np.array`s or of tuples (`np.array`, `np.array`)
+    flux_iterable2 : `iterable` of ``np.array``s or of tuples (``np.array``, ``np.array``)
         Same as ``flux_iterable1``, for the reference channel
     dt : float
         Time resolution of the light curves used to produce periodograms
@@ -2466,11 +2466,11 @@ def avg_cs_from_iterables_quick(flux_iterable1, flux_iterable2, dt, norm="frac")
     results : :class:`astropy.table.Table`
         Table containing the following columns:
 
-        freq : `np.array`
+        freq : ``np.array``
             The periodogram frequencies
-        power : `np.array`
+        power : ``np.array``
             The normalized periodogram powers
-        unnorm_power : `np.array`
+        unnorm_power : ``np.array``
             The unnormalized periodogram powers
 
         And a number of other useful diagnostics in the metadata, including
@@ -2604,10 +2604,10 @@ def avg_cs_from_iterables(
 
     Parameters
     ----------
-    flux_iterable1 : `iterable` of `np.array`s or of tuples (`np.array`, `np.array`)
+    flux_iterable1 : `iterable` of ``np.array``s or of tuples (``np.array``, ``np.array``)
         Iterable providing either equal-length series of count measurements, or
         of tuples (fluxes, errors). They must all be of the same length.
-    flux_iterable2 : `iterable` of `np.array`s or of tuples (`np.array`, `np.array`)
+    flux_iterable2 : `iterable` of ``np.array``s or of tuples (``np.array``, ``np.array``)
         Same as ``flux_iterable1``, for the reference channel
     dt : float
         Time resolution of the light curves used to produce periodograms
@@ -2641,16 +2641,16 @@ def avg_cs_from_iterables(
     results : :class:`astropy.table.Table`
         Table containing the following columns:
 
-        freq : `np.array`
+        freq : ``np.array``
             The frequencies.
-        power : `np.array`
+        power : ``np.array``
             The normalized cross spectral powers.
-        unnorm_power : `np.array`
+        unnorm_power : ``np.array``
             The unnormalized cross spectral power.
-        unnorm_pds1 : `np.array`
+        unnorm_pds1 : ``np.array``
             The unnormalized auxiliary PDS from channel 1. Only returned if
             ``return_auxil`` is ``True``.
-        unnorm_pds2 : `np.array`
+        unnorm_pds2 : ``np.array``
             The unnormalized auxiliary PDS from channel 2. Only returned if
             ``return_auxil`` is ``True``.
 
@@ -2958,7 +2958,7 @@ def avg_pds_from_timeseries(
 
     Parameters
     ----------
-    times : float `np.array`
+    times : float ``np.array``
         Array of times.
     gti : [[gti00, gti01], [gti10, gti11], ...]
         Good time intervals.
@@ -2981,18 +2981,18 @@ def avg_pds_from_timeseries(
         per-segment basis.
     silent : bool, default False
         Silence the progress bars
-    fluxes : float `np.array`, default None
+    fluxes : float ``np.array``, default None
         Array of counts per bin or fluxes
-    errors : float `np.array`, default None
+    errors : float ``np.array``, default None
         Array of errors on the fluxes above
     return_subcs : bool, default False
         Return all sub spectra from each light curve chunk
 
     Returns
     -------
-    freq : `np.array`
+    freq : ``np.array``
         The periodogram frequencies
-    power : `np.array`
+    power : ``np.array``
         The normalized periodogram powers
     n_bin : int
         the number of bins in the light curves used in each segment
@@ -3056,15 +3056,15 @@ def _bispectrum_frequency_grid(n_bin, dt, fullspec=False):
 
     Returns
     -------
-    freq : `np.array`
+    freq : ``np.array``
         The Fourier frequencies (length ``nf``). Positive only if
         ``fullspec=False``, signed and sorted if ``fullspec=True``.
-    idx1, idx2 : `np.array`
+    idx1, idx2 : ``np.array``
         ``(nf, nf)`` integer arrays with the FFT bin indices of ``f1`` and
         ``f2``.
-    idx3_safe : `np.array`
+    idx3_safe : ``np.array``
         ``(nf, nf)`` integer array with the FFT bin index of ``f1 + f2``.
-    valid : `np.array`
+    valid : ``np.array``
         ``(nf, nf)`` boolean mask, ``True`` where ``f1 + f2`` is resolved.
     """
     nyquist_bin = n_bin // 2
@@ -3159,15 +3159,15 @@ def bicoherence_from_sums(
 
                 b = \frac{\left|\sum_i T_i\right|}{\sum_i |T_i|}
 
-    abs_bispec_sum : `np.array`
+    abs_bispec_sum : ``np.array``
         :math:`|\sum_i T_i|`.
-    denom1 : `np.array`
+    denom1 : ``np.array``
         :math:`\sum_i |X_i(f_1) X_i(f_2)|^2`.
-    denom2 : `np.array`
+    denom2 : ``np.array``
         :math:`\sum_i |X_i(f_1+f_2)|^2`.
-    sum_abs_triple : `np.array`
+    sum_abs_triple : ``np.array``
         :math:`\sum_i |T_i|`.
-    valid : `np.array`, optional
+    valid : ``np.array``, optional
         Boolean mask; entries where it is ``False`` are set to ``NaN``.
     n_seg : int, optional
         Number of averaged segments, ``M``. Required when ``bias_subtract`` is
@@ -3184,7 +3184,7 @@ def bicoherence_from_sums(
 
     Returns
     -------
-    bicoherence : `np.array`
+    bicoherence : ``np.array``
         The bicoherence.
     """
     norm = norm.lower()
@@ -3259,7 +3259,7 @@ def avg_bispectrum_from_iterable(
 
     Parameters
     ----------
-    flux_iterable : iterable of `np.array`
+    flux_iterable : iterable of ``np.array``
         Iterable of equal-length flux (counts/bin) arrays, one per segment, as
         produced by `get_flux_iterable_from_segments`. Tuples of
         ``(flux, error)`` are accepted; the error is ignored.
@@ -3481,7 +3481,7 @@ def avg_bispectrum_from_timeseries(
 
     Parameters
     ----------
-    times : float `np.array`
+    times : float ``np.array``
         Array of times (photon arrival times, or light-curve bin centers).
     gti : [[gti00, gti01], ...]
         Good time intervals.
@@ -3498,10 +3498,10 @@ def avg_bispectrum_from_timeseries(
         `avg_bispectrum_from_iterable`.
     silent : bool, default False
         Silence the progress bar.
-    fluxes : float `np.array`, default None
+    fluxes : float ``np.array``, default None
         Array of counts per bin. If ``None``, ``times`` is treated as event
         arrival times and binned internally.
-    errors : float `np.array`, default None
+    errors : float ``np.array``, default None
         Array of errors on the fluxes (currently unused by the estimator).
     return_subbs : bool, default False
         Return the full per-segment 2D bispectra in the metadata.
@@ -3573,7 +3573,7 @@ def avg_cross_bispectrum_from_iterables(
 
     Parameters
     ----------
-    flux_iterable1, flux_iterable2, flux_iterable3 : iterable of `np.array`
+    flux_iterable1, flux_iterable2, flux_iterable3 : iterable of ``np.array``
         Iterables of equal-length flux (counts/bin) arrays, one per segment,
         for the three channels. They must be simultaneous: segment ``i`` must
         cover the same time interval in all three. Tuples of ``(flux, error)``
@@ -3864,9 +3864,9 @@ def avg_cs_from_timeseries(
 
     Parameters
     ----------
-    times1 : float `np.array`
+    times1 : float ``np.array``
         Array of times in the sub-band
-    times2 : float `np.array`
+    times2 : float ``np.array``
         Array of times in the reference band
     gti : [[gti00, gti01], [gti10, gti11], ...]
         common good time intervals
@@ -3894,22 +3894,22 @@ def avg_cs_from_timeseries(
     power_type : str, default 'all'
         If 'all', give complex powers. If 'abs', the absolute value; if 'real',
         the real part
-    fluxes1 : float `np.array`, default None
+    fluxes1 : float ``np.array``, default None
         Array of fluxes or counts per bin for channel 1
-    fluxes2 : float `np.array`, default None
+    fluxes2 : float ``np.array``, default None
         Array of fluxes or counts per bin for channel 2
-    errors1 : float `np.array`, default None
+    errors1 : float ``np.array``, default None
         Array of errors on the fluxes on channel 1
-    errors2 : float `np.array`, default None
+    errors2 : float ``np.array``, default None
         Array of errors on the fluxes on channel 2
     return_subcs : bool, default False
         Return all sub spectra from each light curve chunk
 
     Returns
     -------
-    freq : `np.array`
+    freq : ``np.array``
         The periodogram frequencies
-    pds : `np.array`
+    pds : ``np.array``
         The normalized periodogram powers
     n_bin : int
         the number of bins in the light curves used in each segment
@@ -3981,13 +3981,13 @@ def lsft_fast(
 
     Parameters
     ----------
-    y : a :class:`numpy.array` of floats
+    y : a ``numpy.array`` of floats
         Observations to be transformed.
 
-    t : :class:`numpy.array` of floats
+    t : ``numpy.array`` of floats
         Times of the observations
 
-    freqs : :class:`numpy.array`
+    freqs : ``numpy.array``
         An array of frequencies at which the transform is sampled.
 
     sign : int, optional, default: 1
@@ -4080,10 +4080,10 @@ def lsft_slow(
 
     Parameters
     ----------
-    y : a `:class:numpy.array` of floats
+    y : a ``numpy.array`` of floats
         Observations to be transformed.
 
-    t : `:class:numpy.array` of floats
+    t : ``numpy.array`` of floats
         Times of the observations
 
     freqs : numpy.ndarray
