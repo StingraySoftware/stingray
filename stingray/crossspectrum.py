@@ -2351,7 +2351,8 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
          units the ``time`` array in the :class:`Lightcurve`` object uses).
 
     norm: {"leahy" | "frac" | "abs" | "none" }, optional, default "frac"
-        The normaliation of the periodogram to be used.
+        The normalization of the periodogram to be used. The mean count rate that
+        is used in the fractional normalization is selected with ``use_common_mean``.
 
     Other Parameters
     ----------------
@@ -2367,6 +2368,20 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         Compulsory for input :class:`stingray.EventList` data. The time resolution of the
         lightcurve that is created internally from the input event lists. Drives the
         Nyquist frequency.
+
+    use_common_mean: bool, default True
+        Select the mean count rate used to normalize each segment. If ``True``,
+        every segment is normalized by the mean count rate of the whole
+        observation, so a change of count rate between segments shows up in the
+        normalized powers. If ``False``, each segment is normalized by its own
+        mean count rate. The latter is usually what one wants when comparing the
+        columns of a dynamical spectrum with each other: with ``norm="frac"`` it
+        removes the effect of a varying count rate at constant fractional rms,
+        as produced by an rms-flux relation. Note that with ``use_common_mean``
+        set to ``False`` the Poisson noise level follows each segment's own count
+        rate, so a single noise level no longer applies to the whole matrix, and
+        ``compute_rms`` returns the fractional rms of each segment relative to its
+        own mean count rate.
 
     Attributes
     ----------
@@ -2401,15 +2416,32 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
 
     m: int
         The number of averaged powers in each spectral bin (initially 1, it changes after rebinning).
+
+    use_common_mean: bool
+        Whether the normalization uses the mean count rate of the whole
+        observation (``True``) or of each segment (``False``).
+
+    nphots_all: numpy.ndarray
+        The number of photons in each segment. For a cross spectrum, the
+        geometric mean of the two light curves.
     """
 
     def __init__(
-        self, data1=None, data2=None, segment_size=None, norm="frac", gti=None, sample_time=None
+        self,
+        data1=None,
+        data2=None,
+        segment_size=None,
+        norm="frac",
+        gti=None,
+        sample_time=None,
+        use_common_mean=True,
     ):
         self.segment_size = segment_size
         self.sample_time = sample_time
         self.gti = gti
         self.norm = norm
+        self.use_common_mean = use_common_mean
+        self.nphots_all = None
 
         if segment_size is None and data1 is None and data2 is None:
             self._initialize_empty()
@@ -2455,15 +2487,20 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
             segment_size=self.segment_size,
             norm=self.norm,
             gti=self.gti,
+            use_common_mean=self.use_common_mean,
             save_all=True,
         )
         self.dyn_ps = np.array(avg.cs_all).T
-        conv = avg.cs_all / avg.unnorm_cs_all
-        self.unnorm_conversion = np.nanmean(conv)
+        conv = np.asanyarray(avg.cs_all) / np.asanyarray(avg.unnorm_cs_all)
+        if self.use_common_mean:
+            self.unnorm_conversion = np.nanmean(conv)
+        else:
+            self.unnorm_conversion = np.nanmean(conv, axis=1)
         self.freq = avg.freq
         current_gti = avg.gti
         self.nphots1 = avg.nphots1
         self.nphots2 = avg.nphots2
+        self.nphots_all = avg.nphots_all
 
         tstart, _ = time_intervals_from_gtis(current_gti, self.segment_size)
 
@@ -2555,6 +2592,18 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         new_dynspec_object.dyn_ps = np.array(dynspec_new)
         new_dynspec_object.dt = dt_new
         new_dynspec_object.m = int(step) * self.m
+        if np.size(getattr(self, "unnorm_conversion", 1)) > 1:
+            new_dynspec_object.unnorm_conversion = rebin_data(
+                self.time, self.unnorm_conversion, dt_new, method="average", dx=self.dt
+            )[1]
+        if self.nphots_all is not None:
+            new_dynspec_object.nphots_all = rebin_data(
+                self.time, self.nphots_all, dt_new, method="average", dx=self.dt
+            )[1]
+        if getattr(self, "poisson_power", None) is not None:
+            new_dynspec_object.poisson_power = rebin_data(
+                self.time, self.poisson_power, dt_new, method=method, dx=self.dt
+            )[1]
         return new_dynspec_object
 
     def rebin_by_n_intervals(self, n, method="average"):
@@ -2616,6 +2665,21 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         new_dynspec_object.dyn_ps = np.array(dynspec_new).T
         new_dynspec_object.dt *= n
         new_dynspec_object.m = n * self.m
+        if np.size(getattr(self, "unnorm_conversion", 1)) > 1:
+            conv = np.asanyarray(self.unnorm_conversion)
+            nkeep = (conv.size // n) * n
+            new_dynspec_object.unnorm_conversion = conv[:nkeep].reshape(-1, n).mean(axis=1)
+        if self.nphots_all is not None:
+            nphots_all = np.asanyarray(self.nphots_all)
+            nkeep = (nphots_all.size // n) * n
+            new_dynspec_object.nphots_all = nphots_all[:nkeep].reshape(-1, n).mean(axis=1)
+        if getattr(self, "poisson_power", None) is not None:
+            level = np.asanyarray(self.poisson_power)
+            nkeep = (level.size // n) * n
+            level = level[:nkeep].reshape(-1, n).sum(axis=1)
+            if method in ["mean", "average"]:
+                level /= n
+            new_dynspec_object.poisson_power = level
 
         return new_dynspec_object
 
@@ -2745,7 +2809,8 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         poisson_power : float or iterable, optional, default 0
             The Poisson noise level of the power spectrum. If iterable, it should have the same
             length as ``freq``. (This might apply to the case of a power spectrum with a
-            strong dead time distortion)
+            strong dead time distortion). If 2-D, it should have the same shape as ``dyn_ps``,
+            and each column is used as the Poisson level of the corresponding spectrum.
 
         Returns
         -------
@@ -2759,7 +2824,8 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         if np.iscomplexobj(self.dyn_ps):
             warnings.warn("When using power_colors, complex powers will be cast to real.")
 
-        for ps in self.dyn_ps.T:
+        per_column = np.ndim(poisson_power) == 2
+        for i, ps in enumerate(self.dyn_ps.T):
             power_colors.append(
                 power_color(
                     self.freq,
@@ -2767,7 +2833,7 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
                     freq_edges=freq_edges,
                     freqs_to_exclude=freqs_to_exclude,
                     df=self.df,
-                    poisson_power=poisson_power,
+                    poisson_power=poisson_power[:, i] if per_column else poisson_power,
                     m=self.m,
                 )
             )
@@ -2790,26 +2856,35 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
 
         Other parameters
         ----------------
-        poisson_noise_level : float, default is None
+        poisson_noise_level : float or iterable, default 0
             This is the Poisson noise level of the PDS with same
-            normalization as the PDS.
+            normalization as the PDS. If iterable, it should contain one level
+            per spectrum, e.g. ``poisson_power`` of a ``DynamicalPowerspectrum``
+            with ``use_common_mean=False``.
 
         Returns
         -------
         rms: float
             The fractional rms amplitude contained between ``min_freq`` and
-            ``max_freq``.
+            ``max_freq``. If ``use_common_mean`` is ``True``, it is relative to the
+            mean count rate of the whole observation, otherwise to the mean count
+            rate of each segment.
 
         rms_err: float
             The error on the fractional rms amplitude.
 
         """
+        nspec = self.dyn_ps.shape[1]
+        conversion = np.broadcast_to(self.unnorm_conversion, nspec)
+        noise_levels = np.broadcast_to(poisson_noise_level, nspec)
         dyn_ps_unnorm = self.dyn_ps / self.unnorm_conversion
-        poisson_noise_unnrom = poisson_noise_level / self.unnorm_conversion
-        if not hasattr(self, "nphots"):
+        if not self.use_common_mean:
+            nphots = self.nphots_all
+        elif not hasattr(self, "nphots"):
             nphots = (self.nphots1 * self.nphots2) ** 0.5
         else:
             nphots = self.nphots
+        nphots = np.broadcast_to(nphots, nspec)
 
         good = (self.freq >= min_freq) & (self.freq <= max_freq)
 
@@ -2820,13 +2895,16 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         rmss = []
         rms_errs = []
 
-        for unnorm_powers in dyn_ps_unnorm.T:
+        for i, unnorm_powers in enumerate(dyn_ps_unnorm.T):
+            # With ``use_common_mean=False`` the conversion factor, the Poisson
+            # level and the number of photons differ from segment to segment.
+            poisson_noise_unnorm = noise_levels[i] / conversion[i]
             r, re = get_rms_from_unnorm_periodogram(
                 unnorm_powers[good],
-                nphots,
+                nphots[i],
                 self.df,
                 M=M_freq,
-                poisson_noise_unnorm=poisson_noise_unnrom,
+                poisson_noise_unnorm=poisson_noise_unnorm,
                 segment_size=self.segment_size,
                 kind="frac",
             )
@@ -3348,6 +3426,7 @@ def _create_crossspectrum_from_result_table(table, force_averaged=False, channel
     if "subcs" in table.meta:
         cs.cs_all = np.array(table.meta["subcs"])
         cs.unnorm_cs_all = np.array(table.meta["unnorm_subcs"])
+        cs.nphots_all = np.array(table.meta["nphots_subcs"])
 
     for attr, val in table.meta.items():
         if not attr.endswith("subcs"):

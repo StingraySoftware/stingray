@@ -976,7 +976,8 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
          units the ``time`` array in the :class:`Lightcurve`` object uses).
 
     norm: {"leahy" | "frac" | "abs" | "none" }, optional, default "frac"
-        The normaliation of the periodogram to be used.
+        The normalization of the periodogram to be used. The mean count rate that
+        enters the normalization is selected with ``use_common_mean``.
 
     Other Parameters
     ----------------
@@ -992,6 +993,21 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
         Compulsory for input :class:`stingray.EventList` data. The time resolution of the
         lightcurve that is created internally from the input event lists. Drives the
         Nyquist frequency.
+
+    use_common_mean: bool, default True
+        Select the mean count rate used to normalize each segment. If ``True``,
+        every segment is normalized by the mean count rate of the whole
+        observation, so a change of count rate between segments shows up in the
+        normalized powers. If ``False``, each segment is normalized by its own
+        mean count rate. The latter is usually what one wants when comparing the
+        columns of a dynamical spectrum with each other: with ``norm="frac"`` it
+        removes the effect of a varying count rate at constant fractional rms,
+        as produced by an rms-flux relation. Note that with ``use_common_mean``
+        set to ``False`` the Poisson noise level follows each segment's own count
+        rate, so a single noise level no longer applies to the whole matrix. The
+        level of each segment is stored in ``poisson_power``, while ``meanrate``
+        remains the mean over the whole observation. ``compute_rms`` returns the
+        fractional rms of each segment relative to its own mean count rate.
 
     Attributes
     ----------
@@ -1026,13 +1042,35 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
 
     m: int
         The number of averaged cross spectra.
+
+    use_common_mean: bool
+        Whether the normalization uses the mean count rate of the whole
+        observation (``True``) or of each segment (``False``).
+
+    poisson_power: numpy.ndarray or None
+        The Poisson noise level of each segment, in the normalization of
+        ``dyn_ps``, if ``use_common_mean`` is ``False``. ``None`` otherwise.
+
+    nphots_all: numpy.ndarray
+        The number of photons in each segment.
     """
 
-    def __init__(self, lc=None, segment_size=None, norm="frac", gti=None, sample_time=None):
+    def __init__(
+        self,
+        lc=None,
+        segment_size=None,
+        norm="frac",
+        gti=None,
+        sample_time=None,
+        use_common_mean=True,
+    ):
         self.segment_size = segment_size
         self.sample_time = sample_time
         self.gti = gti
         self.norm = norm
+        self.use_common_mean = use_common_mean
+        self.nphots_all = None
+        self.poisson_power = None
 
         if segment_size is None and lc is None:
             self._initialize_empty()
@@ -1125,10 +1163,14 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
             segment_size=self.segment_size,
             norm=self.norm,
             gti=self.gti,
+            use_common_mean=self.use_common_mean,
             save_all=True,
         )
-        conv = avg.cs_all / avg.unnorm_cs_all
-        self.unnorm_conversion = np.nanmean(conv)
+        conv = np.asanyarray(avg.cs_all) / np.asanyarray(avg.unnorm_cs_all)
+        if self.use_common_mean:
+            self.unnorm_conversion = np.nanmean(conv)
+        else:
+            self.unnorm_conversion = np.nanmean(conv, axis=1)
         self.dyn_ps = np.array(avg.cs_all).T
         self.freq = avg.freq
         current_gti = avg.gti
@@ -1140,7 +1182,16 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
         self.dt = self.segment_size
         self.meanrate = avg.nphots / avg.n / avg.dt
         self.nphots = avg.nphots
+        self.nphots_all = avg.nphots_all
         self.m = 1
+        if not self.use_common_mean:
+            # Each column is normalized by its own mean, so each has its own Poisson level.
+            self.poisson_power = np.array(
+                [
+                    poisson_level(norm=self.norm, meanrate=n_ph / avg.n / avg.dt, n_ph=n_ph)
+                    for n_ph in avg.nphots_all
+                ]
+            )
 
     def power_colors(
         self,
@@ -1163,11 +1214,12 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
             ``[0.1, 0.2]``). ``[[0.1, 0.2], [3, 4]]`` will exclude the ranges 0.1-0.2 Hz and
             3-4 Hz.
 
-        poisson_level : float or iterable, optional
-            Defaults to the theoretical Poisson noise level (e.g. 2 for Leahy normalization).
+        poisson_power : float or iterable, optional
+            Defaults to the theoretical Poisson noise level (e.g. 2 for Leahy normalization),
+            calculated for each segment if ``use_common_mean`` is ``False``.
             The Poisson noise level of the power spectrum. If iterable, it should have the same
             length as ``frequency``. (This might apply to the case of a power spectrum with a
-            strong dead time distortion)
+            strong dead time distortion). If 2-D, it should have the same shape as ``dyn_ps``.
 
         Returns
         -------
@@ -1178,10 +1230,21 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
             The power colors for each spectrum and their respective errors
         """
         if poisson_power is None:
-            poisson_power = poisson_level(
-                norm=self.norm,
-                meanrate=self.meanrate,
-                n_ph=self.nphots,
+            if self.poisson_power is not None:
+                poisson_power = np.broadcast_to(self.poisson_power, self.dyn_ps.shape)
+            else:
+                poisson_power = poisson_level(
+                    norm=self.norm,
+                    meanrate=self.meanrate,
+                    n_ph=self.nphots,
+                )
+        elif not self.use_common_mean and np.ndim(poisson_power) < 2:
+            warnings.warn(
+                "With use_common_mean=False each segment has its own Poisson level, "
+                "but a single level was given for all of them. Pass a 2-D poisson_power "
+                "with the shape of dyn_ps, or leave it as None to use the levels of "
+                "each segment.",
+                UserWarning,
             )
 
         return super().power_colors(
@@ -1811,6 +1874,7 @@ def _create_powerspectrum_from_result_table(table, force_averaged=False):
     if "subcs" in table.meta:
         cs.cs_all = np.array(table.meta["subcs"])
         cs.unnorm_cs_all = np.array(table.meta["unnorm_subcs"])
+        cs.nphots_all = np.array(table.meta["nphots_subcs"])
 
     cs.err_dist = "poisson"
     if hasattr(cs, "variance") and cs.variance is not None:
