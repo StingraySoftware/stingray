@@ -189,7 +189,7 @@ class TransferFunction(object):
         Returns
         -------
         data : class instance
-            `TransferFunction` object
+            :class:`~stingray.simulator.transfer.TransferFunction` object
         """
 
         if fmt == "pickle":

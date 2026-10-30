@@ -89,7 +89,7 @@ class LombScargleCrossspectrum(Crossspectrum):
     type = "crossspectrum"
     """
     Make a cross spectrum from an unevenly sampled (binned) light curve.
-    You can also make an empty :class:`LombScargleCrossspectrum` object to populate with your
+    You can also make an empty :class:`~stingray.lombscargle.LombScargleCrossspectrum` object to populate with your
     own Fourier-transformed data (this can sometimes be useful when making
     binned power spectra).
 
@@ -513,11 +513,11 @@ class LombScargleCrossspectrum(Crossspectrum):
 class LombScarglePowerspectrum(LombScargleCrossspectrum):
     type = "powerspectrum"
     """
-    Make a :class:`LombScarglePowerspectrum` (also called periodogram) from a unevenly sampled (binned)
+    Make a :class:`~stingray.lombscargle.LombScarglePowerspectrum` (also called periodogram) from a unevenly sampled (binned)
     light curve. Periodograms can be normalized by either Leahy normalization,
     fractional rms normalization, absolute rms normalization, or not at all.
 
-    You can also make an empty :class:`LombScarglePowerspectrum` object to populate with
+    You can also make an empty :class:`~stingray.lombscargle.LombScarglePowerspectrum` object to populate with
     your own fourier-transformed data (this can sometimes be useful when making
     binned power spectra).
 

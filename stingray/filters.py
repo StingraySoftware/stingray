@@ -301,7 +301,7 @@ def filter_for_deadtime(event_list, deadtime, **kwargs):
     This function accepts either a list of times or a
     `stingray.events.EventList` object.
 
-    For the complete optional parameter list, see `get_deadtime_mask`
+    For the complete optional parameter list, see :func:`~stingray.filters.get_deadtime_mask`
 
     Parameters
     ----------
@@ -315,7 +315,7 @@ def filter_for_deadtime(event_list, deadtime, **kwargs):
     new_ev_list : class:`stingray.events.EventList` object
         The filtered event list
     additional_output : dict
-        See `get_deadtime_mask`
+        See :func:`~stingray.filters.get_deadtime_mask`
 
     """
     # Need to import here to avoid circular imports in the top module.

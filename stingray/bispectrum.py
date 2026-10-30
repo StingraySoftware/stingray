@@ -2270,7 +2270,7 @@ class DynamicalCrossBispectrum(AveragedCrossBispectrum):
         The additive bispectrum sums are combined (not the finished
         bicoherence, which is a ratio and cannot be averaged), then the
         bicoherence and biphase are recomputed. ``method`` is accepted for API
-        parity with :class:`DynamicalCrossspectrum` but the sums are always
+        parity with :class:`~stingray.DynamicalCrossspectrum` but the sums are always
         summed.
         """
         if not np.issubdtype(type(n), np.integer):
@@ -2566,7 +2566,7 @@ def bispectrum_from_time_array(
 
     Parameters
     ----------
-    times : `np.array`
+    times : ``np.array``
         Event arrival times.
     dt : float
         The time resolution of the intermediate light curves.

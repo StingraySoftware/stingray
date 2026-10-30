@@ -437,7 +437,7 @@ class Powerspectrum(Crossspectrum):
 
         Parameters
         ----------
-        times : `np.array`
+        times : ``np.array``
             Event arrival times.
         dt : float
             The time resolution of the intermediate light curves
@@ -494,7 +494,7 @@ class Powerspectrum(Crossspectrum):
 
         Parameters
         ----------
-        events : `stingray.EventList`
+        events : :class:`~stingray.events.EventList`
             Event list to be analyzed.
         dt : float
             The time resolution of the intermediate light curves
@@ -676,7 +676,7 @@ class Powerspectrum(Crossspectrum):
 
         Parameters
         ----------
-        iter_lc : iterable of `stingray.Lightcurve` objects or `np.array`
+        iter_lc : iterable of `stingray.Lightcurve` objects or ``np.array``
             Light curves. If arrays, use them as counts.
         dt : float
             The time resolution of the light curves
@@ -836,7 +836,7 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
 
     dt: float
         The time resolution of the light curve. Only needed when constructing
-        light curves in the case where data is of :class:EventList.
+        light curves in the case where data is of :class:`EventList`.
 
     save_all : bool, default False
         Save all intermediate PDSs used for the final average. Use with care.
@@ -1471,7 +1471,7 @@ def powerspectrum_from_time_array(
 
     Parameters
     ----------
-    times : `np.array`
+    times : ``np.array``
         Event arrival times.
     dt : float
         The time resolution of the intermediate light curves
@@ -1506,7 +1506,7 @@ def powerspectrum_from_time_array(
 
     Returns
     -------
-    spec : `AveragedPowerspectrum` or `Powerspectrum`
+    spec : :class:`~stingray.AveragedPowerspectrum` or :class:`~stingray.Powerspectrum`
         The output periodogram.
     """
     force_averaged = segment_size is not None
@@ -1541,7 +1541,7 @@ def powerspectrum_from_events(
 
     Parameters
     ----------
-    events : `stingray.EventList`
+    events : :class:`~stingray.events.EventList`
         Event list to be analyzed.
     dt : float
         The time resolution of the intermediate light curves
@@ -1576,7 +1576,7 @@ def powerspectrum_from_events(
 
     Returns
     -------
-    spec : `AveragedPowerspectrum` or `Powerspectrum`
+    spec : :class:`~stingray.AveragedPowerspectrum` or :class:`~stingray.Powerspectrum`
         The output periodogram.
     """
     if gti is None:
@@ -1636,7 +1636,7 @@ def powerspectrum_from_lightcurve(
 
     Returns
     -------
-    spec : `AveragedPowerspectrum` or `Powerspectrum`
+    spec : :class:`~stingray.AveragedPowerspectrum` or :class:`~stingray.Powerspectrum`
         The output periodogram.
     """
     force_averaged = segment_size is not None
@@ -1715,7 +1715,7 @@ def powerspectrum_from_timeseries(
 
     Returns
     -------
-    spec : `AveragedCrossspectrum` or `Crossspectrum`
+    spec : :class:`~stingray.AveragedCrossspectrum` or :class:`~stingray.Crossspectrum`
         The output cross spectrum.
     """
     force_averaged = segment_size is not None
@@ -1760,7 +1760,7 @@ def powerspectrum_from_lc_iterable(
 
     Parameters
     ----------
-    iter_lc : iterable of `stingray.Lightcurve` objects or `np.array`
+    iter_lc : iterable of `stingray.Lightcurve` objects or ``np.array``
         Light curves. If arrays, use them as counts.
     dt : float
         The time resolution of the light curves
@@ -1794,7 +1794,7 @@ def powerspectrum_from_lc_iterable(
 
     Returns
     -------
-    spec : `AveragedPowerspectrum` or `Powerspectrum`
+    spec : :class:`~stingray.AveragedPowerspectrum` or :class:`~stingray.Powerspectrum`
         The output periodogram.
     """
     force_averaged = segment_size is not None
@@ -1843,7 +1843,7 @@ def _create_powerspectrum_from_result_table(table, force_averaged=False):
     """
     Copy the columns and metadata from the results of
     ``stingray.fourier.avg_pds_from_XX`` functions into
-    `AveragedPowerspectrum` or `Powerspectrum` objects.
+    :class:`~stingray.AveragedPowerspectrum` or :class:`~stingray.Powerspectrum` objects.
 
     By default, allocates a Powerspectrum object if the number of
     averaged spectra is 1, otherwise an AveragedPowerspectrum.
@@ -1861,7 +1861,7 @@ def _create_powerspectrum_from_result_table(table, force_averaged=False):
 
     Returns
     -------
-    spec : `AveragedPowerspectrum` or `Powerspectrum`
+    spec : :class:`~stingray.AveragedPowerspectrum` or :class:`~stingray.Powerspectrum`
         The output periodogram.
     """
     if table.meta["m"] > 1 or force_averaged:
