@@ -43,3 +43,11 @@
   ``Union`` alias, so neither is an object with a page to point at. Only those exact
   names are listed, so a genuine broken reference is still reported. With this in place
   the nitpicky build is down to 22 warnings, from 686.
+- The six terms of the Zhang+95 dead-time model that ``stingray.deadtime.model``
+  exposes -- ``e_m_x_x_over_factorial``, ``A0``, ``A_single_k``, ``A``, ``limit_A`` and
+  ``B`` -- are listed in ``__all__`` and so have documentation pages. Two references to
+  ``check_A`` and ``check_B`` were written without a module path, in a docstring that
+  renders under ``stingray.crossspectrum``, and ``limit_k`` was written as a reference
+  although it is the name of a parameter. With these the nitpicky build is down to eight
+  warnings, seven of which are references to the four classes whose docstrings Python
+  currently discards.
