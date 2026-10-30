@@ -54,7 +54,7 @@ class Lightcurve(StingrayTimeseries):
     time: Iterable, :class:`~astropy.time.Time`, or :class:`~astropy.units.Quantity` object
         A list or array of time stamps for a light curve. Must be a type that
         can be cast to ``np.array`` or ``list`` of floats, or that
-        has a `value` attribute that does (e.g., a
+        has a ``value`` attribute that does (e.g., a
         :class:`~astropy.units.Quantity` or :class:`~astropy.time.Time` object).
 
     counts: iterable, optional, default ``None``
@@ -94,7 +94,7 @@ class Lightcurve(StingrayTimeseries):
 
     bg_ratio: iterable, ``numpy.array`` or ``list`` of floats, optional, default ``None``
         A list or array of source region area to background region area ratio in each bin. These are
-        factors by which the `bg_counts` should be scaled to estimate background counts within the
+        factors by which the ``bg_counts`` should be scaled to estimate background counts within the
         source aperture.
 
     frac_exp: iterable, ``numpy.array`` or ``list`` of floats, optional, default ``None``
@@ -1342,7 +1342,7 @@ class Lightcurve(StingrayTimeseries):
         """Analyze segments of the light curve with any function.
 
         .. deprecated:: 2.0
-            Use :meth:`Lightcurve.analyze_segments(func, segment_size)` instead.
+            Use :meth:`~stingray.StingrayTimeseries.analyze_segments` instead.
 
         Parameters
         ----------

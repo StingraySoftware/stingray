@@ -128,18 +128,18 @@ class CrossBispectrum(StingrayObject):
 
     Parameters
     ----------
-    data1, data2, data3 : :class:`stingray.Lightcurve` or :class:`stingray.EventList`, optional
+    data1, data2, data3 : :class:`stingray.Lightcurve` or :class:`~stingray.events.EventList`, optional
         The three channels, mapped to the factors ``X(f1)``, ``Y(f2)`` and
         ``Z(f1+f2)`` respectively. ``data2`` and ``data3`` default to ``data1``
         (recovering the auto-bispectrum). All three must be simultaneous (same
-        ``dt``, same time bins, compatible GTIs). If :class:`EventList`, ``dt``
+        ``dt``, same time bins, compatible GTIs). If :class:`~stingray.events.EventList`, ``dt``
         must be specified.
 
     Other Parameters
     ----------------
     dt : float
         The time resolution of the light curves. Only needed for
-        :class:`EventList` inputs.
+        :class:`~stingray.events.EventList` inputs.
 
     gti : ``[[gti0_0, gti0_1], ...]``
         Good time intervals. Defaults to the intersection of the inputs' GTIs.
@@ -159,7 +159,7 @@ class CrossBispectrum(StingrayObject):
         ``M`` is the number of averaged segments (Fackrell 1996; Elgar & Guza
         1988). Only defined for the ``"kim_powers"`` and ``"sigl_chamoun"``
         normalizations. Can also be toggled after the fact with
-        :meth:`recompute_bicoherence`.
+        :meth:`~stingray.bispectrum.CrossBispectrum.recompute_bicoherence`.
 
     channels_overlap : bool, default False
         Whether the three channels are the same photon stream. Independent
@@ -179,7 +179,7 @@ class CrossBispectrum(StingrayObject):
 
     bicoherence : numpy.ndarray
         The cross-bicoherence in ``[0, 1]``, in the ``bicoherence_norm``
-        convention. Use :meth:`recompute_bicoherence` for a different one.
+        convention. Use :meth:`~stingray.bispectrum.CrossBispectrum.recompute_bicoherence` for a different one.
 
     bicoherence_norm : str
         The normalization used for ``bicoherence``.
@@ -728,7 +728,7 @@ class AveragedCrossBispectrum(CrossBispectrum):
 
     Parameters
     ----------
-    data1, data2, data3 : :class:`stingray.Lightcurve`, iterable, or :class:`stingray.EventList`
+    data1, data2, data3 : :class:`stingray.Lightcurve`, iterable, or :class:`~stingray.events.EventList`
         The three channels. ``data2``/``data3`` default to ``data1``.
 
     segment_size : float
@@ -899,13 +899,13 @@ class Bispectrum(CrossBispectrum):
     ----------
     data : :class:`stingray.Lightcurve` or :class:`stingray.events.EventList`, optional
         The light curve or event list to be Fourier-transformed. If an
-        :class:`EventList` is given, ``dt`` must be specified.
+        :class:`~stingray.events.EventList` is given, ``dt`` must be specified.
 
     Other Parameters
     ----------------
     dt : float
         The time resolution of the light curve. Only needed for an
-        :class:`EventList`.
+        :class:`~stingray.events.EventList`.
 
     bicoherence_norm : {"kim_powers", "sigl_chamoun", "hagihira"}, default "kim_powers"
         Which normalization to use for the ``bicoherence`` attribute. All lie in
@@ -930,7 +930,7 @@ class Bispectrum(CrossBispectrum):
         ``M`` is the number of averaged segments (Fackrell 1996; Elgar & Guza
         1988). Only defined for the ``"kim_powers"`` and ``"sigl_chamoun"``
         normalizations. Can also be toggled after the fact with
-        :meth:`recompute_bicoherence`.
+        :meth:`~stingray.bispectrum.CrossBispectrum.recompute_bicoherence`.
 
     method : {"fourier", "cumulant"}, default "fourier"
         Which estimator to use. ``"fourier"`` is the direct Fourier-decomposition
@@ -1407,7 +1407,7 @@ class Bispectrum(CrossBispectrum):
             The light curve or event list to be Fourier-transformed.
         dt : float, optional
             The time resolution of the light curve. Only needed for an
-            :class:`EventList`.
+            :class:`~stingray.events.EventList`.
         maxlag : int, optional
             Maximum lag of the 3rd-order cumulant. Defaults to half the
             light-curve length.
@@ -1482,7 +1482,7 @@ class AveragedBispectrum(AveragedCrossBispectrum, Bispectrum):
     gti : ``[[gti0_0, gti0_1], ...]``
         Good time intervals.
     dt : float
-        The time resolution of the light curve (needed for an :class:`EventList`).
+        The time resolution of the light curve (needed for an :class:`~stingray.events.EventList`).
     silent : bool, default False
         Do not show a progress bar.
     save_all : bool, default False
@@ -1815,7 +1815,7 @@ class DynamicalCrossBispectrum(AveragedCrossBispectrum):
         Good time intervals. Defaults to the intersection of the inputs' GTIs.
     sample_time : float
         Time resolution of the light curves created from event lists. Required
-        for :class:`EventList` inputs.
+        for :class:`~stingray.events.EventList` inputs.
 
     Attributes
     ----------

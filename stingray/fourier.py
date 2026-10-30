@@ -188,7 +188,7 @@ def positive_fft_bins(n_bin, include_zero=False):
     >>> good = freq > 0
 
     This works well, but it is highly inefficient in large arrays.
-    This function will instead return a `slice object`, which will work
+    This function will instead return a ``slice object``, which will work
     as an equivalent mask for the positive bins. Below, a few tests that
     this works as expected.
     >>> goodbins = positive_fft_bins(10)
@@ -372,11 +372,11 @@ def normalize_frac(unnorm_power, dt, n_bin, mean_flux, background_flux=0):
     Other parameters
     ----------------
     background_flux : float, default 0
-        The background flux, in the same units as `mean_flux`.
+        The background flux, in the same units as ``mean_flux``.
 
     Returns
     -------
-    power : ``np.array`` of the same kind and shape as `unnorm_power`
+    power : ``np.array`` of the same kind and shape as ``unnorm_power``
         The normalized powers.
 
     Examples
@@ -443,7 +443,7 @@ def normalize_abs(unnorm_power, dt, n_bin):
 
     Returns
     -------
-    power : ``np.array`` of the same kind and shape as `unnorm_power`
+    power : ``np.array`` of the same kind and shape as ``unnorm_power``
         The normalized powers.
 
     Examples
@@ -494,7 +494,7 @@ def normalize_leahy_from_variance(unnorm_power, variance, n_bin):
 
     Returns
     -------
-    power : ``np.array`` of the same kind and shape as `unnorm_power`
+    power : ``np.array`` of the same kind and shape as ``unnorm_power``
         The normalized powers.
 
     Examples
@@ -543,7 +543,7 @@ def normalize_leahy_poisson(unnorm_power, n_ph):
 
     Returns
     -------
-    power : ``np.array`` of the same kind and shape as `unnorm_power`
+    power : ``np.array`` of the same kind and shape as ``unnorm_power``
         The normalized powers.
 
     Examples
@@ -614,7 +614,7 @@ def normalize_periodograms(
         (absolute value)
 
     background_flux : float, default 0
-        The background flux, in the same units as `mean_flux`.
+        The background flux, in the same units as ``mean_flux``.
 
     Returns
     -------
@@ -692,7 +692,7 @@ def unnormalize_periodograms(
         (absolute value)
 
     background_flux : float, default 0
-        The background flux, in the same units as `mean_flux`.
+        The background flux, in the same units as ``mean_flux``.
 
     Returns
     -------
@@ -1251,18 +1251,18 @@ def _intrinsic_coherence_array(
     cross_power : complex ``np.array``
         Cross spectrum
     power1 : float ``np.array``
-        Sub-band periodogram. Must have the same shape as `cross_power`.
+        Sub-band periodogram. Must have the same shape as ``cross_power``.
     power2 : float ``np.array``
-        Reference-band periodogram. Must have the same shape as `cross_power`.
+        Reference-band periodogram. Must have the same shape as ``cross_power``.
     power1_noise : float ``np.array``
         Poisson noise level of the sub-band periodogram. Can have a single value
-        or the same shape as `cross_power`.
+        or the same shape as ``cross_power``.
     power2_noise : float ``np.array``
         Poisson noise level of the reference-band periodogram. Can have a single value
-        or the same shape as `cross_power`.
+        or the same shape as ``cross_power``.
     n_ave : int or float ``np.array``
         number of intervals that have been averaged to obtain the input spectra. Can have
-        a single value or the same shape as `cross_power`.
+        a single value or the same shape as ``cross_power``.
 
     Other Parameters
     ----------------
@@ -1368,14 +1368,14 @@ def intrinsic_coherence(
     cross_power : complex ``np.array``
         Cross spectrum
     power1 : float ``np.array``
-        Sub-band periodogram. Must have the same shape as `cross_power`.
+        Sub-band periodogram. Must have the same shape as ``cross_power``.
     power2 : float ``np.array``
-        Reference-band periodogram. Must have the same shape as `cross_power`.
-    power1_noise : float or float ``np.array`` of the same shape as `cross_power`
+        Reference-band periodogram. Must have the same shape as ``cross_power``.
+    power1_noise : float or float ``np.array`` of the same shape as ``cross_power``
         Poisson noise level of the sub-band periodogram
-    power2_noise : float or float ``np.array`` of the same shape as `cross_power`
+    power2_noise : float or float ``np.array`` of the same shape as ``cross_power``
         Poisson noise level of the reference-band periodogram
-    n_ave : int or float or int ``np.array`` of the same shape as `cross_power`
+    n_ave : int or float or int ``np.array`` of the same shape as ``cross_power``
         number of intervals that have been averaged to obtain the input spectra
 
     Other Parameters
@@ -2255,7 +2255,7 @@ def avg_pds_from_iterable(
 
     Parameters
     ----------
-    flux_iterable : `iterable` of ``np.array``s or of tuples (``np.array``, ``np.array``)
+    flux_iterable : ``iterable`` of ``np.array``s or of tuples (``np.array``, ``np.array``)
         Iterable providing either equal-length series of count measurements,
         or of tuples (fluxes, errors). They must all be of the same length.
     dt : float
@@ -2446,10 +2446,10 @@ def avg_cs_from_iterables_quick(flux_iterable1, flux_iterable2, dt, norm="frac")
 
     Parameters
     ----------
-    flux_iterable1 : `iterable` of ``np.array``s or of tuples (``np.array``, ``np.array``)
+    flux_iterable1 : ``iterable`` of ``np.array``s or of tuples (``np.array``, ``np.array``)
         Iterable providing either equal-length series of count measurements, or
         of tuples (fluxes, errors). They must all be of the same length.
-    flux_iterable2 : `iterable` of ``np.array``s or of tuples (``np.array``, ``np.array``)
+    flux_iterable2 : ``iterable`` of ``np.array``s or of tuples (``np.array``, ``np.array``)
         Same as ``flux_iterable1``, for the reference channel
     dt : float
         Time resolution of the light curves used to produce periodograms
@@ -2604,10 +2604,10 @@ def avg_cs_from_iterables(
 
     Parameters
     ----------
-    flux_iterable1 : `iterable` of ``np.array``s or of tuples (``np.array``, ``np.array``)
+    flux_iterable1 : ``iterable`` of ``np.array``s or of tuples (``np.array``, ``np.array``)
         Iterable providing either equal-length series of count measurements, or
         of tuples (fluxes, errors). They must all be of the same length.
-    flux_iterable2 : `iterable` of ``np.array``s or of tuples (``np.array``, ``np.array``)
+    flux_iterable2 : ``iterable`` of ``np.array``s or of tuples (``np.array``, ``np.array``)
         Same as ``flux_iterable1``, for the reference channel
     dt : float
         Time resolution of the light curves used to produce periodograms

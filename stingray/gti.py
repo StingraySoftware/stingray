@@ -1559,7 +1559,7 @@ def generate_indices_of_gti_boundaries(times, gti, dt=0):
         Start index of the current GTI in the time array.
     stopidx: int
         End index of the current GTI in the time array. Note that this is
-        larger by one, so that `time[startidx:stopidx]` returns the correct
+        larger by one, so that ``time[startidx:stopidx]`` returns the correct
         time interval.
 
     Examples
@@ -1610,7 +1610,7 @@ def generate_indices_of_segment_boundaries_unbinned(times, gti, segment_size, ch
         Start index of the current segment in the time array.
     stopidx: int
         End index of the current segment in the time array. Note that this is
-        larger by one, so that `time[startidx:stopidx]` returns the correct
+        larger by one, so that ``time[startidx:stopidx]`` returns the correct
         time interval.
 
     Examples
@@ -1681,7 +1681,7 @@ def generate_indices_of_segment_boundaries_binned(times, gti, segment_size, dt=N
         Start index of the current segment in the time array
     stopidx: int
         End index of the current segment in the time array. Note that this is
-        larger by one, so that `time[startidx:stopidx]` returns the correct
+        larger by one, so that ``time[startidx:stopidx]`` returns the correct
         time interval.
 
     Examples

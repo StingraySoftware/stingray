@@ -213,16 +213,16 @@ def phase_exposure(start_time, stop_time, period, nbin=16, gti=None):
 def fold_events(times, *frequency_derivatives, **opts):
     """Epoch folding with exposure correction.
 
-    By default, the keyword `times` accepts a list of
+    By default, the keyword ``times`` accepts a list of
     unbinned photon arrival times. If the input data is
-    a (binned) light curve, then `times` will contain the
-    time stamps of the observation, and `weights` should
+    a (binned) light curve, then ``times`` will contain the
+    time stamps of the observation, and ``weights`` should
     be set to the corresponding fluxes or counts.
 
     Parameters
     ----------
     times : array of floats
-        Photon arrival times, or, if `weights` is set,
+        Photon arrival times, or, if ``weights`` is set,
         time stamps of a light curve.
 
     f, fdot, fddot... : float
@@ -319,7 +319,7 @@ def fold_events(times, *frequency_derivatives, **opts):
         if np.allclose(weights, 1.0):
             raise ValueError(
                 "Can only calculate PDM for binned light curves!"
-                + "`weights` attribute must be set to fluxes!"
+                + "``weights`` attribute must be set to fluxes!"
             )
 
         raw_profile, bins, bin_idx = scipy.stats.binned_statistic(
@@ -755,8 +755,8 @@ def fftfit(prof, template=None, quick=False, sigma=None, use_bootstrap=False, **
     sigma : array
         error on profile bins (currently has no effect)
     use_bootstrap : bool
-        Calculate errors using a bootstrap method, with `fftfit_error`
-    **fftfit_kwargs : additional arguments for `fftfit_error`
+        Calculate errors using a bootstrap method, with ``fftfit_error``
+    **fftfit_kwargs : additional arguments for ``fftfit_error``
 
     Returns
     -------

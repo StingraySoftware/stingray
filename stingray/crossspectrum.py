@@ -462,7 +462,7 @@ class Crossspectrum(StingrayObject):
 
     """
     Make a cross spectrum from a (binned) light curve.
-    You can also make an empty :class:`Crossspectrum` object to populate with your
+    You can also make an empty :class:`~stingray.Crossspectrum` object to populate with your
     own Fourier-transformed data (this can sometimes be useful when making
     binned power spectra). Stingray uses the scipy.fft standards for the sign
     of the Nyquist frequency.
@@ -504,7 +504,7 @@ class Crossspectrum(StingrayObject):
     dt: float
         The time resolution of the light curve. Only needed when constructing
         light curves in the case where ``data1``, ``data2`` are
-        :class:`EventList` objects
+        :class:`~stingray.events.EventList` objects
 
     skip_checks: bool
         Skip initial checks, for speed or other reasons (you need to trust your
@@ -655,7 +655,7 @@ class Crossspectrum(StingrayObject):
         >>> Crossspectrum.initial_checks(c, power_type="blabla")
         Traceback (most recent call last):
         ...
-        ValueError: `power_type` not recognized!
+        ValueError: ``power_type`` not recognized!
 
         If the user passes only one light curve, raise a ValueError
 
@@ -678,7 +678,7 @@ class Crossspectrum(StingrayObject):
             raise ValueError("norm must be 'frac', 'abs', 'leahy', or 'none'!")
 
         if power_type not in ["all", "absolute", "real"]:
-            raise ValueError("`power_type` not recognized!")
+            raise ValueError("``power_type`` not recognized!")
 
         # check if input data is a Lightcurve object, if not make one or
         # make an empty Crossspectrum object if lc1 == ``None`` or lc2 == ``None``
@@ -759,12 +759,12 @@ class Crossspectrum(StingrayObject):
 
         Returns
         -------
-        bin_cs = :class:`Crossspectrum` (or one of its subclasses) object
+        bin_cs = :class:`~stingray.Crossspectrum` (or one of its subclasses) object
             The newly binned cross spectrum or power spectrum.
             Note: this object will be of the same type as the object
             that called this method. For example, if this method is called
-            from :class:`AveragedPowerspectrum`, it will return an object of class
-            :class:`AveragedPowerspectrum`, too.
+            from :class:`~stingray.AveragedPowerspectrum`, it will return an object of class
+            :class:`~stingray.AveragedPowerspectrum`, too.
         """
 
         if f is None and df is None:
@@ -957,11 +957,11 @@ class Crossspectrum(StingrayObject):
 
         Returns
         -------
-        new_spec : :class:`Crossspectrum` (or one of its subclasses) object
+        new_spec : :class:`~stingray.Crossspectrum` (or one of its subclasses) object
             The newly binned cross spectrum or power spectrum.
             Note: this object will be of the same type as the object
             that called this method. For example, if this method is called
-            from :class:`AveragedPowerspectrum`, it will return an object of class
+            from :class:`~stingray.AveragedPowerspectrum`, it will return an object of class
         """
 
         binfreq, binpower, binpower_err, nsamples = rebin_data_log(
@@ -1262,7 +1262,7 @@ class Crossspectrum(StingrayObject):
             by the number of frequencies before being applied. This decreases
             the ``threshold`` (p-values need to be lower to count as significant).
             Default is ``False`` (report all powers) though for any application
-            where `threshold`` is set to something meaningful, this should also
+            where ``threshold`` is set to something meaningful, this should also
             be applied!
 
         Returns
@@ -1533,9 +1533,9 @@ class Crossspectrum(StingrayObject):
 
         Parameters
         ----------
-        ts1 : `stingray.Timeseries`
+        ts1 : :class:`~stingray.base.StingrayTimeseries`
             Time series from channel 1
-        ts2 : `stingray.Timeseries`
+        ts2 : :class:`~stingray.base.StingrayTimeseries`
             Time series from channel 2
         flux_attr : `str`
             What attribute of the time series will be used.
@@ -1647,7 +1647,7 @@ class Crossspectrum(StingrayObject):
             making the cross spectrum.
         save_all : bool, default False
             If True, save the cross spectrum of each segment in the ``cs_all``
-            attribute of the output :class:`Crossspectrum` object.
+            attribute of the output :class:`~stingray.Crossspectrum` object.
         channels_overlap: bool, default False
             If True, the reference band contains all the photons of the subject band.
             This happens, for example, when calculating covariance spectra (see, e.g.,
@@ -1821,7 +1821,7 @@ class Crossspectrum(StingrayObject):
 
         Returns
         -------
-        spectrum: :class:`Crossspectrum` or derivative.
+        spectrum: :class:`~stingray.Crossspectrum` or derivative.
             The dead-time corrected spectrum.
         """
         # I put it here to avoid circular imports
@@ -1872,7 +1872,7 @@ class Crossspectrum(StingrayObject):
         :func:`stingray.fourier.error_on_averaged_cross_spectrum`.
 
         Please note that we have dedicated methods for covariance spectra and other variability
-        versus energy spectra in `stingray.varenergyspectrum`, even though they only work for
+        versus energy spectra in ``stingray.varenergyspectrum``, even though they only work for
         input event lists at the moment.
         """
         P1noise = poisson_level(norm="none", meanrate=self.countrate1, n_ph=self.nphots1)
@@ -1933,12 +1933,12 @@ class AveragedCrossspectrum(Crossspectrum):
 
     Parameters
     ----------
-    data1: :class:`stingray.Lightcurve`object OR iterable of :class:`stingray.Lightcurve` objects OR :class:`stingray.EventList` object
+    data1: :class:`stingray.Lightcurve`object OR iterable of :class:`stingray.Lightcurve` objects OR :class:`~stingray.events.EventList` object
         A light curve from which to compute the cross spectrum. In some cases,
         this would be the light curve of the wavelength/energy/frequency band
         of interest.
 
-    data2: :class:`stingray.Lightcurve`object OR iterable of :class:`stingray.Lightcurve` objects OR :class:`stingray.EventList` object
+    data2: :class:`stingray.Lightcurve`object OR iterable of :class:`stingray.Lightcurve` objects OR :class:`~stingray.events.EventList` object
         A second light curve to use in the cross spectrum. In some cases, this
         would be the wavelength/energy/frequency reference band to compare the
         band of interest with.
@@ -1964,7 +1964,7 @@ class AveragedCrossspectrum(Crossspectrum):
 
     dt : float
         The time resolution of the light curve. Only needed when constructing
-        light curves in the case where data1 or data2 are of :class:`EventList`
+        light curves in the case where data1 or data2 are of :class:`~stingray.events.EventList`
 
     power_type: string, optional, default ``all``
          Parameter to choose among complete, real part and magnitude of
@@ -1998,7 +1998,7 @@ class AveragedCrossspectrum(Crossspectrum):
     use_common_mean: bool
         Averaged cross spectra are normalized in two possible ways: one is by normalizing
         each of the single spectra that get averaged, the other is by normalizing after the
-        averaging. If `use_common_mean` is selected, the spectrum will be normalized
+        averaging. If ``use_common_mean`` is selected, the spectrum will be normalized
         after the average.
 
     gti: [[gti0_0, gti0_1], [gti1_0, gti1_1], ...]
@@ -2343,18 +2343,18 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
 
     Parameters
     ----------
-    data1 : :class:`stingray.Lightcurve` or :class:`stingray.EventList` object
+    data1 : :class:`stingray.Lightcurve` or :class:`~stingray.events.EventList` object
         The time series or event list from the subject band, or channel, for which
-        the dynamical cross spectrum is to be calculated. If :class:`stingray.EventList`, ``dt``
+        the dynamical cross spectrum is to be calculated. If :class:`~stingray.events.EventList`, ``dt``
         must be specified as well.
 
-    data2 : :class:`stingray.Lightcurve` or :class:`stingray.EventList` object
+    data2 : :class:`stingray.Lightcurve` or :class:`~stingray.events.EventList` object
         The time series or event list from the reference band, or channel, of the dynamical
-        cross spectrum. If :class:`stingray.EventList`, ``dt`` must be specified as well.
+        cross spectrum. If :class:`~stingray.events.EventList`, ``dt`` must be specified as well.
 
     segment_size : float, default 1
          Length of the segment of light curve, default value is 1 (in whatever
-         units the ``time`` array in the :class:`Lightcurve`` object uses).
+         units the ``time`` array in the :class:`~stingray.Lightcurve` object uses).
 
     norm: {"leahy" | "frac" | "abs" | "none" }, optional, default "frac"
         The normaliation of the periodogram to be used.
@@ -2370,7 +2370,7 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         the cross spectrum.
 
     sample_time: float
-        Compulsory for input :class:`stingray.EventList` data. The time resolution of the
+        Compulsory for input :class:`~stingray.events.EventList` data. The time resolution of the
         lightcurve that is created internally from the input event lists. Drives the
         Nyquist frequency.
 
@@ -2446,10 +2446,10 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
 
         Parameters
         ----------
-        data1 : :class:`Lightcurve` or :class:`EventList`
+        data1 : :class:`Lightcurve` or :class:`~stingray.events.EventList`
             The object providing the subject band/channel for the dynamical
             cross spectrum.
-        data2 : :class:`Lightcurve` or :class:`EventList`
+        data2 : :class:`Lightcurve` or :class:`~stingray.events.EventList`
             The object providing the reference band for the dynamical
             cross spectrum.
         """
@@ -2627,7 +2627,7 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
     def trace_maximum(self, min_freq=None, max_freq=None):
         """
         Return the indices of the maximum powers in each segment
-        :class:`Powerspectrum` between specified frequencies.
+        :class:`~stingray.Powerspectrum` between specified frequencies.
 
         Parameters
         ----------
@@ -2682,11 +2682,11 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
             is linear.
         output_obj_type : class, default :class:`AveragedCrossspectrum`
             The type of the output object. Can be, e.g. :class:`AveragedCrossspectrum` or
-            :class:`AveragedPowerspectrum`.
+            :class:`~stingray.AveragedPowerspectrum`.
 
         Returns
         -------
-        output: :class:`AveragedPowerspectrum` or :class:`AveragedCrossspectrum`
+        output: :class:`~stingray.AveragedPowerspectrum` or :class:`AveragedCrossspectrum`
             The final averaged power spectrum.
 
         Examples

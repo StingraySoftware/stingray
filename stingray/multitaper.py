@@ -639,8 +639,8 @@ class Multitaper(Powerspectrum):
             The newly binned multitaper spectrum.
             Note: this object will be of the same type as the object
             that called this method. For example, if this method is called
-            from :class:`AveragedPowerspectrum`, it will return an object of class
-            :class:`AveragedPowerspectrum`, too.
+            from :class:`~stingray.AveragedPowerspectrum`, it will return an object of class
+            :class:`~stingray.AveragedPowerspectrum`, too.
         """
 
         if f is None and df is None:

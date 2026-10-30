@@ -38,11 +38,11 @@ __all__ = [
 class Powerspectrum(Crossspectrum):
     type = "powerspectrum"
     """
-    Make a :class:`Powerspectrum` (also called periodogram) from a (binned)
+    Make a :class:`~stingray.Powerspectrum` (also called periodogram) from a (binned)
     light curve. Periodograms can be normalized by either Leahy normalization,
     fractional rms normalization, absolute rms normalization, or not at all.
 
-    You can also make an empty :class:`Powerspectrum` object to populate with
+    You can also make an empty :class:`~stingray.Powerspectrum` object to populate with
     your own fourier-transformed data (this can sometimes be useful when making
     binned power spectra).
 
@@ -148,7 +148,7 @@ class Powerspectrum(Crossspectrum):
 
         Returns
         -------
-        bin_cs = :class:`Powerspectrum` object
+        bin_cs = :class:`~stingray.Powerspectrum` object
             The newly binned power spectrum.
         """
         bin_ps = Crossspectrum.rebin(self, df=df, f=f, method=method)
@@ -300,7 +300,7 @@ class Powerspectrum(Crossspectrum):
             corrected by the number of frequencies before being applied. This
             decreases the ``threshold`` (p-values need to be lower to count as
             significant). Default is ``False`` (report all powers) though for
-            any application where `threshold`` is set to something meaningful,
+            any application where ``threshold`` is set to something meaningful,
             this should also be applied!
 
         Returns
@@ -455,8 +455,8 @@ class Powerspectrum(Crossspectrum):
             overlaps between these GTIs and the input object GTIs. If that
             happens, assign the desired GTIs to the input object.
         norm : str, default "frac"
-            The normalization of the periodogram. `abs` is absolute rms, `frac`
-            is fractional rms, `leahy` is Leahy+83 normalization, and `none` is
+            The normalization of the periodogram. `abs` is absolute rms, ``frac``
+            is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
             the unnormalized periodogram.
         use_common_mean : bool, default True
             The mean of the light curve can be estimated in each interval, or
@@ -512,8 +512,8 @@ class Powerspectrum(Crossspectrum):
             overlaps between these GTIs and the input object GTIs. If that
             happens, assign the desired GTIs to the input object.
         norm : str, default "frac"
-            The normalization of the periodogram. `abs` is absolute rms, `frac`
-            is fractional rms, `leahy` is Leahy+83 normalization, and `none` is
+            The normalization of the periodogram. `abs` is absolute rms, ``frac``
+            is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
             the unnormalized periodogram.
         use_common_mean : bool, default True
             The mean of the light curve can be estimated in each interval, or
@@ -555,7 +555,7 @@ class Powerspectrum(Crossspectrum):
 
         Parameters
         ----------
-        ts : `stingray.Timeseries`
+        ts : :class:`~stingray.base.StingrayTimeseries`
             Input Time Series
         flux_attr : `str`
             What attribute of the time series will be used.
@@ -633,8 +633,8 @@ class Powerspectrum(Crossspectrum):
             overlaps between these GTIs and the input object GTIs. If that
             happens, assign the desired GTIs to the input object.
         norm : str, default "frac"
-            The normalization of the periodogram. `abs` is absolute rms, `frac`
-            is fractional rms, `leahy` is Leahy+83 normalization, and `none` is
+            The normalization of the periodogram. `abs` is absolute rms, ``frac``
+            is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
             the unnormalized periodogram.
         use_common_mean : bool, default True
             The mean of the light curve can be estimated in each interval, or
@@ -694,8 +694,8 @@ class Powerspectrum(Crossspectrum):
             overlaps between these GTIs and the input object GTIs. If that
             happens, assign the desired GTIs to the input object.
         norm : str, default "frac"
-            The normalization of the periodogram. `abs` is absolute rms, `frac`
-            is fractional rms, `leahy` is Leahy+83 normalization, and `none` is
+            The normalization of the periodogram. `abs` is absolute rms, ``frac``
+            is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
             the unnormalized periodogram.
         use_common_mean : bool, default True
             The mean of the light curve can be estimated in each interval, or
@@ -808,7 +808,7 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
 
     Parameters
     ----------
-    data: :class:`stingray.Lightcurve`object OR iterable of :class:`stingray.Lightcurve` objects OR :class:`stingray.EventList` object
+    data: :class:`stingray.Lightcurve`object OR iterable of :class:`stingray.Lightcurve` objects OR :class:`~stingray.events.EventList` object
         The light curve data to be Fourier-transformed.
 
     segment_size: float
@@ -836,7 +836,7 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
 
     dt: float
         The time resolution of the light curve. Only needed when constructing
-        light curves in the case where data is of :class:`EventList`.
+        light curves in the case where data is of :class:`~stingray.events.EventList`.
 
     save_all : bool, default False
         Save all intermediate PDSs used for the final average. Use with care.
@@ -884,7 +884,7 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
     nphots: float
         The total number of photons in the light curve.
 
-    cs_all: list of :class:`Powerspectrum` objects
+    cs_all: list of :class:`~stingray.Powerspectrum` objects
         The list of all periodograms used to calculate the average periodogram.
     """
 
@@ -973,13 +973,13 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
 
     Parameters
     ----------
-    lc : :class:`stingray.Lightcurve` or :class:`stingray.EventList` object
+    lc : :class:`stingray.Lightcurve` or :class:`~stingray.events.EventList` object
         The time series or event list of which the dynamical power spectrum is
-        to be calculated. If :class:`stingray.EventList`, ``dt`` must be specified as well.
+        to be calculated. If :class:`~stingray.events.EventList`, ``dt`` must be specified as well.
 
     segment_size : float, default 1
          Length of the segment of light curve, default value is 1 (in whatever
-         units the ``time`` array in the :class:`Lightcurve`` object uses).
+         units the ``time`` array in the :class:`~stingray.Lightcurve` object uses).
 
     norm: {"leahy" | "frac" | "abs" | "none" }, optional, default "frac"
         The normaliation of the periodogram to be used.
@@ -995,7 +995,7 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
         the power spectrum.
 
     sample_time: float
-        Compulsory for input :class:`stingray.EventList` data. The time resolution of the
+        Compulsory for input :class:`~stingray.events.EventList` data. The time resolution of the
         lightcurve that is created internally from the input event lists. Drives the
         Nyquist frequency.
 
@@ -1088,7 +1088,7 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
 
         Returns
         -------
-        output: :class:`AveragedPowerspectrum`
+        output: :class:`~stingray.AveragedPowerspectrum`
             The final averaged power spectrum.
 
         Examples
@@ -1425,8 +1425,8 @@ def powerspectrum_from_time_array(
         overlaps between these GTIs and the input object GTIs. If that
         happens, assign the desired GTIs to the input object.
     norm : str, default "frac"
-        The normalization of the periodogram. `abs` is absolute rms, `frac`
-        is fractional rms, `leahy` is Leahy+83 normalization, and `none` is
+        The normalization of the periodogram. `abs` is absolute rms, ``frac``
+        is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
         the unnormalized periodogram.
     use_common_mean : bool, default True
         The mean of the light curve can be estimated in each interval, or
@@ -1495,8 +1495,8 @@ def powerspectrum_from_events(
         overlaps between these GTIs and the input object GTIs. If that
         happens, assign the desired GTIs to the input object.
     norm : str, default "frac"
-        The normalization of the periodogram. `abs` is absolute rms, `frac`
-        is fractional rms, `leahy` is Leahy+83 normalization, and `none` is
+        The normalization of the periodogram. `abs` is absolute rms, ``frac``
+        is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
         the unnormalized periodogram.
     use_common_mean : bool, default True
         The mean of the light curve can be estimated in each interval, or
@@ -1555,8 +1555,8 @@ def powerspectrum_from_lightcurve(
         overlaps between these GTIs and the input object GTIs. If that
         happens, assign the desired GTIs to the input object.
     norm : str, default "frac"
-        The normalization of the periodogram. `abs` is absolute rms, `frac`
-        is fractional rms, `leahy` is Leahy+83 normalization, and `none` is
+        The normalization of the periodogram. `abs` is absolute rms, ``frac``
+        is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
         the unnormalized periodogram.
     use_common_mean : bool, default True
         The mean of the light curve can be estimated in each interval, or
@@ -1634,8 +1634,8 @@ def powerspectrum_from_timeseries(
         overlaps between these GTIs and the input object GTIs. If that
         happens, assign the desired GTIs to the input object.
     norm : str, default "frac"
-        The normalization of the periodogram. `abs` is absolute rms, `frac`
-        is fractional rms, `leahy` is Leahy+83 normalization, and `none` is
+        The normalization of the periodogram. `abs` is absolute rms, ``frac``
+        is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
         the unnormalized periodogram.
     use_common_mean : bool, default True
         The mean of the light curve can be estimated in each interval, or
@@ -1715,8 +1715,8 @@ def powerspectrum_from_lc_iterable(
         overlaps between these GTIs and the input object GTIs. If that
         happens, assign the desired GTIs to the input object.
     norm : str, default "frac"
-        The normalization of the periodogram. `abs` is absolute rms, `frac`
-        is fractional rms, `leahy` is Leahy+83 normalization, and `none` is
+        The normalization of the periodogram. `abs` is absolute rms, ``frac``
+        is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
         the unnormalized periodogram.
     use_common_mean : bool, default True
         The mean of the light curve can be estimated in each interval, or

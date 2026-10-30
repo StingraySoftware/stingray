@@ -83,12 +83,12 @@ class StingrayObject(object):
 
     + round-tripping to files in different formats
 
-    The idea is that any object inheriting :class:`StingrayObject` should,
+    The idea is that any object inheriting :class:`~stingray.base.StingrayObject` should,
     just by defining an attribute called ``main_array_attr``, be able to perform
     the operations above, with no additional effort.
 
-    ``main_array_attr`` is, e.g. ``time`` for :class:`StingrayTimeseries` and
-    :class:`Lightcurve`, ``freq`` for :class:`Crossspectrum`, ``energy`` for
+    ``main_array_attr`` is, e.g. ``time`` for :class:`~stingray.base.StingrayTimeseries` and
+    :class:`Lightcurve`, ``freq`` for :class:`~stingray.Crossspectrum`, ``energy`` for
     :class:`~stingray.varenergyspectrum.VarEnergySpectrum`, and so on. It is the array with which all other
     attributes are compared: if they are of the same shape, they get saved as
     columns of the table/dataframe, otherwise as metadata.
@@ -292,7 +292,7 @@ class StingrayObject(object):
         return self.pretty_print()
 
     def __eq__(self, other_ts):
-        """Compare two :class:`StingrayObject` instances with ``==``.
+        """Compare two :class:`~stingray.base.StingrayObject` instances with ``==``.
 
         All attributes (internal, array, meta) are compared.
         """
@@ -524,7 +524,7 @@ class StingrayObject(object):
         return cls
 
     def to_pandas(self) -> DataFrame:
-        """Create a pandas ``DataFrame`` from a :class:`StingrayObject`.
+        """Create a pandas ``DataFrame`` from a :class:`~stingray.base.StingrayObject`.
 
         Array attributes (e.g. ``time``, ``pi``, ``energy``, etc. for
         ``EventList``) are converted into columns, while meta attributes
@@ -641,7 +641,7 @@ class StingrayObject(object):
 
         Returns
         -------
-        obj: :class:`StingrayObject` object
+        obj: :class:`~stingray.base.StingrayObject` object
             The object reconstructed from file
         """
 
@@ -810,15 +810,15 @@ class StingrayObject(object):
     ):
         """
         Helper method to codify an operation of one time series with another (e.g. add, subtract).
-        Takes into account the GTIs, and returns a new :class:`StingrayTimeseries` object.
+        Takes into account the GTIs, and returns a new :class:`~stingray.base.StingrayTimeseries` object.
 
         Parameters
         ----------
-        other : :class:`StingrayTimeseries` object
+        other : :class:`~stingray.base.StingrayTimeseries` object
             A second time series object
 
         operation : function
-            An operation between the :class:`StingrayTimeseries` object calling this method, and
+            An operation between the :class:`~stingray.base.StingrayTimeseries` object calling this method, and
             ``other``, operating on all the specified array attributes.
 
         Other parameters
@@ -891,9 +891,9 @@ class StingrayObject(object):
     def add(
         self, other, operated_attrs=None, error_attrs=None, error_operation=sqsum, inplace=False
     ):
-        """Add two :class:`StingrayObject` instances.
+        """Add two :class:`~stingray.base.StingrayObject` instances.
 
-        Add the array values of two :class:`StingrayObject` instances element by element, assuming
+        Add the array values of two :class:`~stingray.base.StingrayObject` instances element by element, assuming
         the main array attributes of the instances match exactly.
 
         All array attrs ending with ``_err`` are treated as error bars and propagated with the
@@ -903,7 +903,7 @@ class StingrayObject(object):
 
         Parameters
         ----------
-        other : :class:`StingrayTimeseries` object
+        other : :class:`~stingray.base.StingrayTimeseries` object
             A second time series object
 
         Other parameters
@@ -933,7 +933,7 @@ class StingrayObject(object):
     def __add__(self, other):
         """Operation that gets called with the ``+`` operator.
 
-        Add the array values of two :class:`StingrayObject` instances element by element, assuming
+        Add the array values of two :class:`~stingray.base.StingrayObject` instances element by element, assuming
         the main array attributes of the instances match exactly.
 
         All array attrs ending with ``_err`` are treated as error bars and propagated with the
@@ -951,7 +951,7 @@ class StingrayObject(object):
     def __iadd__(self, other):
         """Operation that gets called with the ``+=`` operator.
 
-        Add the array values of two :class:`StingrayObject` instances element by element, assuming
+        Add the array values of two :class:`~stingray.base.StingrayObject` instances element by element, assuming
         the main array attributes of the instances match exactly.
 
         All array attrs ending with ``_err`` are treated as error bars and propagated with the
@@ -971,7 +971,7 @@ class StingrayObject(object):
         self, other, operated_attrs=None, error_attrs=None, error_operation=sqsum, inplace=False
     ):
         """
-        Subtract *all the array attrs* of two :class:`StingrayObject` instances element by element, assuming the main array attributes of the instances match exactly.
+        Subtract *all the array attrs* of two :class:`~stingray.base.StingrayObject` instances element by element, assuming the main array attributes of the instances match exactly.
 
         All array attrs ending with ``_err`` are treated as error bars and propagated with the
         sum of squares.
@@ -980,7 +980,7 @@ class StingrayObject(object):
 
         Parameters
         ----------
-        other : :class:`StingrayTimeseries` object
+        other : :class:`~stingray.base.StingrayTimeseries` object
             A second time series object
 
         Other parameters
@@ -1010,7 +1010,7 @@ class StingrayObject(object):
     def __sub__(self, other):
         """Operation that gets called with the ``-`` operator.
 
-        Subtract *all the array attrs* of two :class:`StingrayObject` instances element by element, assuming the main array attributes of the instances match exactly.
+        Subtract *all the array attrs* of two :class:`~stingray.base.StingrayObject` instances element by element, assuming the main array attributes of the instances match exactly.
 
         All array attrs ending with ``_err`` are treated as error bars and propagated with the
         sum of squares.
@@ -1027,7 +1027,7 @@ class StingrayObject(object):
     def __isub__(self, other):
         """Operation that gets called with the ``-=`` operator.
 
-        Subtract *all the array attrs* of two :class:`StingrayObject` instances element by element, assuming the main array attributes of the instances match exactly.
+        Subtract *all the array attrs* of two :class:`~stingray.base.StingrayObject` instances element by element, assuming the main array attributes of the instances match exactly.
 
         All array attrs ending with ``_err`` are treated as error bars and propagated with the
         sum of squares.
@@ -1044,7 +1044,7 @@ class StingrayObject(object):
 
     def __neg__(self):
         """
-        Implement the behavior of negation of the array attributes of a :class:`StingrayObject`
+        Implement the behavior of negation of the array attributes of a :class:`~stingray.base.StingrayObject`
         Error attrs are left alone.
 
         The negation operator ``-`` is supposed to invert the sign of all array attributes of a
@@ -1062,7 +1062,7 @@ class StingrayObject(object):
         """
         Return the number of bins of a the main array attributes
 
-        This method overrides the ``len`` function for a :class:`StingrayObject`
+        This method overrides the ``len`` function for a :class:`~stingray.base.StingrayObject`
         object and returns the length of the array attributes (using the main array attribute
         as probe).
         """
@@ -1070,7 +1070,7 @@ class StingrayObject(object):
 
     def __getitem__(self, index):
         """
-        Return an element or a slice of the :class:`StingrayObject`.
+        Return an element or a slice of the :class:`~stingray.base.StingrayObject`.
 
         Parameters
         ----------
@@ -1079,8 +1079,8 @@ class StingrayObject(object):
 
         Returns
         -------
-        ts_new : :class:`StingrayObject` object
-            The new :class:`StingrayObject` object with the set of selected data.
+        ts_new : :class:`~stingray.base.StingrayObject` object
+            The new :class:`~stingray.base.StingrayObject` object with the set of selected data.
         """
 
         if isinstance(index, (int, np.integer)):
@@ -1407,8 +1407,8 @@ class StingrayTimeseries(StingrayObject):
 
     def split_by_gti(self, gti=None, min_points=2):
         """
-        Split the current :class:`StingrayTimeseries` object into a list of
-        :class:`StingrayTimeseries` objects, one for each continuous GTI segment
+        Split the current :class:`~stingray.base.StingrayTimeseries` object into a list of
+        :class:`~stingray.base.StingrayTimeseries` objects, one for each continuous GTI segment
         as defined in the ``gti`` attribute.
 
         Parameters
@@ -1420,7 +1420,7 @@ class StingrayTimeseries(StingrayObject):
         Returns
         -------
         list_of_tss : list
-            A list of :class:`StingrayTimeseries` objects, one for each GTI segment
+            A list of :class:`~stingray.base.StingrayTimeseries` objects, one for each GTI segment
         """
 
         if gti is None:
@@ -1458,7 +1458,7 @@ class StingrayTimeseries(StingrayObject):
         -------
         ts : `astropy.timeseries.TimeSeries`
             A ``TimeSeries`` object with the array attributes as columns,
-            and the meta attributes in the `meta` dictionary
+            and the meta attributes in the ``meta`` dictionary
         """
         from astropy.timeseries import TimeSeries
         from astropy.time import TimeDelta
@@ -1498,7 +1498,7 @@ class StingrayTimeseries(StingrayObject):
         ----------
         ts : `astropy.timeseries.TimeSeries`
             A ``TimeSeries`` object with the array attributes as columns,
-            and the meta attributes in the `meta` dictionary
+            and the meta attributes in the ``meta`` dictionary
 
         Returns
         -------
@@ -1544,7 +1544,7 @@ class StingrayTimeseries(StingrayObject):
 
         Returns
         -------
-        new_ts : :class:`StingrayTimeseries` object
+        new_ts : :class:`~stingray.base.StingrayTimeseries` object
             The new time series, shifted by MJDREF
         """
         time_shift = (self.mjdref - new_mjdref) * 86400  # type: ignore
@@ -1560,7 +1560,7 @@ class StingrayTimeseries(StingrayObject):
         ----------
         time_shift: float
             The time interval by which the time series will be shifted (in
-            the same units as the time array in :class:`StingrayTimeseries`
+            the same units as the time array in :class:`~stingray.base.StingrayTimeseries`
 
         Other parameters
         ----------------
@@ -1593,15 +1593,15 @@ class StingrayTimeseries(StingrayObject):
     ):
         """
         Helper method to codify an operation of one time series with another (e.g. add, subtract).
-        Takes into account the GTIs correctly, and returns a new :class:`StingrayTimeseries` object.
+        Takes into account the GTIs correctly, and returns a new :class:`~stingray.base.StingrayTimeseries` object.
 
         Parameters
         ----------
-        other : :class:`StingrayTimeseries` object
+        other : :class:`~stingray.base.StingrayTimeseries` object
             A second time series object
 
         operation : function
-            An operation between the :class:`StingrayTimeseries` object calling this method, and
+            An operation between the :class:`~stingray.base.StingrayTimeseries` object calling this method, and
             ``other``, operating on all the specified array attributes.
 
         Other parameters
@@ -1685,7 +1685,7 @@ class StingrayTimeseries(StingrayObject):
         match exactly.
 
         This magic method adds two :class:`StingrayTimeSeries` objects having the same
-        ``time`` array and subtracts the ``counts`` of one :class:`StingrayTimeseries` with
+        ``time`` array and subtracts the ``counts`` of one :class:`~stingray.base.StingrayTimeseries` with
         that of another, while also updating ``countrate``, ``counts_err`` and ``countrate_err``
         correctly.
 
@@ -1708,12 +1708,12 @@ class StingrayTimeseries(StingrayObject):
 
     def __getitem__(self, index):
         """
-        Return the corresponding count value at the index or a new :class:`StingrayTimeseries`
+        Return the corresponding count value at the index or a new :class:`~stingray.base.StingrayTimeseries`
         object upon slicing.
 
         This method adds functionality to retrieve the count value at
         a particular index. This also can be used for slicing and generating
-        a new :class:`StingrayTimeseries` object. GTIs are recalculated based on the new light
+        a new :class:`~stingray.base.StingrayTimeseries` object. GTIs are recalculated based on the new light
         curve segment
 
         If the slice object is of kind ``start:stop:step`` and ``dt`` is not 0, GTIs are also
@@ -1758,12 +1758,12 @@ class StingrayTimeseries(StingrayObject):
 
     def truncate(self, start=0, stop=None, method="index"):
         """
-        Truncate a :class:`StingrayTimeseries` object.
+        Truncate a :class:`~stingray.base.StingrayTimeseries` object.
 
         This method takes a ``start`` and a ``stop`` point (either as indices,
         or as times in the same unit as those in the ``time`` attribute, and truncates
         all bins before ``start`` and after ``stop``, then returns a new
-        :class:`StingrayTimeseries` object with the truncated time series.
+        :class:`~stingray.base.StingrayTimeseries` object with the truncated time series.
 
         Parameters
         ----------
@@ -1784,8 +1784,8 @@ class StingrayTimeseries(StingrayObject):
 
         Returns
         -------
-        ts_new: :class:`StingrayTimeseries` object
-            The :class:`StingrayTimeseries` object with truncated time and arrays.
+        ts_new: :class:`~stingray.base.StingrayTimeseries` object
+            The :class:`~stingray.base.StingrayTimeseries` object with truncated time and arrays.
 
         Examples
         --------
@@ -1848,7 +1848,7 @@ class StingrayTimeseries(StingrayObject):
         Returns
         -------
             new_ts : StingrayTimeseries
-                A new :class:`StingrayTimeseries` object with the truncated time bins
+                A new :class:`~stingray.base.StingrayTimeseries` object with the truncated time bins
 
         """
 
@@ -1866,15 +1866,15 @@ class StingrayTimeseries(StingrayObject):
 
     def concatenate(self, other, check_gti=True):
         """
-        Concatenate two :class:`StingrayTimeseries` objects.
+        Concatenate two :class:`~stingray.base.StingrayTimeseries` objects.
 
-        This method concatenates two or more :class:`StingrayTimeseries` objects along the time
+        This method concatenates two or more :class:`~stingray.base.StingrayTimeseries` objects along the time
         axis. GTIs are recalculated by merging all the GTIs together. GTIs should not overlap at
         any point.
 
         Parameters
         ----------
-        other : :class:`StingrayTimeseries` object or list of :class:`StingrayTimeseries` objects
+        other : :class:`~stingray.base.StingrayTimeseries` object or list of :class:`~stingray.base.StingrayTimeseries` objects
             A second time series object, or a list of objects to be concatenated
 
         Other parameters
@@ -1892,7 +1892,7 @@ class StingrayTimeseries(StingrayObject):
         return new_ts
 
     def _join_timeseries(self, others, strategy="intersection", ignore_meta=[]):
-        """Helper method to join two or more :class:`StingrayTimeseries` objects.
+        """Helper method to join two or more :class:`~stingray.base.StingrayTimeseries` objects.
 
         This is a helper method that can be called by other user-facing methods, such as
         :class:`StingrayTimeseries().join()`.
@@ -1910,9 +1910,9 @@ class StingrayTimeseries(StingrayObject):
 
         Parameters
         ----------
-        other : :class:`StingrayTimeseries` or class:`list` of :class:`StingrayTimeseries`
-            The other :class:`StingrayTimeseries` object which is supposed to be joined with.
-            If ``other`` is a list, it is assumed to be a list of :class:`StingrayTimeseries`
+        other : :class:`~stingray.base.StingrayTimeseries` or class:`list` of :class:`~stingray.base.StingrayTimeseries`
+            The other :class:`~stingray.base.StingrayTimeseries` object which is supposed to be joined with.
+            If ``other`` is a list, it is assumed to be a list of :class:`~stingray.base.StingrayTimeseries`
             and they are all joined, one by one.
 
         Other parameters
@@ -1928,8 +1928,8 @@ class StingrayTimeseries(StingrayObject):
 
         Returns
         -------
-        `ts_new` : :class:`StingrayTimeseries` object
-            The resulting :class:`StingrayTimeseries` object.
+        `ts_new` : :class:`~stingray.base.StingrayTimeseries` object
+            The resulting :class:`~stingray.base.StingrayTimeseries` object.
         """
 
         new_ts = type(self)()
@@ -2060,9 +2060,9 @@ class StingrayTimeseries(StingrayObject):
 
     def join(self, *args, **kwargs):
         """
-        Join other :class:`StingrayTimeseries` objects with the current one.
+        Join other :class:`~stingray.base.StingrayTimeseries` objects with the current one.
 
-        If both are empty, an empty :class:`StingrayTimeseries` is returned.
+        If both are empty, an empty :class:`~stingray.base.StingrayTimeseries` is returned.
 
         Standard attributes such as ``pi`` and ``energy`` remain ``None`` if they are ``None``
         in both. Otherwise, ``np.nan`` is used as a default value for the missing values.
@@ -2081,9 +2081,9 @@ class StingrayTimeseries(StingrayObject):
 
         Parameters
         ----------
-        other : :class:`StingrayTimeseries` or class:`list` of :class:`StingrayTimeseries`
-            The other :class:`StingrayTimeseries` object which is supposed to be joined with.
-            If ``other`` is a list, it is assumed to be a list of :class:`StingrayTimeseries`
+        other : :class:`~stingray.base.StingrayTimeseries` or class:`list` of :class:`~stingray.base.StingrayTimeseries`
+            The other :class:`~stingray.base.StingrayTimeseries` object which is supposed to be joined with.
+            If ``other`` is a list, it is assumed to be a list of :class:`~stingray.base.StingrayTimeseries`
             and they are all joined, one by one.
 
         Other parameters
@@ -2099,8 +2099,8 @@ class StingrayTimeseries(StingrayObject):
 
         Returns
         -------
-        `ts_new` : :class:`StingrayTimeseries` object
-            The resulting :class:`StingrayTimeseries` object.
+        `ts_new` : :class:`~stingray.base.StingrayTimeseries` object
+            The resulting :class:`~stingray.base.StingrayTimeseries` object.
         """
         return self._join_timeseries(*args, **kwargs)
 
@@ -2129,8 +2129,8 @@ class StingrayTimeseries(StingrayObject):
 
         Returns
         -------
-        ts_new: :class:`StingrayTimeseries` object
-            The :class:`StingrayTimeseries` object with the new, binned time series.
+        ts_new: :class:`~stingray.base.StingrayTimeseries` object
+            The :class:`~stingray.base.StingrayTimeseries` object with the new, binned time series.
         """
 
         if f is None and dt_new is None:
@@ -2216,8 +2216,8 @@ class StingrayTimeseries(StingrayObject):
 
         Returns
         -------
-        ts_new: :class:`StingrayTimeseries` object
-            The :class:`StingrayTimeseries` object with sorted time and counts
+        ts_new: :class:`~stingray.base.StingrayTimeseries` object
+            The :class:`~stingray.base.StingrayTimeseries` object with sorted time and counts
             arrays.
         """
 
@@ -2250,7 +2250,7 @@ class StingrayTimeseries(StingrayObject):
         To fill the gaps in all but the time points (i.e., flux measures, energies), we take the
         ``buffer_size`` (by default, the largest value between 100 and the estimated samples in
         a ``max_length``-long gap) valid data points closest to the gap and repeat them randomly
-        with the same empirical statistical distribution. So, if the `my_fancy_attr` attribute, in
+        with the same empirical statistical distribution. So, if the ``my_fancy_attr`` attribute, in
         the 100 points of the buffer, has 30 times 10, 10 times 9, and 60 times 11, there will be
         *on average* 30% of 10, 60% of 11, and 10% of 9 in the simulated data.
 
@@ -2715,7 +2715,7 @@ class StingrayTimeseries(StingrayObject):
         Parameters
         ----------
         func : function
-            Function accepting a :class:`StingrayTimeseries` object as single argument, plus
+            Function accepting a :class:`~stingray.base.StingrayTimeseries` object as single argument, plus
             possible additional keyword arguments, and returning a number or a
             tuple - e.g., ``(result, error)`` where both ``result`` and ``error`` are
             numbers.
@@ -2830,7 +2830,7 @@ class StingrayTimeseries(StingrayObject):
         Parameters
         ----------
         func : function
-            Function accepting a :class:`StingrayTimeseries` object as single argument, plus
+            Function accepting a :class:`~stingray.base.StingrayTimeseries` object as single argument, plus
             possible additional keyword arguments, and returning a number or a
             tuple - e.g., ``(result, error)`` where both ``result`` and ``error`` are
             numbers.

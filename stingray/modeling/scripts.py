@@ -16,12 +16,12 @@ def fit_powerspectrum(
     noise. Each Lorentzian has three parameters (amplitude, centroid position,
     full-width at half maximum), plus one extra parameter if the white noise
     level should be fit as well. Priors for each parameter can be included in
-    case `max_post = True`, in which case the function will attempt a
+    case ``max_post = True``, in which case the function will attempt a
     Maximum-A-Posteriori fit. Priors must be specified as a dictionary with one
     entry for each parameter.
-    The parameter names are `(amplitude_i, x_0_i, fwhm_i)` for each `i` out of
-    a total of `N` Lorentzians. The white noise level has a parameter
-    `amplitude_(N+1)`. For example, a model with two Lorentzians and a
+    The parameter names are ``(amplitude_i, x_0_i, fwhm_i)`` for each ``i`` out of
+    a total of ``N`` Lorentzians. The white noise level has a parameter
+    ``amplitude_(N+1)``. For example, a model with two Lorentzians and a
     white noise level would have parameters:
     [amplitude_0, x_0_0, fwhm_0, amplitude_1, x_0_1, fwhm_1, amplitude_2].
 
@@ -36,13 +36,13 @@ def fit_powerspectrum(
 
     starting_pars : iterable, optional, default None
         The list of starting guesses for the optimizer. If it is not provided,
-        then default parameters are taken from `model`. See explanation above
+        then default parameters are taken from ``model``. See explanation above
         for ordering of parameters in this list.
 
     fit_whitenoise : bool, optional, default True
         If True, the code will attempt to fit a white noise level along with
         the Lorentzians. Be sure to include a starting parameter for the
-        optimizer in `starting_pars`!
+        optimizer in ``starting_pars``!
 
     max_post : bool, optional, default False
         If True, perform a Maximum-A-Posteriori fit of the data rather than a
@@ -110,7 +110,7 @@ def fit_powerspectrum(
     We're ready for doing the fit:
     >>> parest, res = fit_powerspectrum(ps, model_to_test, t0)
 
-    `res` contains a whole array of useful information about the fit, for
+    ``res`` contains a whole array of useful information about the fit, for
     example the parameters at the optimum:
     >>> p_opt = res.p_opt
 
@@ -137,12 +137,12 @@ def fit_crossspectrum(
     noise. Each Lorentzian has three parameters (amplitude, centroid position,
     full-width at half maximum), plus one extra parameter if the white noise
     level should be fit as well. Priors for each parameter can be included in
-    case `max_post = True`, in which case the function will attempt a
+    case ``max_post = True``, in which case the function will attempt a
     Maximum-A-Posteriori fit. Priors must be specified as a dictionary with one
     entry for each parameter.
-    The parameter names are `(amplitude_i, x_0_i, fwhm_i)` for each `i` out of
-    a total of `N` Lorentzians. The white noise level has a parameter
-    `amplitude_(N+1)`. For example, a model with two Lorentzians and a
+    The parameter names are ``(amplitude_i, x_0_i, fwhm_i)`` for each ``i`` out of
+    a total of ``N`` Lorentzians. The white noise level has a parameter
+    ``amplitude_(N+1)``. For example, a model with two Lorentzians and a
     white noise level would have parameters:
     [amplitude_0, x_0_0, fwhm_0, amplitude_1, x_0_1, fwhm_1, amplitude_2].
 
@@ -157,7 +157,7 @@ def fit_crossspectrum(
 
     starting_pars : iterable, optional, default None
         The list of starting guesses for the optimizer. If it is not provided,
-        then default parameters are taken from `model`. See explanation above
+        then default parameters are taken from ``model``. See explanation above
         for ordering of parameters in this list.
 
     max_post : bool, optional, default False
@@ -203,12 +203,12 @@ def fit_lorentzians(
     noise. Each Lorentzian has three parameters (amplitude, centroid position,
     full-width at half maximum), plus one extra parameter if the white noise
     level should be fit as well. Priors for each parameter can be included in
-    case `max_post = True`, in which case the function will attempt a
+    case ``max_post = True``, in which case the function will attempt a
     Maximum-A-Posteriori fit. Priors must be specified as a dictionary with one
     entry for each parameter.
-    The parameter names are `(amplitude_i, x_0_i, fwhm_i)` for each `i` out of
-    a total of `N` Lorentzians. The white noise level has a parameter
-    `amplitude_(N+1)`. For example, a model with two Lorentzians and a
+    The parameter names are ``(amplitude_i, x_0_i, fwhm_i)`` for each ``i`` out of
+    a total of ``N`` Lorentzians. The white noise level has a parameter
+    ``amplitude_(N+1)``. For example, a model with two Lorentzians and a
     white noise level would have parameters:
     [amplitude_0, x_0_0, fwhm_0, amplitude_1, x_0_1, fwhm_1, amplitude_2].
 
@@ -222,13 +222,13 @@ def fit_lorentzians(
 
     starting_pars : iterable
         The list of starting guesses for the optimizer. If it is not provided,
-        then default parameters are taken from `model`. See explanation above
+        then default parameters are taken from ``model``. See explanation above
         for ordering of parameters in this list.
 
     fit_whitenoise : bool, optional, default True
         If True, the code will attempt to fit a white noise level along with
         the Lorentzians. Be sure to include a starting parameter for the
-        optimizer in `starting_pars`!
+        optimizer in ``starting_pars``!
 
     max_post : bool, optional, default False
         If True, perform a Maximum-A-Posteriori fit of the data rather than a
@@ -298,7 +298,7 @@ def fit_lorentzians(
     We're ready for doing the fit:
     >>> parest, res = fit_lorentzians(ps, nlor, t0)
 
-    `res` contains a whole array of useful information about the fit, for
+    ``res`` contains a whole array of useful information about the fit, for
     example the parameters at the optimum:
     >>> p_opt = res.p_opt
 
