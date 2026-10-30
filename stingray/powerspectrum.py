@@ -36,7 +36,6 @@ __all__ = [
 
 
 class Powerspectrum(Crossspectrum):
-    type = "powerspectrum"
     """
     Make a :class:`~stingray.Powerspectrum` (also called periodogram) from a (binned)
     light curve. Periodograms can be normalized by either Leahy normalization,
@@ -108,6 +107,8 @@ class Powerspectrum(Crossspectrum):
         The total number of photons in the light curve.
 
     """
+
+    type = "powerspectrum"
 
     def __init__(self, data=None, norm="frac", gti=None, dt=None, lc=None, skip_checks=False):
         self._type = None
@@ -800,7 +801,6 @@ class Powerspectrum(Crossspectrum):
 
 
 class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
-    type = "powerspectrum"
     """
     Make an averaged periodogram from a light curve by segmenting the light
     curve, Fourier-transforming each segment and then averaging the
@@ -888,6 +888,8 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
         The list of all periodograms used to calculate the average periodogram.
     """
 
+    type = "powerspectrum"
+
     def __init__(
         self,
         data=None,
@@ -959,7 +961,6 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
 
 
 class DynamicalPowerspectrum(DynamicalCrossspectrum):
-    type = "powerspectrum"
     """
     Create a dynamical power spectrum, also often called a *spectrogram*.
 
@@ -1033,6 +1034,8 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
     m: int
         The number of averaged cross spectra.
     """
+
+    type = "powerspectrum"
 
     def __init__(self, lc=None, segment_size=None, norm="frac", gti=None, sample_time=None):
         self.segment_size = segment_size
@@ -1197,9 +1200,6 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
 
 
 class GtiCorrPowerspectrum(Powerspectrum):
-    main_array_attr = "freq"
-    type = "powerspectrum"
-
     """Calculate the power spectrum of gappy light curves.
 
     GtiCorrPowerspectrum computes the power spectrum of gappy light curves,
@@ -1266,6 +1266,9 @@ class GtiCorrPowerspectrum(Powerspectrum):
         The total number of photons in light curve
 
     """
+
+    main_array_attr = "freq"
+    type = "powerspectrum"
 
     def __init__(self, *args, fill_lc=True, sigma_threshold=3, **kwargs):
         dt = kwargs.pop("dt", None)

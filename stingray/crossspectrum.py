@@ -457,9 +457,6 @@ def cospectra_pvalue(power, nspec):
 
 
 class Crossspectrum(StingrayObject):
-    main_array_attr = "freq"
-    type = "crossspectrum"
-
     """
     Make a cross spectrum from a (binned) light curve.
     You can also make an empty :class:`~stingray.Crossspectrum` object to populate with your
@@ -551,6 +548,9 @@ class Crossspectrum(StingrayObject):
         The total number of photons in light curve 2
 
     """
+
+    main_array_attr = "freq"
+    type = "crossspectrum"
 
     def __init__(
         self,
@@ -1926,7 +1926,6 @@ class Crossspectrum(StingrayObject):
 
 
 class AveragedCrossspectrum(Crossspectrum):
-    type = "crossspectrum"
     """
     Make an averaged cross spectrum from a light curve by segmenting two
     light curves, Fourier-transforming each segment and then averaging the
@@ -2049,6 +2048,8 @@ class AveragedCrossspectrum(Crossspectrum):
     gti: [[gti0_0, gti0_1], [gti1_0, gti1_1], ...]
         Good Time intervals.
     """
+
+    type = "crossspectrum"
 
     def __init__(
         self,
@@ -2330,7 +2331,6 @@ class AveragedCrossspectrum(Crossspectrum):
 
 
 class DynamicalCrossspectrum(AveragedCrossspectrum):
-    type = "crossspectrum"
     """
     Create a dynamical cross spectrum, also often called a *spectrogram*.
 
@@ -2409,6 +2409,8 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
     m: int
         The number of averaged powers in each spectral bin (initially 1, it changes after rebinning).
     """
+
+    type = "crossspectrum"
 
     def __init__(
         self, data1=None, data2=None, segment_size=None, norm="frac", gti=None, sample_time=None

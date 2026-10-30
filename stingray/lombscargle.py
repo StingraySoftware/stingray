@@ -85,8 +85,6 @@ def _autofrequency(min_freq=None, max_freq=None, df=None, dt=None, length=None, 
 
 
 class LombScargleCrossspectrum(Crossspectrum):
-    main_array_attr = "freq"
-    type = "crossspectrum"
     """
     Make a cross spectrum from an unevenly sampled (binned) light curve.
     You can also make an empty :class:`~stingray.lombscargle.LombScargleCrossspectrum` object to populate with your
@@ -180,6 +178,9 @@ class LombScargleCrossspectrum(Crossspectrum):
     .. [2] Press W.H. and Rybicki, G.B, "Fast algorithm for spectral analysis
         of unevenly sampled data". ApJ 1:338, p277, 1989
     """
+
+    main_array_attr = "freq"
+    type = "crossspectrum"
 
     def __init__(
         self,
@@ -511,7 +512,6 @@ class LombScargleCrossspectrum(Crossspectrum):
 
 
 class LombScarglePowerspectrum(LombScargleCrossspectrum):
-    type = "powerspectrum"
     """
     Make a :class:`~stingray.lombscargle.LombScarglePowerspectrum` (also called periodogram) from a unevenly sampled (binned)
     light curve. Periodograms can be normalized by either Leahy normalization,
@@ -592,6 +592,8 @@ class LombScarglePowerspectrum(LombScargleCrossspectrum):
     nphots: float
         The total number of photons in the light curve.
     """
+
+    type = "powerspectrum"
 
     def __init__(
         self,
