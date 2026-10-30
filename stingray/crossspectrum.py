@@ -1811,8 +1811,9 @@ class Crossspectrum(StingrayObject):
             (more common) dead time.
         limit_k : int, default 200
             Limit to this value the number of terms in the inner loops of
-            calculations. Check the plots returned by  the `check_B` and
-            `check_A` functions to test that this number is adequate.
+            calculations. Check the plots returned by the
+            :func:`~stingray.deadtime.model.check_B` and
+            :func:`~stingray.deadtime.model.check_A` functions to test that this number is adequate.
         n_approx : int, default None
             Number of bins to calculate the model power spectrum. If None, it will use the size of
             the input frequency array. Relatively simple models (e.g., low count rates compared to
