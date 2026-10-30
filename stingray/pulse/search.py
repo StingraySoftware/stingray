@@ -149,7 +149,7 @@ def epoch_folding_search(
 
     if expocorr or not HAS_NUMBA or isinstance(weights, Iterable):
         if expocorr and gti is None:
-            raise ValueError("To calculate exposure correction, you need to" " specify the GTIs")
+            raise ValueError("To calculate exposure correction, you need to specify the GTIs")
 
         def stat_fun(t, f, fd=0, **kwargs):
             return ef_profile_stat(fold_events(t, f, fd, **kwargs)[1])
@@ -319,7 +319,7 @@ def z_n_search(
     phase = np.arange(0, 1, 1 / nbin)
     if expocorr or not HAS_NUMBA or isinstance(weights, Iterable):
         if expocorr and gti is None:
-            raise ValueError("To calculate exposure correction, you need to" " specify the GTIs")
+            raise ValueError("To calculate exposure correction, you need to specify the GTIs")
 
         def stat_fun(t, f, fd=0, **kwargs):
             return z_n(fold_events(t, f, fd, nbin=nbin, **kwargs)[1], n=nharm, datatype="binned")
@@ -606,7 +606,7 @@ def phaseogram(
 
     if weights is not None and isinstance(weights, Iterable):
         if len(weights) != len(times):
-            raise ValueError("The length of weights must match the length of " "times")
+            raise ValueError("The length of weights must match the length of times")
         weights = np.concatenate([weights, weights]).astype("float64")
 
     if use_mjdref:

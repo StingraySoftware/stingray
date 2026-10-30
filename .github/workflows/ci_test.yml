@@ -24,7 +24,7 @@ jobs:
     # the entire workflow.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{github.event.pull_request.head.repo.full_name}}
@@ -59,24 +59,25 @@ jobs:
           # we select only a few, in order to conserve resources. If you add
           # an additional environment, please include a comment to indicate
           # why it is useful.
-          - name: Black test
+          - name: Code style
             os: ubuntu-latest
-            python: '3.10'
-            tox_env: 'black'
+            python: '3.11'
+            tox_env: 'codestyle'
             experimental: false
 
-          # # Basic tests on the oldest & newest supported versions of Python,
-          # # recording coverage data for the latter.
-          # - name: Py3.8 with old Astropy version
-          #   os: ubuntu-latest
-          #   python: '3.8'
-          #   tox_env: 'py38-test-astropy4-cov'
-          #   experimental: false
-
-          - name: Linux, Py3.10 with coverage
+          # Basic tests on the oldest supported version of Python.
+          - name: Linux, Py3.11 with coverage
             os: ubuntu-latest
-            python: '3.10'
-            tox_env: 'py310-test-cov'
+            python: '3.11'
+            tox_env: 'py311-test-cov'
+            experimental: false
+
+          # The floors declared in pyproject.toml are only a claim until
+          # something installs them. This job does.
+          - name: Linux, Py3.11 with oldest supported dependencies
+            os: ubuntu-latest
+            python: '3.11'
+            tox_env: 'py311-test-oldestdeps'
             experimental: false
 
           # Basic tests on alternative operating systems.
@@ -112,13 +113,32 @@ jobs:
             python: '3.12'
             tox_env: 'py312-test-cov'
             use_remote_data: true
+            experimental: false
+
+          # NumPy and SciPy only publish their newest releases for Python 3.12+,
+          # so the newest Python we fully support is tested as well.
+          - name: Linux, Py3.13 basic dependencies and coverage
+            os: ubuntu-latest
+            python: '3.13'
+            tox_env: 'py313-test-cov'
+            experimental: false
+
+          # Early warning for the newest Python. Allowed to fail: it is the
+          # release dependencies publish wheels for last, so a red run here is
+          # usually the ecosystem catching up rather than a problem in Stingray.
+          - name: Linux, Py3.14 basic dependencies and coverage
+            os: ubuntu-latest
+            python: '3.14'
+            tox_env: 'py314-test-cov'
             experimental: true
 
-          # Development version of dependencies
-          - name: Linux, Py3.11 with dev versions of dependencies
+          # Development version of dependencies. This has to run on a Python the
+          # nightly wheels are actually built for, or pip silently falls back to
+          # the latest regular release and the job tests nothing new.
+          - name: Linux, Py3.13 with dev versions of dependencies
             os: ubuntu-latest
-            python: '3.11'
-            tox_env: 'py311-test-devdeps-cov'
+            python: '3.13'
+            tox_env: 'py313-test-devdeps-cov'
             experimental: false
 
           # Test with all optional dependencies installed.
@@ -141,13 +161,13 @@ jobs:
 
     steps:
     - name: Check out repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v7
       with:
         submodules: true
     - name: Check out that no sensitive environment variable is shared
       run: env
     - name: Set up Python ${{ matrix.python }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v7
       with:
         python-version: ${{ matrix.python }}
     - name: Install base dependencies
@@ -182,7 +202,7 @@ jobs:
     # the separate codecov_upload.yml workflow, which picks these artifacts up.
     - name: Store the coverage report
       if: "endsWith(matrix.tox_env, '-cov')"
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: coverage-${{ matrix.tox_env }}-${{ matrix.os }}${{ matrix.slow && '-slow' || '' }}
         path: ./coverage.xml

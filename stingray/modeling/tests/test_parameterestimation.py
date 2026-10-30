@@ -11,7 +11,7 @@ from stingray import Powerspectrum, AveragedPowerspectrum
 from stingray.modeling import ParameterEstimation, PSDParEst, OptimizationResults, SamplingResults
 from stingray.modeling import PSDPosterior, set_logprior, PSDLogLikelihood, LogLikelihood
 from stingray.modeling.posterior import fitter_to_model_params
-from stingray.loggingconfig import CustomFormatter, setup_logger
+from stingray.loggingconfig import CustomFormatter
 
 try:
     from statsmodels.tools.numdiff import approx_hess
@@ -28,8 +28,6 @@ except ImportError:
     can_sample = False
 
 import matplotlib.pyplot as plt
-
-logger = setup_logger()
 
 pytestmark = pytest.mark.slow
 
@@ -110,7 +108,7 @@ class TestParameterEstimation(object):
         llike = PSDLogLikelihood(self.ps.freq, self.ps.power, self.model, m=self.ps.m)
         pe = ParameterEstimation()
         res = pe.fit(llike, [2.0])
-        assert isinstance(res, OptimizationResults), "res must be of " "type OptimizationResults"
+        assert isinstance(res, OptimizationResults), "res must be of type OptimizationResults"
 
     def test_fit_fails_when_object_is_not_posterior_or_likelihood(self):
         x = np.ones(10)
@@ -267,7 +265,7 @@ class TestOptimizationResults(object):
 
         mean_model = np.ones_like(self.lpost.x) * self.opt.x[0]
         assert np.allclose(res.mfit, mean_model), (
-            "res.model should be exactly " "the model for the data."
+            "res.model should be exactly the model for the data."
         )
 
     def test_compute_criteria_works_correctly(self):
@@ -297,7 +295,7 @@ class TestOptimizationResults(object):
         self.optres._compute_model(self.lpost)
 
         assert hasattr(self.optres, "mfit"), (
-            "OptimizationResult object should have mfit " "attribute at this point!"
+            "OptimizationResult object should have mfit attribute at this point!"
         )
 
         fitter_to_model_params(self.model, self.opt.x)
@@ -343,11 +341,18 @@ class TestOptimizationResults(object):
         assert np.isclose(test_bic, self.optres.bic)
         assert np.isclose(test_deviance, self.optres.deviance)
 
-    def test_compute_covariance_with_hess_inverse(self):
-        self.optres._compute_covariance(self.lpost, self.opt)
+    def test_compute_covariance_uses_hess_inv(self):
+        """When the fitting method reports an inverse Hessian, the covariance is taken
+        straight from it instead of being approximated with finite differences."""
+        # The rest of this class fits with Powell, which reports no inverse Hessian.
+        opt = scipy.optimize.minimize(
+            self.lpost, self.t0, method="L-BFGS-B", args=self.neg, tol=1.0e-10
+        )
+        optres = OptimizationResultsSubclassDummy(self.lpost, opt, neg=True)
+        optres._compute_covariance(self.lpost, opt)
 
-        assert np.allclose(self.optres.cov, np.asanyarray(self.opt.hess_inv))
-        assert np.allclose(self.optres.err, np.sqrt(np.diag(self.opt.hess_inv)))
+        assert np.allclose(optres.cov, np.asanyarray(opt.hess_inv.todense()))
+        assert np.allclose(optres.err, np.sqrt(np.diag(optres.cov)))
 
     @pytest.mark.skipif("comp_hessian")
     def test_compute_covariance_without_comp_hessian(self):
@@ -376,8 +381,8 @@ class TestOptimizationResults(object):
         assert "Fitting statistics" in caplog.text
         assert "number of data points" in caplog.text
         assert "Deviance [-2 log L] D =" in caplog.text
-        assert "The Akaike Information Criterion of " "the model is" in caplog.text
-        assert "The Bayesian Information Criterion of " "the model is" in caplog.text
+        assert "The Akaike Information Criterion of the model is" in caplog.text
+        assert "The Bayesian Information Criterion of the model is" in caplog.text
         assert "The figure-of-merit function for this model" in caplog.text
         assert "Summed Residuals S =" in caplog.text
         assert "Expected S" in caplog.text
@@ -655,7 +660,7 @@ class TestPSDParEst(object):
         lpost = PSDPosterior(self.ps.freq, self.ps.power, self.model, self.priors, m=self.ps.m)
         t0 = [2.0, 1, 1, 1]
         res = pe.fit(lpost, t0)
-        assert isinstance(res, OptimizationResults), "res must be of type " "OptimizationResults"
+        assert isinstance(res, OptimizationResults), "res must be of type OptimizationResults"
 
         pe.plotfits(res, save_plot=True)
 

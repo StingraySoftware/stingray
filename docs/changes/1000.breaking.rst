@@ -1,0 +1,21 @@
+Stingray now requires Python 3.11 or later. The versions of NumPy, SciPy, Astropy and
+Matplotlib that Stingray is tested against no longer support Python 3.10, which itself
+reaches end of life in October 2026. ``pip`` reads this requirement, so users still on
+Python 3.10 keep being offered the last compatible release instead of a broken install.
+
+The declared minimum versions of the core dependencies are raised to NumPy 1.24,
+Astropy 5.3, SciPy 1.10 and Matplotlib 3.7. The previous floors (NumPy 1.17, Astropy
+4.0, SciPy 1.1, Matplotlib 3.0) predated Python 3.11 and so could never have been
+installed alongside it; nothing had tested them for years. The new floors are the
+oldest releases of each that support Python 3.11, and a ``py311-test-oldestdeps`` job
+now installs exactly those versions in CI, so the claim is checked rather than assumed.
+
+The ``stingray._astropy_init`` module is gone, and with it the ``__version__``
+attribute it added to each subpackage. It was a remnant of the Astropy package
+template, which regenerated the file and therefore asked that nothing else be kept in
+it; the template itself left with ``setup.py``. Its only remaining content was the
+import that defines ``stingray.__version__``, which now sits directly in
+``stingray/__init__.py``. ``stingray.__version__`` is unchanged, but
+``stingray.pulse.__version__``, and the same attribute on ``deadtime``, ``modeling``
+and ``simulator``, no longer exist. They were copies of the top-level value that
+nothing in the package or its documentation ever read.

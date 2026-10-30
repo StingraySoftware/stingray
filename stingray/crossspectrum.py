@@ -2425,8 +2425,7 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
             sample_time = data1.dt
             if segment_size > data1.tseg:
                 raise ValueError(
-                    "Length of the segment is too long to create "
-                    "any segments of the light curve!"
+                    "Length of the segment is too long to create any segments of the light curve!"
                 )
         if segment_size < 2 * sample_time:
             raise ValueError("Length of the segment is too short to form a light curve!")

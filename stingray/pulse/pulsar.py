@@ -939,9 +939,7 @@ def get_orbital_correction_from_ephemeris_file(
         # Maybe this will be fixed if scipy/scipy#9602 is accepted
         bad = (mjds < xvals[0]) | (np.any(mjds > xvals[-1]))
         if np.any(bad):
-            warnings.warn(
-                "Some points are outside the interpolation range:" " {}".format(mjds[bad])
-            )
+            warnings.warn("Some points are outside the interpolation range: {}".format(mjds[bad]))
         return correction_mjd_rough(mjds)
 
     def correction_sec(times, mjdref):
