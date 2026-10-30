@@ -154,6 +154,41 @@ latex_documents = [("index", project + ".tex", project + " Documentation", autho
 # (source start file, name, description, authors, manual section).
 man_pages = [("index", project.lower(), project + " Documentation", [author], 1)]
 
+# Names in type annotations that no inventory documents.
+#
+# These are not docstring mistakes: autodoc renders a function's annotations into its
+# signature and makes a cross-reference out of each one, and in the log they show up as
+# "<unknown>:1" rather than a file and line. There are four reasons they do not resolve,
+# and only the first two could be fixed by editing the annotations:
+#
+#  * stingray/base.py uses "from __future__ import annotations" and imports Dataset,
+#    DataFrame, TimeSeries and numpy.typing under "if TYPE_CHECKING", so the annotation
+#    stays the short string that was typed, while the documented target is the full
+#    dotted path (pandas.DataFrame and so on).
+#  * stingray/fourier.py has no "__future__" import and imports numpy.typing at run
+#    time, so the annotation is evaluated and comes out as numpy._typing.ArrayLike.
+#    numpy documents numpy.typing.ArrayLike and not the private spelling.
+#  * pandas, xarray and pint are not in intersphinx_mapping, so DataFrame, Dataset and
+#    the two pint types have no inventory to resolve against at all.
+#  * Tso is a TypeVar and TTime a Union alias, both declared under "if TYPE_CHECKING".
+#    Neither is an object with a page anywhere, so there is nothing to point at.
+#
+# Only these exact names are listed, so a genuine broken reference elsewhere is still
+# reported. Note that "Table" is silenced only in this bare form: a docstring that
+# writes :class:`~astropy.table.Table` resolves and is unaffected.
+nitpick_ignore = [
+    ("py:class", "Tso"),
+    ("py:class", "TTime"),
+    ("py:class", "DataFrame"),
+    ("py:class", "Dataset"),
+    ("py:class", "Table"),
+    ("py:class", "TimeSeries"),
+    ("py:class", "npt.ArrayLike"),
+    ("py:class", "numpy._typing.ArrayLike"),
+    ("py:class", "pint.toa.TOAs"),
+    ("py:class", "pint.models.timing_model.TimingModel"),
+]
+
 # Trust the links from these sites, even if they might have Client errors or other minor issues
 linkcheck_ignore = [
     r"https://doi.org/",

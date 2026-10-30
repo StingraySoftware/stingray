@@ -30,3 +30,16 @@
   or left off altogether; and a bare class name in a base class's docstring, which is
   rendered again on every subclass page, where it no longer resolves. ``np.array`` alone
   accounted for 155 spans.
+- ``conf.py`` gains a ``nitpick_ignore`` list for the ten names that appear in type
+  annotations and that no inventory documents. These are not docstring mistakes: autodoc
+  renders a function's annotations into its signature and makes a cross-reference out of
+  each one. Four things are going on, and the comment above the list in ``conf.py``
+  records them: a module that uses ``from __future__ import annotations`` with its
+  imports under ``if TYPE_CHECKING`` leaves the annotation as the short name that was
+  typed rather than the documented dotted path; a module without that import has its
+  annotations evaluated instead, which turns ``npt.ArrayLike`` into the private
+  ``numpy._typing.ArrayLike`` that numpy does not document; pandas, xarray and ``pint``
+  are not in ``intersphinx_mapping`` at all; and ``Tso`` is a ``TypeVar`` and ``TTime`` a
+  ``Union`` alias, so neither is an object with a page to point at. Only those exact
+  names are listed, so a genuine broken reference is still reported. With this in place
+  the nitpicky build is down to 22 warnings, from 686.

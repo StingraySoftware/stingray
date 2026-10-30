@@ -1487,7 +1487,7 @@ def savefig(filename, **kwargs):
     ----------
     filename : str
         The name of the image file. Extension must be specified in the
-        file name. For example filename with `.png` extension will give a
+        file name. For example filename with ``.png`` extension will give a
         rasterized image while ``.pdf`` extension will give a vectorized
         output.
 
