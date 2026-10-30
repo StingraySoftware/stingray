@@ -1222,7 +1222,7 @@ def excess_variance(lc, normalization="fvar"):
 
     Parameters
     ----------
-    lc : a :class:`Lightcurve` object
+    lc : a :class:`~stingray.Lightcurve` object
     normalization : str
         if ``fvar``, return the fractional mean square variability :math:`F_{var}`.
         If ``none``, return the unnormalized excess variance variance
