@@ -31,7 +31,7 @@ class Simulator(object):
     mean : float, default 0
         mean value of the simulated light curve.
     rms : float, default 1
-        Fractional RMS amplitude of the light curve; actual RMS is `mean * rms`.
+        Fractional RMS amplitude of the light curve; actual RMS is ``mean * rms``.
     err : float, default 0
         the errorbars on the final light curves.
     red_noise : int, default 1
@@ -93,7 +93,7 @@ class Simulator(object):
 
         * x = simulate(s):
            For generating a light curve from user-provided spectrum.
-            **Note**: In this case, the `red_noise` parameter is provided.
+            **Note**: In this case, the ``red_noise`` parameter is provided.
             You can generate a longer light curve by providing a higher
             frequency resolution on the input power spectrum.
 

@@ -402,7 +402,7 @@ def _get_mean_params(mean_type):
 def get_gp_params(kernel_type, mean_type):
     """
     Generates a list of the parameters for the GP model based on the kernel and mean type.
-    To be used to set the order of the parameters for `get_prior` and `get_likelihood` functions.
+    To be used to set the order of the parameters for `get_prior` and :func:`get_log_likelihood` functions.
 
     Parameters
     ----------

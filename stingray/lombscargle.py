@@ -115,7 +115,7 @@ class LombScargleCrossspectrum(Crossspectrum):
     dt: float
         The time resolution of the light curve. Only needed when constructing
         light curves in the case where ``data1``, ``data2`` are
-        :class:`EventList` objects
+        :class:`~stingray.events.EventList` objects
 
     skip_checks: bool
         Skip initial checks, for speed or other reasons (you need to trust your
@@ -540,7 +540,7 @@ class LombScarglePowerspectrum(LombScargleCrossspectrum):
     dt: float
         The time resolution of the light curve. Only needed when constructing
         light curves in the case where ``data`` is a
-        :class:`EventList` object
+        :class:`~stingray.events.EventList` object
 
     skip_checks: bool
         Skip initial checks, for speed or other reasons (you need to trust your

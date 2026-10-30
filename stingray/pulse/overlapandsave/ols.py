@@ -58,9 +58,9 @@ from typing import List, Iterable, Tuple
 
 
 def nextpow(a: float, x: float) -> float:
-    """The smallest `a^n` not less than `x`, where `n` is a non-negative integer.
+    """The smallest `a^n` not less than ``x``, where `n` is a non-negative integer.
 
-    `a` must be greater than 1, and `x` must be greater than 0.
+    `a` must be greater than 1, and ``x`` must be greater than 0.
 
     Examples
     --------
@@ -82,7 +82,7 @@ def nextpow(a: float, x: float) -> float:
 def nextprod(a: List[int], x: int) -> int:
     """Find a multiple of a few factors that approximates x
 
-    Next integer greater than or equal to `x` that can be written
+    Next integer greater than or equal to ``x`` that can be written
     as ``\\prod k_i^{a_i}`` for integers ``a_1``, ``a_2``, etc.
 
     Examples
@@ -203,7 +203,7 @@ def slice2range(s: slice):
 
 
 def edgesReflect(x, slices):
-    """Find the edges of `x` that np.pad in *REFLECT* mode will need.
+    """Find the edges of ``x`` that np.pad in *REFLECT* mode will need.
 
     Parameters
     ----------
@@ -229,7 +229,7 @@ def edgesReflect(x, slices):
 
 
 def edgesConstant(x, slices):
-    """Find the edges of `x` that np.pad in CONSTANT mode will need.
+    """Find the edges of ``x`` that np.pad in CONSTANT mode will need.
 
     Parameters
     ----------
@@ -288,7 +288,7 @@ def olsStep(
 ):
     """Implements a single step of the overlap-save algorithm
 
-    Given an entire signal array `x` and the pre-transformed filter array
+    Given an entire signal array ``x`` and the pre-transformed filter array
     `hfftconj` (i.e., the output of `prepareh`), compute a chunk of the total
     convolution. Specifically, the subarray of the total output starting at
     `starts`, with each dimension's length in `lengths`, is returned. The FFT
@@ -296,21 +296,21 @@ def olsStep(
     shape of the filter array (`h.shape`).
 
     For convenience, `lengths` is treated as a *maximum* length in each dimension,
-    so `starts + lengths` is allowed to exceed the total size of `x`: the function
+    so `starts + lengths` is allowed to exceed the total size of ``x``: the function
     won't read past the end of any arrays.
 
     The lists `starts`, `lengths`, `nft`, and `nh` are all required to be the same
-    length, matching the number of dimensions of `x` and `hfftconj`.
+    length, matching the number of dimensions of ``x`` and `hfftconj`.
 
     If `rfftn` and `irfftn` are not provided, `numpy.fft`'s functions are used.
     This can be overridden to use, e.g., PyFFTW's multi-threaded alternatives.
 
     `mode` and `**kwargs` are passed to `numpy.pad`, see
     https://docs.scipy.org/doc/numpy/reference/generated/numpy.pad.html
-    The default, `'constant'` will treat values outside the bounds of `x` as
+    The default, `'constant'` will treat values outside the bounds of ``x`` as
     constant, and specifically zero. This matches the standard definition of
     convolution. However, other useful alternatives are supported:
-    - `'reflect'` where the input `x` is reflected infinitely in all dimensions or
+    - `'reflect'` where the input ``x`` is reflected infinitely in all dimensions or
 
     N.B. These are the only modes supported by this module. Others are
     *UNSUPPORTED*.
@@ -375,14 +375,14 @@ def ols(x, h, size=None, nfft=None, out=None, rfftn=None, irfftn=None, mode="con
     As mentioned in the module docstring, the output of this function will be
     within machine precision of `scipy.signal.fftconvolve(x, h, mode='same')`.
 
-    However, rather than computing three potentially-large FFTs (one for `x`, one
+    However, rather than computing three potentially-large FFTs (one for ``x``, one
     for `h`, and an inverse FFT for their product), the overlap-save algorithm
     performs a sequence of smaller FFTs. This makes it appropriate for situations
     where you may not be able to store the signals' FFTs in RAM, or even cases
     where you cannot even store the signals themselves in RAM, i.e., when you have
     to memory-map them from disk.
 
-    `x` and `h` can be multidimensional (1D and 2D are extensively tested), but
+    ``x`` and `h` can be multidimensional (1D and 2D are extensively tested), but
     must have the same rank, i.e., `len(x.shape) == len(h.shape)`.
 
     If provided, the results will be stored in `out`. This is useful for
@@ -431,7 +431,7 @@ def ols(x, h, size=None, nfft=None, out=None, rfftn=None, irfftn=None, mode="con
     mode : str
         The mode of the convolution. The only accepted modes are
         ``constant`` and ``reflect``. By default, `mode='constant'` assumes
-        elements of `x` outside its boundaries are 0, which matches the
+        elements of ``x`` outside its boundaries are 0, which matches the
         textbook definition of convolution. `mode='reflect'` is also
         supported. It should be straightforward to add support for other modes
         supported by `np.pad`.

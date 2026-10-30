@@ -187,7 +187,7 @@ def mission_specific_event_interpretation(mission):
     """Get the mission-specific FITS interpretation function.
 
     This function will read a file name or a FITS :class:`astropy.io.fits.HDUList`
-    object and modify it (see, e.g., :func:`rxte_pca_event_file_interpretation` for an
+    object and modify it (see, e.g., :func:`~stingray.mission_support.rxte.rxte_pca_event_file_interpretation` for an
     example)
     """
 

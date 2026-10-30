@@ -116,7 +116,7 @@ passed on as function arguments.
 Using Impulse Response
 ----------------------
 
-In order to simulate a light curve using impulse response, we need the original light curve and impulse response. Stingray provides `TransferFunction` class which can be used to obtain time and energy averaged impulse response by passing in a 2-D intensity profile as the input. A detailed tutorial on obtaining impulse response is provided `here <https://github.com/StingraySoftware/notebooks/blob/master/Transfer%20Functions/TransferFunction%20Tutorial.ipynb>`__.
+In order to simulate a light curve using impulse response, we need the original light curve and impulse response. Stingray provides the :class:`~stingray.simulator.transfer.TransferFunction` class which can be used to obtain time and energy averaged impulse response by passing in a 2-D intensity profile as the input. A detailed tutorial on obtaining impulse response is provided `here <https://github.com/StingraySoftware/notebooks/blob/master/Transfer%20Functions/TransferFunction%20Tutorial.ipynb>`__.
 
 Here, for the sake of simplicity, we use a simulated impulse response.
 

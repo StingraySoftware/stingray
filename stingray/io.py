@@ -1444,7 +1444,7 @@ def split_numbers(number, shift=0):
     Other parameters
     ----------------
     shift: integer
-        Move the cut by `shift` decimal points to the right (left if negative)
+        Move the cut by ``shift`` decimal points to the right (left if negative)
 
     Returns
     -------
@@ -1493,7 +1493,7 @@ def savefig(filename, **kwargs):
 
     kwargs : keyword arguments
         Keyword arguments to be passed to ``savefig`` function of
-        ``matplotlib.pyplot``. For example use `bbox_inches='tight'` to
+        ``matplotlib.pyplot``. For example use ``bbox_inches='tight'`` to
         remove the undesirable whitespace around the image.
     """
 
