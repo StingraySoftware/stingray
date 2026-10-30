@@ -183,7 +183,7 @@ New Features
 - Power colors à la Heil et al. 2015 (`#780 <https://github.com/StingraySoftware/stingray/pull/780>`__)
 - Calculate colors and intensities on a segment-by-segment basis in event lists (`#781 <https://github.com/StingraySoftware/stingray/pull/781>`__)
 - A function to randomize data in small bad time intervals (`#782 <https://github.com/StingraySoftware/stingray/pull/782>`__)
-- The Lomb Scargle Fourier Transform (fast and slow versions) and the corresponding :class:`LombScargleCrossspectrum` and :class:`LombScarglePowerspectrum` (`#737 <https://github.com/StingraySoftware/stingray/pull/737>`__)
+- The Lomb Scargle Fourier Transform (fast and slow versions) and the corresponding :class:`~stingray.LombScargleCrossspectrum` and :class:`~stingray.LombScarglePowerspectrum` (`#737 <https://github.com/StingraySoftware/stingray/pull/737>`__)
 - A JAX implementation of the Gaussian Process tool by `Hubener et al <https://arxiv.org/abs/2205.12716>`_
   for QPO detection and parameter analysis. (`#739 <https://github.com/StingraySoftware/stingray/pull/739>`__)
 - Extend join operation for events to arbitrary array attributes, not just pi and energy (`#742 <https://github.com/StingraySoftware/stingray/pull/742>`__)
