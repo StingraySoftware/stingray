@@ -1,0 +1,3 @@
+Fixed ``_folding_search`` losing the last data point when the data length is a multiple of ``segment_size`` 
+(including the default ``segment_size=np.inf``). This affected ``epoch_folding_search``, ``z_n_search`` (slow path),
+and ``phase_dispersion_search``.

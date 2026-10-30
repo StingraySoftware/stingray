@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from stingray.pulse import epoch_folding_search, z_n_search
 from stingray.pulse import phase_dispersion_search
 from stingray.pulse import phaseogram, plot_phaseogram
-from stingray.pulse.search import _profile_fast
+from stingray.pulse.search import _profile_fast, _folding_search
 from stingray.pulse import plot_profile
 from stingray.pulse import fold_events
 from stingray import Lightcurve
@@ -144,6 +144,18 @@ class TestAll(object):
         test_phase = np.arange(0, 1, 1 / 16)
         prof = _profile_fast(test_phase, nbin=16)
         assert np.allclose(prof, np.ones(16))
+
+    @pytest.mark.parametrize("segment_size", [np.inf, 5])
+    def test_folding_search_uses_all_data(self, segment_size):
+        times = np.arange(11.0)
+        n_used = []
+
+        def stat_func(t, f, fd=0, **kwargs):
+            n_used.append(len(t))
+            return 0
+
+        _folding_search(stat_func, times, [1.0], segment_size=segment_size, use_times=True)
+        assert np.sum(n_used) == times.size
 
     def test_epoch_folding_search(self):
         """Test pulse phase calculation, frequency only."""
