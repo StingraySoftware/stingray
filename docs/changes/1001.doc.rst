@@ -21,3 +21,12 @@
   they contain.
 - Thirteen reStructuredText errors in docstrings that had never been rendered are fixed,
   in ``stingray.filters``, ``stingray.multitaper`` and ``stingray.modeling.gpmodeling``.
+- The cross-references in the docstrings are fixed too, which is the bulk of this change.
+  Sphinx reported 509 unresolved references in docstrings; 24 are left, and they are
+  accounted for. Four kinds of mistake: a type name such as ``np.array`` in a
+  single-backtick span, which ``default_role`` turns into a request for an object of that
+  name; a stingray class or function written without the role and module path Sphinx
+  needs; a role whose backticks were put around the whole role instead of its argument,
+  or left off altogether; and a bare class name in a base class's docstring, which is
+  rendered again on every subclass page, where it no longer resolves. ``np.array`` alone
+  accounted for 155 spans.
