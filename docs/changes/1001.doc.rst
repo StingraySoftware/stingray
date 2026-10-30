@@ -51,3 +51,18 @@
   although it is the name of a parameter. With these the nitpicky build is down to eight
   warnings, seven of which are references to the four classes whose docstrings Python
   currently discards.
+- Sixteen class docstrings are no longer thrown away. A string literal becomes a class's
+  ``__doc__`` only when it is the *first* statement in the class body, and these sixteen
+  classes -- among them ``Crossspectrum``, ``Powerspectrum``, ``AveragedCrossspectrum``,
+  the four bispectra and their dynamical and averaged variants, the two Lomb-Scargle
+  spectra and ``VarEnergySpectrum`` -- put a class-level assignment such as
+  ``main_array_attr = "freq"`` above the docstring, which turns it into a no-op
+  expression that Python discards at import. ``Crossspectrum.__doc__`` was ``None``.
+  Moving the docstring above those assignments restores 1206 lines of documentation,
+  including every ``Parameters`` and ``Attributes`` section these classes had. The text
+  is unchanged; only its position is. Four of the classes also had no ``api.rst`` entry,
+  having had no docstring to render, and now do: ``DynamicalCrossspectrum``,
+  ``GtiCorrPowerspectrum``, ``LombScargleCrossspectrum`` and ``LombScarglePowerspectrum``.
+  With the references in the newly rendered text fixed, and a Google-style parameter
+  block in ``EventList.filter_detector_id`` rewritten in the NumPy style the rest of the
+  file uses, the nitpicky build reports no unresolved references at all, down from eight.
