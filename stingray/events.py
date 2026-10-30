@@ -888,8 +888,16 @@ class EventList(StingrayTimeseries):
     def filter_detector_id(self, detector_id, inplace=False):
         """Filters the data selecting only a selected detector or a list of detectors.
 
-        Args:
-            detector_id (int, optional): The detector id on which the filtering needs to be applied. It can be a list.
+        Parameters
+        ----------
+        detector_id : int or list of int
+            The detector id, or list of detector ids, to select.
+
+        Other Parameters
+        ----------------
+        inplace : bool, default False
+            Do the change in place (modify current event list). Otherwise, copy
+            to a new event list.
         """
 
         mask = self.get_mask_for_filter_by_detector_id(detector_id)
