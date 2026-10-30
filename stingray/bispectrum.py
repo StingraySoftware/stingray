@@ -94,9 +94,6 @@ def _warn_interface_change():
 
 
 class CrossBispectrum(StingrayObject):
-    main_array_attr = "freq"
-    type = "crossbispectrum"
-
     r"""Make a :class:`CrossBispectrum` from up to three (binned) light curves.
 
     The cross-bispectrum is the higher-order analogue of the cross spectrum. It
@@ -225,6 +222,9 @@ class CrossBispectrum(StingrayObject):
 
     2) Y. C. Kim and E. J. Powers, IEEE Trans. Plasma Sci. PS-7, 120 (1979).
     """
+
+    main_array_attr = "freq"
+    type = "crossbispectrum"
 
     def __init__(
         self,
@@ -716,8 +716,6 @@ class CrossBispectrum(StingrayObject):
 
 
 class AveragedCrossBispectrum(CrossBispectrum):
-    type = "crossbispectrum"
-
     r"""Make an averaged cross-bispectrum from three simultaneous light curves.
 
     Each channel is split into segments of length ``segment_size`` on a common
@@ -739,6 +737,8 @@ class AveragedCrossBispectrum(CrossBispectrum):
     See :class:`CrossBispectrum`, plus ``dt``, ``silent``, ``save_all`` and
     ``save_diagonal`` as in :class:`AveragedBispectrum`.
     """
+
+    type = "crossbispectrum"
 
     def __init__(
         self,
@@ -872,8 +872,6 @@ class AveragedCrossBispectrum(CrossBispectrum):
 
 
 class Bispectrum(CrossBispectrum):
-    type = "bispectrum"
-
     r"""Make a :class:`Bispectrum` (auto-bispectrum) from a (binned) light curve.
 
     The auto-bispectrum is the special case of the :class:`CrossBispectrum` in
@@ -971,6 +969,8 @@ class Bispectrum(CrossBispectrum):
     Rao, T. S. & Gabr, M. M., *An Introduction to Bispectral Analysis and
     Bilinear Time Series Models*, Lecture Notes in Statistics 24 (1984).
     """
+
+    type = "bispectrum"
 
     def __init__(
         self,
@@ -1460,8 +1460,6 @@ class Bispectrum(CrossBispectrum):
 
 
 class AveragedBispectrum(AveragedCrossBispectrum, Bispectrum):
-    type = "bispectrum"
-
     r"""Make an averaged (auto-)bispectrum from a light curve or event list.
 
     The light curve is split into segments of length ``segment_size``, an
@@ -1497,6 +1495,8 @@ class AveragedBispectrum(AveragedCrossBispectrum, Bispectrum):
     lc : :class:`stingray.Lightcurve`, optional
         For backwards compatibility only. Deprecated; use ``data``.
     """
+
+    type = "bispectrum"
 
     def __init__(
         self,
@@ -1759,8 +1759,6 @@ def _pixel_edges(x):
 
 
 class DynamicalCrossBispectrum(AveragedCrossBispectrum):
-    type = "crossbispectrum"
-
     r"""Make a time-resolved (dynamical) cross-bispectrum.
 
     This is the higher-order analogue of :class:`stingray.DynamicalCrossspectrum`.
@@ -1843,6 +1841,8 @@ class DynamicalCrossBispectrum(AveragedCrossBispectrum):
     nseg : numpy.ndarray
         Number of segments actually averaged in each bin.
     """
+
+    type = "crossbispectrum"
 
     def __init__(
         self,
@@ -2411,8 +2411,6 @@ class DynamicalCrossBispectrum(AveragedCrossBispectrum):
 
 
 class DynamicalBispectrum(DynamicalCrossBispectrum):
-    type = "bispectrum"
-
     r"""Make a time-resolved (dynamical) auto-bispectrum from a single input.
 
     The auto special case of :class:`DynamicalCrossBispectrum` (the three
@@ -2437,6 +2435,8 @@ class DynamicalBispectrum(DynamicalCrossBispectrum):
     See :class:`DynamicalCrossBispectrum` (``channels_overlap`` is always True
     here).
     """
+
+    type = "bispectrum"
 
     def __init__(
         self,

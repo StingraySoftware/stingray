@@ -127,7 +127,6 @@ def _decode_energy_specification(energy_spec):
 
 
 class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
-    main_array_attr = "energy"
     """
     Base class for variability-energy spectrum.
 
@@ -187,6 +186,8 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
     energy : array-like
         The centers of energy intervals
     """
+
+    main_array_attr = "energy"
 
     def __init__(
         self,
