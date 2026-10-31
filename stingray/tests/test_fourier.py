@@ -855,6 +855,32 @@ def test_lsft_fast_small_sine_norm_keeps_signal():
     assert abs(fast[i].imag) > 0.5 * abs(slow[i].imag)
 
 
+def test_lsft_fast_lowfreq_ramp_keeps_signal():
+    # Copilot review: t = linspace(0, 1, 100), y = t - 0.5, grid from 1e-4.
+    # Both 1e-3 thresholds pass here, yet the true imag is ~20.6: the gate
+    # must be signal-independent, not a fraction of sum|y|.
+    t = np.linspace(0, 1, 100)
+    y = t - 0.5
+    freqs = np.linspace(1e-4, 1e-2, 11)
+    slow = lsft_slow(y, t, freqs, sign=1)
+    fast = lsft_fast(y, t, freqs, sign=1, oversampling=10)
+    assert np.all(np.isfinite(fast))
+    assert abs(slow[0].imag) > 1  # guards the premise: real signal present
+    assert fast[0].imag == pytest.approx(slow[0].imag, rel=1e-2)
+
+
+def test_lsft_fast_lowfreq_ramp_keeps_signal_exact_sums():
+    # Same case with exact trig sums (dense oversampling): the basis is not
+    # degenerate, so no gate may fire regardless of sum accuracy.
+    t = np.linspace(0, 1, 100)
+    y = t - 0.5
+    freqs = np.linspace(1e-4, 1e-2, 11)
+    slow = lsft_slow(y, t, freqs, sign=1)
+    fast = lsft_fast(y, t, freqs, sign=1, oversampling=500)
+    assert np.all(np.isfinite(fast))
+    assert fast[0].imag == pytest.approx(slow[0].imag, rel=1e-2)
+
+
 def test_impose_symmetry_lsft():
     np.random.seed(0)
     rand = np.random.default_rng(42)
