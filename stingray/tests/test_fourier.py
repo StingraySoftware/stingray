@@ -790,18 +790,95 @@ def test_lsft_slow_fast():
     rand = np.random.default_rng(42)
     n = 1000
     t = np.sort(rand.random(n)) * np.sqrt(n)
-    y = np.sin(2 * np.pi * 3.0 * t)
+    y = np.sin(2 * np.pi * 3.0 * t) + 0.5 * np.cos(2 * np.pi * 7.5 * t + 0.3)
     sub = np.min(y)
     y -= sub
     freqs = np.fft.fftfreq(n, np.median(np.diff(t, 1)))
     freqs = freqs[freqs >= 0]
     lsftslow = lsft_slow(y, t, freqs, sign=1)
     lsftfast = lsft_fast(y, t, freqs, sign=1, oversampling=10)
-    assert np.argmax(lsftslow) == np.argmax(lsftfast)
-    assert round(freqs[np.argmax(lsftslow)], 1) == round(freqs[np.argmax(lsftfast)], 1) == 3.0
-    assert np.allclose((lsftslow * np.conjugate(lsftslow)).imag, [0]) & np.allclose(
-        (lsftfast * np.conjugate(lsftfast)).imag, 0
-    )
+    assert np.argmax(np.abs(lsftslow)) == np.argmax(np.abs(lsftfast))
+    peak_slow = freqs[np.argmax(np.abs(lsftslow))]
+    peak_fast = freqs[np.argmax(np.abs(lsftfast))]
+    assert round(peak_slow, 1) == round(peak_fast, 1) == 3.0
+    # Compare amplitude and phase, not only the peak, on bins with real signal.
+    ok = np.abs(lsftslow) > 1e-3 * np.max(np.abs(lsftslow))
+    amp_err = np.max(np.abs(np.abs(lsftfast[ok]) - np.abs(lsftslow[ok])))
+    amp_err /= np.max(np.abs(lsftslow))
+    phase_err = np.max(np.abs(np.angle(lsftfast[ok] * np.conj(lsftslow[ok]))))
+    assert amp_err < 1e-3
+    assert phase_err < 1e-2
+
+
+@pytest.mark.parametrize("sign", [1, -1])
+def test_lsft_slow_fast_sign(sign):
+    # The sign flips the imaginary part (direct vs inverse transform); both
+    # paths share the wtau/normalization code, so pin both.
+    rand = np.random.default_rng(42)
+    n = 1000
+    t = np.sort(rand.random(n)) * np.sqrt(n)
+    y = np.sin(2 * np.pi * 3.0 * t)
+    y -= np.min(y)
+    freqs = np.fft.fftfreq(n, np.median(np.diff(t, 1)))
+    freqs = freqs[freqs >= 0]
+    slow = lsft_slow(y, t, freqs, sign=sign)
+    fast = lsft_fast(y, t, freqs, sign=sign, oversampling=10)
+    ok = np.abs(slow) > 1e-3 * np.max(np.abs(slow))
+    amp = np.max(np.abs(np.abs(fast[ok]) - np.abs(slow[ok]))) / np.max(np.abs(slow))
+    assert amp < 1e-3
+    dphi = np.max(np.abs(np.angle(fast[ok] * np.conj(slow[ok]))))
+    assert dphi < 1e-2
+
+
+def test_lsft_fast_exact_nyquist_integer_grid():
+    # Integer grid at exact Nyquist: sine basis is identically zero.
+    rng = np.random.default_rng(0)
+    t = np.arange(50, dtype=float)
+    y = rng.normal(size=t.size)
+    freqs = np.linspace(0.05, 0.5, 11)
+    assert freqs[-1] == 0.5 / np.median(np.diff(t))
+    fast = lsft_fast(y, t, freqs, sign=1, oversampling=10)
+    assert np.all(np.isfinite(fast))
+    # Guard zeroes pre-rotation imag; the phase factor leaves a small residual.
+    assert abs(fast[-1].imag) < 1e-3 * np.max(np.abs(fast))
+
+
+def test_lsft_fast_small_sine_norm_keeps_signal():
+    # Tiny but legitimate sine norm (~3e-4 N) with real signal: keep, don't zero.
+    t = np.sort(np.random.default_rng(3).uniform(0, 1, 100))
+    y = np.random.default_rng(0).normal(size=t.size)
+    freqs = np.linspace(0.01, 5.0, 200)
+    slow = lsft_slow(y, t, freqs, sign=1)
+    fast = lsft_fast(y, t, freqs, sign=1, oversampling=10)
+    i = 0  # lowest bin: smallest sine norm on this grid
+    assert np.isfinite(fast[i])
+    assert abs(fast[i].imag) > 0.5 * abs(slow[i].imag)
+
+
+def test_lsft_fast_lowfreq_ramp_keeps_signal():
+    # Copilot review: t = linspace(0, 1, 100), y = t - 0.5, grid from 1e-4.
+    # Both 1e-3 thresholds pass here, yet the true imag is ~20.6: the gate
+    # must be signal-independent, not a fraction of sum|y|.
+    t = np.linspace(0, 1, 100)
+    y = t - 0.5
+    freqs = np.linspace(1e-4, 1e-2, 11)
+    slow = lsft_slow(y, t, freqs, sign=1)
+    fast = lsft_fast(y, t, freqs, sign=1, oversampling=10)
+    assert np.all(np.isfinite(fast))
+    assert abs(slow[0].imag) > 1  # guards the premise: real signal present
+    assert fast[0].imag == pytest.approx(slow[0].imag, rel=1e-2)
+
+
+def test_lsft_fast_lowfreq_ramp_keeps_signal_exact_sums():
+    # Same case with exact trig sums (dense oversampling): the basis is not
+    # degenerate, so no gate may fire regardless of sum accuracy.
+    t = np.linspace(0, 1, 100)
+    y = t - 0.5
+    freqs = np.linspace(1e-4, 1e-2, 11)
+    slow = lsft_slow(y, t, freqs, sign=1)
+    fast = lsft_fast(y, t, freqs, sign=1, oversampling=500)
+    assert np.all(np.isfinite(fast))
+    assert fast[0].imag == pytest.approx(slow[0].imag, rel=1e-2)
 
 
 def test_impose_symmetry_lsft():

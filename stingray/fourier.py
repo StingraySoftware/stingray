@@ -3945,7 +3945,7 @@ def lsft_fast(
     t: npt.ArrayLike,
     freqs: npt.ArrayLike,
     sign: Optional[int] = 1,
-    oversampling: Optional[int] = 5,
+    oversampling: Optional[int] = 10,
 ) -> npt.NDArray:
     """
     Calculates the Lomb-Scargle Fourier transform of a light curve.
@@ -3971,7 +3971,7 @@ def lsft_fast(
     fullspec : bool, optional, default: False
         Return LSFT values for full frequency array (True) or just positive frequencies (False).
 
-    oversampling : float, optional, default: 5
+    oversampling : float, optional, default: 10
         Interpolation Oversampling Factor
 
     Returns
@@ -3997,11 +3997,9 @@ def lsft_fast(
     w = freqs * 2 * np.pi
 
     # Summation of cos(2wt) and sin(2wt)
-    csum, ssum = trig_sum(
+    ssum, csum = trig_sum(
         t, np.ones_like(y_) / len(y_), df, N, f0, freq_factor=2, oversampling=oversampling
     )
-
-    wtau = 0.5 * np.arctan2(ssum, csum)
 
     S2, C2 = trig_sum(
         t,
@@ -4013,7 +4011,9 @@ def lsft_fast(
         oversampling=oversampling,
     )
 
-    const = np.sqrt(0.5) * np.sqrt(num_ww)
+    wtau = 0.5 * np.arctan2(ssum, csum)
+
+    const = np.sqrt(0.5) * np.sqrt(len(y_))
 
     coswtau = np.cos(wtau)
     sinwtau = np.sin(wtau)
@@ -4024,11 +4024,51 @@ def lsft_fast(
     cos2wtau = np.cos(2 * wtau)
     sin2wtau = np.sin(2 * wtau)
 
-    scos2 = 0.5 * (N + C2 * cos2wtau + S2 * sin2wtau)
-    ssin2 = 0.5 * (N - C2 * cos2wtau - S2 * sin2wtau)
+    scos2 = 0.5 * (len(y_) + C2 * cos2wtau + S2 * sin2wtau)
+    ssin2 = 0.5 * (len(y_) - C2 * cos2wtau - S2 * sin2wtau)
 
-    ft_real = const * sumr / np.sqrt(scos2)
-    ft_imag = const * np.sign(sign) * sumi / np.sqrt(ssin2)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ft_real = const * sumr / np.sqrt(scos2)
+        ft_imag = const * np.sign(sign) * sumi / np.sqrt(ssin2)
+
+    # Recompute suspect bins directly. The fast trig sums carry interpolation
+    # error, which matters most where the sine basis is near zero, so both
+    # the time shift and the projections are rebuilt from direct sums here.
+    # A bin is degenerate when its sine basis is no larger than its own
+    # rounding floor (each sin errs by ~eps*|theta|). That test uses only the
+    # basis, never the signal size: small denominators with real signal keep
+    # the direct denominator. At true degeneracy (e.g. exact Nyquist on
+    # integer grids) the coefficient is unidentifiable, so the imaginary part
+    # is set to 0 by the minimum-norm convention. Bins run in bounded chunks
+    # so suspect bins never allocate an (n_suspect x N) matrix.
+    suspect = np.flatnonzero(ssin2 < 0.1 * len(y_))
+    if suspect.size:
+        t_arr = np.asanyarray(t, dtype=float)
+        eps = np.finfo(float).eps
+        degenerate_mask = np.zeros(suspect.size, dtype=bool)
+        sumi_direct = np.empty(suspect.size)
+        ssin2_direct = np.empty(suspect.size)
+        for start in range(0, suspect.size, 512):
+            blk = slice(start, min(start + 512, suspect.size))
+            idx = suspect[blk]
+            arg2 = 2.0 * w[idx, None] * t_arr[None, :]
+            tau_dir = 0.5 * np.arctan2(np.sum(np.sin(arg2), axis=1), np.sum(np.cos(arg2), axis=1))
+            wtau[idx] = tau_dir
+            arg = w[idx, None] * t_arr[None, :] - tau_dir[:, None]
+            s = np.sin(arg)
+            ssin2_direct[blk] = np.sum(s**2, axis=1)
+            sumi_direct[blk] = np.sum(y_[None, :] * s, axis=1)
+            theta_norm_sq = np.sum(arg**2, axis=1)
+            floor = (10.0 * eps) ** 2 * theta_norm_sq
+            degenerate_mask[blk] = ssin2_direct[blk] <= floor
+        ft_imag[suspect[degenerate_mask]] = 0.0
+        keep = suspect[~degenerate_mask]
+        ft_imag[keep] = (
+            const
+            * np.sign(sign)
+            * sumi_direct[~degenerate_mask]
+            / np.sqrt(ssin2_direct[~degenerate_mask])
+        )
 
     ft_real[freqs == 0] = sum_xx / np.sqrt(num_xt)
     ft_imag[freqs == 0] = 0

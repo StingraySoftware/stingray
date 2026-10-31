@@ -1,0 +1,15 @@
+Fixed incorrect results from the Lomb-Scargle fast Fourier transform
+(``lsft_fast``):
+
+* The sine and cosine sums from ``trig_sum`` were combined in the wrong
+  order, putting every bin's phase ~π off. They are now bound as
+  ``(S, C)``, matching ``lsft_slow`` and Astropy.
+* The normalization constant and the ``scos2``/``ssin2`` denominators used
+  the number of frequencies ``len(freqs)`` where the observation count
+  ``len(y)`` is required.
+* Bins with a degenerate sine basis (e.g. the exact Nyquist frequency on
+  evenly sampled data) no longer return NaN: the imaginary part is set to
+  zero where numerator and denominator both vanish, and recomputed from the
+  direct sum elsewhere.
+* The default oversampling factor is now 10 instead of 5, improving
+  accuracy at some extra computational cost.
