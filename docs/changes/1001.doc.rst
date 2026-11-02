@@ -3,13 +3,26 @@
   ``stingray.stats``, ``stingray.gti``, ``stingray.filters`` and the ``stingray.pulse``
   package among them -- that alone gives each name a documentation page. Six modules are
   documented class by class instead, with no ``automodule`` directive to pick their
-  functions up: the twenty-four functions exported from ``stingray.events``,
+  functions up: the twenty-eight functions exported from ``stingray.events``,
   ``stingray.crossspectrum``, ``stingray.powerspectrum``, ``stingray.bispectrum``,
-  ``stingray.lombscargle`` and ``stingray.varenergyspectrum`` therefore have
-  ``autofunction`` entries of their own in ``api.rst``; without them the names were
-  importable but had neither a page nor a reference target. Documenting
-  ``normalize_crossspectrum_gauss`` for the first time exposed six single-backtick spans
-  in its own docstring, which are literals now. ``fftfit_fun`` is left out of ``__all__`` on purpose:
+  ``stingray.lombscargle`` and ``stingray.varenergyspectrum`` that had no entry therefore
+  have ``autofunction`` entries of their own in ``api.rst``, the five functions of
+  ``stingray.crossspectrum`` that are not constructors under a heading of their own rather
+  than among the constructors; ``coherence``, the twenty-ninth, already had an entry under
+  its top-level name ``stingray.coherence``. Without them the names were importable but
+  had neither a page nor a reference target. Rendering these docstrings for the first time
+  is what exposed the mistakes in them: six single-backtick spans in each of the two
+  ``normalize_crossspectrum`` functions, which are literals now; a continuation line in
+  ``powerspectrum_from_lc_iterable`` indented one space deeper than its block, which
+  docutils reported as an error; and, in ``get_flux_generator``, a plural ``s`` written
+  against the closing backtick of two class references, which left the inline markup
+  unterminated. The same ``default_role`` trap had caught nine more spans in
+  ``stingray.powerspectrum``, where the ``abs`` normalization was written in single
+  backticks beside its double-backticked neighbours and so rendered as a link to Python's
+  built-in ``abs``. With these fixed, ``sphinx-build -n -W`` succeeds on the documentation
+  for the first time; the two numpydoc warnings that are still printed, about docstrings in
+  ``stingray.modeling.gpmodeling`` and ``stingray.simulator.transfer``, predate this branch
+  and Sphinx does not count them. ``fftfit_fun`` is left out of ``__all__`` on purpose:
   its body is ``pass``, so there is nothing to document until it is implemented. Six
   classes that had no documentation at
   all -- ``DeadtimeFilterOutput``, ``EventReadOutput``, ``FITSTimeseriesReader`` and the

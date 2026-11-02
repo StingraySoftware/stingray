@@ -217,13 +217,27 @@ going through the class constructors.
 .. autofunction:: stingray.crossspectrum.crossspectrum_from_lightcurve
 .. autofunction:: stingray.crossspectrum.crossspectrum_from_timeseries
 .. autofunction:: stingray.crossspectrum.crossspectrum_from_lc_iterable
-.. autofunction:: stingray.crossspectrum.normalize_crossspectrum_gauss
 .. autofunction:: stingray.powerspectrum.powerspectrum_from_time_array
 .. autofunction:: stingray.powerspectrum.powerspectrum_from_events
 .. autofunction:: stingray.powerspectrum.powerspectrum_from_lightcurve
 .. autofunction:: stingray.powerspectrum.powerspectrum_from_timeseries
 .. autofunction:: stingray.powerspectrum.powerspectrum_from_lc_iterable
 .. autofunction:: stingray.lombscargle.lscrossspectrum_from_lightcurve
+
+----
+
+Cross spectrum functions
+------------------------
+
+The public functions of ``stingray.crossspectrum`` that are not constructors: the two
+normalizations, the single-trial p-value of a cospectrum power, the time lag between two
+light curves, and the flux generator that the averaged spectra are built from.
+
+.. autofunction:: stingray.crossspectrum.normalize_crossspectrum
+.. autofunction:: stingray.crossspectrum.normalize_crossspectrum_gauss
+.. autofunction:: stingray.crossspectrum.cospectra_pvalue
+.. autofunction:: stingray.crossspectrum.time_lag
+.. autofunction:: stingray.crossspectrum.get_flux_generator
 
 ----
 

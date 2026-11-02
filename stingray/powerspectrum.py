@@ -456,7 +456,7 @@ class Powerspectrum(Crossspectrum):
             overlaps between these GTIs and the input object GTIs. If that
             happens, assign the desired GTIs to the input object.
         norm : str, default "frac"
-            The normalization of the periodogram. `abs` is absolute rms, ``frac``
+            The normalization of the periodogram. ``abs`` is absolute rms, ``frac``
             is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
             the unnormalized periodogram.
         use_common_mean : bool, default True
@@ -513,7 +513,7 @@ class Powerspectrum(Crossspectrum):
             overlaps between these GTIs and the input object GTIs. If that
             happens, assign the desired GTIs to the input object.
         norm : str, default "frac"
-            The normalization of the periodogram. `abs` is absolute rms, ``frac``
+            The normalization of the periodogram. ``abs`` is absolute rms, ``frac``
             is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
             the unnormalized periodogram.
         use_common_mean : bool, default True
@@ -634,7 +634,7 @@ class Powerspectrum(Crossspectrum):
             overlaps between these GTIs and the input object GTIs. If that
             happens, assign the desired GTIs to the input object.
         norm : str, default "frac"
-            The normalization of the periodogram. `abs` is absolute rms, ``frac``
+            The normalization of the periodogram. ``abs`` is absolute rms, ``frac``
             is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
             the unnormalized periodogram.
         use_common_mean : bool, default True
@@ -695,7 +695,7 @@ class Powerspectrum(Crossspectrum):
             overlaps between these GTIs and the input object GTIs. If that
             happens, assign the desired GTIs to the input object.
         norm : str, default "frac"
-            The normalization of the periodogram. `abs` is absolute rms, ``frac``
+            The normalization of the periodogram. ``abs`` is absolute rms, ``frac``
             is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
             the unnormalized periodogram.
         use_common_mean : bool, default True
@@ -1491,7 +1491,7 @@ def powerspectrum_from_time_array(
         overlaps between these GTIs and the input object GTIs. If that
         happens, assign the desired GTIs to the input object.
     norm : str, default "frac"
-        The normalization of the periodogram. `abs` is absolute rms, ``frac``
+        The normalization of the periodogram. ``abs`` is absolute rms, ``frac``
         is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
         the unnormalized periodogram.
     use_common_mean : bool, default True
@@ -1561,7 +1561,7 @@ def powerspectrum_from_events(
         overlaps between these GTIs and the input object GTIs. If that
         happens, assign the desired GTIs to the input object.
     norm : str, default "frac"
-        The normalization of the periodogram. `abs` is absolute rms, ``frac``
+        The normalization of the periodogram. ``abs`` is absolute rms, ``frac``
         is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
         the unnormalized periodogram.
     use_common_mean : bool, default True
@@ -1621,7 +1621,7 @@ def powerspectrum_from_lightcurve(
         overlaps between these GTIs and the input object GTIs. If that
         happens, assign the desired GTIs to the input object.
     norm : str, default "frac"
-        The normalization of the periodogram. `abs` is absolute rms, ``frac``
+        The normalization of the periodogram. ``abs`` is absolute rms, ``frac``
         is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
         the unnormalized periodogram.
     use_common_mean : bool, default True
@@ -1700,7 +1700,7 @@ def powerspectrum_from_timeseries(
         overlaps between these GTIs and the input object GTIs. If that
         happens, assign the desired GTIs to the input object.
     norm : str, default "frac"
-        The normalization of the periodogram. `abs` is absolute rms, ``frac``
+        The normalization of the periodogram. ``abs`` is absolute rms, ``frac``
         is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
         the unnormalized periodogram.
     use_common_mean : bool, default True
@@ -1774,14 +1774,14 @@ def powerspectrum_from_lc_iterable(
     segment_size : float, default None
         The length, in seconds, of the light curve segments that will be
         averaged. If not ``None``, it will be used to check the segment size of
-         the output.
+        the output.
     gti : ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``
         Additional, optional Good Time intervals that get intersected with
         the GTIs of the input object. Can cause errors if there are
         overlaps between these GTIs and the input object GTIs. If that
         happens, assign the desired GTIs to the input object.
     norm : str, default "frac"
-        The normalization of the periodogram. `abs` is absolute rms, ``frac``
+        The normalization of the periodogram. ``abs`` is absolute rms, ``frac``
         is fractional rms, ``leahy`` is Leahy+83 normalization, and ``none`` is
         the unnormalized periodogram.
     use_common_mean : bool, default True

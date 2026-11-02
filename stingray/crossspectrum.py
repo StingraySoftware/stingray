@@ -51,7 +51,8 @@ def get_flux_generator(data, segment_size, dt=None):
     this method with the information it needs to create the iterables,
     starting from an event list or a light curve.
 
-    Only accepts :class:`~stingray.Lightcurve`s and :class:`~stingray.events.EventList`s.
+    Only accepts :class:`~stingray.Lightcurve` and
+    :class:`~stingray.events.EventList` objects.
 
     Parameters
     ----------
@@ -246,11 +247,11 @@ def normalize_crossspectrum(
     Other parameters
     ----------------
     norm : str
-        One of `'leahy'` (Leahy+83), `'frac'` (fractional rms), `'abs'`
+        One of ``'leahy'`` (Leahy+83), ``'frac'`` (fractional rms), ``'abs'``
         (absolute rms)
 
     power_type : str
-        One of `'real'` (real part), `'all'` (all complex powers), `'abs'`
+        One of ``'real'`` (real part), ``'all'`` (all complex powers), ``'abs'``
         (absolute value)
 
     Returns
