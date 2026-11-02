@@ -333,7 +333,7 @@ AveragedCovariancespectrum
 ----
 
 VarEnergySpectrum
-------------------
+-----------------
 Abstract base class for spectral timing products including
 both variability and spectral information.
 
@@ -370,7 +370,7 @@ ExcessVarianceSpectrum
 ----
 
 CountSpectrum
-----------------------
+-------------
 
 .. autoclass:: stingray.varenergyspectrum.CountSpectrum
    :members:

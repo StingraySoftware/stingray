@@ -609,7 +609,7 @@ class GPResult:
             The number of live points to use in the nested sampling
 
         Returns
-        ----------
+        -------
         results: jaxns.results.NestedSamplerResults object
             The results of the nested sampling process
 

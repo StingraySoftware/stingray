@@ -20,9 +20,7 @@
   ``stingray.powerspectrum``, where the ``abs`` normalization was written in single
   backticks beside its double-backticked neighbours and so rendered as a link to Python's
   built-in ``abs``. With these fixed, ``sphinx-build -n -W`` succeeds on the documentation
-  for the first time; the two numpydoc warnings that are still printed, about docstrings in
-  ``stingray.modeling.gpmodeling`` and ``stingray.simulator.transfer``, predate this branch
-  and Sphinx does not count them. ``fftfit_fun`` is left out of ``__all__`` on purpose:
+  for the first time. ``fftfit_fun`` is left out of ``__all__`` on purpose:
   its body is ``pass``, so there is nothing to document until it is implemented. Six
   classes that had no documentation at
   all -- ``DeadtimeFilterOutput``, ``EventReadOutput``, ``FITSTimeseriesReader`` and the
@@ -92,3 +90,13 @@
   With the references in the newly rendered text fixed, and a Google-style parameter
   block in ``EventList.filter_detector_id`` rewritten in the NumPy style the rest of the
   file uses, the nitpicky build reports no unresolved references at all, down from eight.
+- Five headings whose underline does not match the length of their title are corrected,
+  and with them the last two complaints numpydoc made about Stingray's own docstrings.
+  ``TransferFunction.read`` headed its parameter section ``Parameter`` rather than
+  ``Parameters``, a name numpydoc does not recognise, so that section was never rendered
+  as a parameter list at all; and the ``Returns`` heading of ``GPResult.sample`` was
+  underlined with ten dashes for a seven-character title. The remaining three are
+  reStructuredText headings underlined too long -- ``VarEnergySpectrum`` and
+  ``CountSpectrum`` in ``api.rst`` and ``Using Stingray`` in ``index.rst``. An underline
+  longer than its title is legal reStructuredText, so those three were silent, but they
+  are the same mistake and are matched to their titles now.

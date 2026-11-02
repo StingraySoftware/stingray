@@ -282,7 +282,7 @@ The documentation should be located in ``stingray/docs/_build``. Try opening ``.
 the stingray source directory.
 
 Using Stingray
-===============
+==============
 
 The documentation below is built on top of Jupyter notebooks that can be run locally.
 The easiest way to retrieve the notebooks is by `cloning the notebooks repository <https://github.com/StingraySoftware/notebooks>`_ and browsing the directories, which are conveniently divided by topic.
