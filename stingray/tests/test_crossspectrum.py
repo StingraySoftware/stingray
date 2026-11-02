@@ -1548,6 +1548,23 @@ class TestDynamicalCrossspectrum(object):
         test_counts = [2, 3, 1, 3, 1, 5, 2, 1, 4, 2, 2, 2, 3, 4, 1, 7]
         cls.lc_test = Lightcurve(test_times, test_counts)
 
+        # Two bands with the same 2 Hz sinusoid of constant fractional rms, on mean
+        # count rates that double halfway through. The bands have different count
+        # rates and independent Poisson noise. With norm="frac" and a per-segment
+        # mean, the columns of the dynamical cross spectrum should not change
+        # across the step.
+        dt = 1 / 64
+        tseg = 512.0
+        times = (np.arange(int(tseg / dt)) + 0.5) * dt
+        mean_rate = np.where(times < tseg / 2, 200.0, 400.0)
+        rate = mean_rate * (1 + 0.1 * np.sqrt(2) * np.sin(2 * np.pi * 2.0 * times))
+        counts1 = np.random.RandomState(12345).poisson(rate * dt).astype(float)
+        counts2 = np.random.RandomState(54321).poisson(0.5 * rate * dt).astype(float)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            cls.lc_step1 = Lightcurve(times, counts1, dt=dt, skip_checks=True, gti=[[0, tseg]])
+            cls.lc_step2 = Lightcurve(times, counts2, dt=dt, skip_checks=True, gti=[[0, tseg]])
+
     def test_bad_args(self):
         with pytest.raises(TypeError, match=".must all be specified"):
             _ = DynamicalCrossspectrum(1)
@@ -1594,6 +1611,63 @@ class TestDynamicalCrossspectrum(object):
             rms2, rmse2 = ps.compute_rms(1 / 5, 16.0, poisson_noise_level=2)
         assert np.isclose(rms[0], rms2)
         assert np.isclose(rmse[0], rmse2, rtol=0.01)
+
+    @pytest.mark.parametrize("use_common_mean", [True, False])
+    def test_use_common_mean_matches_averaged_crossspectrum(self, use_common_mean):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            dcs = DynamicalCrossspectrum(
+                self.lc, self.lc, segment_size=3, norm="frac", use_common_mean=use_common_mean
+            )
+            acs = AveragedCrossspectrum(
+                self.lc,
+                self.lc,
+                segment_size=3,
+                norm="frac",
+                use_common_mean=use_common_mean,
+                save_all=True,
+                silent=True,
+            )
+        assert np.allclose(dcs.dyn_ps, np.array(acs.cs_all).T)
+
+    def test_use_common_mean_defaults_to_true(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            default = DynamicalCrossspectrum(self.lc, self.lc, segment_size=3, norm="frac")
+            common = DynamicalCrossspectrum(
+                self.lc, self.lc, segment_size=3, norm="frac", use_common_mean=True
+            )
+        assert default.use_common_mean is True
+        assert np.array_equal(default.dyn_ps, common.dyn_ps)
+        assert np.ndim(default.unnorm_conversion) == 0
+
+    def test_per_segment_conversion_is_an_array(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            dcs = DynamicalCrossspectrum(
+                self.lc, self.lc, segment_size=3, norm="frac", use_common_mean=False
+            )
+        assert np.size(dcs.unnorm_conversion) == dcs.dyn_ps.shape[1]
+
+    def test_compute_rms_with_per_segment_mean(self):
+        lc1, lc2 = self.lc_step1, self.lc_step2
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            common = DynamicalCrossspectrum(lc1, lc2, segment_size=8.0, norm="frac")
+            per_segment = DynamicalCrossspectrum(
+                lc1, lc2, segment_size=8.0, norm="frac", use_common_mean=False
+            )
+            rms_common, _ = common.compute_rms(1.5, 2.5)
+            rms_seg, _ = per_segment.compute_rms(1.5, 2.5)
+        rms_common = np.asarray(rms_common).real
+        rms_seg = np.asarray(rms_seg).real
+        first = common.time < lc1.tseg / 2
+        assert np.size(per_segment.nphots_all) == per_segment.dyn_ps.shape[1]
+        # With a common mean, the rms is relative to the mean of the whole observation.
+        assert rms_common[~first].mean() / rms_common[first].mean() > 1.5
+        # With a per-segment mean, the injected 10% rms is recovered on both sides.
+        assert np.isclose(rms_seg[first].mean(), 0.1, atol=0.01)
+        assert np.isclose(rms_seg[~first].mean(), 0.1, atol=0.01)
 
     def test_works_with_events_and_its_complex(self):
         lc = copy.deepcopy(self.lc)
