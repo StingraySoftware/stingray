@@ -165,7 +165,7 @@ filterwarnings = [
     "ignore:This platform does not support:RuntimeWarning",
     "ignore:Some error bars in the Averaged:UserWarning",
     "ignore:n_ave is below 30:UserWarning",
-    "ignore:SIMON says. Stingray only uses poisson err_dist at the moment.:UserWarning",
+    "ignore:SIMON says.*poisson err_dist at the moment:UserWarning",
     "ignore:SIMON says. Looks like your lightcurve:UserWarning",
     "ignore:Matplotlib is currently using agg, which is a:UserWarning",
     "ignore:numpy.ufunc size changed:RuntimeWarning",
