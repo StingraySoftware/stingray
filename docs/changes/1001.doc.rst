@@ -13,7 +13,9 @@
   its body is ``pass``, so there is nothing to document until it is implemented. Six
   classes that had no documentation at
   all -- ``DeadtimeFilterOutput``, ``EventReadOutput``, ``FITSTimeseriesReader`` and the
-  three exceptions in ``stingray.modeling.posterior`` -- now have docstrings.
+  three exceptions in ``stingray.modeling.posterior`` -- now have docstrings, and
+  ``DeadtimeFilterOutput``'s says which of its attributes ``get_deadtime_mask``
+  actually fills in, ``mask`` not being one of them.
 - Broken cross-references in the reStructuredText documentation are fixed. Sphinx is
   configured with ``default_role = 'obj'``, so every single-backtick span is an attempted
   Python object reference: the spans that were never meant to be links are now literals,

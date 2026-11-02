@@ -163,9 +163,14 @@ class DeadtimeFilterOutput(object):
     """Container for the extra output of :func:`get_deadtime_mask`.
 
     All attributes are ``None`` until that function is called with ``return_all=True``,
-    which fills in the unfiltered event list (``uf_events``), a flag separating signal
-    from background events (``is_event``), the ``deadtime`` values, the ``mask`` and the
-    filtered background event list (``bkg``).
+    which fills in the event list the dead time was applied to (``uf_events``), a flag
+    separating signal from background events (``is_event``), the ``deadtime`` values and
+    the background events (``bkg``).
+
+    When the dead time is positive, ``uf_events`` and ``bkg`` hold the filtered events
+    rather than the unfiltered ones the ``uf_`` prefix suggests. ``mask`` is left
+    ``None``: the mask of good events is the first value :func:`get_deadtime_mask`
+    returns, beside this container.
     """
 
     uf_events = None
