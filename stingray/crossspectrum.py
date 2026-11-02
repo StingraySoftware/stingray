@@ -1050,7 +1050,7 @@ class Crossspectrum(StingrayObject):
 
             return ph_lag / (2 * np.pi * self.freq)
         else:
-            raise AttributeError("Object has no attribute named 'time_lag' !")
+            raise AttributeError("Object has no attribute named 'time_lag'!")
 
     def save_as_xspec(self, outroot, header_keywords=None):
         """Save the cross spectrum in a format that can be read by XSPEC.

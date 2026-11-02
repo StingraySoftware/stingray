@@ -773,7 +773,7 @@ class Lightcurve(StingrayTimeseries):
                 lc._counts_err = self._counts_err[start:stop:step]
             return lc
         else:
-            raise IndexError("The index must be either an integer or a slice object !")
+            raise IndexError("The index must be either an integer or a slice object!")
 
     def baseline(self, lam, p, niter=10, offset_correction=False):
         """Calculate the baseline of the light curve, accounting for GTIs.

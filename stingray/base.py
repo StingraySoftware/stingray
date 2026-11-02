@@ -1092,7 +1092,7 @@ class StingrayObject(object):
             stop = assign_value_if_none(index.stop, len(self))
             step = assign_value_if_none(index.step, 1)
         else:
-            raise IndexError("The index must be either an integer or a slice object !")
+            raise IndexError("The index must be either an integer or a slice object!")
 
         new_ts = type(self)()
 
@@ -1802,7 +1802,7 @@ class StingrayTimeseries(StingrayObject):
         """
 
         if not isinstance(method, str):
-            raise TypeError("The method keyword argument is not a string !")
+            raise TypeError("The method keyword argument is not a string!")
 
         if method.lower() not in ["index", "time"]:
             raise ValueError("Unknown method type " + method + ".")
