@@ -23,7 +23,10 @@ class TestCrossCorrelationBase(object):
         freq = 1 / 50
         flux1 = 0.5 + 0.5 * np.sin(2 * np.pi * freq * times)
         flux2 = 0.5 + 0.5 * np.sin(2 * np.pi * freq * (times - 20))
-        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+        with pytest.warns(
+            UserWarning,
+            match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more.",
+        ):
             cls.lc1 = Lightcurve(times, flux1, dt=dt, err_dist="gauss", gti=gti, skip_checks=True)
             cls.lc2 = Lightcurve(times, flux2, dt=dt, err_dist="gauss", gti=gti, skip_checks=True)
 

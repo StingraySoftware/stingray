@@ -557,7 +557,10 @@ class TestNormalization(object):
         counts1 = np.random.poisson(10000, size=time.shape[0])
         counts1_norm = counts1 / 13.4
         counts1_norm_err = np.std(counts1) / 13.4
-        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+        with pytest.warns(
+            UserWarning,
+            match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more.",
+        ):
             self.lc1_norm = Lightcurve(
                 time,
                 counts1_norm,
@@ -1271,7 +1274,10 @@ class TestAveragedCrossspectrum(object):
     def test_timelag(self):
         dt = 0.1
         simulator = Simulator(dt, 10000, rms=0.2, mean=1000)
-        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+        with pytest.warns(
+            UserWarning,
+            match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more.",
+        ):
             test_lc1 = simulator.simulate(2)
         test_lc1.counts -= np.min(test_lc1.counts)
 

@@ -52,7 +52,10 @@ class TestExcVarEnergySpectrum(object):
         from ..simulator import Simulator
 
         simulator = Simulator(0.1, 10000, rms=0.2, mean=200)
-        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+        with pytest.warns(
+            UserWarning,
+            match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more.",
+        ):
             test_lc = simulator.simulate(1)
         cls.test_ev1, cls.test_ev2 = EventList(), EventList()
         cls.test_ev1.simulate_times(test_lc)
@@ -195,7 +198,10 @@ class TestRmsAndCovSpectrum(object):
         flux = data / 40
         times = np.arange(data.size) * cls.bin_time
         gti = np.asanyarray([[0, data.size * cls.bin_time]])
-        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+        with pytest.warns(
+            UserWarning,
+            match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more.",
+        ):
             test_lc = Lightcurve(
                 times, flux, err_dist="gauss", gti=gti, dt=cls.bin_time, skip_checks=True
             )
@@ -634,7 +640,10 @@ class TestLagEnergySpectrum(object):
         times, flux, rolled_flux = times[good], flux[good], rolled_flux[good]
 
         length = times[-1] - times[0]
-        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."):
+        with pytest.warns(
+            UserWarning,
+            match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more.",
+        ):
             test_ref = Lightcurve(times, flux, err_dist="gauss", dt=dt, skip_checks=True)
             test_sub = Lightcurve(test_ref.time, rolled_flux, err_dist=test_ref.err_dist, dt=dt)
         test_ref_ev, test_sub_ev = EventList(), EventList()

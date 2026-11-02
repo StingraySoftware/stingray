@@ -1403,7 +1403,7 @@ class TestLightcurve(object):
             mission="BUBU",
             instr="BABA",
             mjdref=53467.0,
-            err_dist="poisson"
+            err_dist="poisson",
         )
 
         ts = lc.to_astropy_table()
@@ -1432,7 +1432,7 @@ class TestLightcurve(object):
             instr="BABA",
             mjdref=53467.0,
             input_counts=False,
-            err_dist="poisson"
+            err_dist="poisson",
         )
 
         ts = lc.to_astropy_table()
@@ -1448,7 +1448,14 @@ class TestLightcurve(object):
         wrong format is provided.
         """
         N = len(self.times)
-        lc = Lightcurve(self.times, self.counts, mission="BUBU", instr="BABA", mjdref=53467.0, err_dist="poisson")
+        lc = Lightcurve(
+            self.times,
+            self.counts,
+            mission="BUBU",
+            instr="BABA",
+            mjdref=53467.0,
+            err_dist="poisson",
+        )
 
         ts = lc.to_astropy_timeseries()
         new_lc = lc.from_astropy_timeseries(ts)
@@ -1468,7 +1475,13 @@ class TestLightcurve(object):
         countrate = np.zeros_like(times) + mean_counts
 
         lc = Lightcurve(
-            times, countrate, mission="BUBU", instr="BABA", mjdref=53467.0, input_counts=False, err_dist="poisson"
+            times,
+            countrate,
+            mission="BUBU",
+            instr="BABA",
+            mjdref=53467.0,
+            input_counts=False,
+            err_dist="poisson",
         )
 
         ts = lc.to_astropy_timeseries()
@@ -1613,7 +1626,9 @@ class TestLightcurveRebin(object):
         time = np.arange(1, 10, dt)
         countrate = np.zeros_like(time) + 5
         # create the lightcurve from countrare
-        lc_rate = Lightcurve(time, counts=countrate, input_counts=False, gti=[[-0.5, 10.5]], err_dist="poisson")
+        lc_rate = Lightcurve(
+            time, counts=countrate, input_counts=False, gti=[[-0.5, 10.5]], err_dist="poisson"
+        )
         lc_rate.gti = [[-0.5, 2.5]]
         lc_rate_new = lc_rate.apply_gtis(inplace=inplace)
         if inplace:
