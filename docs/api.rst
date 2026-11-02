@@ -74,6 +74,14 @@ EventList
 ----
 
 
+Event list functions
+--------------------
+
+.. autofunction:: stingray.events.simple_events_from_lc
+
+----
+
+
 Fourier Products
 ================
 
@@ -195,6 +203,27 @@ AutoCorrelation
 .. autoclass:: stingray.AutoCorrelation
    :members:
    :inherited-members:
+
+----
+
+Spectrum constructor functions
+------------------------------
+
+These build cross and power spectra directly from the various input containers, without
+going through the class constructors.
+
+.. autofunction:: stingray.crossspectrum.crossspectrum_from_time_array
+.. autofunction:: stingray.crossspectrum.crossspectrum_from_events
+.. autofunction:: stingray.crossspectrum.crossspectrum_from_lightcurve
+.. autofunction:: stingray.crossspectrum.crossspectrum_from_timeseries
+.. autofunction:: stingray.crossspectrum.crossspectrum_from_lc_iterable
+.. autofunction:: stingray.crossspectrum.normalize_crossspectrum_gauss
+.. autofunction:: stingray.powerspectrum.powerspectrum_from_time_array
+.. autofunction:: stingray.powerspectrum.powerspectrum_from_events
+.. autofunction:: stingray.powerspectrum.powerspectrum_from_lightcurve
+.. autofunction:: stingray.powerspectrum.powerspectrum_from_timeseries
+.. autofunction:: stingray.powerspectrum.powerspectrum_from_lc_iterable
+.. autofunction:: stingray.lombscargle.lscrossspectrum_from_lightcurve
 
 ----
 
@@ -370,6 +399,33 @@ ComplexCovarianceSpectrum
    :inherited-members:
 
 ----
+
+Bispectrum constructor functions
+--------------------------------
+
+These build bispectra and cross bispectra directly from the various input containers,
+without going through the class constructors.
+
+.. autofunction:: stingray.bispectrum.bispectrum_from_time_array
+.. autofunction:: stingray.bispectrum.bispectrum_from_events
+.. autofunction:: stingray.bispectrum.bispectrum_from_lightcurve
+.. autofunction:: stingray.bispectrum.bispectrum_from_stingray_timeseries
+.. autofunction:: stingray.bispectrum.bispectrum_from_lc_iterable
+.. autofunction:: stingray.bispectrum.crossbispectrum_from_time_array
+.. autofunction:: stingray.bispectrum.crossbispectrum_from_events
+.. autofunction:: stingray.bispectrum.crossbispectrum_from_lightcurve
+.. autofunction:: stingray.bispectrum.crossbispectrum_from_stingray_timeseries
+.. autofunction:: stingray.bispectrum.crossbispectrum_from_lc_iterable
+
+----
+
+Variability-energy spectrum functions
+-------------------------------------
+
+.. autofunction:: stingray.varenergyspectrum.get_non_overlapping_ref_band
+
+----
+
 
 Utilities
 =========

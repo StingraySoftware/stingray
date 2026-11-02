@@ -305,11 +305,11 @@ def normalize_crossspectrum_gauss(
     Other parameters
     ----------------
     norm : str
-        One of `'leahy'` (Leahy+83), `'frac'` (fractional rms), `'abs'`
+        One of ``'leahy'`` (Leahy+83), ``'frac'`` (fractional rms), ``'abs'``
         (absolute rms)
 
     power_type : str
-        One of `'real'` (real part), `'all'` (all complex powers), `'abs'`
+        One of ``'real'`` (real part), ``'all'`` (all complex powers), ``'abs'``
         (absolute value)
 
     Returns

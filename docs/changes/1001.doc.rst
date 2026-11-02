@@ -1,6 +1,15 @@
 - Public functions and classes that were missing from their modules' ``__all__`` are now
-  listed there, so ``automodule`` gives each of them a documentation page and
-  cross-references to them resolve. ``fftfit_fun`` is left out of ``__all__`` on purpose:
+  listed there. Where the module is documented with ``automodule`` -- ``stingray.fourier``,
+  ``stingray.stats``, ``stingray.gti``, ``stingray.filters`` and the ``stingray.pulse``
+  package among them -- that alone gives each name a documentation page. Six modules are
+  documented class by class instead, with no ``automodule`` directive to pick their
+  functions up: the twenty-four functions exported from ``stingray.events``,
+  ``stingray.crossspectrum``, ``stingray.powerspectrum``, ``stingray.bispectrum``,
+  ``stingray.lombscargle`` and ``stingray.varenergyspectrum`` therefore have
+  ``autofunction`` entries of their own in ``api.rst``; without them the names were
+  importable but had neither a page nor a reference target. Documenting
+  ``normalize_crossspectrum_gauss`` for the first time exposed six single-backtick spans
+  in its own docstring, which are literals now. ``fftfit_fun`` is left out of ``__all__`` on purpose:
   its body is ``pass``, so there is nothing to document until it is implemented. Six
   classes that had no documentation at
   all -- ``DeadtimeFilterOutput``, ``EventReadOutput``, ``FITSTimeseriesReader`` and the
