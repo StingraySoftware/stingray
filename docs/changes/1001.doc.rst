@@ -1,6 +1,8 @@
-- Forty-seven public functions and classes that were missing from their modules'
-  ``__all__`` are now listed there, so ``automodule`` gives each of them a documentation
-  page and cross-references to them resolve. Six classes that had no documentation at
+- Public functions and classes that were missing from their modules' ``__all__`` are now
+  listed there, so ``automodule`` gives each of them a documentation page and
+  cross-references to them resolve. ``fftfit_fun`` is left out of ``__all__`` on purpose:
+  its body is ``pass``, so there is nothing to document until it is implemented. Six
+  classes that had no documentation at
   all -- ``DeadtimeFilterOutput``, ``EventReadOutput``, ``FITSTimeseriesReader`` and the
   three exceptions in ``stingray.modeling.posterior`` -- now have docstrings.
 - Broken cross-references in the reStructuredText documentation are fixed. Sphinx is

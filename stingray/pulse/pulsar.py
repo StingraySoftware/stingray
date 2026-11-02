@@ -34,7 +34,6 @@ __all__ = [
     "z_n_gauss_all",
     "z_n_events_all",
     "get_orbital_correction_from_ephemeris_file",
-    "fftfit_fun",
 ]
 
 
