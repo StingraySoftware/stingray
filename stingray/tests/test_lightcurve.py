@@ -238,6 +238,33 @@ class TestProperties(object):
         # (because low_memory, and input_counts is now False)
         assert lc._counts_err is None
 
+    def test_counts_err_after_init_poisson(self):
+        dt = 0.2
+        # Set to 10000 counts per bin. The error bar will be sqrt(10000) = 100 counts per bin
+        # Note that poisson_symmetrical_errors returns something different from sqrt(counts)
+        lc = Lightcurve(np.arange(10) * dt, np.ones(10) * 10000, dt=dt, err_dist="poisson")
+        assert np.allclose(lc.counts_err, 100, rtol=0.1)
+
+    def test_countrate_err_after_init_poisson(self):
+        dt = 0.2
+        # Set to 10000 counts per bin. The error bar will be sqrt(10000) = 100 counts per bin,
+        # which translates to 100 / dt in count rate error.
+        # Note that poisson_symmetrical_errors returns something different from sqrt(counts)
+        lc = Lightcurve(np.arange(10) * dt, np.ones(10) * 10000, dt=dt, err_dist="poisson")
+        assert np.allclose(lc.countrate_err, 100 / dt, rtol=0.1)
+
+    def test_counts_err_after_init_gauss(self):
+        dt = 0.2
+        # If errors are Gaussian, we set them to 0 by default, so the count rate error should also be 0.
+        lc = Lightcurve(np.arange(10) * dt, np.ones(10) * 10000, dt=dt, err_dist="gauss")
+        assert np.allclose(lc.counts_err, 0)
+
+    def test_countrate_err_after_init_gauss(self):
+        dt = 0.2
+        # If errors are Gaussian, we set them to 0 by default, so the count rate error should also be 0.
+        lc = Lightcurve(np.arange(10) * dt, np.ones(10) * 10000, dt=dt, err_dist="gauss")
+        assert np.allclose(lc.countrate_err, 0, rtol=0.1)
+
     @pytest.mark.parametrize("attr", "time,counts,countrate".split(","))
     def test_add_data_to_empty_lightcurve_wrong(self, attr):
         lc0 = Lightcurve()
@@ -399,7 +426,8 @@ class TestLightcurve(object):
         """
         times = [1, 2, 3, 4, 5]
         counts = [2, 2, 2, 2, 2]
-        warn_str = "SIMON says: Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more."
+
+        warn_str = "SIMON says: Stingray only uses poisson err_dist at the moment"
 
         with warnings.catch_warnings(record=True) as w:
             warnings.filterwarnings("always")
@@ -1164,6 +1192,29 @@ class TestLightcurve(object):
         assert plt.fignum_exists(1)
         plt.close("all")
 
+    def test_plot_countrate(self):
+        plt.close("all")
+        lc = Lightcurve(self.times, self.counts, input_counts=False)
+        lc.plot(witherrors=True)
+        assert plt.fignum_exists("countrate")
+        plt.close("all")
+
+    def test_plot_counts(self):
+        plt.close("all")
+        lc = Lightcurve(self.times, self.counts, input_counts=True)
+        lc.plot(witherrors=True)
+
+        assert plt.fignum_exists("counts")
+        plt.close("all")
+
+    def test_plot_force_ctrate(self):
+        plt.close("all")
+        lc = Lightcurve(self.times, self.counts)
+        lc.plot(witherrors=True, attr="countrate")
+
+        assert plt.fignum_exists("countrate")
+        plt.close("all")
+
     def test_plot_wrong_label_type(self):
         lc = Lightcurve(self.times, self.counts)
 
@@ -1329,8 +1380,10 @@ class TestLightcurve(object):
         lc = Lightcurve(times, counts, input_counts=True, err_dist="poisson")
         lc2 = lc.shift(1)
         assert np.allclose(lc2.time - 1, times)
+        assert lc2.tstart == lc.tstart + 1
         lc2 = lc.shift(-1)
         assert np.allclose(lc2.time + 1, times)
+        assert lc2.tstart == lc.tstart - 1
         assert np.allclose(lc2.counts, lc.counts)
         assert np.allclose(lc2.countrate, lc.countrate)
         lc = Lightcurve(times, counts, input_counts=False, err_dist="poisson")

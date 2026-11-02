@@ -4,10 +4,11 @@ import warnings
 from collections.abc import Iterable
 import copy
 
-from astropy.io import fits
 from .utils import contiguous_regions, jit, HAS_NUMBA
 from .utils import assign_value_if_none, apply_function_if_none
 from .utils import check_iterables_close, is_sorted
+from .utils import fits_open_including_remote
+
 from stingray.exceptions import StingrayError
 from stingray.loggingconfig import setup_logger
 
@@ -37,7 +38,7 @@ __all__ = [
     "generate_indices_of_segment_boundaries_unbinned",
     "generate_indices_of_segment_boundaries_binned",
     "split_gtis_by_exposure",
-    "split_gtis_at_index",
+    "split_gtis_at_indices",
     "find_large_bad_time_intervals",
 ]
 
@@ -47,7 +48,7 @@ logger = setup_logger()
 def gti_len(gti):
     """Deprecated, will be removed in version 2.0. Use get_total_gti_length."""
     warnings.warn(
-        "This function is deprecated. Use get_total_gti_length " "instead", DeprecationWarning
+        "This function is deprecated. Use get_total_gti_length instead", DeprecationWarning
     )
     return get_total_gti_length(gti, minlen=0)
 
@@ -122,7 +123,7 @@ def load_gtis(fits_file, gtistring=None):
 
     gtistring = assign_value_if_none(gtistring, "GTI")
     logger.info("Loading GTIS from file %s" % fits_file)
-    lchdulist = fits.open(fits_file, checksum=True, ignore_missing_end=True)
+    lchdulist = fits_open_including_remote(fits_file, checksum=True, ignore_missing_end=True)
     lchdulist.verify("warn")
 
     gtitable = lchdulist[gtistring].data
@@ -274,7 +275,7 @@ def get_gti_from_all_extensions(lchdulist, accepted_gtistrings=["GTI"], det_numb
     >>> assert np.allclose(gti, [[200, 250]])
     """
     if isinstance(lchdulist, str):
-        lchdulist = fits.open(lchdulist)
+        lchdulist = fits_open_including_remote(lchdulist)
     acc_gti_strs = copy.deepcopy(accepted_gtistrings)
     if det_numbers is not None:
         for i in det_numbers:
@@ -329,7 +330,7 @@ def check_gtis(gti):
 
     # Check that GTIs are well-behaved
     if not np.all(gti_end >= gti_start):
-        raise ValueError("The GTI end times must be larger than the " "GTI start times.")
+        raise ValueError("The GTI end times must be larger than the GTI start times.")
 
     # Check that there are no overlaps in GTIs
     if not np.all(gti_start[1:] >= gti_end[:-1]):
@@ -448,7 +449,7 @@ def create_gti_mask(
         lengths = gtis[:, 1] - gtis[:, 0]
         good = lengths >= np.max(min_length, dt)
         if np.all(~good):
-            warnings.warn("No GTIs longer than " "min_length {}".format(min_length))
+            warnings.warn("No GTIs longer than min_length {}".format(min_length))
             return mask
         gtis = gtis[good]
 
@@ -620,7 +621,7 @@ def create_gti_from_condition(time, condition, safe_interval=0, dt=None):
     """
 
     if len(time) != len(condition):
-        raise StingrayError("The length of the condition and " "time arrays must be the same.")
+        raise StingrayError("The length of the condition and time arrays must be the same.")
 
     idxs = contiguous_regions(condition)
 
@@ -829,9 +830,10 @@ def get_btis(gtis, start_time=None, stop_time=None):
     # Check GTIs
     if len(gtis) == 0:
         if start_time is None or stop_time is None:
-            raise ValueError("Empty GTI and no valid start_time " "and stop_time. BAD!")
+            raise ValueError("Empty GTI and no valid start_time and stop_time. BAD!")
 
         return np.asanyarray([[start_time, stop_time]])
+    gtis = np.asanyarray(gtis)
     check_gtis(gtis)
 
     start_time = assign_value_if_none(start_time, gtis[0][0])
@@ -1847,3 +1849,73 @@ def split_gtis_by_exposure(gtis, exposure_per_chunk, new_interval_if_gti_sep=Non
 
     vals = split_gtis_at_indices(gtis, index_list)
     return vals
+
+
+def eliminate_short_gtis(gtis, min_length, only_repeated=False):
+    """Eliminate GTIs shorter than a given length.
+
+    Parameters
+    ----------
+    gtis : 2-d float array
+        List of GTIs of the form ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``
+    min_length : float
+        Minimum length of GTIs to keep, in seconds
+
+    Other Parameters
+    ----------------
+    only_repeated : bool
+        If True, only eliminate GTIs that are shorter than the given length and are
+        separated by less than the given length from another problematic GTI. If False, eliminate
+        all GTIs shorter than the given length, regardless of their separation from other GTIs.
+
+    Returns
+    -------
+    new_gtis : 2-d float array
+        List of GTIs of the form ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``,
+        with GTIs shorter than the given length removed
+
+    Examples
+    --------
+    ``min_length`` is shorter than all GTIs, so no GTI is removed:
+    >>> gtis = [[0, 30], [40, 41], [90, 120], [130, 160]]
+    >>> new_gtis = eliminate_short_gtis(gtis, 0.5)
+    >>> assert np.allclose(new_gtis, [[0, 30], [40, 41], [90, 120], [130, 160]])
+
+    ``min_length`` is longer than one GTI, so that GTI is removed:
+    >>> new_gtis = eliminate_short_gtis(gtis, 2)
+    >>> assert np.allclose(new_gtis, [[0, 30], [90, 120], [130, 160]])
+
+    ``min_length`` is longer than one GTI, but ``only_repeated=True`` only removes GTIs
+    that are part of a repeated pattern of short GTIs:
+    >>> new_gtis = eliminate_short_gtis(gtis, 2, only_repeated=True)
+    >>> assert np.allclose(new_gtis, [[0, 30], [40, 41], [90, 120], [130, 160]])
+
+    Two short GTIs in a row, separated by less than ``min_length``, are removed when
+    ``only_repeated=True``:
+    >>> gtis = [[0, 30], [40, 41], [41.5, 42], [90, 120], [130, 160]]
+    >>> new_gtis = eliminate_short_gtis(gtis, 2, only_repeated=True)
+    >>> assert np.allclose(new_gtis, [[0, 30], [90, 120], [130, 160]])
+
+    Four short GTIs in a row and ``only_repeated=True``, but only three of them are separated by
+    less than ``min_length``. Those three are removed, while the one that is separated by more
+    than ``min_length`` from the others is kept:
+    >>> gtis = [[0, 30], [31, 32], [40, 40.5], [41, 41.3], [41.5, 42], [90, 120], [130, 160]]
+    >>> new_gtis = eliminate_short_gtis(gtis, 2, only_repeated=True)
+    >>> assert np.allclose(new_gtis, [[0, 30], [31, 32], [90, 120], [130, 160]])
+
+    """
+    gtis = np.asanyarray(gtis)
+    lengths = gtis[:, 1] - gtis[:, 0]
+    if only_repeated:
+        separation = np.diff(gtis[:, 0])
+        short_mask = lengths < min_length
+        # Find two bads in a row, close to one another.
+
+        mask = np.ones_like(short_mask, dtype=bool)
+        for i in range(len(short_mask) - 1):
+            if (short_mask[i] and short_mask[i + 1]) and separation[i] < min_length:
+                mask[i] = False
+                mask[i + 1] = False
+    else:
+        mask = lengths >= min_length
+    return gtis[mask]

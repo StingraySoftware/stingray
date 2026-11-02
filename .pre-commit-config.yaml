@@ -3,11 +3,25 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
-      - id: trailing-whitespace
-        files: \.py$
-      - id: end-of-file-fixer
-        files: \.py$
+      # Validators only. These report problems and never rewrite a file, which
+      # matters here because the test data includes binary FITS files that an
+      # end-of-file or whitespace fixer would corrupt.
+      - id: check-toml
+      - id: check-yaml
+      - id: check-merge-conflict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.3
+    hooks:
+      # These replace black, and the flake8 configuration that flake8 never read.
+      # Trailing whitespace and the final newline in Python files are part of what
+      # ruff-format normalizes, so the hooks that used to do that are gone.
+      - id: ruff-check
+        args: ["--fix", "--show-fixes"]
+        files: ^stingray/
+      - id: ruff-format
+        files: ^stingray/
+
 ci:
   autofix_prs: false
   autoupdate_schedule: "quarterly"
-

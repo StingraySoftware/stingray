@@ -283,6 +283,45 @@ def _calculate_all_convolutions(
     return candidate_rs[1:], candidate_js[1:], candidate_powers[1:]
 
 
+def zvalues(zmax, delta_z):
+    """Create a list of z values to be used for the calculation.
+
+    The function makes sure that the list of z values is symmetric around 0,
+    that 0 is included, and that the values are spaced by delta_z.
+    If zmax is not a multiple of delta_z, the last value will be the closest
+    multiple of delta_z that is greater than zmax.
+
+    Parameters
+    ----------
+    zmax : int
+        Maximum frequency derivative to search (pos and neg), in bins.
+        It corresponds to ``fdot_max = zmax / T**2``, where ``T`` is the
+        length of the observation.
+    delta_z : float
+        The spacing in ``z`` space (delta_z = 1 -> delta_fdot = 1/T**2)
+
+    Returns
+    -------
+    range_z : array of floats
+        List of z values to be used for the calculation.
+
+    Examples
+    --------
+    >>> zs = list(zvalues(5, 0.2)) # 5 is a multiple of 0.2
+    >>> assert 0 in zs
+    >>> assert 5 in zs
+    >>> assert -5 in zs
+    >>> zs = list(zvalues(0, 1))
+    >>> assert zs == [0]
+    >>> zs = list(zvalues(1, 0.3)) # 1 is not a multiple of 0.3
+    >>> assert 0 in zs
+    >>> assert max(zs) >= 1  # But a value close to 1 is included
+    """
+    range_z_pos = np.arange(0, zmax + delta_z, delta_z)
+    range_z = np.concatenate((-range_z_pos[::-1], range_z_pos[1:]))
+    return range_z
+
+
 def accelsearch(
     times,
     signal,
@@ -401,9 +440,9 @@ def accelsearch(
 
     freq_intv_to_search = (freq >= fmin) & (freq < fmax)
     logger.info("Starting search over full plane...")
-    start_z = -zmax
-    end_z = zmax
-    range_z = np.arange(start_z, end_z, delta_z)
+
+    range_z = zvalues(zmax, delta_z)
+
     logger.info("min and max r_dot: {}--{}".format(delta_z / T**2, np.max(range_z) / T**2))
     freqs_to_search = freq[freq_intv_to_search]
 

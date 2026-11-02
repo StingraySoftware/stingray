@@ -182,6 +182,50 @@ Bispectrum
 
 ----
 
+AveragedBispectrum
+------------------
+
+.. autoclass:: stingray.bispectrum.AveragedBispectrum
+   :members:
+   :inherited-members:
+
+----
+
+CrossBispectrum
+---------------
+
+.. autoclass:: stingray.bispectrum.CrossBispectrum
+   :members:
+
+----
+
+AveragedCrossBispectrum
+-----------------------
+
+.. autoclass:: stingray.bispectrum.AveragedCrossBispectrum
+   :members:
+   :inherited-members:
+
+----
+
+Dynamical Bispectrum
+--------------------
+
+.. autoclass:: stingray.bispectrum.DynamicalBispectrum
+   :members:
+   :inherited-members:
+
+----
+
+Dynamical CrossBispectrum
+-------------------------
+
+.. autoclass:: stingray.bispectrum.DynamicalCrossBispectrum
+   :members:
+   :inherited-members:
+
+----
+
 
 Covariancespectrum
 ------------------
@@ -251,6 +295,13 @@ Utilities
 
 Commonly used utility functionality, including Good Time Interval operations and input/output
 helper methods.
+
+Base Fourier methods
+--------------------
+
+.. automodule:: stingray.fourier
+   :members:
+   :imported-members:
 
 Statistical Functions
 ---------------------

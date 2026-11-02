@@ -1,5 +1,104 @@
-v2.3 (under development)
-------------------------
+v2.3.2 (2026-03-13)
+-------------------
+
+Internal Changes
+^^^^^^^^^^^^^^^^
+
+- Compatible with Numpy 2.5 and new Astropy (`#972 <https://github.com/StingraySoftware/stingray/pull/972>`__)
+
+
+v2.3.1 (2026-03-02)
+-------------------
+
+Bug Fixes
+^^^^^^^^^
+
+- Fix bug in intrinsic coherence functions that made Numba unavailable (`#970 <https://github.com/StingraySoftware/stingray/pull/970>`__)
+
+
+v2.3 (2026-02-27)
+-----------------
+
+New Features
+^^^^^^^^^^^^
+
+- Added ``summed_flag`` to ``power_confidence_limits``, to make it work with averaged powers too. (`#952 <https://github.com/StingraySoftware/stingray/pull/952>`__)
+- Add function to save spectra in Xspec-compatible format (`#957 <https://github.com/StingraySoftware/stingray/pull/957>`__)
+- Add possibility to save to Xspec format for covariance/variability spectra (`#963 <https://github.com/StingraySoftware/stingray/pull/963>`__)
+- Improve treatment of coherence (`#965 <https://github.com/StingraySoftware/stingray/pull/965>`__)
+
+
+Bug Fixes
+^^^^^^^^^
+
+- Fixed EventList.read to properly pass ``**kwargs.`` (`#950 <https://github.com/StingraySoftware/stingray/pull/950>`__)
+- Fixed an error in ``power_confidence_limits`` that led to systematically narrower confidence intervals. (`#951 <https://github.com/StingraySoftware/stingray/pull/951>`__)
+- Fixed uncertainty propogation error in ``Lightcurve.rebin()`` (`#953 <https://github.com/StingraySoftware/stingray/pull/953>`__)
+- Fixed convergence issues in ``power_upper_limit`` for summed powers and low count rates by replacing ``minimize`` with ``brentq``. (`#954 <https://github.com/StingraySoftware/stingray/pull/954>`__)
+- Fix initialization of ``countrate_err`` if errors are Poisson (`#958 <https://github.com/StingraySoftware/stingray/pull/958>`__)
+- Fix array_attrs property of ``Lightcurve`` (`#959 <https://github.com/StingraySoftware/stingray/pull/959>`__)
+- Speedup and improve robustness of ``fill_bad_time_intervals`` (`#968 <https://github.com/StingraySoftware/stingray/pull/968>`__)
+
+
+v2.2.10 (2025-10-24)
+--------------------
+
+New Features
+^^^^^^^^^^^^
+
+- Update database of missions from NASA (`#939 <https://github.com/StingraySoftware/stingray/pull/939>`__)
+- use the power of fits.open to load remote datasets (`#940 <https://github.com/StingraySoftware/stingray/pull/940>`__)
+- Added a flag to switch between summed and averaged power to determine the upper limit. The default is still summed power to keep backward compatibility
+
+Bug Fixes
+^^^^^^^^^
+
+- Fix issue with float128 in recent Numba versions (`#947 <https://github.com/StingraySoftware/stingray/pull/947>`__)
+- Fixed a bug in the `stingray.stats.power_upper_limit` function where the current minimizing method did not lead to convergence in some cases.
+
+
+v2.2.9 (2025-08-18)
+-------------------
+
+Deprecations
+^^^^^^^^^^^^
+
+- The use of ``astropy.tests.runner.TestRunner``  is now deprecated. (`#888 <https://github.com/StingraySoftware/stingray/pull/888>`__)
+
+
+New Features
+^^^^^^^^^^^^
+
+- Better support for Chandra event files (`#877 <https://github.com/StingraySoftware/stingray/pull/877>`__)
+- Added functionality to read LAXPC observations. (`#929 <https://github.com/StingraySoftware/stingray/pull/929>`__)
+- GtiCorrPowerspectrum is a new class to calculate long-term power spectra from gappy data (`#933 <https://github.com/StingraySoftware/stingray/pull/933>`__)
+
+
+Bug Fixes
+^^^^^^^^^
+
+- Fixed issue with counting ``0`` bin occupancy in ``fold_events`` with ``mode='pdm'`` (`#872 <https://github.com/StingraySoftware/stingray/pull/872>`__)
+- Fixed power upper limit in ``stingray.stats`` for n =/= 1 (`#922 <https://github.com/StingraySoftware/stingray/pull/922>`__)
+- Account for the TIMEPIXR and TIMEDEL keywords when calculating times (`#937 <https://github.com/StingraySoftware/stingray/pull/937>`__)
+
+
+Documentation
+^^^^^^^^^^^^^
+
+- Sidebar in documentation now scrolls independently of the main content and wraps long text to next line instead of cropping it. (`#918 <https://github.com/StingraySoftware/stingray/pull/918>`__)
+- Added `stingray.varenergyspectrum.CountSpectrum` to docs. (`#884 <https://github.com/StingraySoftware/stingray/pull/884>`__)
+
+
+Internal Changes
+^^^^^^^^^^^^^^^^
+
+- Bump jinja2 version to 3.1.5 (`#878 <https://github.com/StingraySoftware/stingray/pull/878>`__)
+- Added a test to check ``profile``, when ``fold_events`` method called with ``mode= "pdm"`` after the bug fix #872. (`#880 <https://github.com/StingraySoftware/stingray/pull/880>`__)
+- Suppressed deprecation warnings related to `numpy.core.einsumfunc` as it is causing test failure described in (https://github.com/StingraySoftware/stingray/issues/882) (`#886 <https://github.com/StingraySoftware/stingray/pull/886>`__)
+
+
+v2.2.7 (2025-04-08)
+-------------------
 
 New Features
 ^^^^^^^^^^^^

@@ -17,13 +17,13 @@ from .gti import cross_two_gtis, time_intervals_from_gtis
 from .lightcurve import Lightcurve
 from .fourier import avg_cs_from_iterables, error_on_averaged_cross_spectrum
 from .fourier import avg_cs_from_timeseries, poisson_level
-from .fourier import normalize_periodograms, raw_coherence
+from .fourier import normalize_periodograms
 from .fourier import get_flux_iterable_from_segments
 from .fourier import get_rms_from_unnorm_periodogram
+from .fourier import intrinsic_coherence, raw_coherence
 from .power_colors import power_color
 
 from scipy.special import factorial
-
 
 __all__ = [
     "Crossspectrum",
@@ -128,8 +128,12 @@ def get_flux_generator(data, segment_size, dt=None):
 def coherence(lc1, lc2):
     """
     Estimate coherence function of two light curves.
-    For details on the definition of the coherence, see Vaughan and Nowak,
-    1996 [#]_.
+
+    .. note::
+
+        This function is deprecated because it does not make sense in the current
+        formulation. Please use the `raw_coherence` and `intrinsic_coherence` methods
+        of AveragedCrossspectrum, with the correct parameters.
 
     Parameters
     ----------
@@ -143,14 +147,11 @@ def coherence(lc1, lc2):
     coh : ``np.ndarray``
         The array of coherence versus frequency
 
-    References
-    ----------
-    .. [#] https://iopscience.iop.org/article/10.1086/310430
     """
 
     warnings.warn(
         "The coherence function, as implemented, does not work as expected. "
-        "Please use the coherence function of AveragedCrossspectrum, with the "
+        "Please use the `raw_coherence` function of AveragedCrossspectrum, with the "
         "correct parameters.",
         DeprecationWarning,
     )
@@ -416,7 +417,7 @@ def cospectra_pvalue(power, nspec):
     ----------
 
     * .. [Leahy 1983] https://ui.adsabs.harvard.edu/#abs/1983ApJ...266..160L/abstract
-    * .. [Huppenkothen 2017] http://adsabs.harvard.edu/abs/2018ApJS..236...13H
+    * .. [Huppenkothen 2017] https://ui.adsabs.harvard.edu/abs/2018ApJS..236...13H
 
     """
     if not np.all(np.isfinite(power)):
@@ -996,26 +997,27 @@ class Crossspectrum(StingrayObject):
         return new_spec
 
     def coherence(self):
-        """Compute Coherence function of the cross spectrum.
+        """Compute Raw Coherence function of the cross spectrum.
 
-        Coherence is defined in Vaughan and Nowak, 1996 [#]_.
-        It is a Fourier frequency dependent measure of the linear correlation
-        between time series measured simultaneously in two energy channels.
+        Deprecated. Please use the `raw_coherence` method of AveragedCrossspectrum, with the correct parameters.
 
         Returns
         -------
         coh : numpy.ndarray
             Coherence function
 
-        References
-        ----------
-        .. [#] https://iopscience.iop.org/article/10.1086/310430
         """
         # this computes the averaged power spectrum, but using the
         # cross spectrum code to avoid circular imports
+        warnings.warn(
+            "The coherence method of Crossspectrum is now deprecated as it is indentically 1"
+            " in the context of a single cross spectrum. Please use the "
+            "raw_coherence method of AveragedCrossspectrum, with the correct parameters.",
+            DeprecationWarning,
+        )
 
-        return raw_coherence(
-            self.unnorm_power, self.pds1.unnorm_power, self.pds2.unnorm_power, 0, 0, self.n
+        return (self.unnorm_power * self.unnorm_power.conj()).real / (
+            self.pds1.unnorm_power * self.pds2.unnorm_power
         )
 
     def phase_lag(self):
@@ -1043,6 +1045,80 @@ class Crossspectrum(StingrayObject):
             return ph_lag / (2 * np.pi * self.freq)
         else:
             raise AttributeError("Object has no attribute named 'time_lag' !")
+
+    def save_as_xspec(self, outroot, header_keywords=None):
+        """Save the cross spectrum in a format that can be read by XSPEC.
+
+        For power spectra (``self.type == "powerspectrum"``), the method will
+        produce three files using ``outroot`` as the base name:
+
+        * ``outroot.txt``: a plain-text file containing the frequency, power,
+          and error columns used as input to XSPEC.
+        * ``outroot.pha``: the spectral file.
+        * ``outroot.rsp``: the corresponding response file.
+
+        For non-powerspectrum cross spectra, the method will produce six files,
+        corresponding to the real and imaginary parts of the cross spectrum:
+
+        * ``outroot_real.txt``, ``outroot_real.pha``, ``outroot_real.rsp`` for
+          the real part.
+        * ``outroot_imag.txt``, ``outroot_imag.pha``, ``outroot_imag.rsp`` for
+          the imaginary part.
+
+        Parameters
+        ----------
+        outroot : str
+            The root name of the output files.
+        header_keywords : dict, optional
+            A dictionary of header keys and values to be added to the output files.
+
+        Raises
+        ------
+        ValueError
+            If the object has no ``df`` attribute or ``power_err`` attribute, or
+            if either of them is ``None``.
+        RuntimeError
+            If the underlying XSPEC/HEASOFT tools needed to create the XSPEC
+            files are not available. This is raised by :func:`stingray.io.save_as_xspec`.
+        """
+        from .io import save_as_xspec
+
+        if not hasattr(self, "df") or self.df is None:
+            raise ValueError(
+                f"{self.type} object has no attribute 'df' or it is None. Cannot save as xspec."
+            )
+        if not hasattr(self, "power_err") or self.power_err is None:
+            raise ValueError(
+                f"{self.type} object has no attribute 'power_err' or it is None. "
+                "Cannot save as xspec."
+            )
+
+        if self.type == "powerspectrum":
+            save_as_xspec(
+                self.freq,
+                self.df,
+                self.power.real,
+                self.power_err.real,
+                outroot,
+                header_keywords=header_keywords,
+            )
+        else:
+            save_as_xspec(
+                self.freq,
+                self.df,
+                self.power.real,
+                self.power_err.real,
+                outroot + "_real",
+                header_keywords=header_keywords,
+            )
+            save_as_xspec(
+                self.freq,
+                self.df,
+                self.power.imag,
+                self.power_err.imag,
+                outroot + "_imag",
+                header_keywords=header_keywords,
+            )
 
     def plot(
         self, labels=None, axis=None, title=None, marker="-", save=False, filename=None, ax=None
@@ -2082,20 +2158,112 @@ class AveragedCrossspectrum(Crossspectrum):
         return True
 
     def coherence(self):
-        """Averaged Coherence function.
+        r"""Averaged Raw Coherence function.
 
-
-        Coherence is defined in Vaughan and Nowak, 1996 [#]_.
-        It is a Fourier frequency dependent measure of the linear correlation
+        Coherence is a Fourier frequency dependent measure of the linear correlation
         between time series measured simultaneously in two energy channels.
 
-        Compute an averaged Coherence function of cross spectrum by computing
-        coherence function of each segment and averaging them. The return type
-        is a tuple with first element as the coherence function and the second
-        element as the corresponding uncertainty associated with it.
+        .. note::
+
+            This function is deprecated. Please use `raw_coherence` or
+            `intrinsic_coherence` instead, depending on your needs.
 
         Note : The uncertainty in coherence function is strictly valid for Gaussian \
                statistics only.
+
+        Returns
+        -------
+        (coh, uncertainty) : tuple of np.ndarray
+            Tuple comprising the coherence function and uncertainty.
+        """
+        warnings.warn(
+            "The `coherence` method is deprecated. Please use `raw_coherence` or "
+            "`intrinsic_coherence` instead, depending on your needs.",
+            DeprecationWarning,
+        )
+
+        return self.raw_coherence()
+
+    def raw_coherence(self):
+        r"""Averaged Raw Coherence function.
+
+        Coherence is a Fourier frequency dependent measure of the linear correlation
+        between time series measured simultaneously in two energy channels.
+
+        The function is defined as (see Ingram 2019 [#]_ :
+
+        .. math::
+
+            \tilde{g}^2(f) = \frac{|\langle \tilde{C}(f) \rangle|^2 - \tilde{b}^2}
+            {\langle \tilde{P}_1(f) \rangle \langle \tilde{P}_2(f) \rangle}
+
+        where :math:`\tilde{b}^2` is the bias term that accounts for the contribution of Poisson
+        noise to the cross spectrum (see :func:`stingray.fourier.bias_term`), and tilde generally indicates noisy
+        measurements of the cross spectrum :math:`C` and the power spectra :math:`P_n`.
+
+        .. note::
+
+            This definition is strictly valid for Gaussian statistics only, meaning that the
+            cross spectrum and the power spectra estimates have been obtained by averaging over
+            at least 50 intervals. A warning will be raised if this is not the case
+
+        Returns
+        -------
+        (coh, uncertainty) : tuple of np.ndarray
+            Tuple comprising the coherence function and uncertainty.
+
+        References
+        ----------
+        .. [#] https://doi.org/10.1093/mnras/stz2409
+        """
+        if np.any(self.m < 50):
+            simon(
+                "Number of segments used in averaging is "
+                "significantly low. The result might not follow the "
+                "expected statistical distributions."
+            )
+        c = self.unnorm_power
+        p1 = self.pds1.unnorm_power
+        p2 = self.pds2.unnorm_power
+
+        meanrate1 = self.nphots1 / self.n / self.dt
+        meanrate2 = self.nphots2 / self.n / self.dt
+
+        P1noise = poisson_level(norm="none", meanrate=meanrate1, n_ph=self.nphots1)
+        P2noise = poisson_level(norm="none", meanrate=meanrate2, n_ph=self.nphots2)
+
+        return raw_coherence(c, p1, p2, P1noise, P2noise, self.m, return_uncertainty=True)
+
+    def intrinsic_coherence(self, adjust_bias=False):
+        r"""Averaged Coherence function.
+
+        Intrinsic Coherence is defined in Vaughan and Nowak, 1997 [#]_, as
+
+        .. math::
+
+            \tilde{\gamma}^2(f) = \frac{|\langle \tilde{C}(f) \rangle|^2 - \tilde{b}^2}
+            {(\langle \tilde{P}_1(f) \rangle - \tilde{P}_{1, \rm noise})
+            (\langle \tilde{P}_2(f) \rangle - \tilde{P}_{2, \rm noise})}
+
+        where :math:`\tilde{b}^2` is the bias term that accounts for the contribution of Poisson
+        noise to the cross spectrum (see :func:`stingray.fourier.bias_term`), and tilde generally indicates noisy
+        measurements of the cross spectrum :math:`C` and the power spectra :math:`P_n`. The terms
+        :math:`\tilde{P}_{n, \rm noise}` are the estimates of the contribution of Poisson noise to
+        the power spectra.
+
+        .. note::
+
+            This definition is strictly valid for Gaussian statistics only, meaning that the
+            cross spectrum and the power spectra estimates have been obtained by averaging over
+            at least 50 intervals. A warning will be raised if this is not the case
+
+        Parameters
+        ----------
+        adjust_bias: bool, default False
+            If True, the bias term is adjusted to account for the fact that the bias term depends
+            on the intrinsic coherence itself. This is done iteratively.
+            See Ingram 2019, cited, for details on the bias term and its dependence on the intrinsic
+            coherence, and the documentation of `intrinsic_coherence`.
 
         Returns
         -------
@@ -2122,14 +2290,9 @@ class AveragedCrossspectrum(Crossspectrum):
         P1noise = poisson_level(norm="none", meanrate=meanrate1, n_ph=self.nphots1)
         P2noise = poisson_level(norm="none", meanrate=meanrate2, n_ph=self.nphots2)
 
-        coh = raw_coherence(c, p1, p2, P1noise, P2noise, self.n)
-
-        # Calculate uncertainty
-        uncertainty = (2**0.5 * coh * (1 - coh)) / (np.sqrt(coh) * self.m**0.5)
-
-        uncertainty[coh == 0] = 0.0
-
-        return (coh, uncertainty)
+        return intrinsic_coherence(
+            c, p1, p2, P1noise, P2noise, self.m, return_uncertainty=True, adjust_bias=adjust_bias
+        )
 
     def phase_lag(self):
         """Return the fourier phase lag of the cross spectrum."""
@@ -2188,7 +2351,8 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
          units the ``time`` array in the :class:`Lightcurve`` object uses).
 
     norm: {"leahy" | "frac" | "abs" | "none" }, optional, default "frac"
-        The normaliation of the periodogram to be used.
+        The normalization of the periodogram to be used. The mean count rate that
+        is used in the fractional normalization is selected with ``use_common_mean``.
 
     Other Parameters
     ----------------
@@ -2204,6 +2368,20 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         Compulsory for input :class:`stingray.EventList` data. The time resolution of the
         lightcurve that is created internally from the input event lists. Drives the
         Nyquist frequency.
+
+    use_common_mean: bool, default True
+        Select the mean count rate used to normalize each segment. If ``True``,
+        every segment is normalized by the mean count rate of the whole
+        observation, so a change of count rate between segments shows up in the
+        normalized powers. If ``False``, each segment is normalized by its own
+        mean count rate. The latter is usually what one wants when comparing the
+        columns of a dynamical spectrum with each other: with ``norm="frac"`` it
+        removes the effect of a varying count rate at constant fractional rms,
+        as produced by an rms-flux relation. Note that with ``use_common_mean``
+        set to ``False`` the Poisson noise level follows each segment's own count
+        rate, so a single noise level no longer applies to the whole matrix, and
+        ``compute_rms`` returns the fractional rms of each segment relative to its
+        own mean count rate.
 
     Attributes
     ----------
@@ -2238,15 +2416,32 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
 
     m: int
         The number of averaged powers in each spectral bin (initially 1, it changes after rebinning).
+
+    use_common_mean: bool
+        Whether the normalization uses the mean count rate of the whole
+        observation (``True``) or of each segment (``False``).
+
+    nphots_all: numpy.ndarray
+        The number of photons in each segment. For a cross spectrum, the
+        geometric mean of the two light curves.
     """
 
     def __init__(
-        self, data1=None, data2=None, segment_size=None, norm="frac", gti=None, sample_time=None
+        self,
+        data1=None,
+        data2=None,
+        segment_size=None,
+        norm="frac",
+        gti=None,
+        sample_time=None,
+        use_common_mean=True,
     ):
         self.segment_size = segment_size
         self.sample_time = sample_time
         self.gti = gti
         self.norm = norm
+        self.use_common_mean = use_common_mean
+        self.nphots_all = None
 
         if segment_size is None and data1 is None and data2 is None:
             self._initialize_empty()
@@ -2262,8 +2457,7 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
             sample_time = data1.dt
             if segment_size > data1.tseg:
                 raise ValueError(
-                    "Length of the segment is too long to create "
-                    "any segments of the light curve!"
+                    "Length of the segment is too long to create any segments of the light curve!"
                 )
         if segment_size < 2 * sample_time:
             raise ValueError("Length of the segment is too short to form a light curve!")
@@ -2292,15 +2486,20 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
             segment_size=self.segment_size,
             norm=self.norm,
             gti=self.gti,
+            use_common_mean=self.use_common_mean,
             save_all=True,
         )
         self.dyn_ps = np.array(avg.cs_all).T
-        conv = avg.cs_all / avg.unnorm_cs_all
-        self.unnorm_conversion = np.nanmean(conv)
+        conv = np.asanyarray(avg.cs_all) / np.asanyarray(avg.unnorm_cs_all)
+        if self.use_common_mean:
+            self.unnorm_conversion = np.nanmean(conv)
+        else:
+            self.unnorm_conversion = np.nanmean(conv, axis=1)
         self.freq = avg.freq
         current_gti = avg.gti
         self.nphots1 = avg.nphots1
         self.nphots2 = avg.nphots2
+        self.nphots_all = avg.nphots_all
 
         tstart, _ = time_intervals_from_gtis(current_gti, self.segment_size)
 
@@ -2392,6 +2591,18 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         new_dynspec_object.dyn_ps = np.array(dynspec_new)
         new_dynspec_object.dt = dt_new
         new_dynspec_object.m = int(step) * self.m
+        if np.size(getattr(self, "unnorm_conversion", 1)) > 1:
+            new_dynspec_object.unnorm_conversion = rebin_data(
+                self.time, self.unnorm_conversion, dt_new, method="average", dx=self.dt
+            )[1]
+        if self.nphots_all is not None:
+            new_dynspec_object.nphots_all = rebin_data(
+                self.time, self.nphots_all, dt_new, method="average", dx=self.dt
+            )[1]
+        if getattr(self, "poisson_power", None) is not None:
+            new_dynspec_object.poisson_power = rebin_data(
+                self.time, self.poisson_power, dt_new, method=method, dx=self.dt
+            )[1]
         return new_dynspec_object
 
     def rebin_by_n_intervals(self, n, method="average"):
@@ -2453,6 +2664,21 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         new_dynspec_object.dyn_ps = np.array(dynspec_new).T
         new_dynspec_object.dt *= n
         new_dynspec_object.m = n * self.m
+        if np.size(getattr(self, "unnorm_conversion", 1)) > 1:
+            conv = np.asanyarray(self.unnorm_conversion)
+            nkeep = (conv.size // n) * n
+            new_dynspec_object.unnorm_conversion = conv[:nkeep].reshape(-1, n).mean(axis=1)
+        if self.nphots_all is not None:
+            nphots_all = np.asanyarray(self.nphots_all)
+            nkeep = (nphots_all.size // n) * n
+            new_dynspec_object.nphots_all = nphots_all[:nkeep].reshape(-1, n).mean(axis=1)
+        if getattr(self, "poisson_power", None) is not None:
+            level = np.asanyarray(self.poisson_power)
+            nkeep = (level.size // n) * n
+            level = level[:nkeep].reshape(-1, n).sum(axis=1)
+            if method in ["mean", "average"]:
+                level /= n
+            new_dynspec_object.poisson_power = level
 
         return new_dynspec_object
 
@@ -2582,7 +2808,8 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         poisson_power : float or iterable, optional, default 0
             The Poisson noise level of the power spectrum. If iterable, it should have the same
             length as ``freq``. (This might apply to the case of a power spectrum with a
-            strong dead time distortion)
+            strong dead time distortion). If 2-D, it should have the same shape as ``dyn_ps``,
+            and each column is used as the Poisson level of the corresponding spectrum.
 
         Returns
         -------
@@ -2596,7 +2823,8 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         if np.iscomplexobj(self.dyn_ps):
             warnings.warn("When using power_colors, complex powers will be cast to real.")
 
-        for ps in self.dyn_ps.T:
+        per_column = np.ndim(poisson_power) == 2
+        for i, ps in enumerate(self.dyn_ps.T):
             power_colors.append(
                 power_color(
                     self.freq,
@@ -2604,7 +2832,7 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
                     freq_edges=freq_edges,
                     freqs_to_exclude=freqs_to_exclude,
                     df=self.df,
-                    poisson_power=poisson_power,
+                    poisson_power=poisson_power[:, i] if per_column else poisson_power,
                     m=self.m,
                 )
             )
@@ -2627,26 +2855,35 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
 
         Other parameters
         ----------------
-        poisson_noise_level : float, default is None
+        poisson_noise_level : float or iterable, default 0
             This is the Poisson noise level of the PDS with same
-            normalization as the PDS.
+            normalization as the PDS. If iterable, it should contain one level
+            per spectrum, e.g. ``poisson_power`` of a ``DynamicalPowerspectrum``
+            with ``use_common_mean=False``.
 
         Returns
         -------
         rms: float
             The fractional rms amplitude contained between ``min_freq`` and
-            ``max_freq``.
+            ``max_freq``. If ``use_common_mean`` is ``True``, it is relative to the
+            mean count rate of the whole observation, otherwise to the mean count
+            rate of each segment.
 
         rms_err: float
             The error on the fractional rms amplitude.
 
         """
+        nspec = self.dyn_ps.shape[1]
+        conversion = np.broadcast_to(self.unnorm_conversion, nspec)
+        noise_levels = np.broadcast_to(poisson_noise_level, nspec)
         dyn_ps_unnorm = self.dyn_ps / self.unnorm_conversion
-        poisson_noise_unnrom = poisson_noise_level / self.unnorm_conversion
-        if not hasattr(self, "nphots"):
+        if not self.use_common_mean:
+            nphots = self.nphots_all
+        elif not hasattr(self, "nphots"):
             nphots = (self.nphots1 * self.nphots2) ** 0.5
         else:
             nphots = self.nphots
+        nphots = np.broadcast_to(nphots, nspec)
 
         good = (self.freq >= min_freq) & (self.freq <= max_freq)
 
@@ -2657,13 +2894,16 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         rmss = []
         rms_errs = []
 
-        for unnorm_powers in dyn_ps_unnorm.T:
+        for i, unnorm_powers in enumerate(dyn_ps_unnorm.T):
+            # With ``use_common_mean=False`` the conversion factor, the Poisson
+            # level and the number of photons differ from segment to segment.
+            poisson_noise_unnorm = noise_levels[i] / conversion[i]
             r, re = get_rms_from_unnorm_periodogram(
                 unnorm_powers[good],
-                nphots,
+                nphots[i],
                 self.df,
                 M=M_freq,
-                poisson_noise_unnorm=poisson_noise_unnrom,
+                poisson_noise_unnorm=poisson_noise_unnorm,
                 segment_size=self.segment_size,
                 kind="frac",
             )
@@ -3185,6 +3425,7 @@ def _create_crossspectrum_from_result_table(table, force_averaged=False, channel
     if "subcs" in table.meta:
         cs.cs_all = np.array(table.meta["subcs"])
         cs.unnorm_cs_all = np.array(table.meta["unnorm_subcs"])
+        cs.nphots_all = np.array(table.meta["nphots_subcs"])
 
     for attr, val in table.meta.items():
         if not attr.endswith("subcs"):

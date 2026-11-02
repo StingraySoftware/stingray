@@ -1,0 +1,52 @@
+Infrastructure maintenance:
+
+- The test matrix now covers Python 3.11 to 3.14. The Python 3.12 job is required rather
+  than advisory, and only the newest Python is allowed to fail, since it is the release
+  that dependencies publish wheels for last.
+- The dev-versions job moved to a Python the nightly wheels are actually built for.
+  On Python 3.11 there were none, so pip silently fell back to the latest regular
+  release and the job tested nothing new.
+- Every workflow action moved off the deprecated Node 20 runtime and up to its
+  current major release, and Dependabot now keeps them current. The artifact upload
+  and download actions were bumped together, since they are two halves of one
+  exchange.
+- ``linkcheck`` runs only on the weekly schedule, so link rot on external sites no
+  longer marks every pull request as unstable.
+- The license is declared as an SPDX expression, which setuptools will require from
+  February 2027.
+- ``setup.py`` is gone, along with the version template it installed. That template
+  ran a ``setuptools_scm`` import and a ``git describe`` on every ``import stingray``,
+  costing about a third of a second; the version now comes from the ``stingray/_version.py``
+  that ``setuptools_scm`` already writes at build time, as astropy does. In a development
+  checkout ``stingray.__version__`` therefore reports the version as of the last install
+  rather than the current commit. ``MANIFEST.in`` no longer lists files that were removed
+  years ago, which were producing warnings on every build.
+- The ``_ASTROPY_SETUP_`` flag is gone. It was set on ``builtins``, so every import of
+  stingray added a name to the interpreter's builtins, and the guards that read it were
+  always taken. It existed only so the old ``setup.py`` could import the package.
+- Seven dead pytest warning filters are gone. Three suppressed warnings stingray no
+  longer emits, two were already covered by a broader entry, one suppressed an astropy
+  deprecation removed long ago, and one suppressed a Python warning that cannot occur
+  on Python 3.10 or later. Which filters were still doing work was determined by
+  recording every warning a full test run raises and matching the filters against it.
+  The two deliberately broad entries that remain now say why they are broad.
+- Three problems a linter found are fixed. Two test methods shared a name with another
+  method in the same class, so the first of each pair had never run: one passes and is
+  now live, and the other turned out to be checking something its fixture could not
+  produce, so it now exercises the inverse-Hessian branch of ``_compute_covariance``
+  that nothing else covered. A vertical hue line in ``power_colors`` was built from a
+  variable that did not exist yet, which would have raised ``NameError`` had the branch
+  been reachable. Six imports that appeared twice in the same file were deduplicated.
+- Code style is now checked with ruff, in place of black 23.1 and a ``[tool.flake8]``
+  section that flake8 never read, since flake8 does not parse ``pyproject.toml``. The
+  ``black`` tox environment is replaced by ``codestyle``, and pre-commit runs ruff's
+  linter and formatter over the package. The linter's rule selection is pinned to the
+  rules that catch mistakes rather than style; the hundreds of findings from the noisier
+  rule families are deliberately left for their own pull request. Reformatting with
+  ruff instead of black 23.1 changed 25 files, none of them behaviourally.
+- The Codecov upload workflow now opts in explicitly to checking out the commit under
+  test, which recent versions of ``actions/checkout`` refuse by default for pull
+  requests opened from a fork. The workflow never executes anything from that commit;
+  it only needs the list of file names that Codecov matches the reports against.
+- The coverage configuration no longer excludes ``_astropy_init``, ``setup_package``
+  and ``extern``, none of which exist in the package any more.

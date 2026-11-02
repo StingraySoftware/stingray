@@ -2,7 +2,6 @@ import numpy as np
 import warnings
 import copy
 
-import numpy as np
 import numpy.random as ra
 
 from .utils import njit
@@ -261,8 +260,9 @@ def get_deadtime_mask(
     final_len = tot_ev_list_filt.size
     if verbose:
         logger.info(
-            "filter_for_deadtime: "
-            "{0}/{1} events rejected".format(initial_len - final_len, initial_len)
+            "filter_for_deadtime: {0}/{1} events rejected".format(
+                initial_len - final_len, initial_len
+            )
         )
 
     retval = saved_mask[all_ev_kind]

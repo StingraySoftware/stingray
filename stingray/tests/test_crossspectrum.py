@@ -1,5 +1,6 @@
 import os
 import importlib
+import shutil
 import numpy as np
 import pytest
 import warnings
@@ -24,6 +25,7 @@ import copy
 _HAS_XARRAY = importlib.util.find_spec("xarray") is not None
 _HAS_PANDAS = importlib.util.find_spec("pandas") is not None
 _HAS_H5PY = importlib.util.find_spec("h5py") is not None
+_HAS_FLX2XSP = (os.getenv("HEADAS") is not None) and (shutil.which("ftflx2xsp") is not None)
 
 np.random.seed(20160528)
 curdir = os.path.abspath(os.path.dirname(__file__))
@@ -425,7 +427,7 @@ class TestAveragedCrossspectrumEvents(object):
 
     def test_coherence(self):
         with pytest.warns(UserWarning) as w:
-            coh = self.acs.coherence()
+            coh = self.acs.raw_coherence()
         assert len(coh[0]) == 4999
         assert len(coh[1]) == 4999
 
@@ -468,11 +470,68 @@ class TestAveragedCrossspectrumEvents(object):
 
 
 class TestCoherence(object):
+    def setup_class(cls):
+        # Create power and cross spectrum from Fourier amplitudes, like
+        # in the Timmer & Koenig method. This way, we can have a high coherence.
+        N = 128000
+        dt = 1 / 64
+        segment_size = 128
+        n_per_seg = int(segment_size // dt)
+        cross_power = np.zeros(n_per_seg, dtype=complex)
+        power1 = np.zeros(n_per_seg)
+        power2 = np.zeros(n_per_seg)
+        nphot = 100
+
+        nloops = int(N // n_per_seg)
+        for i in range(nloops):
+            f1 = np.random.normal(0, 1, n_per_seg) + 1j * np.random.normal(0, 1, n_per_seg)
+            f2 = np.random.normal(0, 1, n_per_seg) + 1j * np.random.normal(0, 1, n_per_seg)
+            signal = np.random.normal(0, 100, n_per_seg) + 1j * np.random.normal(0, 100, n_per_seg)
+            f1 += signal
+            f2 += signal
+            cross_power += f1 * np.conj(f2)
+            power1 += (f1 * np.conj(f1)).real
+            power2 += (f2 * np.conj(f2)).real
+
+        c = AveragedCrossspectrum()
+        p1 = AveragedPowerspectrum()
+        p2 = AveragedPowerspectrum()
+
+        c.power = cross_power / nloops
+        c.unnorm_power = cross_power / 2 * nphot
+
+        p1.power = power1 / nloops
+        p1.unnorm_power = power1 / 2 * nphot
+        p2.power = power2 / nloops
+        p2.unnorm_power = power2 / 2 * nphot
+
+        for obj in [c, p1, p2]:
+            setattr(obj, "dt", dt)
+            setattr(obj, "segment_size", segment_size)
+            setattr(obj, "nphots1", nphot)
+            setattr(obj, "nphots2", nphot)
+            setattr(obj, "nphots", nphot)
+            setattr(obj, "norm", "leahy")
+            setattr(obj, "m", nloops)
+            setattr(obj, "n", n_per_seg)
+
+        c.pds1 = p1
+        c.pds2 = p2
+        cls.cs = c
+
+    @pytest.mark.parametrize("adjust_bias", [True, False])
+    def test_high_intr_coherence(self, adjust_bias):
+        coh, _ = self.cs.intrinsic_coherence(adjust_bias=adjust_bias)
+
+        assert np.isclose(np.nanmean(coh).real, 1.0, atol=0.01)
+
     def test_coherence_is_one_on_single_interval(self):
         lc1 = Lightcurve([1, 2, 3, 4, 5], [2, 3, 2, 4, 1])
         lc2 = Lightcurve([1, 2, 3, 4, 5], [4, 8, 1, 9, 11])
 
-        with pytest.warns(UserWarning) as record:
+        with pytest.warns(
+            DeprecationWarning, match="The coherence method of Crossspectrum is now deprecated"
+        ) as record:
             cs = Crossspectrum(lc1, lc2)
             coh = cs.coherence()
 
@@ -481,14 +540,7 @@ class TestCoherence(object):
         assert np.isclose(np.abs(np.mean(coh)), 1, rtol=0.001)
 
     def test_high_coherence(self):
-        t = np.arange(1280)
-        a = np.random.poisson(100, len(t))
-        lc = Lightcurve(t, a)
-        lc2 = Lightcurve(t, copy.deepcopy(a))
-
-        with pytest.warns(UserWarning) as record:
-            c = AveragedCrossspectrum(lc, lc2, 128, use_common_mean=True)
-            coh, _ = c.coherence()
+        coh, _ = self.cs.raw_coherence()
 
         assert np.isclose(np.mean(coh).real, 1.0, atol=0.01)
 
@@ -807,7 +859,10 @@ class TestCrossspectrum(object):
             cs = Crossspectrum(self.lc1, self.lc2, norm="wrong")
 
     def test_coherence_one_on_single_interval(self):
-        coh = self.cs.coherence()
+        with pytest.warns(
+            DeprecationWarning, match="The coherence method of Crossspectrum is now deprecated"
+        ) as record:
+            coh = self.cs.coherence()
         assert len(coh) == 4999
         assert np.isclose(coh[0], 1)
 
@@ -1111,12 +1166,10 @@ class TestAveragedCrossspectrum(object):
         )
 
     def test_coherence(self):
-        with pytest.warns(UserWarning) as w:
-            coh = self.cs.coherence()
+        coh = self.cs.raw_coherence()
 
-            assert len(coh[0]) == 4999
-            assert len(coh[1]) == 4999
-            assert issubclass(w[-1].category, UserWarning)
+        assert len(coh[0]) == 4999
+        assert len(coh[1]) == 4999
 
     def test_failure_when_normalization_not_recognized(self):
         with pytest.raises(ValueError):
@@ -1349,6 +1402,8 @@ class TestRoundTrip:
         cls.cs.m = 1
         cls.cs.nphots1 = 34
         cls.cs.nphots2 = 25
+        cls.cs.df = 1
+        cls.cs.power_err = np.ones_like(cls.cs.power) * (0.5 + 1.0j)
 
     def _check_equal(self, so, new_so):
         for attr in ["freq", "power"]:
@@ -1378,6 +1433,72 @@ class TestRoundTrip:
         new_so = so.from_pandas(ts)
 
         self._check_equal(so, new_so)
+
+    @pytest.mark.skipif("not _HAS_FLX2XSP")
+    def test_save_as_xspec(self):
+        so = self.cs
+        try:
+            so.save_as_xspec("dummy", header_keywords={"TEST": "blabla"})
+            for part in ["real", "imag"]:
+                for ext in ["pha", "rsp", "txt"]:
+                    assert os.path.exists(f"dummy_{part}.{ext}")
+                with fits.open(f"dummy_{part}.pha") as hdul:
+                    assert hdul[1].header["TEST"] == "blabla"
+        finally:
+            for part in ["real", "imag"]:
+                for ext in ["pha", "rsp", "txt"]:
+                    if os.path.exists(f"dummy_{part}.{ext}"):
+                        os.unlink(f"dummy_{part}.{ext}")
+
+    @pytest.mark.skipif("_HAS_FLX2XSP")
+    def test_save_as_xspec_mock(self):
+        from unittest.mock import patch
+
+        def function(blah, root):
+            for fnames in [root + ".pha", root + ".rsp", root + ".txt"]:
+                with open(fnames, "w") as f:
+                    f.write("dummy")
+
+        so = self.cs
+
+        try:
+            with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
+                so.save_as_xspec("dummy")
+
+            for part in ["real", "imag"]:
+                for ext in ["pha", "rsp", "txt"]:
+                    assert os.path.exists(f"dummy_{part}.{ext}")
+        finally:
+            for part in ["real", "imag"]:
+                for ext in ["pha", "rsp", "txt"]:
+                    if os.path.exists(f"dummy_{part}.{ext}"):
+                        os.unlink(f"dummy_{part}.{ext}")
+
+    @pytest.mark.skipif("_HAS_FLX2XSP")
+    def test_save_as_xspec_fails_noflx2xsp(self):
+        so = self.cs
+        try:
+            with pytest.raises(RuntimeError, match="install and initialize HEASOFT to save"):
+                so.save_as_xspec("dummy")
+        finally:
+            if os.path.exists("dummy_real.txt"):
+                os.unlink("dummy_real.txt")
+
+    def test_save_as_xspec_fails_no_df(self):
+        so = copy.deepcopy(self.cs)
+        so.df = None
+        with pytest.raises(
+            ValueError, match="crossspectrum object has no attribute 'df' or it is None."
+        ):
+            so.save_as_xspec("dummy")
+
+    def test_save_as_xspec_fails_no_power_err(self):
+        so = copy.deepcopy(self.cs)
+        so.power_err = None
+        with pytest.raises(
+            ValueError, match="crossspectrum object has no attribute 'power_err' or it is None."
+        ):
+            so.save_as_xspec("dummy")
 
     @pytest.mark.parametrize("fmt", ["pickle", "hdf5"])
     def test_file_roundtrip(self, fmt):
@@ -1429,6 +1550,23 @@ class TestDynamicalCrossspectrum(object):
         test_counts = [2, 3, 1, 3, 1, 5, 2, 1, 4, 2, 2, 2, 3, 4, 1, 7]
         cls.lc_test = Lightcurve(test_times, test_counts)
 
+        # Two bands with the same 2 Hz sinusoid of constant fractional rms, on mean
+        # count rates that double halfway through. The bands have different count
+        # rates and independent Poisson noise. With norm="frac" and a per-segment
+        # mean, the columns of the dynamical cross spectrum should not change
+        # across the step.
+        dt = 1 / 64
+        tseg = 512.0
+        times = (np.arange(int(tseg / dt)) + 0.5) * dt
+        mean_rate = np.where(times < tseg / 2, 200.0, 400.0)
+        rate = mean_rate * (1 + 0.1 * np.sqrt(2) * np.sin(2 * np.pi * 2.0 * times))
+        counts1 = np.random.RandomState(12345).poisson(rate * dt).astype(float)
+        counts2 = np.random.RandomState(54321).poisson(0.5 * rate * dt).astype(float)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            cls.lc_step1 = Lightcurve(times, counts1, dt=dt, skip_checks=True, gti=[[0, tseg]])
+            cls.lc_step2 = Lightcurve(times, counts2, dt=dt, skip_checks=True, gti=[[0, tseg]])
+
     def test_bad_args(self):
         with pytest.raises(TypeError, match=".must all be specified"):
             _ = DynamicalCrossspectrum(1)
@@ -1475,6 +1613,63 @@ class TestDynamicalCrossspectrum(object):
             rms2, rmse2 = ps.compute_rms(1 / 5, 16.0, poisson_noise_level=2)
         assert np.isclose(rms[0], rms2)
         assert np.isclose(rmse[0], rmse2, rtol=0.01)
+
+    @pytest.mark.parametrize("use_common_mean", [True, False])
+    def test_use_common_mean_matches_averaged_crossspectrum(self, use_common_mean):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            dcs = DynamicalCrossspectrum(
+                self.lc, self.lc, segment_size=3, norm="frac", use_common_mean=use_common_mean
+            )
+            acs = AveragedCrossspectrum(
+                self.lc,
+                self.lc,
+                segment_size=3,
+                norm="frac",
+                use_common_mean=use_common_mean,
+                save_all=True,
+                silent=True,
+            )
+        assert np.allclose(dcs.dyn_ps, np.array(acs.cs_all).T)
+
+    def test_use_common_mean_defaults_to_true(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            default = DynamicalCrossspectrum(self.lc, self.lc, segment_size=3, norm="frac")
+            common = DynamicalCrossspectrum(
+                self.lc, self.lc, segment_size=3, norm="frac", use_common_mean=True
+            )
+        assert default.use_common_mean is True
+        assert np.array_equal(default.dyn_ps, common.dyn_ps)
+        assert np.ndim(default.unnorm_conversion) == 0
+
+    def test_per_segment_conversion_is_an_array(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            dcs = DynamicalCrossspectrum(
+                self.lc, self.lc, segment_size=3, norm="frac", use_common_mean=False
+            )
+        assert np.size(dcs.unnorm_conversion) == dcs.dyn_ps.shape[1]
+
+    def test_compute_rms_with_per_segment_mean(self):
+        lc1, lc2 = self.lc_step1, self.lc_step2
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            common = DynamicalCrossspectrum(lc1, lc2, segment_size=8.0, norm="frac")
+            per_segment = DynamicalCrossspectrum(
+                lc1, lc2, segment_size=8.0, norm="frac", use_common_mean=False
+            )
+            rms_common, _ = common.compute_rms(1.5, 2.5)
+            rms_seg, _ = per_segment.compute_rms(1.5, 2.5)
+        rms_common = np.asarray(rms_common).real
+        rms_seg = np.asarray(rms_seg).real
+        first = common.time < lc1.tseg / 2
+        assert np.size(per_segment.nphots_all) == per_segment.dyn_ps.shape[1]
+        # With a common mean, the rms is relative to the mean of the whole observation.
+        assert rms_common[~first].mean() / rms_common[first].mean() > 1.5
+        # With a per-segment mean, the injected 10% rms is recovered on both sides.
+        assert np.isclose(rms_seg[first].mean(), 0.1, atol=0.01)
+        assert np.isclose(rms_seg[~first].mean(), 0.1, atol=0.01)
 
     def test_works_with_events_and_its_complex(self):
         lc = copy.deepcopy(self.lc)
@@ -1758,12 +1953,24 @@ class TestAveragedCrossspectrumOverlap(object):
         )
 
     def test_coherence(self):
-        with pytest.warns(UserWarning) as w:
+        coh = self.cs.raw_coherence()
+
+        assert len(coh[0]) == 4999
+        assert len(coh[1]) == 4999
+
+    def test_old_coherence_warns(self):
+        with pytest.warns(DeprecationWarning, match="The `coherence` method is deprecated."):
             coh = self.cs.coherence()
 
-            assert len(coh[0]) == 4999
-            assert len(coh[1]) == 4999
-            assert issubclass(w[-1].category, UserWarning)
+        assert len(coh[0]) == 4999
+        assert len(coh[1]) == 4999
+
+    def test_intrinsic_coherence(self):
+        with pytest.warns(UserWarning) as w:
+            coh = self.cs.intrinsic_coherence()
+
+        assert len(coh[0]) == 4999
+        assert len(coh[1]) == 4999
 
     def test_normalize_crossspectrum(self):
         cs1 = Crossspectrum(self.lc1, self.lc2, norm="leahy", channels_overlap=True)

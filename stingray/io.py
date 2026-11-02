@@ -3,11 +3,12 @@ import copy
 import os
 import sys
 import traceback
+import shutil
 import warnings
+import subprocess as sp
 from collections.abc import Iterable
 
 import numpy as np
-from astropy.io import fits
 from astropy.table import Table
 from astropy.logger import AstropyUserWarning
 import matplotlib.pyplot as plt
@@ -16,6 +17,7 @@ from astropy import units as u
 
 import stingray.utils as utils
 from stingray.loggingconfig import setup_logger
+from stingray.utils import fits_open_including_remote
 
 
 from .utils import (
@@ -419,7 +421,7 @@ def lcurve_from_fits(
             dt *= 86400
     except Exception:
         warnings.warn(
-            "Assuming that TIMEDEL is the median difference between the" " light curve times",
+            "Assuming that TIMEDEL is the median difference between the light curve times",
             AstropyUserWarning,
         )
         # Avoid NaNs
@@ -619,9 +621,15 @@ def load_events_and_gtis(
 
     det_number = None if detector_id is None else list(set(detector_id))
 
+    timedel = np.longdouble(0.0)
+    if "TIMEDEL" in header:
+        timedel = np.longdouble(header["TIMEDEL"])
     timezero = np.longdouble(0.0)
     if "TIMEZERO" in header:
         timezero = np.longdouble(header["TIMEZERO"])
+
+    if "TIMEPIXR" in header:
+        timezero += (0.5 - np.longdouble(header["TIMEPIXR"])) * timedel
 
     ev_list += timezero
 
@@ -759,7 +767,7 @@ class FITSTimeseriesReader(object):
             additional_columns = [self.detector_key]
         elif self.detector_key != "NONE":
             additional_columns.append(self.detector_key)
-        self.data_hdu = fits.open(self.fname)[self.hduname]
+        self.data_hdu = self.data_hdus[self.hduname]
         self.gti_file = gti_file
         self._read_gtis(self.gti_file)
 
@@ -862,7 +870,9 @@ class FITSTimeseriesReader(object):
             ):
                 conversion = (1 * u.Unit(unit)).to(u.keV).value
             new_ts.energy = data[self.energy_column] * conversion
-        elif self.pi_column.lower() in [col.lower() for col in data.dtype.names]:
+        elif self.pi_column is not None and self.pi_column.lower() in [
+            col.lower() for col in data.dtype.names
+        ]:
             new_ts.pi = data[self.pi_column]
             if pi_energy_func is not None:
                 new_ts.energy = pi_energy_func(new_ts.pi)
@@ -878,7 +888,7 @@ class FITSTimeseriesReader(object):
                 if col == self.detector_key:
                     continue
                 if col in data.dtype.names:
-                    setattr(new_ts, col.lower(), data[col])
+                    setattr(new_ts, col.replace(".", "_").lower(), data[col])
 
         for attr in self.meta_attrs():
             local_value = getattr(self, attr)
@@ -906,8 +916,8 @@ class FITSTimeseriesReader(object):
             If not None, the name of the HDU to read. If None, an extension called
             EVENTS or the first extension.
         """
-        hdulist = fits.open(fname)
-
+        hdulist = fits_open_including_remote(fname)
+        self.data_hdus = hdulist
         if not force_hduname:
             for hdu in hdulist:
                 if "TELESCOP" in hdu.header or "MISSION" in hdu.header:
@@ -963,8 +973,12 @@ class FITSTimeseriesReader(object):
         header = hdulist[hduname].header
         if "OBS_ID" in header:
             self._add_meta_attr("obsid", header["OBS_ID"])
+
+        timedel = np.longdouble(0.0)
         if "TIMEDEL" in header:
-            self._add_meta_attr("dt", header["TIMEDEL"])
+            timedel = np.longdouble(header["TIMEDEL"])
+
+        self._add_meta_attr("dt", timedel)
 
         # self.header has to be a string, for backwards compatibility and... for convenience!
         # No need to cope with dicts working badly with Netcdf, for example. The header
@@ -990,12 +1004,17 @@ class FITSTimeseriesReader(object):
         timezero = np.longdouble(0.0)
         if "TIMEZERO" in header:
             timezero = np.longdouble(header["TIMEZERO"])
+
+        if "TIMEPIXR" in header:
+            timezero += (0.5 - np.longdouble(header["TIMEPIXR"])) * timedel
+
         t_start = t_stop = None
         if "TSTART" in header:
             t_start = np.longdouble(header["TSTART"])
         if "TSTOP" in header:
             t_stop = np.longdouble(header["TSTOP"])
         self._add_meta_attr("timezero", timezero)
+
         self._add_meta_attr("t_start", t_start)
         self._add_meta_attr("t_stop", t_stop)
 
@@ -1035,11 +1054,11 @@ class FITSTimeseriesReader(object):
         # So, here I'm reading a bunch of rows hoping that they represent the
         # detector number population
         if self.detector_key is not None:
-            with fits.open(self.fname) as hdul:
-                data = hdul[self.hduname].data
-                if self.detector_key in data.dtype.names:
-                    probe_vals = data[:100][self.detector_key]
-                    det_numbers = list(set(probe_vals))
+            hdul = self.data_hdus
+            data = hdul[self.hduname].data
+            if self.detector_key in data.dtype.names:
+                probe_vals = data[:100][self.detector_key]
+                det_numbers = list(set(probe_vals))
             del hdul
 
         accepted_gtistrings = self.gtistring.split(",")
@@ -1103,14 +1122,14 @@ class FITSTimeseriesReader(object):
         raw_lower_edge = idx_edges[raw_min_idx]
         raw_upper_edge = idx_edges[raw_max_idx]
 
-        assert (
-            start - time_edges[raw_min_idx] >= 0
-        ), f"Start: {start}; {start - time_edges[raw_min_idx]} > 0"
-        assert (
-            time_edges[raw_max_idx] - stop >= 0
-        ), f"Stop: {stop}; {time_edges[raw_max_idx] - stop} < 0"
+        assert start - time_edges[raw_min_idx] >= 0, (
+            f"Start: {start}; {start - time_edges[raw_min_idx]} > 0"
+        )
+        assert time_edges[raw_max_idx] - stop >= 0, (
+            f"Stop: {stop}; {time_edges[raw_max_idx] - stop} < 0"
+        )
 
-        with fits.open(self.fname) as hdulist:
+        with fits_open_including_remote(self.fname) as hdulist:
             filtered_times = hdulist[self.hduname].data[self.time_column][
                 raw_lower_edge : raw_upper_edge + 1
             ]
@@ -1202,7 +1221,7 @@ class FITSTimeseriesReader(object):
 
         fname = self.fname
 
-        with fits.open(fname) as hdul:
+        with fits_open_including_remote(fname) as hdul:
             size = hdul[1].header["NAXIS2"]
             nedges = min(nedges, size // 10 + 2)
 
@@ -1318,7 +1337,7 @@ def read_header_key(fits_file, key, hdu=1):
         The value stored under ``key`` in ``fits_file``
     """
 
-    hdulist = fits.open(fits_file, ignore_missing_end=True)
+    hdulist = fits_open_including_remote(fits_file, ignore_missing_end=True)
     try:
         value = hdulist[hdu].header[key]
     except KeyError:  # pragma: no cover
@@ -1350,7 +1369,7 @@ def ref_mjd(fits_file, hdu=1):
         fits_file = fits_file[0]
         logger.info("opening %s" % fits_file)
 
-    hdulist = fits.open(fits_file, ignore_missing_end=True)
+    hdulist = fits_open_including_remote(fits_file, ignore_missing_end=True)
 
     ref_mjd_val = high_precision_keyword_read(hdulist[hdu].header, "MJDREF")
 
@@ -1550,3 +1569,77 @@ def _can_serialize_meta(probe_file: str, fmt: str) -> bool:
         )
         yes_it_can = False
     return yes_it_can
+
+
+def run_flx2xsp(infile, outroot):
+    """Wrapper around the HEASOFT tool ``ftflx2xsp``.
+
+    Converts a spectrum in text format to Xspec format.
+
+    Parameters
+    ----------
+    infile: str
+        The name of the input file, containing the spectrum in text format. The file should have
+        four columns: the lower energy of the bin, the higher energy of the bin, the power in the bin and the error on the power in the bin.
+    outroot: str
+        The root name of the output files. The file name will be appended with
+        ".pha" and ".rsp" for the different files that will be created. The output files will be in Xspec format.
+
+    Raises
+    ------
+    RuntimeError
+        If the ``ftflx2xsp`` tool is not found in the system PATH.
+    """
+    if shutil.which("ftflx2xsp") is None:
+        raise RuntimeError("You need to install and initialize HEASOFT to save in Xspec format")
+
+    sp.check_call(f"ftflx2xsp {infile} {outroot}.pha {outroot}.rsp".split())
+
+
+def save_as_xspec(x, dx, y, yerr, outroot, header_keywords=None):
+    """Save generic spectra in a format readable to FTOOLS and Xspec.
+
+    Parameters
+    ----------
+    x: float array
+        The energies/frequencies of the spectrum
+    dx: float or float array
+        The width of the energy/frequency bins. If a scalar is given,
+        it is interpreted as a constant bin width for all values in ``x``.
+    y: float array
+        The flux/power of the spectrum in each bin
+    yerr: float array
+        The error on the flux/power in each bin
+    outroot: str
+        The root name of the output files. The file name will be appended with
+        ".txt", ".pha" and ".rsp" for the different files that will be created
+    header_keywords: dict, optional
+        A dictionary of header keywords to be added to the PHA file.
+
+    Notes
+    -----
+    Uses method described by Ingram and Done in Appendix A of
+    `this paper <https://arxiv.org/pdf/1108.0789>`__
+
+    Raises
+    ------
+    RuntimeError
+        If the ``ftflx2xsp`` tool is not found in the system PATH (HEASOFT not
+        installed or not initialized).
+    """
+
+    flo = x - dx / 2
+    fhi = x + dx / 2
+    power = y * dx
+    power_err = yerr * dx
+    outname = outroot + ".txt"
+
+    logger.info(f"Saving spectrum in {outname}")
+    np.savetxt(outname, np.transpose([flo, fhi, power, power_err]))
+    logger.info(f"Converting {outname} to Xspec format")
+    run_flx2xsp(outname, outroot)
+    if header_keywords is not None:
+        with fits_open_including_remote(outroot + ".pha", mode="update") as hdul:
+            for key, value in header_keywords.items():
+                hdul[1].header[key] = value
+            hdul.flush()

@@ -1,0 +1,3 @@
+Coverage reports are now sent to Codecov by a separate workflow, triggered once the
+test workflow has finished, so that pull requests opened from a fork can upload with
+the repository token instead of falling back to a rate-limited anonymous upload.

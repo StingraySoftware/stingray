@@ -1,7 +1,6 @@
 import numpy as np
 from astropy.modeling import models, fitting
 
-
 __all__ = ["sinc_square_model", "sinc_square_deriv", "fit_sinc", "fit_gaussian", "SincSquareModel"]
 
 
@@ -157,7 +156,7 @@ def fit_sinc(x, y, amp=1.5, mean=0.0, width=1.0, tied={}, fixed={}, bounds={}, o
 
     References
     ----------
-    .. [astropy models] http://docs.astropy.org/en/stable/api/astropy.modeling.functional_models.Gaussian1D.html
+    .. [astropy models] https://docs.astropy.org/en/stable/api/astropy.modeling.functional_models.Gaussian1D.html
     """
     if obs_length is not None:
         width = 1 / (np.pi * obs_length)

@@ -13,31 +13,22 @@ env:
   SETUP_XVFB: True  # avoid issues if mpl tries to open a GUI window
   TOXARGS: '-v'
 
-jobs:  # This job is used to check that the documentation builds correctly.
-  ci-tests:
-    name: ${{ matrix.tox_env }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            python: '3.10'
-            tox_env: 'build_docs'
-          - os: ubuntu-latest
-            python: '3.10'
-            tox_env: 'linkcheck'
+jobs:
+  # Check that the documentation builds correctly.
+  build_docs:
+    name: build_docs
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           submodules: true
       - name: Check out that no sensitive environment variable is shared
         run: env
-      - name: Set up Python ${{ matrix.python }}
-        uses: actions/setup-python@v4
+      - name: Set up Python
+        uses: actions/setup-python@v7
         with:
-          python-version: ${{ matrix.python }}
+          python-version: '3.11'
       - name: Install base dependencies
         run: |
           python -m pip install --upgrade pip
@@ -51,4 +42,39 @@ jobs:  # This job is used to check that the documentation builds correctly.
           python -c "import setuptools; print(f'setuptools {setuptools.__version__}')"
           python -c "import tox; print(f'tox {tox.__version__}')"
       - name: Run tests
-        run: tox -e ${{ matrix.tox_env }}
+        run: tox -e build_docs
+
+  # Check that the links in the documentation still resolve. This runs only on
+  # the weekly schedule: it fails whenever an external site is down, moves a
+  # page, or blocks the runner, none of which a pull request can fix or is
+  # responsible for, and running it on every pull request marked them all as
+  # unstable.
+  linkcheck:
+    name: linkcheck
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+      - name: Check out that no sensitive environment variable is shared
+        run: env
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install base dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install tox
+      - name: Install system dependencies
+        run: sudo apt-get -y install graphviz pandoc
+      - name: Print Python, pip, setuptools, and tox versions
+        run: |
+          python -c "import sys; print(f'Python {sys.version}')"
+          python -c "import pip; print(f'pip {pip.__version__}')"
+          python -c "import setuptools; print(f'setuptools {setuptools.__version__}')"
+          python -c "import tox; print(f'tox {tox.__version__}')"
+      - name: Run tests
+        run: tox -e linkcheck

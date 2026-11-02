@@ -15,6 +15,7 @@ _HAS_XARRAY = importlib.util.find_spec("xarray") is not None
 _HAS_PANDAS = importlib.util.find_spec("pandas") is not None
 _HAS_H5PY = importlib.util.find_spec("h5py") is not None
 _HAS_YAML = importlib.util.find_spec("yaml") is not None
+_HAS_FSSPEC = importlib.util.find_spec("fsspec") is not None
 
 
 class TestEvents(object):
@@ -248,6 +249,20 @@ class TestEvents(object):
         ev = ev.read(fname, fmt="hea")
         assert np.isclose(ev.mjdref, 55197.00076601852)
 
+    @pytest.mark.skipif("not _HAS_FSSPEC")
+    @pytest.mark.remote_data
+    def test_fits_standard_remote(self):
+        """Test that fits works with a standard event list
+        file.
+        """
+        fname = (
+            "s3://nasa-heasarc/swift/data/obs/2015_12/00037258040/xrt/event/"
+            "sw00037258040xwtw2st_cl.evt.gz"
+        )
+
+        ev = EventList.read(fname, fmt="hea")
+        assert np.isclose(ev.mjdref, 51910.00074287037)
+
     def test_fits_with_standard_file_and_calibrate_directly(self):
         """Test that fits works and calibration works."""
         fname = os.path.join(datadir, "monol_testA.evt")
@@ -267,6 +282,17 @@ class TestEvents(object):
         """Test event file reading."""
         fname = os.path.join(datadir, fname)
         EventList.read(fname, fmt="hea")
+
+    def test_event_file_read_laxpc(self):
+        """Test LAXPC file reading"""
+        fname = os.path.join(datadir, "laxpc_file_read.fits")
+        with pytest.warns(UserWarning, match="HDU EVENTS"):
+            with pytest.warns(UserWarning, match="No valid GTI"):
+                ev = EventList.read(fname, fmt="hea")
+        assert ev.instr.lower() == "laxpc3"
+        assert ev.mission.lower() == "astrosat"
+        assert ((ev.filter_detector_id(detector_id=1)).main_array_length) == 453
+        assert ((ev.filter_detector_id(detector_id=[1])).main_array_length) == 453
 
     def test_fits_with_additional(self):
         """Test that fits works with a standard event list

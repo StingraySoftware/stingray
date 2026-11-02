@@ -39,15 +39,15 @@ class TestIO(object):
     def test_high_precision_keyword(self):
         """Test high precision FITS keyword read."""
         hdr = {"MJDTESTI": 100, "MJDTESTF": np.longdouble(0.5), "CIAO": np.longdouble(0.0)}
-        assert high_precision_keyword_read(hdr, "MJDTEST") == np.longdouble(
-            100.5
-        ), "Keyword MJDTEST read incorrectly"
-        assert high_precision_keyword_read(hdr, "MJDTESTA") == np.longdouble(
-            100.5
-        ), "Keyword MJDTESTA read incorrectly"
-        assert high_precision_keyword_read(hdr, "CIAO") == np.longdouble(
-            0.0
-        ), "Keyword CIAO read incorrectly"
+        assert high_precision_keyword_read(hdr, "MJDTEST") == np.longdouble(100.5), (
+            "Keyword MJDTEST read incorrectly"
+        )
+        assert high_precision_keyword_read(hdr, "MJDTESTA") == np.longdouble(100.5), (
+            "Keyword MJDTESTA read incorrectly"
+        )
+        assert high_precision_keyword_read(hdr, "CIAO") == np.longdouble(0.0), (
+            "Keyword CIAO read incorrectly"
+        )
         assert high_precision_keyword_read(hdr, "BU") is None, "Inexistent key read incorrectly"
 
     def test_xselect_mdb_is_found_headas(self, monkeypatch, tmp_path):
@@ -139,6 +139,14 @@ class TestIO(object):
         assert data.mission.lower() == "axaf"
         assert hasattr(data, "energy_list")
         assert data.energy_list.max() < 18
+
+    def test_event_file_read_laxpc(self):
+        """Test event file reading."""
+        fname = os.path.join(datadir, "laxpc_file_read.fits")
+        with pytest.warns(UserWarning, match="No valid GTI*"):
+            data = load_events_and_gtis(fname, additional_columns=["Layer"], hduname="event file")
+        assert data.mission.lower() == "astrosat"
+        assert read_header_key(fname, "INSTRUME", hdu=0) == "LAXPC3"
 
     def test_event_file_read_no_mission(self):
         """Test event file reading."""

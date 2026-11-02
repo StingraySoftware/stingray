@@ -40,8 +40,13 @@ def _folding_search(
         segment_size = length
     start_times = np.arange(times[0], times[-1], segment_size)
     count = 0
-    for s in start_times:
-        good = (times >= s) & (times < s + segment_size)
+    for i_s, s in enumerate(start_times):
+        # The last segment must include its end point,
+        # otherwise when the length is a multiple of segment_size, the last sample is lost
+        if i_s == len(start_times) - 1:
+            good = times >= s
+        else:
+            good = (times >= s) & (times < s + segment_size)
         ts = times[good]
         if len(ts) < 1 or ts[-1] - ts[0] < 0.2 * segment_size:
             continue
@@ -144,7 +149,7 @@ def epoch_folding_search(
 
     if expocorr or not HAS_NUMBA or isinstance(weights, Iterable):
         if expocorr and gti is None:
-            raise ValueError("To calculate exposure correction, you need to" " specify the GTIs")
+            raise ValueError("To calculate exposure correction, you need to specify the GTIs")
 
         def stat_fun(t, f, fd=0, **kwargs):
             return ef_profile_stat(fold_events(t, f, fd, **kwargs)[1])
@@ -172,7 +177,15 @@ def epoch_folding_search(
 
 
 def phase_dispersion_search(
-    times, flux, frequencies, nbin=128, segment_size=5000, expocorr=False, gti=None, fdots=0
+    times,
+    flux,
+    frequencies,
+    nbin=128,
+    segment_size=5000,
+    expocorr=False,
+    gti=None,
+    fdots=0,
+    variances=None,
 ):
     """Performs folding at trial frequencies in time series data (i.e.~a light curve
     of flux or photon counts) and computes the Phase Dispersion Minimization statistic.
@@ -227,9 +240,21 @@ def phase_dispersion_search(
 
     def stat_fun(t, f, fd=0, **kwargs):
         bins, profile, _ = fold_events(t, f, fd, **kwargs, mode="pdm")
-        len_flux = len(kwargs["weights"])
-        sigma = np.var(kwargs["weights"]) * len_flux / (len_flux - 1)
-        return pdm_profile_stat(profile, sigma, len_flux)
+        flux = kwargs["weights"]
+        len_flux = len(flux)
+        # Get the variances from kwargs (possibly modified) rather than as a closure
+        variances_local = kwargs.get("variances", None)
+        event_weights = (
+            (1.0 / np.asarray(variances_local))
+            if variances_local is not None
+            else np.ones_like(flux)
+        )
+        mean_grand = np.average(flux, weights=event_weights)
+        dev2_grand = (flux - mean_grand) ** 2
+
+        sosdev_grand = np.dot(dev2_grand, event_weights)
+
+        return pdm_profile_stat(profile, sosdev_grand, len_flux)
 
     return _folding_search(
         stat_fun,
@@ -242,6 +267,7 @@ def phase_dispersion_search(
         gti=gti,
         nbin=nbin,
         fdots=fdots,
+        variances=variances,
     )
 
 
@@ -314,7 +340,7 @@ def z_n_search(
     phase = np.arange(0, 1, 1 / nbin)
     if expocorr or not HAS_NUMBA or isinstance(weights, Iterable):
         if expocorr and gti is None:
-            raise ValueError("To calculate exposure correction, you need to" " specify the GTIs")
+            raise ValueError("To calculate exposure correction, you need to specify the GTIs")
 
         def stat_fun(t, f, fd=0, **kwargs):
             return z_n(fold_events(t, f, fd, nbin=nbin, **kwargs)[1], n=nharm, datatype="binned")
@@ -601,7 +627,7 @@ def phaseogram(
 
     if weights is not None and isinstance(weights, Iterable):
         if len(weights) != len(times):
-            raise ValueError("The length of weights must match the length of " "times")
+            raise ValueError("The length of weights must match the length of times")
         weights = np.concatenate([weights, weights]).astype("float64")
 
     if use_mjdref:

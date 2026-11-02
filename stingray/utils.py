@@ -11,9 +11,12 @@ from collections.abc import Iterable
 
 import numpy as np
 import scipy
+from scipy.stats import median_abs_deviation
 from numpy import histogram as histogram_np
 from numpy import histogram2d as histogram2d_np
 from numpy import histogramdd as histogramdd_np
+from astropy.io import fits
+from .exceptions import StingrayWarning
 from .loggingconfig import setup_logger
 
 logger = setup_logger()
@@ -44,16 +47,28 @@ except ImportError:
 
 # If numba is installed, import jit. Otherwise, define an empty decorator with
 # the same name.
+
+
+def _numba_import_warning(error):
+    """Explain that numba is not being used, quoting the error that says why.
+
+    Numba usually lags new NumPy releases, so an *installed* numba often fails to
+    import with something like "Numba needs NumPy 2.4 or less". Reporting that as
+    a missing package sends users looking in the wrong place, so the original
+    error is part of the message.
+    """
+    return (
+        f"Numba is not being used, so some functionality might be slower. "
+        f"Importing it failed with: {error}"
+    )
+
+
 try:
     from numba import jit
 
     HAS_NUMBA = True
-    from numba import njit, prange, vectorize, float32, float64, int32, int64
-    from numba.core.errors import NumbaValueError, NumbaNotImplementedError, TypingError
-except ImportError:
-    warnings.warn(
-        "The recommended numba package is not installed. Some functionality might be slower."
-    )
+except ImportError as e:
+    warnings.warn(_numba_import_warning(e))
     HAS_NUMBA = False
     NumbaValueError = NumbaNotImplementedError = TypingError = Exception
 
@@ -74,13 +89,19 @@ except ImportError:
 
         return decorator
 
-    def generic(x, y=None):
+    def generic(*args, **kwargs):
         return None
 
     float32 = float64 = int32 = int64 = generic
 
     def prange(x):
         return range(x)
+
+
+if HAS_NUMBA:
+    from numba import njit, prange, vectorize, float32, float64, int32, int64
+
+    from numba.core.errors import NumbaValueError, NumbaNotImplementedError, TypingError
 
 
 try:
@@ -91,35 +112,46 @@ except ImportError:
         return a
 
 
-try:
-    from statsmodels.robust import mad as mad  # pylint: disable=unused-import
-except ImportError:
+def mad(data, c=0.6744897501960817, axis=0):
+    """
+    Median Absolute Deviation (MAD) along an axis.
 
-    def mad(data, c=0.6745, axis=None):
-        """
-        Mean Absolute Deviation (MAD) along an axis.
+    Equivalent to ``statsmodels.robust.mad``, which this used to be imported
+    from. Importing statsmodels costs about half a second, and this is the only
+    thing stingray needed from it at import time. Extended-precision input is
+    handled better than statsmodels handled it: see the note below.
 
-        Straight from statsmodels's source code, adapted
+    Parameters
+    ----------
+    data : iterable
+        The data along which to calculate the MAD
 
-        Parameters
-        ----------
-        data : iterable
-            The data along which to calculate the MAD
+    c : float, optional
+        The normalization constant, ``scipy.stats.norm.ppf(3/4.)``. Dividing by
+        it makes the result a consistent estimator of the standard deviation of
+        normally distributed data.
 
-        c : float, optional
-            The normalization constant. Defined as
-            ``scipy.stats.norm.ppf(3/4.)``, which is approximately ``.6745``.
+    axis : int or None, optional, default ``0``
+        Axis along which to calculate ``mad``. Pass ``None`` to calculate it
+        over the flattened array.
 
-        axis : int, optional, default ``0``
-            Axis along which to calculate ``mad``. Default is ``0``, can also
-            be ``None``
-        """
-        data = np.asanyarray(data)
-        if axis is not None:
-            center = np.apply_over_axes(np.median, data, axis)
-        else:
-            center = np.median(data)
-        return np.median((np.fabs(data - center)) / c, axis=axis)
+    Examples
+    --------
+    >>> assert np.isclose(mad([1.0, 1.0, 2.0, 2.0]), 0.7413011092528009)
+
+    Notes
+    -----
+    The medians are taken in at least double precision, as statsmodels took them.
+    Left in single precision they are visibly worse: for float32 samples around
+    1e8, where the spacing between representable values is 8, the result comes out
+    half as large again. Promoting rather than casting to float64 means that input
+    carrying *more* than double precision keeps it, which statsmodels did not do --
+    it reduced float128 to float64 and so threw away the very precision the caller
+    had gone to the trouble of providing.
+    """
+    data = np.asanyarray(data)
+    data = data.astype(np.promote_types(data.dtype, np.float64), copy=False)
+    return median_abs_deviation(data, axis=axis, scale=c)
 
 
 __all__ = [
@@ -432,7 +464,7 @@ def is_sorted(array):
     # Test if value is compatible with Numba's type system
     try:
         _is_sorted_numba(array[:2])
-    except NumbaValueError:
+    except (NumbaValueError, TypingError):
         array = array.astype(float)
 
     return _is_sorted_numba(array)
@@ -480,9 +512,11 @@ def simon(message, **kwargs):
         The message that is thrown
 
     kwargs : dict
-        The rest of the arguments that are passed to ``warnings.warn``
+        The rest of the arguments that are passed to ``warnings.warn``.
+        ``category`` defaults to :class:`stingray.exceptions.StingrayWarning`.
     """
 
+    kwargs.setdefault("category", StingrayWarning)
     warnings.warn("SIMON says: {0}".format(message), **kwargs)
 
 
@@ -533,15 +567,15 @@ def rebin_data(x, y, dx_new, yerr=None, method="sum", dx=None):
     --------
     >>> x = np.arange(0, 100, 0.01)
     >>> y = np.ones(x.size)
-    >>> yerr = np.ones(x.size)
+    >>> yerr = np.ones(x.size) * 2  # Each point has σ=2
     >>> xbin, ybin, ybinerr, step_size = rebin_data(
     ...     x, y, 4, yerr=yerr, method='sum', dx=0.01)
     >>> assert np.allclose(ybin, 400)
-    >>> assert np.allclose(ybinerr, 20)
+    >>> assert np.allclose(ybinerr, 40)  # sqrt(400 * 2**2) = 40
     >>> xbin, ybin, ybinerr, step_size = rebin_data(
     ...     x, y, 4, yerr=yerr, method='mean')
     >>> assert np.allclose(ybin, 1)
-    >>> assert np.allclose(ybinerr, 0.05)
+    >>> assert np.allclose(ybinerr, 0.1)  # sqrt(400 * 2**2) / 400 = 0.1
     """
 
     y = np.asanyarray(y)
@@ -558,9 +592,7 @@ def rebin_data(x, y, dx_new, yerr=None, method="sum", dx=None):
         dx_old = np.array([dx])
 
     if np.any(dx_new < dx_old):
-        raise ValueError(
-            "New frequency resolution must be larger than " "old frequency resolution."
-        )
+        raise ValueError("New frequency resolution must be larger than old frequency resolution.")
 
     # left and right bin edges
     # assumes that the points given in `x` correspond to
@@ -571,7 +603,7 @@ def rebin_data(x, y, dx_new, yerr=None, method="sum", dx=None):
     xbin = np.arange(xedges[0], xedges[-1] + dx_new, dx_new)
 
     output = np.zeros(xbin.shape[0] - 1, dtype=type(y[0]))
-    outputerr = np.zeros(xbin.shape[0] - 1, dtype=type(yerr[0]))
+    outputvar = np.zeros(xbin.shape[0] - 1, dtype=type(yerr[0]))
     step_size = np.zeros(xbin.shape[0] - 1)
 
     all_x = np.searchsorted(xedges, xbin)
@@ -583,34 +615,33 @@ def rebin_data(x, y, dx_new, yerr=None, method="sum", dx=None):
         filtered_y = y[min_ind : max_ind - 1]
         filtered_yerr = yerr[min_ind : max_ind - 1]
         output[i] = np.sum(filtered_y)
-        outputerr[i] = np.sum(filtered_yerr)
+        outputvar[i] = np.sum(filtered_yerr**2)
         step_size[i] = max_ind - 1 - min_ind
 
         prev_dx = xedges[min_ind] - xedges[min_ind - 1]
         prev_frac = (xedges[min_ind] - xmin) / prev_dx
         output[i] += y[min_ind - 1] * prev_frac
-        outputerr[i] += yerr[min_ind - 1] * prev_frac
+        outputvar[i] += (yerr[min_ind - 1] * prev_frac) ** 2
         step_size[i] += prev_frac
 
         if not max_ind == xedges.size:
             dx_post = xedges[max_ind] - xedges[max_ind - 1]
             post_frac = (xmax - xedges[max_ind - 1]) / dx_post
             output[i] += y[max_ind - 1] * post_frac
-            outputerr[i] += yerr[max_ind - 1] * post_frac
+            outputvar[i] += (yerr[max_ind - 1] * post_frac) ** 2
             step_size[i] += post_frac
 
     if method in ["mean", "avg", "average", "arithmetic mean"]:
         ybin = output / step_size
-        ybinerr = np.sqrt(outputerr) / step_size
+        ybinerr = np.sqrt(outputvar) / step_size
 
     elif method == "sum":
         ybin = output
-        ybinerr = np.sqrt(outputerr)
+        ybinerr = np.sqrt(outputvar)
 
     else:
         raise ValueError(
-            "Method for summing or averaging not recognized. "
-            "Please enter either 'sum' or 'mean'."
+            "Method for summing or averaging not recognized. Please enter either 'sum' or 'mean'."
         )
 
     tseg = x[-1] - x[0] + dx_old[-1]
@@ -922,7 +953,7 @@ def contiguous_regions(condition):
 
     Notes
     -----
-    .. [so-contiguous] http://stackoverflow.com/questions/4494404/find-large-number-of-consecutive-values-fulfilling-condition-in-a-numpy-array
+    .. [so-contiguous] https://stackoverflow.com/questions/4494404/find-large-number-of-consecutive-values-fulfilling-condition-in-a-numpy-array
     """
     # Find the indices of changes in "condition"
     diff = np.logical_xor(condition[1:], condition[:-1])
@@ -937,7 +968,7 @@ def contiguous_regions(condition):
         # If the end of condition is True, append the length of the array
         idx = np.r_[idx, condition.size]
     # Reshape the result into two columns
-    idx.shape = (-1, 2)
+    idx = idx.reshape(-1, 2)
     return idx
 
 
@@ -1030,7 +1061,7 @@ def _als(y, lam, p, niter=10):
     References
     ----------
     .. [eilers-2005] https://www.researchgate.net/publication/228961729_Technical_Report_Baseline_Correction_with_Asymmetric_Least_Squares_Smoothing
-    .. [so-als] http://stackoverflow.com/questions/29156532/python-baseline-correction-library
+    .. [so-als] https://stackoverflow.com/questions/29156532/python-baseline-correction-library
 
     """
     from scipy import sparse
@@ -1042,11 +1073,13 @@ def _als(y, lam, p, niter=10):
         (np.arange(0, L - 2).T, np.arange(0, L - 2).T + 1, np.arange(0, L - 2).T + 2)
     ).T.flatten()
     data = np.tile([1, -2, 1], L - 2)
-    D = sparse.csc_matrix((data, indices, indptr), shape=(L, L - 2))
+    D = sparse.csc_array((data, indices, indptr), shape=(L, L - 2))
 
     w = np.ones(L)
     for _ in range(niter):
-        W = sparse.spdiags(w, 0, L, L)
+        # ``dia_array`` rather than ``diags_array``, which only exists from
+        # scipy 1.11 and this package still supports 1.10.
+        W = sparse.dia_array((w[np.newaxis, :], [0]), shape=(L, L))
         Z = W + lam * D.dot(D.transpose())
         z = sparse.linalg.spsolve(Z, w * y)
         w = p * (y > z) + (1 - p) * (y < z)
@@ -1155,7 +1188,7 @@ def baseline_als(x, y, lam=None, p=None, niter=10, return_baseline=False, offset
         if len(x[good]) < 10:
             good = np.ones(len(x), dtype=bool)
             warnings.warn(
-                "Too few bins to perform baseline offset correction" " precisely. Beware of results"
+                "Too few bins to perform baseline offset correction precisely. Beware of results"
             )
         offset = offset_fit(x[good], ysub[good], 0)
 
@@ -2156,8 +2189,7 @@ def _wrap_histograms(numba_func, weight_numba_func, np_func, *args, **kwargs):
         return weight_numba_func(*args, weights=weights, use_memmap=use_memmap, tmp=tmp, **kwargs)
     except (NumbaValueError, NumbaNotImplementedError, TypingError, TypeError):
         warnings.warn(
-            "Cannot calculate the histogram with the numba implementation. "
-            "Trying standard numpy."
+            "Cannot calculate the histogram with the numba implementation. Trying standard numpy."
         )
 
         return np_func(*args, weights=weights, **kwargs)[0]
@@ -2410,3 +2442,70 @@ def _int_sum_non_zero(array):
         if a > 0:
             sum += int(a)
     return sum
+
+
+def fits_open_remote(filename, **kwargs):
+    """Open a remote FITS file.
+
+    This function attempts to open a FITS file using `astropy.io.fits.open`. If a
+    `PermissionError` is raised and the filename appears to be a remote URL,
+    it retries opening the file with fsspec.
+
+    Requires the `botocore` package to be installed.
+
+    Parameters
+    ----------
+    filename : str
+        The path or URL to the FITS file to open. Can be a local file path or a remote URL.
+    **kwargs
+        Additional keyword arguments passed to `astropy.io.fits.open`.
+
+    Returns
+    -------
+    hdulist : astropy.io.fits.HDUList
+        The opened FITS file as an HDUList object.
+
+    Raises
+    ------
+    PermissionError
+        If the file cannot be opened and anonymous access is not possible or fails.
+
+    """
+    import botocore
+    import botocore.exceptions
+
+    try:
+        # This will work for local files and remote files with proper permissions
+        return fits.open(filename, **kwargs)
+    except (PermissionError, botocore.exceptions.NoCredentialsError) as e:
+        if "://" in filename:
+            logger.info(f"Permission denied for {filename}, trying with fsspec.")
+            return fits.open(filename, use_fsspec=True, fsspec_kwargs={"anon": True}, **kwargs)
+        raise e
+
+
+def fits_open_including_remote(filename, **kwargs):
+    """Open a FITS file, including remote files with anonymous access if needed.
+
+    If the filename appears to be a remote URL, it calls `fits_open_remote` to handle
+    potential permission issues. Otherwise, it opens the file directly with
+    `astropy.io.fits.open`.
+
+    Parameters
+    ----------
+    filename : str
+        The path or URL to the FITS file to open. Can be a local file path or a remote URL.
+    **kwargs
+        Additional keyword arguments passed to `astropy.io.fits.open`.
+
+    Returns
+    -------
+    hdulist : astropy.io.fits.HDUList
+        The opened FITS file as an HDUList object.
+
+    """
+
+    if "://" in filename:
+        return fits_open_remote(filename, **kwargs)
+
+    return fits.open(filename, **kwargs)

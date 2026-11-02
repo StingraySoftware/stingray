@@ -3,6 +3,8 @@ import numpy as np
 import copy
 import warnings
 import importlib
+import shutil
+import tempfile
 
 import pytest
 import matplotlib.pyplot as plt
@@ -11,13 +13,16 @@ from stingray import Lightcurve
 from stingray.events import EventList
 from stingray.utils import HAS_NUMBA
 from stingray import Powerspectrum, AveragedPowerspectrum, DynamicalPowerspectrum
+from stingray.powerspectrum import GtiCorrPowerspectrum
 from stingray.powerspectrum import powerspectrum_from_time_array
+from stingray.fourier import poisson_level
 from astropy.modeling.models import Lorentz1D
 from stingray.filters import filter_for_deadtime
 
 _HAS_XARRAY = importlib.util.find_spec("xarray") is not None
 _HAS_PANDAS = importlib.util.find_spec("pandas") is not None
 _HAS_H5PY = importlib.util.find_spec("h5py") is not None
+_HAS_FLX2XSP = (os.getenv("HEADAS") is not None) and (shutil.which("ftflx2xsp") is not None)
 
 
 def clear_all_figs():
@@ -379,6 +384,144 @@ class TestAveragedPowerspectrumEvents(object):
         pds = pds_dt.deadtime_correct(dead_time=0.0025, rate=np.size(events_dt) / tmax)
         assert np.isclose(np.mean(pds.power), 2, rtol=0.1)
         assert np.isclose(np.std(pds.power), 2 / np.sqrt(tmax / segment_size), rtol=0.1)
+
+
+class TestGtiCorrPowerspectrum(object):
+    @classmethod
+    def setup_class(cls):
+        """Set up a light curve and an event list with GTIs for testing GtiCorrPowerspectrum."""
+        tstart = 0.0
+        tend = 100.0
+        dt = 0.01
+
+        time = np.arange(tstart + 0.5 * dt, tend + 0.5 * dt, dt)
+
+        mean_count_rate = 1000.0
+        mean_counts = mean_count_rate * dt
+
+        poisson_counts = rng.poisson(mean_counts, size=time.shape[0])
+
+        cls.lc = Lightcurve(time, counts=poisson_counts, gti=[[tstart, tend]], dt=dt)
+        cls.events = EventList(
+            np.sort(
+                np.random.uniform(
+                    tstart, tend, np.random.poisson(mean_count_rate * (tend - tstart))
+                )
+            ),
+            gti=[[tstart, tend]],
+        )
+
+    @pytest.mark.parametrize("norm", ["leahy", "frac", "abs", "none"])
+    def test_gti_corr_ps(self, norm):
+        """GtiCorrPowerspectrum results match Powerspectrum when GTIs are unimportant."""
+        gcps = GtiCorrPowerspectrum(self.lc, norm=norm)
+        ps = Powerspectrum(self.lc, norm=norm)
+        for attr in [
+            "freq",
+            "power",
+            "power_err",
+            "unnorm_power",
+            "unnorm_power_err",
+            "df",
+            "m",
+            "n",
+            "nphots",
+        ]:
+            assert np.array_equal(getattr(gcps, attr), getattr(ps, attr))
+
+    @pytest.mark.parametrize("norm", ["leahy", "frac", "abs", "none"])
+    def test_gti_corr_ps_events(self, norm):
+        """GtiCorrPowerspectrum results match Powerspectrum for event lists."""
+        gcps = GtiCorrPowerspectrum(self.events, dt=0.01, norm=norm)
+        ps = Powerspectrum(self.events, dt=0.01, norm=norm)
+        for attr in [
+            "freq",
+            "power",
+            "power_err",
+            "unnorm_power",
+            "unnorm_power_err",
+            "df",
+            "m",
+            "n",
+            "nphots",
+        ]:
+            assert np.array_equal(getattr(gcps, attr), getattr(ps, attr))
+
+    @pytest.mark.parametrize("norm", ["leahy", "frac", "abs", "none"])
+    def test_gti_corr_ps_fill_different(self, norm):
+        """Filling BTIs or not changes the power spectrum."""
+        lc = copy.deepcopy(self.lc)
+        lc.gti = [[0, 30], [35, 100]]  # Two GTIs, one gap
+        gcps_fill = GtiCorrPowerspectrum(lc, norm=norm, fill_lc=True)
+        gcps_nofill = GtiCorrPowerspectrum(lc, norm=norm, fill_lc=False)
+        gcps_fill = gcps_fill.clean_gti_features()
+        gcps_nofill = gcps_nofill.clean_gti_features()
+        mean_gcps_fill = np.mean(gcps_fill.power)
+        mean_gcps_nofill = np.mean(gcps_nofill.power)
+        assert not np.allclose(mean_gcps_fill, mean_gcps_nofill, rtol=0.01)
+
+    @pytest.mark.parametrize("norm", ["leahy", "frac", "abs", "none"])
+    def test_gti_corr_ps_fill(self, norm):
+        """Filling BTIs and correcting the normalization adjusts the power spectrum."""
+        lc = copy.deepcopy(self.lc)
+        lc.gti = [[0, 30], [35, 100]]  # Two GTIs, one gap
+        gcps = GtiCorrPowerspectrum(lc, norm=norm, fill_lc=True)
+        gcps = gcps.clean_gti_features()
+        ps = Powerspectrum(self.lc, norm=norm)
+        mean_ps = np.mean(ps.power)
+        mean_gcps = np.mean(gcps.power)
+        assert np.isclose(mean_gcps, mean_ps, rtol=0.01)
+
+    @pytest.mark.parametrize("norm", ["leahy", "frac", "abs", "none"])
+    def test_gti_corr_ps_fill_events(self, norm):
+        """Filling BTIs and correcting the normalization adjusts the power spectrum."""
+        lc = copy.deepcopy(self.events)
+        lc.gti = [[0, 30], [35, 100]]  # Two GTIs, one gap
+        gcps = GtiCorrPowerspectrum(lc, dt=0.01, norm=norm, fill_lc=True)
+        gcps = gcps.clean_gti_features()
+        ps = Powerspectrum(self.events, dt=0.01, norm=norm)
+        mean_ps = np.mean(ps.power)
+        mean_gcps = np.mean(gcps.power)
+        assert np.isclose(mean_gcps, mean_ps, rtol=0.01)
+
+    @pytest.mark.parametrize("norm", ["leahy", "frac", "abs", "none"])
+    def test_gti_corr_ps_fill_rebin(self, norm):
+        """Rebinning works on GtiCorrPowerspectrum."""
+        lc = copy.deepcopy(self.lc)
+        lc.gti = [[0, 30], [35, 100]]  # Two GTIs, one gap
+        gcps = GtiCorrPowerspectrum(lc, norm=norm, fill_lc=True)
+        gcps = gcps.clean_gti_features()
+        ps = Powerspectrum(self.lc, norm=norm)
+        ps = ps.rebin_log(0.01)
+        gcps = gcps.rebin_log(0.01)
+
+        mean_ps = np.mean(ps.power)
+        mean_gcps = np.mean(gcps.power)
+        assert np.isclose(mean_gcps, mean_ps, rtol=0.1)
+
+    def test_gti_corr_apply_gti_lc_fails(self):
+        """Applying GTIs to a light curve with gaps in the time array raises an error."""
+        lc = copy.deepcopy(self.lc)
+        lc.gti = [[0, 30], [35, 100]]  # Two GTIs, one gap
+        lc.apply_gtis()
+        with pytest.raises(ValueError, match="The time array in the light"):
+            GtiCorrPowerspectrum(lc, norm="leahy", fill_lc=True)
+
+    def test_gti_corr_plot(self):
+        """Plotting GtiCorrPowerspectrum works."""
+        lc = copy.deepcopy(self.events)
+        lc.gti = [[0, 30], [35, 100]]  # Two GTIs, one gap
+        gcps = GtiCorrPowerspectrum(lc, dt=0.01, norm="leahy", fill_lc=True)
+        with tempfile.NamedTemporaryFile(delete=False) as tmpfile:
+            figname = tmpfile.name
+        try:
+            gcps = gcps.clean_gti_features(plot=True, figname=figname)
+            jpg_name = figname + ".jpg"
+            assert os.path.exists(jpg_name)
+            os.unlink(jpg_name)
+        finally:
+            if os.path.exists(figname):
+                os.unlink(figname)
 
 
 class TestPowerspectrum(object):
@@ -896,6 +1039,19 @@ class TestDynamicalPowerspectrum(object):
         test_counts = [2, 3, 1, 3, 1, 5, 2, 1, 4, 2, 2, 2, 3, 4, 1, 7]
         cls.lc_test = Lightcurve(test_times, test_counts)
 
+        # A 2 Hz sinusoid of constant fractional rms on a mean count rate that
+        # doubles halfway through. With norm="frac" and a per-segment mean, the
+        # columns of the dynamical power spectrum should not change across the step.
+        dt = 1 / 64
+        tseg = 512.0
+        times = (np.arange(int(tseg / dt)) + 0.5) * dt
+        mean_rate = np.where(times < tseg / 2, 200.0, 400.0)
+        rate = mean_rate * (1 + 0.1 * np.sqrt(2) * np.sin(2 * np.pi * 2.0 * times))
+        counts = np.random.RandomState(12345).poisson(rate * dt).astype(float)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            cls.lc_step = Lightcurve(times, counts, dt=dt, skip_checks=True, gti=[[0, tseg]])
+
     def test_bad_args(self):
         with pytest.raises(TypeError, match=".must all be specified"):
             _ = DynamicalPowerspectrum(1)
@@ -1043,6 +1199,169 @@ class TestDynamicalPowerspectrum(object):
         assert np.allclose(new_dps.dyn_ps, rebin_dps, atol=0.00001)
         assert np.isclose(new_dps.df, df_new)
 
+    @pytest.mark.parametrize("use_common_mean", [True, False])
+    def test_use_common_mean_matches_averaged_powerspectrum(self, use_common_mean):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            dps = DynamicalPowerspectrum(
+                self.lc, segment_size=3, norm="frac", use_common_mean=use_common_mean
+            )
+            aps = AveragedPowerspectrum(
+                self.lc,
+                segment_size=3,
+                norm="frac",
+                use_common_mean=use_common_mean,
+                save_all=True,
+                silent=True,
+            )
+        assert np.allclose(dps.dyn_ps, np.array(aps.cs_all).T)
+
+    def test_use_common_mean_defaults_to_true(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            default = DynamicalPowerspectrum(self.lc, segment_size=3, norm="frac")
+            common = DynamicalPowerspectrum(
+                self.lc, segment_size=3, norm="frac", use_common_mean=True
+            )
+        assert default.use_common_mean is True
+        assert np.array_equal(default.dyn_ps, common.dyn_ps)
+        # The conversion to unnormalized powers is a single number in this case.
+        assert np.ndim(default.unnorm_conversion) == 0
+
+    def test_per_segment_mean_removes_count_rate_dependence(self):
+        lc = self.lc_step
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            common = DynamicalPowerspectrum(lc, segment_size=8.0, norm="frac")
+            per_segment = DynamicalPowerspectrum(
+                lc, segment_size=8.0, norm="frac", use_common_mean=False
+            )
+        jbin = np.argmin(np.abs(common.freq - 2.0))
+        first = common.time < lc.tseg / 2
+        ratio_common = common.dyn_ps[jbin, ~first].mean() / common.dyn_ps[jbin, first].mean()
+        ratio_seg = per_segment.dyn_ps[jbin, ~first].mean() / per_segment.dyn_ps[jbin, first].mean()
+        # With a common mean, the power follows the square of the rate ratio.
+        assert ratio_common > 3
+        # With a per-segment mean, the constant fractional rms is recovered.
+        assert np.isclose(ratio_seg, 1.0, atol=0.15)
+
+    def test_poisson_level_with_per_segment_mean(self):
+        meanrate = 300.0
+        dt = 1 / 64
+        tseg = 512.0
+        nbin = int(tseg / dt)
+        times = (np.arange(nbin) + 0.5) * dt
+        counts = np.random.RandomState(1234).poisson(meanrate * dt, size=nbin).astype(float)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            lc = Lightcurve(times, counts, dt=dt, skip_checks=True, gti=[[0, tseg]])
+            dps = DynamicalPowerspectrum(lc, segment_size=8.0, norm="frac", use_common_mean=False)
+        assert np.isclose(
+            dps.dyn_ps.mean(), poisson_level(norm="frac", meanrate=meanrate), rtol=0.05
+        )
+
+    def test_compute_rms_with_per_segment_mean(self):
+        lc = self.lc_step
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            common = DynamicalPowerspectrum(lc, segment_size=8.0, norm="frac")
+            per_segment = DynamicalPowerspectrum(
+                lc, segment_size=8.0, norm="frac", use_common_mean=False
+            )
+            rms_common, _ = common.compute_rms(1.5, 2.5)
+            rms_seg, _ = per_segment.compute_rms(
+                1.5, 2.5, poisson_noise_level=per_segment.poisson_power
+            )
+        rms_common = np.asarray(rms_common)
+        rms_seg = np.asarray(rms_seg)
+        first = common.time < lc.tseg / 2
+        # With a common mean, the rms is relative to the mean of the whole observation.
+        assert rms_common[~first].mean() / rms_common[first].mean() > 1.5
+        # With a per-segment mean, the injected 10% rms is recovered on both sides.
+        assert np.isclose(rms_seg[first].mean(), 0.1, atol=0.01)
+        assert np.isclose(rms_seg[~first].mean(), 0.1, atol=0.01)
+
+    def test_per_segment_conversion_follows_rebinning(self):
+        lc = self.lc_step
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            dps = DynamicalPowerspectrum(lc, segment_size=8.0, norm="frac", use_common_mean=False)
+            rebinned = dps.rebin_time(dt_new=32.0)
+            by_n = dps.rebin_by_n_intervals(4)
+            in_freq = dps.rebin_frequency(df_new=4 * dps.df)
+        assert np.size(dps.unnorm_conversion) == dps.dyn_ps.shape[1]
+        assert np.size(rebinned.unnorm_conversion) == rebinned.dyn_ps.shape[1]
+        assert np.size(by_n.unnorm_conversion) == by_n.dyn_ps.shape[1]
+        assert np.size(in_freq.unnorm_conversion) == in_freq.dyn_ps.shape[1]
+        assert np.size(rebinned.nphots_all) == rebinned.dyn_ps.shape[1]
+        assert np.size(by_n.nphots_all) == by_n.dyn_ps.shape[1]
+
+    @pytest.mark.parametrize("norm", ["frac", "abs", "leahy", "none"])
+    def test_per_segment_poisson_power(self, norm):
+        lc = self.lc_step
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            common = DynamicalPowerspectrum(lc, segment_size=8.0, norm=norm)
+            dps = DynamicalPowerspectrum(lc, segment_size=8.0, norm=norm, use_common_mean=False)
+        assert common.poisson_power is None
+        assert np.size(dps.poisson_power) == dps.dyn_ps.shape[1]
+        # Away from the 2 Hz signal, each column is at its own Poisson level,
+        # on both sides of the count rate step.
+        ratio = dps.dyn_ps[dps.freq > 8.0].mean(axis=0) / dps.poisson_power
+        first = dps.time < lc.tseg / 2
+        assert np.isclose(ratio[first].mean(), 1.0, atol=0.04)
+        assert np.isclose(ratio[~first].mean(), 1.0, atol=0.04)
+
+    def test_per_segment_nphots_from_averaged_powerspectrum(self):
+        lc = self.lc_step
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            aps = AveragedPowerspectrum(lc, segment_size=8.0, save_all=True, silent=True)
+        assert np.size(aps.nphots_all) == len(aps.cs_all)
+        assert np.isclose(np.mean(aps.nphots_all), aps.nphots)
+
+    def test_power_colors_use_per_segment_poisson_power(self):
+        lc = self.lc_step
+        freq_edges = [1 / 8, 1 / 2, 1, 4, 16]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            dps = DynamicalPowerspectrum(lc, segment_size=8.0, norm="frac", use_common_mean=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            default = dps.power_colors(freq_edges=freq_edges)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            explicit = [
+                dps.power_colors(freq_edges=freq_edges, poisson_power=level)
+                for level in dps.poisson_power
+            ]
+        for i, level_result in enumerate(explicit):
+            for default_values, values in zip(default, level_result):
+                assert np.isclose(default_values[i], values[i])
+
+    def test_power_colors_warns_with_single_poisson_power(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            dps = DynamicalPowerspectrum(
+                self.lc, segment_size=10, norm="frac", use_common_mean=False
+            )
+        with pytest.warns(UserWarning, match="a single level was given"):
+            dps.power_colors(freq_edges=[1 / 5, 1 / 2, 1, 2.0, 16.0], poisson_power=0.01)
+
+    @pytest.mark.parametrize("method", ["average", "sum"])
+    def test_per_segment_poisson_power_follows_rebinning(self, method):
+        lc = self.lc_step
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            dps = DynamicalPowerspectrum(lc, segment_size=8.0, norm="frac", use_common_mean=False)
+            rebinned = dps.rebin_time(dt_new=32.0, method=method)
+            by_n = dps.rebin_by_n_intervals(4, method=method)
+        expected = dps.poisson_power.reshape(-1, 4).sum(axis=1)
+        if method == "average":
+            expected /= 4
+        assert np.allclose(rebinned.poisson_power, expected)
+        assert np.allclose(by_n.poisson_power, expected)
+
     def test_shift_and_add(self):
         power_list = [[2, 5, 2, 2, 2], [1, 1, 5, 1, 1], [3, 3, 3, 5, 3]]
         power_list = np.array(power_list).T
@@ -1082,6 +1401,8 @@ class TestRoundTrip:
         cls.cs.power = rng.uniform(0, 10, 10)
         cls.cs.m = 2
         cls.cs.nphots1 = 34
+        cls.cs.df = 1
+        cls.cs.power_err = np.ones_like(cls.cs.power) * 0.5
 
     def _check_equal(self, so, new_so):
         for attr in ["freq", "power"]:
@@ -1120,6 +1441,67 @@ class TestRoundTrip:
         os.unlink("dummy.hdf5")
 
         self._check_equal(so, new_so)
+
+    @pytest.mark.skipif("not _HAS_FLX2XSP")
+    def test_save_as_xspec(self):
+        so = self.cs
+        try:
+            so.save_as_xspec("dummy_pow")
+            assert os.path.exists("dummy_pow.pha")
+            assert os.path.exists("dummy_pow.rsp")
+            assert os.path.exists("dummy_pow.txt")
+        finally:
+            for ext in [".pha", ".rsp", ".txt"]:
+                if os.path.exists(f"dummy_pow{ext}"):
+                    os.unlink(f"dummy_pow{ext}")
+
+    @pytest.mark.skipif("_HAS_FLX2XSP")
+    def test_save_as_xspec_fails_no_flx2xsp(self):
+        so = self.cs
+        try:
+            with pytest.raises(RuntimeError, match="install and initialize HEASOFT to save"):
+                so.save_as_xspec("dummy")
+        finally:
+            if os.path.exists("dummy.txt"):
+                os.unlink("dummy.txt")
+
+    def test_save_as_xspec_fails_no_df(self):
+        so = copy.deepcopy(self.cs)
+        so.df = None
+        with pytest.raises(
+            ValueError, match="powerspectrum object has no attribute 'df' or it is None."
+        ):
+            so.save_as_xspec("dummy")
+
+    def test_save_as_xspec_fails_no_power_err(self):
+        so = copy.deepcopy(self.cs)
+        so.power_err = None
+        with pytest.raises(
+            ValueError, match="powerspectrum object has no attribute 'power_err' or it is None."
+        ):
+            so.save_as_xspec("dummy")
+
+    @pytest.mark.skipif("_HAS_FLX2XSP")
+    def test_save_as_xspec_mock(self):
+        from unittest.mock import patch
+
+        def function(blah, root):
+            for fnames in [root + ".pha", root + ".rsp", root + ".txt"]:
+                with open(fnames, "w") as f:
+                    f.write("dummy")
+
+        so = self.cs
+
+        try:
+            with patch("stingray.io.run_flx2xsp", side_effect=function) as mock_flx2xsp:
+                so.save_as_xspec("dummy_pow")
+
+            for ext in [".pha", ".rsp", ".txt"]:
+                assert os.path.exists(f"dummy_pow{ext}")
+        finally:
+            for ext in [".pha", ".rsp", ".txt"]:
+                if os.path.exists(f"dummy_pow{ext}"):
+                    os.unlink(f"dummy_pow{ext}")
 
     @pytest.mark.parametrize("fmt", ["pickle"])
     def test_file_roundtrip(self, fmt):

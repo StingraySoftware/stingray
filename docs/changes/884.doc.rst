@@ -1,1 +1,0 @@
-Added `stingray.varenergyspectrum.CountSpectrum` to docs.
