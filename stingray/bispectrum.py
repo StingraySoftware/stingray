@@ -279,8 +279,7 @@ class CrossBispectrum(StingrayObject):
             if isinstance(data, EventList):
                 if dt is None:
                     raise ValueError(
-                        "If the input is an event list, the time resolution dt "
-                        "must be specified."
+                        "If the input is an event list, the time resolution dt must be specified."
                     )
             elif isinstance(data, Lightcurve):
                 pass

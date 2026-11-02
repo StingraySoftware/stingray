@@ -426,7 +426,7 @@ class TestLightcurve(object):
         """
         times = [1, 2, 3, 4, 5]
         counts = [2, 2, 2, 2, 2]
-        warn_str = "SIMON says: Stingray only uses poisson err_dist at " "the moment"
+        warn_str = "SIMON says: Stingray only uses poisson err_dist at the moment"
 
         with warnings.catch_warnings(record=True) as w:
             warnings.filterwarnings("always")

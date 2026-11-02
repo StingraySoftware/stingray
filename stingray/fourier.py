@@ -283,9 +283,7 @@ def poisson_level(norm="frac", meanrate=None, n_ph=None, backrate=0):
     bad_input = bad_input or (norm.lower() == "none" and n_ph is None)
 
     if bad_input:
-        raise ValueError(
-            f"Bad input parameters for norm {norm}: n_ph={n_ph}, " f"meanrate={meanrate}"
-        )
+        raise ValueError(f"Bad input parameters for norm {norm}: n_ph={n_ph}, meanrate={meanrate}")
 
     if norm == "abs":
         return 2.0 * meanrate
@@ -1968,7 +1966,7 @@ def get_flux_iterable_from_segments(
     """
     if fluxes is None and n_bin is None:
         raise ValueError(
-            "At least one between fluxes (if light curve) and " "n_bin (if events) has to be set"
+            "At least one between fluxes (if light curve) and n_bin (if events) has to be set"
         )
 
     binned = fluxes is not None

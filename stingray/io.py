@@ -421,7 +421,7 @@ def lcurve_from_fits(
             dt *= 86400
     except Exception:
         warnings.warn(
-            "Assuming that TIMEDEL is the median difference between the" " light curve times",
+            "Assuming that TIMEDEL is the median difference between the light curve times",
             AstropyUserWarning,
         )
         # Avoid NaNs
@@ -1122,12 +1122,12 @@ class FITSTimeseriesReader(object):
         raw_lower_edge = idx_edges[raw_min_idx]
         raw_upper_edge = idx_edges[raw_max_idx]
 
-        assert (
-            start - time_edges[raw_min_idx] >= 0
-        ), f"Start: {start}; {start - time_edges[raw_min_idx]} > 0"
-        assert (
-            time_edges[raw_max_idx] - stop >= 0
-        ), f"Stop: {stop}; {time_edges[raw_max_idx] - stop} < 0"
+        assert start - time_edges[raw_min_idx] >= 0, (
+            f"Start: {start}; {start - time_edges[raw_min_idx]} > 0"
+        )
+        assert time_edges[raw_max_idx] - stop >= 0, (
+            f"Stop: {stop}; {time_edges[raw_max_idx] - stop} < 0"
+        )
 
         with fits_open_including_remote(self.fname) as hdulist:
             filtered_times = hdulist[self.hduname].data[self.time_column][

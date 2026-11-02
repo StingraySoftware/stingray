@@ -92,9 +92,9 @@ class TestGTI(object):
         gti = np.array([[1, 2], [4, 5], [7, 10], [11, 11.2], [12.2, 13.2]])
         bti = get_btis(gti)
 
-        assert np.allclose(
-            bti, [[2, 4], [5, 7], [10, 11], [11.2, 12.2]]
-        ), "BTI is wrong!, %s" % repr(bti)
+        assert np.allclose(bti, [[2, 4], [5, 7], [10, 11], [11.2, 12.2]]), (
+            "BTI is wrong!, %s" % repr(bti)
+        )
 
     def test_bti_start_and_stop(self):
         """Test the inversion of GTIs."""

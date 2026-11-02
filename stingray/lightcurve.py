@@ -278,7 +278,7 @@ class Lightcurve(StingrayTimeseries):
         if err_dist.lower() not in valid_statistics:
             # err_dist set can be increased with other statistics
             raise StingrayError(
-                "Statistic not recognized." "Please select one of these: ",
+                "Statistic not recognized.Please select one of these: ",
                 "{}".format(valid_statistics),
             )
         elif not err_dist.lower() == "poisson":
@@ -598,8 +598,7 @@ class Lightcurve(StingrayTimeseries):
             assert np.all(diff < self.dt / 100)
         except (ValueError, AssertionError):
             raise ValueError(
-                "GTI-filtered time arrays of both light curves "
-                "must be of same dimension and equal."
+                "GTI-filtered time arrays of both light curves must be of same dimension and equal."
             )
 
         new_time = self.time[mask_self]
@@ -618,9 +617,7 @@ class Lightcurve(StingrayTimeseries):
         # More conditions can be implemented for other statistics
         else:
             raise StingrayError(
-                "Statistics not recognized."
-                " Please use one of these: "
-                "{}".format(valid_statistics)
+                "Statistics not recognized. Please use one of these: {}".format(valid_statistics)
             )
 
         lc_new = Lightcurve(
@@ -773,7 +770,7 @@ class Lightcurve(StingrayTimeseries):
                 lc._counts_err = self._counts_err[start:stop:step]
             return lc
         else:
-            raise IndexError("The index must be either an integer or a slice " "object !")
+            raise IndexError("The index must be either an integer or a slice object !")
 
     def baseline(self, lam, p, niter=10, offset_correction=False):
         """Calculate the baseline of the light curve, accounting for GTIs.
@@ -935,12 +932,12 @@ class Lightcurve(StingrayTimeseries):
         """
 
         if f is None and dt_new is None:
-            raise ValueError("You need to specify at least one between f and " "dt_new")
+            raise ValueError("You need to specify at least one between f and dt_new")
         elif f is not None:
             dt_new = f * self.dt
 
         if dt_new < self.dt:
-            raise ValueError("New time resolution must be larger than " "old time resolution!")
+            raise ValueError("New time resolution must be larger than old time resolution!")
 
         bin_time, bin_counts, bin_err = [], [], []
         gti_new = []
@@ -1048,16 +1045,16 @@ class Lightcurve(StingrayTimeseries):
             valid_err = False
 
             if self.err_dist.lower() != other.err_dist.lower():
-                simon("Lightcurves have different statistics!" "We are setting the errors to zero.")
+                simon("Lightcurves have different statistics!We are setting the errors to zero.")
 
             elif self.err_dist.lower() in valid_statistics:
                 valid_err = True
             # More conditions can be implemented for other statistics
             else:
                 raise StingrayError(
-                    "Statistics not recognized."
-                    " Please use one of these: "
-                    "{}".format(valid_statistics)
+                    "Statistics not recognized. Please use one of these: {}".format(
+                        valid_statistics
+                    )
                 )
 
             from collections import Counter
@@ -1398,7 +1395,7 @@ class Lightcurve(StingrayTimeseries):
             from lightkurve import LightCurve as lk
         except ImportError:
             raise ImportError(
-                "You need to install Lightkurve to use " "the Lightcurve.to_lightkurve() method."
+                "You need to install Lightkurve to use the Lightcurve.to_lightkurve() method."
             )
         time = Time(self.time / 86400 + self.mjdref, format="mjd", scale="utc")
         return lk(time=time, flux=self.counts, flux_err=self.counts_err)
@@ -1550,7 +1547,7 @@ class Lightcurve(StingrayTimeseries):
             input_counts = False
         else:
             raise ValueError(
-                "Input timeseries must contain at least a " "`counts` or a `countrate` column"
+                "Input timeseries must contain at least a `counts` or a `countrate` column"
             )
 
         kwargs.update(

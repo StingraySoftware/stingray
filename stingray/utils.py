@@ -11,10 +11,12 @@ from collections.abc import Iterable
 
 import numpy as np
 import scipy
+from scipy.stats import median_abs_deviation
 from numpy import histogram as histogram_np
 from numpy import histogram2d as histogram2d_np
 from numpy import histogramdd as histogramdd_np
 from astropy.io import fits
+from .exceptions import StingrayWarning
 from .loggingconfig import setup_logger
 
 logger = setup_logger()
@@ -46,14 +48,27 @@ except ImportError:
 # If numba is installed, import jit. Otherwise, define an empty decorator with
 # the same name.
 
+
+def _numba_import_warning(error):
+    """Explain that numba is not being used, quoting the error that says why.
+
+    Numba usually lags new NumPy releases, so an *installed* numba often fails to
+    import with something like "Numba needs NumPy 2.4 or less". Reporting that as
+    a missing package sends users looking in the wrong place, so the original
+    error is part of the message.
+    """
+    return (
+        f"Numba is not being used, so some functionality might be slower. "
+        f"Importing it failed with: {error}"
+    )
+
+
 try:
     from numba import jit
 
     HAS_NUMBA = True
-except ImportError:
-    warnings.warn(
-        "The recommended numba package is not installed. Some functionality might be slower."
-    )
+except ImportError as e:
+    warnings.warn(_numba_import_warning(e))
     HAS_NUMBA = False
     NumbaValueError = NumbaNotImplementedError = TypingError = Exception
 
@@ -97,35 +112,46 @@ except ImportError:
         return a
 
 
-try:
-    from statsmodels.robust import mad as mad  # pylint: disable=unused-import
-except ImportError:
+def mad(data, c=0.6744897501960817, axis=0):
+    """
+    Median Absolute Deviation (MAD) along an axis.
 
-    def mad(data, c=0.6745, axis=None):
-        """
-        Mean Absolute Deviation (MAD) along an axis.
+    Equivalent to ``statsmodels.robust.mad``, which this used to be imported
+    from. Importing statsmodels costs about half a second, and this is the only
+    thing stingray needed from it at import time. Extended-precision input is
+    handled better than statsmodels handled it: see the note below.
 
-        Straight from statsmodels's source code, adapted
+    Parameters
+    ----------
+    data : iterable
+        The data along which to calculate the MAD
 
-        Parameters
-        ----------
-        data : iterable
-            The data along which to calculate the MAD
+    c : float, optional
+        The normalization constant, ``scipy.stats.norm.ppf(3/4.)``. Dividing by
+        it makes the result a consistent estimator of the standard deviation of
+        normally distributed data.
 
-        c : float, optional
-            The normalization constant. Defined as
-            ``scipy.stats.norm.ppf(3/4.)``, which is approximately ``.6745``.
+    axis : int or None, optional, default ``0``
+        Axis along which to calculate ``mad``. Pass ``None`` to calculate it
+        over the flattened array.
 
-        axis : int, optional, default ``0``
-            Axis along which to calculate ``mad``. Default is ``0``, can also
-            be ``None``
-        """
-        data = np.asanyarray(data)
-        if axis is not None:
-            center = np.apply_over_axes(np.median, data, axis)
-        else:
-            center = np.median(data)
-        return np.median((np.fabs(data - center)) / c, axis=axis)
+    Examples
+    --------
+    >>> assert np.isclose(mad([1.0, 1.0, 2.0, 2.0]), 0.7413011092528009)
+
+    Notes
+    -----
+    The medians are taken in at least double precision, as statsmodels took them.
+    Left in single precision they are visibly worse: for float32 samples around
+    1e8, where the spacing between representable values is 8, the result comes out
+    half as large again. Promoting rather than casting to float64 means that input
+    carrying *more* than double precision keeps it, which statsmodels did not do --
+    it reduced float128 to float64 and so threw away the very precision the caller
+    had gone to the trouble of providing.
+    """
+    data = np.asanyarray(data)
+    data = data.astype(np.promote_types(data.dtype, np.float64), copy=False)
+    return median_abs_deviation(data, axis=axis, scale=c)
 
 
 __all__ = [
@@ -486,9 +512,11 @@ def simon(message, **kwargs):
         The message that is thrown
 
     kwargs : dict
-        The rest of the arguments that are passed to ``warnings.warn``
+        The rest of the arguments that are passed to ``warnings.warn``.
+        ``category`` defaults to :class:`stingray.exceptions.StingrayWarning`.
     """
 
+    kwargs.setdefault("category", StingrayWarning)
     warnings.warn("SIMON says: {0}".format(message), **kwargs)
 
 
@@ -564,9 +592,7 @@ def rebin_data(x, y, dx_new, yerr=None, method="sum", dx=None):
         dx_old = np.array([dx])
 
     if np.any(dx_new < dx_old):
-        raise ValueError(
-            "New frequency resolution must be larger than " "old frequency resolution."
-        )
+        raise ValueError("New frequency resolution must be larger than old frequency resolution.")
 
     # left and right bin edges
     # assumes that the points given in `x` correspond to
@@ -615,8 +641,7 @@ def rebin_data(x, y, dx_new, yerr=None, method="sum", dx=None):
 
     else:
         raise ValueError(
-            "Method for summing or averaging not recognized. "
-            "Please enter either 'sum' or 'mean'."
+            "Method for summing or averaging not recognized. Please enter either 'sum' or 'mean'."
         )
 
     tseg = x[-1] - x[0] + dx_old[-1]
@@ -1048,11 +1073,13 @@ def _als(y, lam, p, niter=10):
         (np.arange(0, L - 2).T, np.arange(0, L - 2).T + 1, np.arange(0, L - 2).T + 2)
     ).T.flatten()
     data = np.tile([1, -2, 1], L - 2)
-    D = sparse.csc_matrix((data, indices, indptr), shape=(L, L - 2))
+    D = sparse.csc_array((data, indices, indptr), shape=(L, L - 2))
 
     w = np.ones(L)
     for _ in range(niter):
-        W = sparse.spdiags(w, 0, L, L)
+        # ``dia_array`` rather than ``diags_array``, which only exists from
+        # scipy 1.11 and this package still supports 1.10.
+        W = sparse.dia_array((w[np.newaxis, :], [0]), shape=(L, L))
         Z = W + lam * D.dot(D.transpose())
         z = sparse.linalg.spsolve(Z, w * y)
         w = p * (y > z) + (1 - p) * (y < z)
@@ -1161,7 +1188,7 @@ def baseline_als(x, y, lam=None, p=None, niter=10, return_baseline=False, offset
         if len(x[good]) < 10:
             good = np.ones(len(x), dtype=bool)
             warnings.warn(
-                "Too few bins to perform baseline offset correction" " precisely. Beware of results"
+                "Too few bins to perform baseline offset correction precisely. Beware of results"
             )
         offset = offset_fit(x[good], ysub[good], 0)
 
@@ -2162,8 +2189,7 @@ def _wrap_histograms(numba_func, weight_numba_func, np_func, *args, **kwargs):
         return weight_numba_func(*args, weights=weights, use_memmap=use_memmap, tmp=tmp, **kwargs)
     except (NumbaValueError, NumbaNotImplementedError, TypingError, TypeError):
         warnings.warn(
-            "Cannot calculate the histogram with the numba implementation. "
-            "Trying standard numpy."
+            "Cannot calculate the histogram with the numba implementation. Trying standard numpy."
         )
 
         return np_func(*args, weights=weights, **kwargs)[0]

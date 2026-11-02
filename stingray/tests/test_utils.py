@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 import stingray.utils as utils
 from stingray.utils import HAS_NUMBA
+from stingray.exceptions import StingrayWarning
 from scipy.stats import sem
 
 np.random.seed(20150907)
@@ -602,3 +603,64 @@ def test_numba_compiled_or_mocked():
     bla_1()
     bla_2()
     bla_3(1.0)
+
+
+def test_numba_import_warning_quotes_the_error():
+    """An installed Numba that fails to load must not be reported as missing: the
+    warning has to carry the real import error, e.g. the NumPy version mismatch."""
+    message = utils._numba_import_warning(ImportError("Numba needs NumPy 2.4 or less"))
+    assert "Numba needs NumPy 2.4 or less" in message
+
+
+def test_mad_matches_statsmodels():
+    """``mad`` is computed locally now instead of imported from statsmodels, so check it
+    still returns bit-for-bit what statsmodels did, for 1-D and 2-D data on each axis and
+    for float32, whose medians statsmodels took in double precision."""
+    statsmodels_mad = pytest.importorskip("statsmodels.robust").mad
+    rng = np.random.default_rng(20150907)
+    # Around 1e8 the spacing between float32 values is 8, so taking the medians in
+    # float32 rather than double changes this answer from 11.86 to 17.79.
+    float32_data = np.array([100000000, 100000008, 100000016, 100000040], dtype=np.float32)
+    for data in (rng.normal(size=101), rng.normal(size=(17, 13)), float32_data):
+        for axis in (0, 1, None):
+            if axis == 1 and data.ndim == 1:
+                continue
+            assert np.array_equal(utils.mad(data, axis=axis), statsmodels_mad(data, axis=axis))
+
+
+@pytest.mark.skipif(
+    np.dtype(np.longdouble).itemsize <= np.dtype(np.float64).itemsize,
+    reason="this platform's longdouble is no wider than float64",
+)
+def test_mad_keeps_extended_precision():
+    """Input carrying more than double precision must keep it. statsmodels reduced
+    float128 to float64, and simply casting to float64 would reintroduce that loss."""
+    # At 1e18 the spacing between float64 values is 128, so float64 cannot tell these
+    # four apart at all and their MAD collapses to zero.
+    data = np.longdouble(10) ** 18 + np.array([0, 1, 2, 4], dtype=np.longdouble)
+    result = utils.mad(data)
+
+    assert np.asarray(result).dtype == np.dtype(np.longdouble)
+    assert result > 1.0
+    assert utils.mad(data.astype(np.float64)) == 0.0
+
+
+def test_mad_does_not_come_from_statsmodels():
+    """Importing statsmodels just for ``mad`` cost half a second at every ``import
+    stingray``, so the local implementation has to stay in place."""
+    assert utils.mad.__module__ == "stingray.utils"
+
+
+def test_simon_warns_a_stingray_warning():
+    """Stingray's own warnings carry a class of their own, so they can be silenced
+    without silencing every other UserWarning in the process."""
+    with pytest.warns(StingrayWarning, match="SIMON says: beware"):
+        utils.simon("beware")
+
+
+def test_stingray_warning_still_matches_userwarning_filters():
+    """StingrayWarning subclasses UserWarning, so filters and ``pytest.warns`` calls
+    written before it existed keep working."""
+    assert issubclass(StingrayWarning, UserWarning)
+    with pytest.warns(UserWarning, match="SIMON says: beware"):
+        utils.simon("beware")

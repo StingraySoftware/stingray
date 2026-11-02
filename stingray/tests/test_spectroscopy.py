@@ -11,7 +11,7 @@ from stingray import (
 )
 from stingray.utils import fft
 from stingray.modeling import fit_lorentzians, fit_crossspectrum, fit_powerspectrum
-from stingray.filters import Optimal1D, Window1D
+from stingray.filters import Optimal1D
 from astropy.modeling import models
 from astropy.table import Table, Column
 

@@ -11,7 +11,7 @@ submodules:
 build:
   os: ubuntu-22.04
   tools:
-    python: "3.10"
+    python: "3.11"
   jobs:
     pre_install:
       - git update-index --assume-unchanged docs/conf.py

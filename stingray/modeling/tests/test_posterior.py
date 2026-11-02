@@ -60,8 +60,8 @@ class TestSetPrior(object):
 
     def test_set_prior_runs(self):
         p_alpha = lambda alpha: ((-1.0 <= alpha) & (alpha <= 5.0)) / 6.0
-        p_amplitude = (
-            lambda amplitude: ((-10 <= np.log(amplitude)) & ((np.log(amplitude) <= 10.0))) / 20.0
+        p_amplitude = lambda amplitude: (
+            ((-10 <= np.log(amplitude)) & (np.log(amplitude) <= 10.0)) / 20.0
         )
 
         priors = {"alpha": p_alpha, "amplitude": p_amplitude}
@@ -69,8 +69,8 @@ class TestSetPrior(object):
 
     def test_prior_executes_correctly(self):
         p_alpha = lambda alpha: ((-1.0 <= alpha) & (alpha <= 5.0)) / 6.0
-        p_amplitude = (
-            lambda amplitude: ((-10 <= np.log(amplitude)) & ((np.log(amplitude) <= 10.0))) / 20.0
+        p_amplitude = lambda amplitude: (
+            ((-10 <= np.log(amplitude)) & (np.log(amplitude) <= 10.0)) / 20.0
         )
 
         priors = {"alpha": p_alpha, "amplitude": p_amplitude}
@@ -80,8 +80,8 @@ class TestSetPrior(object):
 
     def test_prior_returns_logmin_outside_prior_range(self):
         p_alpha = lambda alpha: ((-1.0 <= alpha) & (alpha <= 5.0)) / 6.0
-        p_amplitude = (
-            lambda amplitude: ((-10 <= np.log(amplitude)) & ((np.log(amplitude) <= 10.0))) / 20.0
+        p_amplitude = lambda amplitude: (
+            ((-10 <= np.log(amplitude)) & (np.log(amplitude) <= 10.0)) / 20.0
         )
 
         priors = {"alpha": p_alpha, "amplitude": p_amplitude}

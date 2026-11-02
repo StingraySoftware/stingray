@@ -48,7 +48,7 @@ logger = setup_logger()
 def gti_len(gti):
     """Deprecated, will be removed in version 2.0. Use get_total_gti_length."""
     warnings.warn(
-        "This function is deprecated. Use get_total_gti_length " "instead", DeprecationWarning
+        "This function is deprecated. Use get_total_gti_length instead", DeprecationWarning
     )
     return get_total_gti_length(gti, minlen=0)
 
@@ -330,7 +330,7 @@ def check_gtis(gti):
 
     # Check that GTIs are well-behaved
     if not np.all(gti_end >= gti_start):
-        raise ValueError("The GTI end times must be larger than the " "GTI start times.")
+        raise ValueError("The GTI end times must be larger than the GTI start times.")
 
     # Check that there are no overlaps in GTIs
     if not np.all(gti_start[1:] >= gti_end[:-1]):
@@ -449,7 +449,7 @@ def create_gti_mask(
         lengths = gtis[:, 1] - gtis[:, 0]
         good = lengths >= np.max(min_length, dt)
         if np.all(~good):
-            warnings.warn("No GTIs longer than " "min_length {}".format(min_length))
+            warnings.warn("No GTIs longer than min_length {}".format(min_length))
             return mask
         gtis = gtis[good]
 
@@ -621,7 +621,7 @@ def create_gti_from_condition(time, condition, safe_interval=0, dt=None):
     """
 
     if len(time) != len(condition):
-        raise StingrayError("The length of the condition and " "time arrays must be the same.")
+        raise StingrayError("The length of the condition and time arrays must be the same.")
 
     idxs = contiguous_regions(condition)
 
@@ -830,7 +830,7 @@ def get_btis(gtis, start_time=None, stop_time=None):
     # Check GTIs
     if len(gtis) == 0:
         if start_time is None or stop_time is None:
-            raise ValueError("Empty GTI and no valid start_time " "and stop_time. BAD!")
+            raise ValueError("Empty GTI and no valid start_time and stop_time. BAD!")
 
         return np.asanyarray([[start_time, stop_time]])
     gtis = np.asanyarray(gtis)

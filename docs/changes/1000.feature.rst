@@ -1,0 +1,12 @@
+Stingray's "SIMON says" warnings are now raised as ``StingrayWarning`` rather than as
+plain ``UserWarning``, so they can be silenced on their own::
+
+    import warnings
+    from stingray.exceptions import StingrayWarning
+
+    warnings.filterwarnings("ignore", category=StingrayWarning)
+
+``StingrayWarning`` subclasses ``UserWarning``, so existing filters and
+``pytest.warns`` calls written against ``UserWarning`` keep matching. Note that this
+covers the warnings raised through ``simon()``; the other warnings Stingray raises
+directly through ``warnings.warn`` are still plain ``UserWarning`` for now.

@@ -769,8 +769,9 @@ class ExcessVarianceSpectrum(VarEnergySpectrum):
         accepted_normalizations = ["fvar", "none"]
         if normalization not in accepted_normalizations:
             raise ValueError(
-                "The normalization of excess variance must be "
-                "one of {}".format(accepted_normalizations)
+                "The normalization of excess variance must be one of {}".format(
+                    accepted_normalizations
+                )
             )
 
         VarEnergySpectrum.__init__(

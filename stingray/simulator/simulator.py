@@ -229,7 +229,7 @@ class Simulator(object):
         channel = [lc for lc in self.channels if lc[0] == channel]
 
         if len(channel) == 0:
-            raise KeyError("This channel does not exist or has already been " "deleted.")
+            raise KeyError("This channel does not exist or has already been deleted.")
         else:
             index = self.channels.index(channel[0])
             del self.channels[index]
@@ -242,9 +242,7 @@ class Simulator(object):
         channels = [lc for lc in self.channels if lc[0] in channels]
 
         if len(channels) != n:
-            raise KeyError(
-                "One of more of the channels do not exist or have " "already been deleted."
-            )
+            raise KeyError("One of more of the channels do not exist or have already been deleted.")
         else:
             indices = [self.channels.index(channel) for channel in channels]
             for i in sorted(indices, reverse=True):

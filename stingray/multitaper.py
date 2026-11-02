@@ -146,9 +146,7 @@ class Multitaper(Powerspectrum):
         lombscargle=False,
     ):
         if lc is not None:
-            warnings.warn(
-                "The lc keyword is now deprecated. Use data " "instead", DeprecationWarning
-            )
+            warnings.warn("The lc keyword is now deprecated. Use data instead", DeprecationWarning)
         if data is None:
             data = lc
 
@@ -162,7 +160,7 @@ class Multitaper(Powerspectrum):
 
         if isinstance(data, EventList) and dt is None:
             raise ValueError(
-                "If using event lists, please specify " "the bin time to generate lightcurves."
+                "If using event lists, please specify the bin time to generate lightcurves."
             )
 
         if data is None:
@@ -242,7 +240,7 @@ class Multitaper(Powerspectrum):
         check_gtis(self.gti)
 
         if self.gti.shape[0] != 1:
-            raise TypeError("Non-averaged Spectra need " "a single Good Time Interval")
+            raise TypeError("Non-averaged Spectra need a single Good Time Interval")
 
         lc = lc.split_by_gti()[0]
 
@@ -332,7 +330,7 @@ class Multitaper(Powerspectrum):
         """
 
         if NW < 0.5:
-            raise ValueError("The value of normalized half-bandwidth " "should be greater than 0.5")
+            raise ValueError("The value of normalized half-bandwidth should be greater than 0.5")
 
         Kmax = int(2 * NW)
 
@@ -343,13 +341,13 @@ class Multitaper(Powerspectrum):
         if low_bias:
             selected_tapers = eigvals > 0.9
             if not selected_tapers.any():
-                simon("Could not properly use low_bias, " "keeping the lowest-bias taper")
+                simon("Could not properly use low_bias, keeping the lowest-bias taper")
                 selected_tapers = [np.argmax(eigvals)]
 
             eigvals = eigvals[selected_tapers]
             dpss_tapers = dpss_tapers[selected_tapers, :]
 
-        print(f"Using {len(eigvals)} DPSS windows for " "multitaper spectrum estimator")
+        print(f"Using {len(eigvals)} DPSS windows for multitaper spectrum estimator")
 
         data_multitaper = lc.counts - np.mean(lc.counts)  # De-mean
         data_multitaper = np.tile(data_multitaper, (len(eigvals), 1))
@@ -645,7 +643,7 @@ class Multitaper(Powerspectrum):
         """
 
         if f is None and df is None:
-            raise ValueError("You need to specify at least one between f and " "df")
+            raise ValueError("You need to specify at least one between f and df")
         elif f is not None:
             df = f * self.df
 
@@ -731,7 +729,7 @@ class Multitaper(Powerspectrum):
         lc.apply_gtis()  # Remove bins with missing data
 
         if NW < 0.5:
-            raise ValueError("The value of normalized half-bandwidth " "should be greater than 0.5")
+            raise ValueError("The value of normalized half-bandwidth should be greater than 0.5")
 
         Kmax = int(2 * NW)
 
@@ -742,13 +740,13 @@ class Multitaper(Powerspectrum):
         if low_bias:
             selected_tapers = eigvals > 0.9
             if not selected_tapers.any():
-                simon("Could not properly use low_bias, " "keeping the lowest-bias taper")
+                simon("Could not properly use low_bias, keeping the lowest-bias taper")
                 selected_tapers = [np.argmax(eigvals)]
 
             eigvals = eigvals[selected_tapers]
             dpss_tapers = dpss_tapers[selected_tapers, :]
 
-        print(f"Using {len(eigvals)} DPSS windows for " "multitaper spectrum estimator")
+        print(f"Using {len(eigvals)} DPSS windows for multitaper spectrum estimator")
 
         dpss_data_interpolated = []
 
