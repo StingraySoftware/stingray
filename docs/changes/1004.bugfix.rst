@@ -1,0 +1,4 @@
+``z2_n_logprobability`` and ``p_multitrial_from_single_trial`` now return a result with the same
+shape as their input on every supported version of NumPy. They converted their input with
+``np.double`` and ``np.longdouble``, which collapse a size-1 array to a scalar on NumPy 1.24 but
+not on NumPy 2.
