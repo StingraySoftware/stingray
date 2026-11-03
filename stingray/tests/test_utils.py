@@ -683,6 +683,17 @@ def test_lazy_vectorize_results():
     assert np.allclose(lazy_log(np.array([1.0, 2.0]), 0.1), [np.log(0.1), 2 * np.log(0.1)])
 
 
+def test_lazy_vectorize_returns_a_scalar_for_scalar_inputs():
+    """A ufunc returns a scalar when every input is a scalar, and the np.vectorize fallback used
+    without Numba has to behave the same way.
+
+    This test fails if the fallback returns a zero-dimensional array instead.
+    """
+    res = _make_lazy_log()(1.0, 0.1)
+    assert np.ndim(res) == 0
+    assert not isinstance(res, np.ndarray)
+
+
 @pytest.mark.skipif("not HAS_NUMBA")
 class TestLazyVectorize:
     def test_not_compiled_before_first_call(self):

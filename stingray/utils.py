@@ -104,7 +104,10 @@ except ImportError as e:
             vectorized = np.vectorize(func)
 
             def wrapper(*args):
-                return vectorized(*[_to_double_precision(arg) for arg in args])
+                result = vectorized(*[_to_double_precision(arg) for arg in args])
+                # A ufunc returns a scalar when every input is a scalar; np.vectorize
+                # returns a zero-dimensional array instead.
+                return result[()] if result.ndim == 0 else result
 
             wrapper.__name__ = func.__name__
             wrapper.__doc__ = func.__doc__
