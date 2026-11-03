@@ -264,7 +264,7 @@ def p_multitrial_from_single_trial(p1, n):
     """
     logpn = _logp_multitrial_from_single_logp(np.log(p1).astype(np.double), n)
 
-    return np.exp(np.longdouble(logpn))
+    return np.exp(np.asarray(logpn, dtype=np.longdouble))
 
 
 @lazy_vectorize([float64(float64, int64)], nopython=True, cache=True)
@@ -597,7 +597,7 @@ def z2_n_logprobability(z2, n, ntrial=1, n_summed_spectra=1):
         The probability that the Z^2_n value has been produced by noise
     """
 
-    epsilon_1 = chi2_logp(np.double(z2 * n_summed_spectra), 2 * n * n_summed_spectra)
+    epsilon_1 = chi2_logp(np.asarray(z2 * n_summed_spectra, dtype=float), 2 * n * n_summed_spectra)
     epsilon = _logp_multitrial_from_single_logp(epsilon_1, ntrial)
     return epsilon
 

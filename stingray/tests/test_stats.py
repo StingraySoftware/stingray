@@ -375,3 +375,22 @@ def test_z2_n_logprobability_many_trials():
     logp_int64 = z2_n_logprobability(100.0, 2, ntrial=np.int64(3_000_000_000))
     assert np.isfinite(logp)
     assert logp == logp_int64
+
+
+@pytest.mark.parametrize(
+    "func,value,args",
+    [
+        (z2_n_logprobability, 100.0, (2,)),
+        (p_multitrial_from_single_trial, 0.01, (10,)),
+    ],
+)
+def test_stats_functions_preserve_the_shape_of_their_input(func, value, args):
+    """``np.double`` and ``np.longdouble`` collapse a size-1 array to a scalar on NumPy 1.24 but
+    not on NumPy 2, so these functions have to convert with ``np.asarray`` instead.
+
+    This test can only fail on the oldest supported NumPy, which is what the
+    ``py311-test-oldestdeps`` job is for.
+    """
+    assert np.ndim(func(value, *args)) == 0
+    assert np.shape(func(np.array([value]), *args)) == (1,)
+    assert np.shape(func(np.array([value, value * 1.2]), *args)) == (2,)
