@@ -316,6 +316,9 @@ class TestCoherence(object):
         res = check_powers_for_intrinsic_coherence(pow1, pow2, pow1_noise, pow2_noise, n_ave, 3.0)
         assert np.all(res == np.array([True, False, False]))
 
+        scalar_res = check_powers_for_intrinsic_coherence(10, 10, pow1_noise, pow2_noise, 1, 3.0)
+        assert scalar_res is True or scalar_res == np.bool_(True)
+
 
 class TestFourier(object):
     @classmethod

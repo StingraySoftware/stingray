@@ -1,0 +1,1 @@
+Stingray can now be imported with newer Numba versions that no longer accept ``bool(...)`` in vectorized function signatures.
