@@ -368,7 +368,10 @@ def test_z2_n_logprobability_many_trials():
 
     This test fails if int32 signatures are listed before int64 ones again.
     """
-    logp = z2_n_logprobability(np.array([100.0]), 2, ntrial=3_000_000_000)
-    logp_int64 = z2_n_logprobability(np.array([100.0]), 2, ntrial=np.int64(3_000_000_000))
-    assert np.isfinite(logp[0])
-    assert logp[0] == logp_int64[0]
+    # A scalar, not an array: z2_n_logprobability calls np.double, which collapses a size-1
+    # array to a scalar on NumPy 1.24 but not on NumPy 2, so the result's shape is not the
+    # same across the supported range of NumPy versions.
+    logp = z2_n_logprobability(100.0, 2, ntrial=3_000_000_000)
+    logp_int64 = z2_n_logprobability(100.0, 2, ntrial=np.int64(3_000_000_000))
+    assert np.isfinite(logp)
+    assert logp == logp_int64
