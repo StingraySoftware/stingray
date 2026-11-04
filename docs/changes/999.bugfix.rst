@@ -1,0 +1,1 @@
+Fixed vertical hue lines in power-color plots (hues of 45 and 225 degrees with the default reference angle), and state labels in ``plot_power_colors`` now follow a custom ``ref_angle``.

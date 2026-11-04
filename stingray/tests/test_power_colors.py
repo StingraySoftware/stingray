@@ -112,3 +112,33 @@ class TestPowerColor(object):
             configuration=self.configuration,
             polar=polar,
         )
+
+
+@pytest.mark.parametrize("hue, direction", [(45, 1), (225, -1)])
+def test_hue_line_data_vertical(hue, direction):
+    # With the default ref_angle, hues of 45 and 225 deg give vertical lines
+    from stingray.power_colors import _hue_line_data
+
+    center = [1.0, 2.0]
+    x, y = _hue_line_data(center, np.radians(hue))
+    assert np.allclose(x, center[0])
+    assert np.isclose(y[0], center[1])
+    assert np.isclose(y[-1], center[1] + 4 * direction)
+
+
+def test_trace_states_labels_follow_ref_angle():
+    import matplotlib.pyplot as plt
+    from stingray.power_colors import _trace_states
+
+    configuration = DEFAULT_COLOR_CONFIGURATION.copy()
+    configuration["ref_angle"] = 0.0
+    fig, ax = plt.subplots()
+    _trace_states(ax, configuration=configuration)
+    center = [np.log10(c) for c in configuration["center"]]
+    for txt in ax.texts:
+        hue0, hue1 = configuration["state_definitions"][txt.get_text()]["hue_limits"]
+        angle = -np.radians((hue0 + hue1) / 2)
+        x, y = txt.get_position()
+        assert np.isclose(x, center[0] + 1.4 * np.cos(angle))
+        assert np.isclose(y, center[1] + 1.4 * np.sin(angle))
+    plt.close(fig)
