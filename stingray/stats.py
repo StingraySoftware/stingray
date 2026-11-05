@@ -4,7 +4,7 @@ from collections.abc import Iterable
 import numpy as np
 from scipy import stats
 from stingray.utils import simon
-from stingray.utils import vectorize, float64, float32, int32, int64
+from stingray.utils import lazy_vectorize, float64, int64
 
 __all__ = [
     "p_multitrial_from_single_trial",
@@ -37,7 +37,7 @@ __all__ = [
 ]
 
 
-@vectorize([float64(float32), float64(float64)], nopython=True)
+@lazy_vectorize([float64(float64)], nopython=True, cache=True)
 def _extended_equiv_gaussian_Nsigma(logp):
     """Equivalent gaussian sigma for small log-probability.
 
@@ -121,7 +121,7 @@ def equivalent_gaussian_Nsigma(p):
     return equivalent_gaussian_Nsigma_from_logp(np.log(p))
 
 
-@vectorize([float64(float32, float32), float64(float64, float64)], nopython=True)
+@lazy_vectorize([float64(float64, float64)], nopython=True, cache=True)
 def _log_asymptotic_incomplete_gamma(a, z):
     """Asymptotic natural log of incomplete gamma function.
 
@@ -146,7 +146,7 @@ def _log_asymptotic_incomplete_gamma(a, z):
     return (a - 1.0) * np.log(z) - z + np.log(x)
 
 
-@vectorize([float64(float32), float64(float64)], nopython=True)
+@lazy_vectorize([float64(float64)], nopython=True, cache=True)
 def _log_asymptotic_gamma(z):
     """Natural log of the Gamma function in its asymptotic limit.
 
@@ -199,15 +199,7 @@ def chi2_logp(chi2, dof):
     return stats.chi2.logsf(chi2, dof)
 
 
-@vectorize(
-    [
-        float64(float32, int32),
-        float64(float32, int64),
-        float64(float64, int32),
-        float64(float64, int64),
-    ],
-    nopython=True,
-)
+@lazy_vectorize([float64(float64, int64)], nopython=True, cache=True)
 def _logp_multitrial_from_single_logp(logp1, n):
     """Calculate a multi-trial p-value from the log of a single-trial one.
 
@@ -274,15 +266,7 @@ def p_multitrial_from_single_trial(p1, n):
     return np.exp(np.longdouble(logpn))
 
 
-@vectorize(
-    [
-        float64(float32, int32),
-        float64(float32, int64),
-        float64(float64, int32),
-        float64(float64, int64),
-    ],
-    nopython=True,
-)
+@lazy_vectorize([float64(float64, int64)], nopython=True, cache=True)
 def _logp_single_trial_from_logp_multitrial(logpn, n):
     """Calculate a multi-trial p-value from the log of a single-trial one.
 
