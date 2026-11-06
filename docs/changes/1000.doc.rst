@@ -1,0 +1,7 @@
+``stingray.fourier.error_on_averaged_cross_spectrum`` is now listed in the module's
+``__all__``, so it appears in the API documentation. The function was public in every
+other respect -- it has no leading underscore, ``crossspectrum`` and
+``varenergyspectrum`` import it, and it has its own tests -- but ``automodule``
+documents only the names a module lists, so it had no page of its own. A ``:func:``
+cross-reference to it in ``Crossspectrum`` therefore pointed at nothing and rendered
+as plain text instead of a link.

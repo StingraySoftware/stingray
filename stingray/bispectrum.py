@@ -46,6 +46,16 @@ __all__ = [
     "AveragedBispectrum",
     "DynamicalCrossBispectrum",
     "DynamicalBispectrum",
+    "bispectrum_from_time_array",
+    "bispectrum_from_events",
+    "bispectrum_from_lightcurve",
+    "bispectrum_from_stingray_timeseries",
+    "bispectrum_from_lc_iterable",
+    "crossbispectrum_from_time_array",
+    "crossbispectrum_from_events",
+    "crossbispectrum_from_lightcurve",
+    "crossbispectrum_from_stingray_timeseries",
+    "crossbispectrum_from_lc_iterable",
 ]
 
 #: Set once the interface-change notice has been emitted, so it is shown only
@@ -84,9 +94,6 @@ def _warn_interface_change():
 
 
 class CrossBispectrum(StingrayObject):
-    main_array_attr = "freq"
-    type = "crossbispectrum"
-
     r"""Make a :class:`CrossBispectrum` from up to three (binned) light curves.
 
     The cross-bispectrum is the higher-order analogue of the cross spectrum. It
@@ -118,18 +125,18 @@ class CrossBispectrum(StingrayObject):
 
     Parameters
     ----------
-    data1, data2, data3 : :class:`stingray.Lightcurve` or :class:`stingray.EventList`, optional
+    data1, data2, data3 : :class:`stingray.Lightcurve` or :class:`~stingray.events.EventList`, optional
         The three channels, mapped to the factors ``X(f1)``, ``Y(f2)`` and
         ``Z(f1+f2)`` respectively. ``data2`` and ``data3`` default to ``data1``
         (recovering the auto-bispectrum). All three must be simultaneous (same
-        ``dt``, same time bins, compatible GTIs). If :class:`EventList`, ``dt``
+        ``dt``, same time bins, compatible GTIs). If :class:`~stingray.events.EventList`, ``dt``
         must be specified.
 
     Other Parameters
     ----------------
     dt : float
         The time resolution of the light curves. Only needed for
-        :class:`EventList` inputs.
+        :class:`~stingray.events.EventList` inputs.
 
     gti : ``[[gti0_0, gti0_1], ...]``
         Good time intervals. Defaults to the intersection of the inputs' GTIs.
@@ -149,7 +156,7 @@ class CrossBispectrum(StingrayObject):
         ``M`` is the number of averaged segments (Fackrell 1996; Elgar & Guza
         1988). Only defined for the ``"kim_powers"`` and ``"sigl_chamoun"``
         normalizations. Can also be toggled after the fact with
-        :meth:`recompute_bicoherence`.
+        :meth:`~stingray.bispectrum.CrossBispectrum.recompute_bicoherence`.
 
     channels_overlap : bool, default False
         Whether the three channels are the same photon stream. Independent
@@ -169,7 +176,7 @@ class CrossBispectrum(StingrayObject):
 
     bicoherence : numpy.ndarray
         The cross-bicoherence in ``[0, 1]``, in the ``bicoherence_norm``
-        convention. Use :meth:`recompute_bicoherence` for a different one.
+        convention. Use :meth:`~stingray.bispectrum.CrossBispectrum.recompute_bicoherence` for a different one.
 
     bicoherence_norm : str
         The normalization used for ``bicoherence``.
@@ -215,6 +222,9 @@ class CrossBispectrum(StingrayObject):
 
     2) Y. C. Kim and E. J. Powers, IEEE Trans. Plasma Sci. PS-7, 120 (1979).
     """
+
+    main_array_attr = "freq"
+    type = "crossbispectrum"
 
     def __init__(
         self,
@@ -706,8 +716,6 @@ class CrossBispectrum(StingrayObject):
 
 
 class AveragedCrossBispectrum(CrossBispectrum):
-    type = "crossbispectrum"
-
     r"""Make an averaged cross-bispectrum from three simultaneous light curves.
 
     Each channel is split into segments of length ``segment_size`` on a common
@@ -718,7 +726,7 @@ class AveragedCrossBispectrum(CrossBispectrum):
 
     Parameters
     ----------
-    data1, data2, data3 : :class:`stingray.Lightcurve`, iterable, or :class:`stingray.EventList`
+    data1, data2, data3 : :class:`stingray.Lightcurve`, iterable, or :class:`~stingray.events.EventList`
         The three channels. ``data2``/``data3`` default to ``data1``.
 
     segment_size : float
@@ -729,6 +737,8 @@ class AveragedCrossBispectrum(CrossBispectrum):
     See :class:`CrossBispectrum`, plus ``dt``, ``silent``, ``save_all`` and
     ``save_diagonal`` as in :class:`AveragedBispectrum`.
     """
+
+    type = "crossbispectrum"
 
     def __init__(
         self,
@@ -862,8 +872,6 @@ class AveragedCrossBispectrum(CrossBispectrum):
 
 
 class Bispectrum(CrossBispectrum):
-    type = "bispectrum"
-
     r"""Make a :class:`Bispectrum` (auto-bispectrum) from a (binned) light curve.
 
     The auto-bispectrum is the special case of the :class:`CrossBispectrum` in
@@ -889,13 +897,13 @@ class Bispectrum(CrossBispectrum):
     ----------
     data : :class:`stingray.Lightcurve` or :class:`stingray.events.EventList`, optional
         The light curve or event list to be Fourier-transformed. If an
-        :class:`EventList` is given, ``dt`` must be specified.
+        :class:`~stingray.events.EventList` is given, ``dt`` must be specified.
 
     Other Parameters
     ----------------
     dt : float
         The time resolution of the light curve. Only needed for an
-        :class:`EventList`.
+        :class:`~stingray.events.EventList`.
 
     bicoherence_norm : {"kim_powers", "sigl_chamoun", "hagihira"}, default "kim_powers"
         Which normalization to use for the ``bicoherence`` attribute. All lie in
@@ -920,7 +928,7 @@ class Bispectrum(CrossBispectrum):
         ``M`` is the number of averaged segments (Fackrell 1996; Elgar & Guza
         1988). Only defined for the ``"kim_powers"`` and ``"sigl_chamoun"``
         normalizations. Can also be toggled after the fact with
-        :meth:`recompute_bicoherence`.
+        :meth:`~stingray.bispectrum.CrossBispectrum.recompute_bicoherence`.
 
     method : {"fourier", "cumulant"}, default "fourier"
         Which estimator to use. ``"fourier"`` is the direct Fourier-decomposition
@@ -961,6 +969,8 @@ class Bispectrum(CrossBispectrum):
     Rao, T. S. & Gabr, M. M., *An Introduction to Bispectral Analysis and
     Bilinear Time Series Models*, Lecture Notes in Statistics 24 (1984).
     """
+
+    type = "bispectrum"
 
     def __init__(
         self,
@@ -1397,7 +1407,7 @@ class Bispectrum(CrossBispectrum):
             The light curve or event list to be Fourier-transformed.
         dt : float, optional
             The time resolution of the light curve. Only needed for an
-            :class:`EventList`.
+            :class:`~stingray.events.EventList`.
         maxlag : int, optional
             Maximum lag of the 3rd-order cumulant. Defaults to half the
             light-curve length.
@@ -1450,8 +1460,6 @@ class Bispectrum(CrossBispectrum):
 
 
 class AveragedBispectrum(AveragedCrossBispectrum, Bispectrum):
-    type = "bispectrum"
-
     r"""Make an averaged (auto-)bispectrum from a light curve or event list.
 
     The light curve is split into segments of length ``segment_size``, an
@@ -1472,7 +1480,7 @@ class AveragedBispectrum(AveragedCrossBispectrum, Bispectrum):
     gti : ``[[gti0_0, gti0_1], ...]``
         Good time intervals.
     dt : float
-        The time resolution of the light curve (needed for an :class:`EventList`).
+        The time resolution of the light curve (needed for an :class:`~stingray.events.EventList`).
     silent : bool, default False
         Do not show a progress bar.
     save_all : bool, default False
@@ -1487,6 +1495,8 @@ class AveragedBispectrum(AveragedCrossBispectrum, Bispectrum):
     lc : :class:`stingray.Lightcurve`, optional
         For backwards compatibility only. Deprecated; use ``data``.
     """
+
+    type = "bispectrum"
 
     def __init__(
         self,
@@ -1749,8 +1759,6 @@ def _pixel_edges(x):
 
 
 class DynamicalCrossBispectrum(AveragedCrossBispectrum):
-    type = "crossbispectrum"
-
     r"""Make a time-resolved (dynamical) cross-bispectrum.
 
     This is the higher-order analogue of :class:`stingray.DynamicalCrossspectrum`.
@@ -1805,7 +1813,7 @@ class DynamicalCrossBispectrum(AveragedCrossBispectrum):
         Good time intervals. Defaults to the intersection of the inputs' GTIs.
     sample_time : float
         Time resolution of the light curves created from event lists. Required
-        for :class:`EventList` inputs.
+        for :class:`~stingray.events.EventList` inputs.
 
     Attributes
     ----------
@@ -1833,6 +1841,8 @@ class DynamicalCrossBispectrum(AveragedCrossBispectrum):
     nseg : numpy.ndarray
         Number of segments actually averaged in each bin.
     """
+
+    type = "crossbispectrum"
 
     def __init__(
         self,
@@ -2260,7 +2270,7 @@ class DynamicalCrossBispectrum(AveragedCrossBispectrum):
         The additive bispectrum sums are combined (not the finished
         bicoherence, which is a ratio and cannot be averaged), then the
         bicoherence and biphase are recomputed. ``method`` is accepted for API
-        parity with :class:`DynamicalCrossspectrum` but the sums are always
+        parity with :class:`~stingray.DynamicalCrossspectrum` but the sums are always
         summed.
         """
         if not np.issubdtype(type(n), np.integer):
@@ -2324,7 +2334,7 @@ class DynamicalCrossBispectrum(AveragedCrossBispectrum):
 
         Returns the array of frequency indices (into ``freq``) of the maximum
         diagonal bicoherence between ``min_freq`` and ``max_freq`` per bin -- the
-        bicoherence analogue of :meth:`DynamicalCrossspectrum.trace_maximum`.
+        bicoherence analogue of :meth:`~stingray.DynamicalCrossspectrum.trace_maximum`.
         """
         if min_freq is None:
             min_freq = np.min(self.freq)
@@ -2401,8 +2411,6 @@ class DynamicalCrossBispectrum(AveragedCrossBispectrum):
 
 
 class DynamicalBispectrum(DynamicalCrossBispectrum):
-    type = "bispectrum"
-
     r"""Make a time-resolved (dynamical) auto-bispectrum from a single input.
 
     The auto special case of :class:`DynamicalCrossBispectrum` (the three
@@ -2427,6 +2435,8 @@ class DynamicalBispectrum(DynamicalCrossBispectrum):
     See :class:`DynamicalCrossBispectrum` (``channels_overlap`` is always True
     here).
     """
+
+    type = "bispectrum"
 
     def __init__(
         self,
@@ -2556,7 +2566,7 @@ def bispectrum_from_time_array(
 
     Parameters
     ----------
-    times : `np.array`
+    times : ``np.array``
         Event arrival times.
     dt : float
         The time resolution of the intermediate light curves.

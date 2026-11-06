@@ -155,6 +155,8 @@ def mad(data, c=0.6744897501960817, axis=0):
 
 
 __all__ = [
+    "make_1d_arrays_into_nd",
+    "make_nd_into_arrays",
     "simon",
     "rebin_data",
     "rebin_data_log",
@@ -278,7 +280,7 @@ def make_nd_into_arrays(array: np.ndarray, label: str) -> dict:
 
     Parameters
     ----------
-    array : `np.ndarray`
+    array : ``np.ndarray``
         Input data
     label : `str`
         Label for the array
@@ -358,7 +360,7 @@ def make_1d_arrays_into_nd(data: dict, label: str) -> np.ndarray:
 
     Returns
     -------
-    array : `np.array`
+    array : ``np.array``
         N-dimensional array that was stored in the data.
 
     Examples
@@ -595,7 +597,7 @@ def rebin_data(x, y, dx_new, yerr=None, method="sum", dx=None):
         raise ValueError("New frequency resolution must be larger than old frequency resolution.")
 
     # left and right bin edges
-    # assumes that the points given in `x` correspond to
+    # assumes that the points given in ``x`` correspond to
     # the left bin edges
     xedges = np.hstack([x, x[-1] + dx_old[-1]])
 
@@ -1220,7 +1222,7 @@ def excess_variance(lc, normalization="fvar"):
 
     Parameters
     ----------
-    lc : a :class:`Lightcurve` object
+    lc : a :class:`~stingray.Lightcurve` object
     normalization : str
         if ``fvar``, return the fractional mean square variability :math:`F_{var}`.
         If ``none``, return the unnormalized excess variance variance
@@ -1441,7 +1443,7 @@ def standard_error(xs, mean):
 
 def nearest_power_of_two(x):
     """
-    Return a number which is nearest to `x` and is the integral power of two.
+    Return a number which is nearest to ``x`` and is the integral power of two.
 
     Parameters
     ----------
@@ -1450,7 +1452,7 @@ def nearest_power_of_two(x):
     Returns
     -------
     x_nearest : int
-        Number closest to `x` and is the integral power of two.
+        Number closest to ``x`` and is the integral power of two.
 
     """
     x = int(x)
@@ -2393,7 +2395,7 @@ def assign_if_not_finite(value, default):
 
     Parameters
     ----------
-    value : float, int or `np.array`
+    value : float, int or ``np.array``
         The input value
     default : float
         The default value

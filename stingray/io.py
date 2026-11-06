@@ -733,11 +733,26 @@ def load_events_and_gtis(
 
 
 class EventReadOutput:
+    """Container for what :func:`load_events_and_gtis` reads out of a FITS file.
+
+    It starts out empty: that function assigns the attributes it finds, such as the
+    photon arrival times, the energies, and a few header keywords.
+    """
+
     def __init__(self):
         pass
 
 
 class FITSTimeseriesReader(object):
+    """Read a FITS table of event times without loading the data into memory.
+
+    Only the header and the GTIs are read when the object is created; the data stay
+    on disk until they are asked for. A file too large to fit in memory can then be
+    handed out in pieces -- by number of samples, by time interval, or by GTI list --
+    each piece either written to a file of its own or returned as an ``output_class``
+    object.
+    """
+
     main_array_attr = "time"
 
     def __init__(
@@ -1429,7 +1444,7 @@ def split_numbers(number, shift=0):
     Other parameters
     ----------------
     shift: integer
-        Move the cut by `shift` decimal points to the right (left if negative)
+        Move the cut by ``shift`` decimal points to the right (left if negative)
 
     Returns
     -------
@@ -1472,13 +1487,13 @@ def savefig(filename, **kwargs):
     ----------
     filename : str
         The name of the image file. Extension must be specified in the
-        file name. For example filename with `.png` extension will give a
+        file name. For example filename with ``.png`` extension will give a
         rasterized image while ``.pdf`` extension will give a vectorized
         output.
 
     kwargs : keyword arguments
         Keyword arguments to be passed to ``savefig`` function of
-        ``matplotlib.pyplot``. For example use `bbox_inches='tight'` to
+        ``matplotlib.pyplot``. For example use ``bbox_inches='tight'`` to
         remove the undesirable whitespace around the image.
     """
 
