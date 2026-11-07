@@ -1,0 +1,3 @@
+``DynamicalCrossspectrum`` and ``DynamicalPowerspectrum`` now take ``silent``, as the
+averaged classes they are built on already did, so a caller that makes several of them
+in a row is not buried in progress bars.

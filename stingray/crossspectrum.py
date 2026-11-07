@@ -2425,6 +2425,9 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         ``compute_rms`` returns the fractional rms of each segment relative to its
         own mean count rate.
 
+    silent: bool, default False
+        Do not show the progress bar while the segments are being transformed.
+
     Attributes
     ----------
     segment_size: float
@@ -2479,12 +2482,14 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
         gti=None,
         sample_time=None,
         use_common_mean=True,
+        silent=False,
     ):
         self.segment_size = segment_size
         self.sample_time = sample_time
         self.gti = gti
         self.norm = norm
         self.use_common_mean = use_common_mean
+        self.silent = silent
         self.nphots_all = None
 
         if segment_size is None and data1 is None and data2 is None:
@@ -2531,6 +2536,7 @@ class DynamicalCrossspectrum(AveragedCrossspectrum):
             norm=self.norm,
             gti=self.gti,
             use_common_mean=self.use_common_mean,
+            silent=self.silent,
             save_all=True,
         )
         self.dyn_ps = np.array(avg.cs_all).T

@@ -1730,6 +1730,16 @@ class TestDynamicalCrossspectrum(object):
         with pytest.raises(ValueError):
             dps = DynamicalCrossspectrum(self.lc, self.lc, segment_size=1000)
 
+    def test_silent_suppresses_the_progress_bar(self, capsys):
+        """``silent=True`` keeps the progress bar off stderr and leaves the matrix alone."""
+        loud = DynamicalCrossspectrum(self.lc, self.lc, segment_size=3)
+        bar = capsys.readouterr().err
+        quiet = DynamicalCrossspectrum(self.lc, self.lc, segment_size=3, silent=True)
+        assert capsys.readouterr().err == ""
+        assert np.allclose(quiet.dyn_ps, loud.dyn_ps)
+        if importlib.util.find_spec("tqdm") is not None:
+            assert bar != ""
+
     def test_matrix(self):
         dps = DynamicalCrossspectrum(self.lc, self.lc, segment_size=3)
         nsegs = int(self.lc.tseg / dps.segment_size)

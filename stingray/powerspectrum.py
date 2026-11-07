@@ -1016,6 +1016,9 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
         remains the mean over the whole observation. ``compute_rms`` returns the
         fractional rms of each segment relative to its own mean count rate.
 
+    silent: bool, default False
+        Do not show the progress bar while the segments are being transformed.
+
     Attributes
     ----------
     segment_size: float
@@ -1072,12 +1075,14 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
         gti=None,
         sample_time=None,
         use_common_mean=True,
+        silent=False,
     ):
         self.segment_size = segment_size
         self.sample_time = sample_time
         self.gti = gti
         self.norm = norm
         self.use_common_mean = use_common_mean
+        self.silent = silent
         self.nphots_all = None
         self.poisson_power = None
 
@@ -1172,6 +1177,7 @@ class DynamicalPowerspectrum(DynamicalCrossspectrum):
             norm=self.norm,
             gti=self.gti,
             use_common_mean=self.use_common_mean,
+            silent=self.silent,
             save_all=True,
         )
         conv = np.asanyarray(avg.cs_all) / np.asanyarray(avg.unnorm_cs_all)
