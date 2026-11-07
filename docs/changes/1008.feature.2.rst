@@ -1,0 +1,12 @@
+``stingray.deadtime.crosstalk.dynamical_cross_module_cross_spectral_matrix`` builds the
+Poisson-free cross-spectral matrix one Fourier segment at a time, with shape
+``(nfreq, nseg)`` entries plus a band fraction and a mid-time per segment, so that each
+segment can be unmixed with its own live time fraction. This is what a variable source
+needs: the live time follows the count rate, so a bright and a faint segment have been
+mixed by different matrices and one inverse built from the exposure mean belongs to
+neither. The recipe was previously documented but not reachable -- a caller had to
+assemble four ``DynamicalCrossspectrum`` objects by hand and work out the per-segment
+band fraction. It defaults to ``use_common_mean=False``, against stingray's usual
+default and deliberately, because the matrix of a segment is built from that segment's
+counts and the spectra it acts on have to be in the same units; the choice is worth
+about 14% on the recovered lag.

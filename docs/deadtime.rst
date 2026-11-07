@@ -137,39 +137,68 @@ Variable sources: one matrix per segment
 :math:`f_\mathrm{live}` is a function of the count rate, so a source that varies
 between Fourier segments is described by a *different* matrix in each one. Averaging
 the cross spectra first and inverting once uses an inverse that belongs to none of
-the segments, and the bias does not vanish with more data: for a flaring source
-swinging over an order of magnitude in rate, one global inverse over-corrects the lag
-by about 20%, while a per-segment inverse is unbiased.
+the segments, and the bias does not vanish with more data: for a source that flares
+fast enough to change its live time *within* a segment, one global inverse over-corrects
+the lag by about 20%, while a per-segment inverse leaves only the linearisation residual
+of the matrix itself. For a source that varies only between segments the two are much
+closer; see the warning below.
 
-Every function in the module broadcasts, so the fix is to hand it an
-:math:`f_\mathrm{live}` of shape ``(nseg,)`` against a matrix of shape
-``(nfreq, nseg)``, which is what :class:`stingray.crossspectrum.DynamicalCrossspectrum`
-returns::
+The per-segment matrix comes from
+:func:`stingray.deadtime.crosstalk.dynamical_cross_module_cross_spectral_matrix`, which
+returns the same three entries with shape ``(nfreq, nseg)`` and one band fraction and
+one mid-time per segment. Every function in the module broadcasts, so an
+:math:`f_\mathrm{live}` of shape ``(nseg,)`` then corrects each segment with its own
+matrix::
 
-    from stingray.crossspectrum import DynamicalCrossspectrum
+    from stingray.deadtime.crosstalk import (
+        dynamical_cross_module_cross_spectral_matrix,
+    )
 
-    options = dict(segment_size=8.0, sample_time=1 / 256, norm="leahy")
-    diag1 = DynamicalCrossspectrum(soft_a, soft_b, **options)
-    diag2 = DynamicalCrossspectrum(hard_a, hard_b, **options)
-    off_a = DynamicalCrossspectrum(soft_a, hard_b, **options)
-    off_b = DynamicalCrossspectrum(soft_b, hard_a, **options)
+    matrix = dynamical_cross_module_cross_spectral_matrix(
+        soft_a, hard_a, soft_b, hard_b, segment_size=8.0, sample_time=1 / 256
+    )
 
-    power1 = diag1.dyn_ps.real
-    power2 = diag2.dyn_ps.real
-    cross = 0.5 * (off_a.dyn_ps + off_b.dyn_ps)
-
-    # One live time fraction per segment, from the rate measured in that segment.
+    # One live time fraction per segment, from the rate measured in that segment,
+    # lined up with ``matrix.time``.
     f_live = live_time_fraction(rate_per_segment, dead_time)
 
     power1, power2, cross = unmix_cross_spectral_matrix(
-        power1, power2, cross, f_live, band_fraction
+        matrix.power1, matrix.power2, matrix.cross_power, f_live, matrix.band_fraction
     )
 
     # Average over segments (axis 1) only after unmixing, then form the ratios.
     coherence = coherence_from_cross_spectral_matrix(
         power1.mean(axis=1), power2.mean(axis=1), cross.mean(axis=1)
     )
-    lag = -np.angle(cross.mean(axis=1)) / (2 * np.pi * diag1.freq)
+    lag = -np.angle(cross.mean(axis=1)) / (2 * np.pi * matrix.freq)
+
+.. warning::
+
+   Normalise each segment by **its own** counts, not by the mean over the observation.
+   This is why ``dynamical_cross_module_cross_spectral_matrix`` defaults to
+   ``use_common_mean=False``, against stingray's usual default: the matrix of a segment
+   is built from that segment's counts and band split, so the spectra it acts on have
+   to be in the same units. Getting this wrong is not a detail -- in the module's own
+   tests the error of a *single* global inverse moves from under 1% to about 14% on
+   this choice alone, while the per-segment answer moves by less than 1%.
+
+How much the per-segment inverse buys you over a single global one depends on *how* the
+source varies, and the distinction is the segment length:
+
+* When :math:`f_\mathrm{live}` is near-constant **within** each segment and varies only
+  **between** them -- a slow flare, or a source stepping between two levels -- a single
+  global inverse is already close to right, and the two agree. What is left in both is
+  the few percent linearisation residual of the matrix itself, which is present even for
+  a perfectly steady source and shrinks as :math:`f_\mathrm{live}` approaches 1.
+* When :math:`f_\mathrm{live}` swings **inside** a segment -- fast flaring, where it can
+  go from 0.9 to 0.2 in a few seconds -- no single matrix describes even one segment.
+  The two schemes then separate by about 20% on the lag, with the global inverse
+  over-correcting, and shortening the segments is what brings them back together.
+
+So the per-segment builder is not a refinement that only matters at the margin, but
+neither does it rescue a segment that is too long for the source. Shorten the segments
+until the correction stops changing, and prefer the per-segment inverse because it is
+the one with no single :math:`f_\mathrm{live}` to choose badly.
 
 Missions that report the live time at a cadence finer than the segment length -- as
 NuSTAR does, at 1 s -- already carry the information this needs. Note that the

@@ -37,9 +37,27 @@ another is harmless when the two bands share the counts equally and wrong otherw
 
 For a variable source the live time is a function of time and one matrix does not
 describe a whole observation: build and unmix the matrix *per segment*, with that
-segment's own live time, and average afterwards. Every function here broadcasts, so a
-per-segment ``f_live`` works against the ``(frequency, segment)`` matrix that
-:class:`stingray.crossspectrum.DynamicalCrossspectrum` returns.
+segment's own live time, and average afterwards.
+:func:`dynamical_cross_module_cross_spectral_matrix` builds that per-segment matrix, and
+every function here broadcasts, so a ``f_live`` of one value per segment corrects its
+``(frequency, segment)`` entries segment by segment::
+
+    matrix = dynamical_cross_module_cross_spectral_matrix(
+        soft_a, hard_a, soft_b, hard_b, segment_size=8.0, sample_time=1 / 256)
+    f_live = live_time_fraction(detected_rate_per_segment, dead_time)
+    power1, power2, cross = unmix_cross_spectral_matrix(
+        matrix.power1, matrix.power2, matrix.cross_power, f_live, matrix.band_fraction)
+    power1, power2, cross = (np.mean(x, axis=-1) for x in (power1, power2, cross))
+
+Averaging only after the unmixing is the point: the mean of the corrected segments is
+not the correction of the mean segment. How much that costs depends on the segment
+length against the source. A live time that varies only *between* segments is already
+handled well by one global inverse; a live time that swings *within* a segment, as it
+does under fast flaring, separates the two by about 20% on the lag and is not fully
+fixed by either, because then no single matrix describes even one segment. Normalise
+each segment by *its own* counts while you are at it -- the per-segment builder defaults
+to that -- because the matrix of a segment is built from that segment's counts and the
+spectra it acts on have to be in the same units.
 
 References
 ----------
@@ -51,7 +69,7 @@ from collections import namedtuple
 
 import numpy as np
 
-from stingray.crossspectrum import AveragedCrossspectrum
+from stingray.crossspectrum import AveragedCrossspectrum, DynamicalCrossspectrum
 
 __all__ = [
     "live_time_fraction",
@@ -59,6 +77,7 @@ __all__ = [
     "unmix_cross_spectral_matrix",
     "coherence_from_cross_spectral_matrix",
     "cross_module_cross_spectral_matrix",
+    "dynamical_cross_module_cross_spectral_matrix",
     "CrossSpectralMatrix",
 ]
 
@@ -66,7 +85,8 @@ VALID_NORMS = ("none", "leahy", "frac")
 
 CrossSpectralMatrix = namedtuple(
     "CrossSpectralMatrix",
-    ["freq", "power1", "power2", "cross_power", "band_fraction", "m", "norm"],
+    ["freq", "power1", "power2", "cross_power", "band_fraction", "m", "norm", "time"],
+    defaults=(None,),
 )
 CrossSpectralMatrix.__doc__ = """A Poisson-free 2x2 cross-spectral matrix of two energy bands.
 
@@ -75,17 +95,22 @@ Attributes
 freq : `np.ndarray`
     Fourier frequencies.
 power1, power2 : `np.ndarray`
-    The diagonal: the power of each band, with no Poisson level in it.
+    The diagonal: the power of each band, with no Poisson level in it. Shape
+    ``(frequency,)`` for a segment-averaged matrix and ``(frequency, segment)`` for a
+    per-segment one.
 cross_power : `np.ndarray`
     The off-diagonal cross spectrum, complex. The other off-diagonal entry is its
     complex conjugate, because the matrix is Hermitian.
-band_fraction : float
+band_fraction : float or `np.ndarray`
     Fraction of the detected counts that fall in band 1, the ``p_1`` the mixing matrix
-    needs.
+    needs. One value per segment for a per-segment matrix.
 m : int
-    Number of averaged segments.
+    Number of averaged segments, hence 1 for a per-segment matrix.
 norm : str
     Normalisation the entries are in, to be passed on to the unmixing.
+time : `np.ndarray` or None
+    Mid-time of each segment for a per-segment matrix, `None` when the segments have
+    already been averaged.
 """
 
 
@@ -294,6 +319,20 @@ def coherence_from_cross_spectral_matrix(power1, power2, cross_power):
     return np.abs(np.asanyarray(cross_power)) ** 2 / (power1 * power2)
 
 
+def _four_cross_spectra(cls, band1_det1, band2_det1, band1_det2, band2_det2, options):
+    """The four cross spectra a two-band, two-detector matrix is made of.
+
+    In one place so that the segment-averaged and the per-segment builder cannot
+    disagree on which bands and which detectors are crossed with which.
+    """
+    return (
+        cls(band1_det1, band1_det2, **options),
+        cls(band2_det1, band2_det2, **options),
+        cls(band1_det1, band2_det2, **options),
+        cls(band1_det2, band2_det1, **options),
+    )
+
+
 def cross_module_cross_spectral_matrix(
     band1_det1, band2_det1, band1_det2, band2_det2, segment_size, norm="leahy", **kwargs
 ):
@@ -341,17 +380,21 @@ def cross_module_cross_spectral_matrix(
         The three independent entries, the band fraction the unmixing needs, and the
         number of averaged segments.
 
+    See Also
+    --------
+    dynamical_cross_module_cross_spectral_matrix : the same matrix, one per segment.
+
     Notes
     -----
-    For a variable source, repeat this per segment and unmix each segment with its own
-    live time: a single matrix from the exposure-mean live time is biased by the
-    variance of the live time across segments.
+    For a variable source, use
+    :func:`dynamical_cross_module_cross_spectral_matrix` instead and unmix each segment
+    with its own live time: a single matrix from the exposure-mean live time is biased
+    by the variance of the live time across segments.
     """
     options = dict(segment_size=segment_size, norm=norm, **kwargs)
-    diag1 = AveragedCrossspectrum(band1_det1, band1_det2, **options)
-    diag2 = AveragedCrossspectrum(band2_det1, band2_det2, **options)
-    off_a = AveragedCrossspectrum(band1_det1, band2_det2, **options)
-    off_b = AveragedCrossspectrum(band1_det2, band2_det1, **options)
+    diag1, diag2, off_a, off_b = _four_cross_spectra(
+        AveragedCrossspectrum, band1_det1, band2_det1, band1_det2, band2_det2, options
+    )
 
     counts1 = diag1.nphots1 + diag1.nphots2
     counts2 = diag2.nphots1 + diag2.nphots2
@@ -364,4 +407,99 @@ def cross_module_cross_spectral_matrix(
         band_fraction=counts1 / (counts1 + counts2),
         m=diag1.m,
         norm=norm,
+    )
+
+
+def dynamical_cross_module_cross_spectral_matrix(
+    band1_det1,
+    band2_det1,
+    band1_det2,
+    band2_det2,
+    segment_size,
+    norm="leahy",
+    use_common_mean=False,
+    **kwargs,
+):
+    r"""Build one Poisson-free cross-spectral matrix per Fourier segment.
+
+    Same matrix as :func:`cross_module_cross_spectral_matrix`, kept segment by segment
+    instead of averaged, so that each segment can be unmixed with its own live time
+    fraction and its own band split. For a variable source that is not a refinement but
+    the correct thing to do: the live time follows the count rate, so a bright segment
+    and a faint segment have been mixed by *different* matrices, and one matrix built
+    from the exposure mean leaves a bias that grows with the variance of the live time
+    across segments.
+
+    The entries have shape ``(frequency, segment)``, which is what
+    :func:`unmix_cross_spectral_matrix` broadcasts a per-segment ``f_live`` against.
+    Average over the segment axis **after** unmixing, never before.
+
+    Parameters
+    ----------
+    band1_det1, band2_det1 : `stingray.EventList` or `stingray.Lightcurve`
+        The two energy bands of the first detector.
+    band1_det2, band2_det2 : `stingray.EventList` or `stingray.Lightcurve`
+        The same two bands of the second detector.
+    segment_size : float
+        Length of each Fourier segment, s. It sets the time resolution of the
+        correction: short enough that the live time is roughly constant inside one
+        segment, long enough to reach the lowest frequency of interest.
+
+    Other Parameters
+    ----------------
+    norm : {'leahy', 'frac', 'none'}, default 'leahy'
+        Normalisation of the entries, to be carried through to the unmixing.
+    use_common_mean : bool, default False
+        Normalise each segment by its own counts rather than by the mean over the
+        observation. The default is the opposite of stingray's elsewhere, and
+        deliberately so: the mixing matrix of a segment is built from *that segment's*
+        counts, so the spectra it acts on have to be in that segment's units too.
+    **kwargs : dict
+        Passed to :class:`stingray.crossspectrum.DynamicalCrossspectrum`;
+        ``sample_time`` is required for event lists. Note the name: the averaged
+        builder calls the same quantity ``dt``.
+
+    Returns
+    -------
+    matrix : `CrossSpectralMatrix`
+        ``power1``, ``power2`` and ``cross_power`` of shape ``(frequency, segment)``,
+        ``band_fraction`` and ``time`` of shape ``(segment,)``, and ``m = 1``.
+
+    See Also
+    --------
+    cross_module_cross_spectral_matrix : the same matrix, averaged over the segments.
+
+    Notes
+    -----
+    ``band_fraction`` is built from the per-segment photon counts stingray stores for
+    each cross spectrum, which are the *geometric* mean of the two detectors' counts in
+    that band. The band fraction is a ratio of the two bands, so any factor common to
+    the two detectors cancels and the value is exact whenever the two detectors split
+    the counts between the bands in the same proportion -- the same response, which is
+    the usual case for two modules of one telescope. It differs from the per-detector
+    fraction only at second order in the difference between the two responses.
+
+    The ``f_live`` to pass to the unmixing is one value per segment, lined up with
+    ``time``. Take it from the mission's housekeeping where there is one, or from the
+    detected rate of the whole detector with :func:`live_time_fraction`; in either case
+    it has to be the rate of *all* events, not only those in the two bands, since every
+    event causes dead time.
+    """
+    options = dict(segment_size=segment_size, norm=norm, use_common_mean=use_common_mean, **kwargs)
+    diag1, diag2, off_a, off_b = _four_cross_spectra(
+        DynamicalCrossspectrum, band1_det1, band2_det1, band1_det2, band2_det2, options
+    )
+
+    counts1 = np.asanyarray(diag1.nphots_all)
+    counts2 = np.asanyarray(diag2.nphots_all)
+
+    return CrossSpectralMatrix(
+        freq=diag1.freq,
+        power1=diag1.dyn_ps.real,
+        power2=diag2.dyn_ps.real,
+        cross_power=0.5 * (off_a.dyn_ps + off_b.dyn_ps),
+        band_fraction=counts1 / (counts1 + counts2),
+        m=1,
+        norm=norm,
+        time=diag1.time,
     )

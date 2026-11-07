@@ -2,11 +2,12 @@ import numpy as np
 import pytest
 
 from stingray import EventList
-from stingray.crossspectrum import AveragedCrossspectrum, DynamicalCrossspectrum
+from stingray.crossspectrum import AveragedCrossspectrum
 from stingray.deadtime.crosstalk import (
     coherence_from_cross_spectral_matrix,
     cross_module_cross_spectral_matrix,
     deadtime_mixing_matrix,
+    dynamical_cross_module_cross_spectral_matrix,
     live_time_fraction,
     unmix_cross_spectral_matrix,
 )
@@ -358,12 +359,16 @@ def _module_with_segments(
 
 
 @pytest.mark.slow
-def test_per_segment_unmixing_beats_one_global_matrix_on_a_variable_source():
-    """When the live time varies between segments, one matrix for the whole observation
-    is biased and a per-segment matrix is not.
+def test_the_per_segment_correction_is_the_one_that_does_not_depend_on_the_bookkeeping():
+    """On a source whose live time swings between segments, the per-segment matrix gives
+    the same lag whichever segment normalisation it is built in, and one global matrix
+    does not.
 
-    This is the broadcasting path: ``f_live`` is one value per segment and the matrix is
-    the ``(frequency, segment)`` array ``DynamicalCrossspectrum`` returns.
+    This is the end-to-end recipe and the argument for it. A single matrix has to be fed
+    some single live time, and the answer then depends on that choice and on whether the
+    segments were normalised by their own counts or by the observation mean; the
+    per-segment chain has no such choice to get wrong, and what is left is the few
+    percent linearisation residual at ``f_live`` near 0.5.
     """
     length, dt, segment_size, dead_time = 512.0, 1 / 256, 8.0, 2.5e-3
     phase, frequency, split = 0.5, 4.0, 0.25
@@ -386,29 +391,140 @@ def test_per_segment_unmixing_beats_one_global_matrix_on_a_variable_source():
     soft_a, hard_a, live_a = _module_with_segments(rng, **kwargs)
     soft_b, hard_b, live_b = _module_with_segments(rng, **kwargs)
     f_live = 0.5 * (live_a + live_b)
+    assert f_live.max() - f_live.min() > 0.2
 
-    options = dict(segment_size=segment_size, sample_time=dt, norm="leahy")
-    diag1 = DynamicalCrossspectrum(soft_a, soft_b, **options)
-    diag2 = DynamicalCrossspectrum(hard_a, hard_b, **options)
-    off_a = DynamicalCrossspectrum(soft_a, hard_b, **options)
-    off_b = DynamicalCrossspectrum(soft_b, hard_a, **options)
+    matrices = {
+        common: dynamical_cross_module_cross_spectral_matrix(
+            soft_a,
+            hard_a,
+            soft_b,
+            hard_b,
+            segment_size=segment_size,
+            sample_time=dt,
+            use_common_mean=common,
+        )
+        for common in (False, True)
+    }
+    assert f_live.size == matrices[False].power1.shape[1]
 
-    power1, power2 = diag1.dyn_ps.real, diag2.dyn_ps.real
-    cross = 0.5 * (off_a.dyn_ps + off_b.dyn_ps)
-    assert f_live.size == power1.shape[1]
-
-    counts1 = soft_a.time.size + soft_b.time.size
-    counts2 = hard_a.time.size + hard_b.time.size
-    band_fraction = counts1 / (counts1 + counts2)
-    peak = np.argmin(np.abs(diag1.freq - frequency))
-
-    def recovered(live):
-        entries = unmix_cross_spectral_matrix(power1, power2, cross, live, band_fraction)
+    def recovered(common, live, band):
+        matrix = matrices[common]
+        peak = np.argmin(np.abs(matrix.freq - frequency))
+        entries = unmix_cross_spectral_matrix(
+            matrix.power1, matrix.power2, matrix.cross_power, live, band
+        )
         return -np.angle(np.mean(entries[2][peak]))
 
-    per_segment = recovered(f_live)
-    global_only = recovered(np.mean(f_live))
+    per_segment = recovered(False, f_live, matrices[False].band_fraction)
+    common_mean = recovered(True, f_live, matrices[True].band_fraction)
+    global_only = recovered(True, np.mean(f_live), np.mean(matrices[True].band_fraction))
+    uncorrected = -np.angle(
+        np.mean(matrices[False].cross_power[np.argmin(np.abs(matrices[False].freq - frequency))])
+    )
 
-    assert f_live.max() - f_live.min() > 0.2
-    assert per_segment == pytest.approx(phase, rel=0.15)
-    assert abs(per_segment - phase) < abs(global_only - phase)
+    assert uncorrected > 1.5 * phase
+    assert per_segment == pytest.approx(phase, rel=0.1)
+    assert common_mean == pytest.approx(per_segment, rel=0.05)
+    assert abs(global_only - phase) > 2 * abs(per_segment - phase)
+
+
+# ------------------------------------------------- the per-segment matrix
+
+
+def _steady_two_band_module(rng, length, dt, rate, band_fraction):
+    """Two bands of one module, steady source, no dead time: shapes only."""
+    out = []
+    for fraction in (band_fraction, 1 - band_fraction):
+        n = rng.poisson(rate * fraction * length)
+        out.append(EventList(np.sort(rng.uniform(0, length, n)), gti=[[0, length]]))
+    return out
+
+
+def test_dynamical_matrix_has_one_column_per_segment():
+    """The per-segment builder returns ``(frequency, segment)`` entries and a
+    band fraction and a mid-time per segment.
+
+    These are the shapes :func:`unmix_cross_spectral_matrix` broadcasts against, so a
+    wrong one would silently correct the whole observation with one segment's matrix.
+    """
+    length, dt, segment_size = 64.0, 1 / 64, 8.0
+    rng = np.random.default_rng(3)
+    soft_a, hard_a = _steady_two_band_module(rng, length, dt, 200.0, 0.4)
+    soft_b, hard_b = _steady_two_band_module(rng, length, dt, 200.0, 0.4)
+
+    matrix = dynamical_cross_module_cross_spectral_matrix(
+        soft_a, hard_a, soft_b, hard_b, segment_size=segment_size, sample_time=dt
+    )
+
+    nseg = int(length // segment_size)
+    nfreq = matrix.freq.size
+    assert matrix.power1.shape == (nfreq, nseg)
+    assert matrix.power2.shape == (nfreq, nseg)
+    assert matrix.cross_power.shape == (nfreq, nseg)
+    assert matrix.band_fraction.shape == (nseg,)
+    assert matrix.time.shape == (nseg,)
+    assert matrix.m == 1
+    assert np.iscomplexobj(matrix.cross_power)
+    assert not np.iscomplexobj(matrix.power1)
+
+
+def test_per_segment_entries_average_to_the_segment_averaged_matrix():
+    """Averaging the per-segment entries must reproduce the averaged builder exactly.
+
+    Both normalise each segment by its own counts here, so the averaged matrix is
+    nothing but the mean of the per-segment one and any difference is a bug.
+    """
+    length, dt, segment_size = 64.0, 1 / 64, 8.0
+    rng = np.random.default_rng(4)
+    soft_a, hard_a = _steady_two_band_module(rng, length, dt, 200.0, 0.3)
+    soft_b, hard_b = _steady_two_band_module(rng, length, dt, 200.0, 0.3)
+    bands = (soft_a, hard_a, soft_b, hard_b)
+
+    per_segment = dynamical_cross_module_cross_spectral_matrix(
+        *bands, segment_size=segment_size, sample_time=dt
+    )
+    averaged = cross_module_cross_spectral_matrix(
+        *bands, segment_size=segment_size, dt=dt, use_common_mean=False
+    )
+
+    assert averaged.freq == pytest.approx(per_segment.freq)
+    assert np.mean(per_segment.power1, axis=1) == pytest.approx(averaged.power1)
+    assert np.mean(per_segment.power2, axis=1) == pytest.approx(averaged.power2)
+    assert np.mean(per_segment.cross_power, axis=1) == pytest.approx(averaged.cross_power)
+    assert np.mean(per_segment.band_fraction) == pytest.approx(averaged.band_fraction, rel=0.01)
+
+
+def test_per_segment_band_fraction_follows_a_changing_band_split():
+    """A source whose counts move between the bands gets a band fraction per segment.
+
+    The averaged builder can only return the exposure mean, and the mixing matrix of a
+    segment is built from that segment's split, so this is the second thing -- besides
+    the live time -- that a single matrix for the whole observation gets wrong.
+    """
+    length, dt, segment_size = 64.0, 1 / 64, 8.0
+    rng = np.random.default_rng(5)
+    half = length / 2
+
+    def module():
+        soft = np.concatenate(
+            [
+                rng.uniform(0, half, rng.poisson(240.0 * half)),
+                rng.uniform(half, length, rng.poisson(60.0 * half)),
+            ]
+        )
+        hard = rng.uniform(0, length, rng.poisson(150.0 * length))
+        return (
+            EventList(np.sort(soft), gti=[[0, length]]),
+            EventList(np.sort(hard), gti=[[0, length]]),
+        )
+
+    soft_a, hard_a = module()
+    soft_b, hard_b = module()
+    matrix = dynamical_cross_module_cross_spectral_matrix(
+        soft_a, hard_a, soft_b, hard_b, segment_size=segment_size, sample_time=dt
+    )
+
+    nseg = matrix.band_fraction.size
+    first, second = matrix.band_fraction[: nseg // 2], matrix.band_fraction[nseg // 2 :]
+    assert np.mean(first) == pytest.approx(240 / 390, rel=0.05)
+    assert np.mean(second) == pytest.approx(60 / 210, rel=0.1)
