@@ -1,0 +1,12 @@
+New module ``stingray.deadtime.crosstalk``, for the dead-time coupling between the
+energy bands of one detector. Dead time makes the live time a gain that every band
+shares, which mixes the bands' cross-spectral matrix by a known real matrix: a steady
+source then shows a spurious coherence of several tenths, a real partial coherence is
+suppressed by up to a factor of four, and a phase lag is stretched. The new functions
+build a cross-spectral matrix that has no Poisson noise level in any entry, the
+diagonal included, by crossing two detectors
+(``cross_module_cross_spectral_matrix``), and undo the mixing with its inverse
+(``deadtime_mixing_matrix``, ``unmix_cross_spectral_matrix``,
+``coherence_from_cross_spectral_matrix``). One inversion corrects the band powers, the
+coherence and the lag together. ``live_time_fraction`` gives the live time fraction
+from the detected rate, which is exact for non-paralyzable dead time.

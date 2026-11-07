@@ -248,6 +248,10 @@ Dead-Time Corrections
    :members:
    :imported-members:
 
+.. automodule:: stingray.deadtime.crosstalk
+   :members:
+   :imported-members:
+
 .. automodule:: stingray.deadtime.model
    :members:
    :imported-members:
