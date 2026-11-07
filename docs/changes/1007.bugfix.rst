@@ -1,0 +1,6 @@
+Fix the frequency resolution of ``non_paralyzable_dead_time_model``, which was derived from
+``max(freqs)`` and so depended on which frequencies the model was asked for. Evaluated on a
+band restricted to 0.5-10 Hz of a 1024 Hz grid, the model returned a level 25% too high. The
+resolution is now set by ``bin_time`` alone, at one bin per Hz, which leaves the result
+unchanged for every caller that passes a full Fourier grid, ``Crossspectrum.deadtime_correct``
+included.

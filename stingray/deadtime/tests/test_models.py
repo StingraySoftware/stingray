@@ -118,3 +118,24 @@ def test_non_paralyzable_model_fail_bad_rate():
         match="The sum of the source and background count rates is larger than the inverse",
     ):
         non_paralyzable_dead_time_model(np.arange(10), 2.5e-3, rate=300, background_rate=300)
+
+
+@pytest.mark.skipif("not HAS_NUMBA")
+def test_non_paralyzable_model_restricted_band():
+    """The model on a restricted band must agree with the full grid sliced to it.
+
+    The Zhang grid always spans 0 to the Nyquist frequency of ``bin_time``, so its
+    resolution has to be derived from ``bin_time`` and the spacing of the requested
+    frequencies. Deriving it from ``max(freqs)`` instead gives a 25% error here.
+    """
+    bin_time = 1 / 2048
+    deadtime = 2.5e-3
+    rate = 200.0
+
+    full = np.fft.rfftfreq(8192, bin_time)[1:]
+    band = (full >= 0.5) & (full <= 10.0)
+
+    on_full = non_paralyzable_dead_time_model(full, deadtime, rate, bin_time=bin_time)[band]
+    on_band = non_paralyzable_dead_time_model(full[band], deadtime, rate, bin_time=bin_time)
+
+    assert np.allclose(on_band, on_full, rtol=0.01)

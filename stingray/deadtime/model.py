@@ -516,10 +516,14 @@ def non_paralyzable_dead_time_model(
         Detected background count rate. This is important to estimate when deadtime is given by the
         combination of the source counts and background counts (e.g. in an imaging X-ray detector).
     n_approx : int, default None
-        Number of bins to calculate the model power spectrum. If None, it will use the size of
-        the input frequency array. Relatively simple models (e.g., low count rates compared to
-        dead time) can use a smaller number of bins to speed up the calculation, and the final
-        power values will be interpolated.
+        Number of bins used to calculate the model power spectrum, which is then interpolated
+        onto ``freqs``. The model grid always spans 0 to ``0.5 / bin_time``, so this sets its
+        frequency resolution. If None, one bin per Hz is used, which is adequate because the
+        model is smooth on the scale of ``1 / dead_time``. Relatively simple models (e.g. low
+        count rates compared to dead time) can use a smaller number to speed up the
+        calculation. Note that the value does *not* depend on ``freqs``: the model of a given
+        detector is the same whether it is evaluated on a full Fourier grid or on a single
+        narrow band.
 
     Returns
     -------
@@ -535,7 +539,18 @@ def non_paralyzable_dead_time_model(
     if bin_time is None:
         bin_time = 1 / (2 * max(freqs))
 
-    n_bins = n_approx if n_approx is not None else max(max(freqs), 10)
+    # The Zhang grid always spans 0 to the Nyquist frequency of ``bin_time``, so
+    # ``n_bins`` fixes the model's frequency resolution at ``0.5 / (bin_time * n_bins)``.
+    # It therefore has to be set by ``bin_time`` alone. Deriving it from ``max(freqs)``
+    # makes the resolution depend on *which* frequencies are asked for: on a band
+    # restricted to 0.5-10 Hz of a 1024 Hz grid it left ten model bins to span the
+    # whole 1024 Hz, a 25% error. One bin per Hz reproduces exactly what a full Fourier
+    # grid got before, because there ``max(freqs)`` *is* the Nyquist frequency, and the
+    # model is smooth on the scale of ``1 / dead_time``.
+    if n_approx is not None:
+        n_bins = n_approx
+    else:
+        n_bins = max(int(round(0.5 / bin_time)), 10)
 
     zh_f, zh_p = pds_model_zhang(
         int(n_bins) * 2,
