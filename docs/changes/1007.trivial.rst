@@ -1,0 +1,3 @@
+Compile the four ``_intrinsic_coherence`` helpers in ``stingray.fourier`` with ``cache=True``,
+as the vectorised functions beside them already are. Numba recompiled them in every fresh
+process, which cost about 0.6 s on the first call to ``intrinsic_coherence``.

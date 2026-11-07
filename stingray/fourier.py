@@ -968,7 +968,7 @@ def raw_coherence(
     return coherence
 
 
-@njit
+@njit(cache=True)
 def _intrinsic_coherence_uncertainties(
     bsq, num, power1_sub, power2_sub, power1_noise, power2_noise, coherence, n_ave
 ):
@@ -1041,7 +1041,7 @@ def check_powers_for_intrinsic_coherence(
     return low_power1 or low_power2
 
 
-@njit
+@njit(cache=True)
 def _intrinsic_coherence(
     cross_power,
     power1,
@@ -1116,7 +1116,7 @@ def _intrinsic_coherence(
     return coherence, uncertainty
 
 
-@njit
+@njit(cache=True)
 def _intrinsic_coherence_with_adjusted_bias(
     cross_power,
     power1,
@@ -1205,7 +1205,7 @@ def _intrinsic_coherence_with_adjusted_bias(
     return coherence, uncertainty, not converged
 
 
-@njit
+@njit(cache=True)
 def _intrinsic_coherence_array(
     cross_power,
     power1,
