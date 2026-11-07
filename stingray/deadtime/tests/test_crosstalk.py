@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from stingray import EventList
-from stingray.crossspectrum import AveragedCrossspectrum
+from stingray.crossspectrum import AveragedCrossspectrum, DynamicalCrossspectrum
 from stingray.deadtime.crosstalk import (
     coherence_from_cross_spectral_matrix,
     cross_module_cross_spectral_matrix,
@@ -315,3 +315,100 @@ def test_unmixing_recovers_a_lag_through_dead_time_at_an_unequal_split():
     assert measured_phase("leahy") == pytest.approx(phase, rel=0.12)
     assert measured_phase("frac") < 0.7 * phase
     assert measured_phase("none") > 1.1 * phase
+
+
+def _module_with_segments(
+    rng, length, dt, segment_size, rate_curve, band_fraction, phase, frequency, amplitude, dead_time
+):
+    """One module on a time-varying mean rate, with the live time fraction per segment.
+
+    Returns the two bands as event lists, plus the fraction of events that survived the
+    dead-time filter inside each Fourier segment.
+    """
+    t = np.arange(0, length, dt)
+    shape = 1 + amplitude * np.sin(2 * np.pi * frequency * t)
+    lagged = 1 + amplitude * np.sin(2 * np.pi * frequency * t - phase)
+
+    times, labels = [], []
+    for label, (fraction, curve) in enumerate(
+        ((band_fraction, shape), (1 - band_fraction, lagged))
+    ):
+        counts = rng.poisson(rate_curve * fraction * dt * curve)
+        drawn = np.repeat(t, counts) + rng.uniform(0, dt, counts.sum())
+        times.append(drawn)
+        labels.append(np.full(drawn.size, label))
+
+    merged = np.concatenate(times)
+    label = np.concatenate(labels)
+    order = np.argsort(merged)
+    merged, label = merged[order], label[order]
+    kept = np.isin(merged, filter_for_deadtime(merged, dead_time))
+
+    nseg = int(length // segment_size)
+    edges = np.arange(nseg + 1) * segment_size
+    drawn_per_seg, _ = np.histogram(merged, bins=edges)
+    kept_per_seg, _ = np.histogram(merged[kept], bins=edges)
+
+    gti = [[0, length]]
+    return (
+        EventList(merged[kept & (label == 0)], gti=gti),
+        EventList(merged[kept & (label == 1)], gti=gti),
+        kept_per_seg / drawn_per_seg,
+    )
+
+
+@pytest.mark.slow
+def test_per_segment_unmixing_beats_one_global_matrix_on_a_variable_source():
+    """When the live time varies between segments, one matrix for the whole observation
+    is biased and a per-segment matrix is not.
+
+    This is the broadcasting path: ``f_live`` is one value per segment and the matrix is
+    the ``(frequency, segment)`` array ``DynamicalCrossspectrum`` returns.
+    """
+    length, dt, segment_size, dead_time = 512.0, 1 / 256, 8.0, 2.5e-3
+    phase, frequency, split = 0.5, 4.0, 0.25
+    rng = np.random.default_rng(99)
+
+    # A square wave in the mean rate: the live time swings between segments.
+    t = np.arange(0, length, dt)
+    rate_curve = np.where((t // 64) % 2 == 0, 150.0, 700.0)
+    kwargs = dict(
+        length=length,
+        dt=dt,
+        segment_size=segment_size,
+        rate_curve=rate_curve,
+        band_fraction=split,
+        phase=phase,
+        frequency=frequency,
+        amplitude=0.5,
+        dead_time=dead_time,
+    )
+    soft_a, hard_a, live_a = _module_with_segments(rng, **kwargs)
+    soft_b, hard_b, live_b = _module_with_segments(rng, **kwargs)
+    f_live = 0.5 * (live_a + live_b)
+
+    options = dict(segment_size=segment_size, sample_time=dt, norm="leahy")
+    diag1 = DynamicalCrossspectrum(soft_a, soft_b, **options)
+    diag2 = DynamicalCrossspectrum(hard_a, hard_b, **options)
+    off_a = DynamicalCrossspectrum(soft_a, hard_b, **options)
+    off_b = DynamicalCrossspectrum(soft_b, hard_a, **options)
+
+    power1, power2 = diag1.dyn_ps.real, diag2.dyn_ps.real
+    cross = 0.5 * (off_a.dyn_ps + off_b.dyn_ps)
+    assert f_live.size == power1.shape[1]
+
+    counts1 = soft_a.time.size + soft_b.time.size
+    counts2 = hard_a.time.size + hard_b.time.size
+    band_fraction = counts1 / (counts1 + counts2)
+    peak = np.argmin(np.abs(diag1.freq - frequency))
+
+    def recovered(live):
+        entries = unmix_cross_spectral_matrix(power1, power2, cross, live, band_fraction)
+        return -np.angle(np.mean(entries[2][peak]))
+
+    per_segment = recovered(f_live)
+    global_only = recovered(np.mean(f_live))
+
+    assert f_live.max() - f_live.min() > 0.2
+    assert per_segment == pytest.approx(phase, rel=0.15)
+    assert abs(per_segment - phase) < abs(global_only - phase)
