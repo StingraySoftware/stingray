@@ -1,0 +1,8 @@
+The ``limit_k`` argument of ``non_paralyzable_dead_time_model``, and of
+``Crossspectrum.deadtime_correct``, now defaults to ``None``, meaning that the number of
+terms kept in the model's inner sums is derived from the live time fraction implied by the
+detected rate, as ``ceil(30 / f_live)`` with a floor of 30. The number of terms needed grows
+as the live time falls, so the old fixed default of 200 was both insufficient below
+``f_live = 0.1`` and about 37 times slower than necessary at the ``f_live = 0.5`` typical of a
+bright NuSTAR source. Below ``f_live = 0.03`` the sums do not converge at all, and the model
+now warns and caps the number of terms instead of hanging.

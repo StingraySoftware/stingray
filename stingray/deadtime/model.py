@@ -489,7 +489,7 @@ def non_paralyzable_dead_time_model(
     dead_time,
     rate,
     bin_time=None,
-    limit_k=200,
+    limit_k=None,
     background_rate=0.0,
     n_approx=None,
 ):
@@ -508,10 +508,16 @@ def non_paralyzable_dead_time_model(
     ----------------
     bin_time : float
         Bin time of the light curve
-    limit_k : int, default 200
-        Limit to this value the number of terms in the inner loops of
-        calculations. Check the plots returned by  the `check_B` and
-        `check_A` functions to test that this number is adequate.
+    limit_k : int, default None
+        Limit to this value the number of terms in the inner loops of calculations. The
+        number of terms needed grows as the live time fraction falls, because the dead-time
+        correlations then reach further in time. If None, ``ceil(30 / f_live)`` is used, with
+        a floor of 30, where ``f_live = 1 - (rate + background_rate) * dead_time`` is the live
+        time fraction implied by the detected rate. That rule clears the measured requirement
+        by a factor 1.5 or better from ``f_live = 0.88`` down to 0.075; at NuSTAR's usual
+        bright-source ``f_live`` of 0.5 it gives 60, which is 37 times faster than the 200
+        this argument used to default to and identical to it. Check the plots returned by the
+        `check_B` and `check_A` functions to test that the number is adequate.
     background_rate : float, default 0
         Detected background count rate. This is important to estimate when deadtime is given by the
         combination of the source counts and background counts (e.g. in an imaging X-ray detector).
@@ -538,6 +544,26 @@ def non_paralyzable_dead_time_model(
 
     if bin_time is None:
         bin_time = 1 / (2 * max(freqs))
+
+    if limit_k is None:
+        # The dead-time correlations reach further in time as the live time falls, so more
+        # terms of the inner sums are needed. Measured at dead_time = 2.5 ms on an
+        # 8192-point grid, the smallest limit_k within 0.1% of a limit_k = 400 reference is
+        # 20 at f_live = 0.88, 30 at 0.50, 60 at 0.25, 100 at 0.20, 150 at 0.125 and 400 at
+        # 0.075 -- that is, roughly 30 / f_live. A fixed default is either wrong at low live
+        # time or needlessly slow at high live time.
+        f_live = 1 - (rate + background_rate) * dead_time
+        limit_k = max(int(np.ceil(30 / f_live)), 30)
+        if limit_k > 1000:
+            # Below f_live = 0.03 the inner sums stop converging at all -- the model can
+            # return negative powers -- so there is no number of terms that would help, and
+            # a rate-derived limit_k this large would only make the call hang.
+            warnings.warn(
+                f"The live time fraction implied by the detected rate is {f_live:.3g}. "
+                "The Zhang model does not converge there: its result is unreliable "
+                "whatever limit_k is used. Capping limit_k at 1000."
+            )
+            limit_k = 1000
 
     # The Zhang grid always spans 0 to the Nyquist frequency of ``bin_time``, so
     # ``n_bins`` fixes the model's frequency resolution at ``0.5 / (bin_time * n_bins)``.

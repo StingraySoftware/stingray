@@ -139,3 +139,36 @@ def test_non_paralyzable_model_restricted_band():
     on_band = non_paralyzable_dead_time_model(full[band], deadtime, rate, bin_time=bin_time)
 
     assert np.allclose(on_band, on_full, rtol=0.01)
+
+
+@pytest.mark.skipif("not HAS_NUMBA")
+@pytest.mark.parametrize("f_live", [0.75, 0.5, 0.25])
+def test_non_paralyzable_model_adaptive_limit_k(f_live):
+    """The ``limit_k=None`` default must be converged across the live time grid.
+
+    The number of inner-sum terms needed grows as the live time falls, so the default
+    is derived from the rate; here it is checked against a large fixed ``limit_k``.
+    """
+    bin_time = 1 / 2048
+    deadtime = 2.5e-3
+    rate = (1 - f_live) / deadtime
+    freqs = np.fft.rfftfreq(2048, bin_time)[1:]
+
+    kwargs = dict(bin_time=bin_time, n_approx=256)
+    reference = non_paralyzable_dead_time_model(freqs, deadtime, rate, limit_k=200, **kwargs)
+    default = non_paralyzable_dead_time_model(freqs, deadtime, rate, **kwargs)
+
+    assert np.allclose(default, reference, rtol=0.001)
+
+
+@pytest.mark.skipif("not HAS_NUMBA")
+def test_non_paralyzable_model_limit_k_capped():
+    """At very low live time the adaptive ``limit_k`` is capped, with a warning.
+
+    The model does not converge there whatever ``limit_k`` is, so an uncapped
+    rate-derived value would only make the call slow for nothing.
+    """
+    with pytest.warns(UserWarning, match="does not converge"):
+        non_paralyzable_dead_time_model(
+            np.arange(1, 10.0), 2.5e-3, 395.0, bin_time=1 / 2048, n_approx=16
+        )

@@ -1785,7 +1785,7 @@ class Crossspectrum(StingrayObject):
         return
 
     def deadtime_correct(
-        self, dead_time, rate, background_rate=0, limit_k=200, n_approx=None, paralyzable=False
+        self, dead_time, rate, background_rate=0, limit_k=None, n_approx=None, paralyzable=False
     ):
         """
         Correct the power spectrum for dead time effects.
@@ -1810,11 +1810,12 @@ class Crossspectrum(StingrayObject):
             If True, the dead time correction is done assuming a paralyzable
             dead time. If False, the correction is done assuming a non-paralyzable
             (more common) dead time.
-        limit_k : int, default 200
+        limit_k : int, default None
             Limit to this value the number of terms in the inner loops of
-            calculations. Check the plots returned by the
-            :func:`~stingray.deadtime.model.check_B` and
-            :func:`~stingray.deadtime.model.check_A` functions to test that this number is adequate.
+            calculations. If None, it is derived from the live time fraction implied by
+            ``rate`` -- see `stingray.deadtime.model.non_paralyzable_dead_time_model`.
+            Check the plots returned by the `check_B` and `check_A` functions to test
+            that the number is adequate.
         n_approx : int, default None
             Number of bins to calculate the model power spectrum. If None, it will use the size of
             the input frequency array. Relatively simple models (e.g., low count rates compared to
