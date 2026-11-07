@@ -2194,7 +2194,20 @@ class AveragedCrossspectrum(Crossspectrum):
 
         return self.raw_coherence()
 
-    def raw_coherence(self):
+    def _poisson_levels(self, power1_noise=None, power2_noise=None):
+        """Poisson noise level of each sub-band periodogram, or the caller's override.
+
+        Returned in the unnormalized units the coherence estimators work in.
+        """
+        if power1_noise is None:
+            meanrate1 = self.nphots1 / self.n / self.dt
+            power1_noise = poisson_level(norm="none", meanrate=meanrate1, n_ph=self.nphots1)
+        if power2_noise is None:
+            meanrate2 = self.nphots2 / self.n / self.dt
+            power2_noise = poisson_level(norm="none", meanrate=meanrate2, n_ph=self.nphots2)
+        return power1_noise, power2_noise
+
+    def raw_coherence(self, power1_noise=None, power2_noise=None):
         r"""Averaged Raw Coherence function.
 
         Coherence is a Fourier frequency dependent measure of the linear correlation
@@ -2217,6 +2230,19 @@ class AveragedCrossspectrum(Crossspectrum):
             cross spectrum and the power spectra estimates have been obtained by averaging over
             at least 50 intervals. A warning will be raised if this is not the case
 
+        Other Parameters
+        ----------------
+        power1_noise, power2_noise : float or `np.ndarray`, default None
+            Poisson noise level of each sub-band periodogram, in the **unnormalized**
+            units of ``unnorm_power``, which is what ``norm="none"`` produces. If None,
+            the flat Poisson level of pure counting statistics is used, which is the
+            right answer only when nothing but counting statistics contributes. Pass an
+            array, one value per Fourier frequency, when the noise level is not flat --
+            dead time is the usual reason, and
+            :mod:`stingray.deadtime.crosstalk` describes the alternative of building a
+            matrix that needs no noise level at all. To convert a Leahy-normalized
+            level ``N(f)``, multiply by ``nphots / 2``.
+
         Returns
         -------
         (coh, uncertainty) : tuple of np.ndarray
@@ -2236,15 +2262,11 @@ class AveragedCrossspectrum(Crossspectrum):
         p1 = self.pds1.unnorm_power
         p2 = self.pds2.unnorm_power
 
-        meanrate1 = self.nphots1 / self.n / self.dt
-        meanrate2 = self.nphots2 / self.n / self.dt
-
-        P1noise = poisson_level(norm="none", meanrate=meanrate1, n_ph=self.nphots1)
-        P2noise = poisson_level(norm="none", meanrate=meanrate2, n_ph=self.nphots2)
+        P1noise, P2noise = self._poisson_levels(power1_noise, power2_noise)
 
         return raw_coherence(c, p1, p2, P1noise, P2noise, self.m, return_uncertainty=True)
 
-    def intrinsic_coherence(self, adjust_bias=False):
+    def intrinsic_coherence(self, adjust_bias=False, power1_noise=None, power2_noise=None):
         r"""Averaged Coherence function.
 
         Intrinsic Coherence is defined in Vaughan and Nowak, 1997 [#]_, as
@@ -2275,6 +2297,21 @@ class AveragedCrossspectrum(Crossspectrum):
             See Ingram 2019, cited, for details on the bias term and its dependence on the intrinsic
             coherence, and the documentation of :func:`~stingray.fourier.intrinsic_coherence`.
 
+        Other Parameters
+        ----------------
+        power1_noise, power2_noise : float or `np.ndarray`, default None
+            Poisson noise level of each sub-band periodogram, in the **unnormalized**
+            units of ``unnorm_power``, which is what ``norm="none"`` produces. If None,
+            the flat Poisson level of pure counting statistics is used, which is the
+            right answer only when nothing but counting statistics contributes. This is
+            the quantity the intrinsic coherence subtracts, so getting it wrong biases
+            the result directly: with dead time the level is neither flat nor equal to 2
+            in Leahy units, and it is frequency dependent. Pass an array, one value per
+            Fourier frequency, in that case, or see
+            :mod:`stingray.deadtime.crosstalk` for the alternative of building a matrix
+            that needs no noise level at all. To convert a Leahy-normalized level
+            ``N(f)``, multiply by ``nphots / 2``.
+
         Returns
         -------
         (coh, uncertainty) : tuple of np.ndarray
@@ -2294,11 +2331,7 @@ class AveragedCrossspectrum(Crossspectrum):
         p1 = self.pds1.unnorm_power
         p2 = self.pds2.unnorm_power
 
-        meanrate1 = self.nphots1 / self.n / self.dt
-        meanrate2 = self.nphots2 / self.n / self.dt
-
-        P1noise = poisson_level(norm="none", meanrate=meanrate1, n_ph=self.nphots1)
-        P2noise = poisson_level(norm="none", meanrate=meanrate2, n_ph=self.nphots2)
+        P1noise, P2noise = self._poisson_levels(power1_noise, power2_noise)
 
         return intrinsic_coherence(
             c, p1, p2, P1noise, P2noise, self.m, return_uncertainty=True, adjust_bias=adjust_bias

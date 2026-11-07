@@ -544,6 +544,41 @@ class TestCoherence(object):
 
         assert np.isclose(np.mean(coh).real, 1.0, atol=0.01)
 
+    @pytest.mark.parametrize("method", ["raw_coherence", "intrinsic_coherence"])
+    def test_noise_level_override_default_is_the_counting_statistics_level(self, method):
+        """Passing the Poisson level explicitly must reproduce the default exactly.
+
+        The default is the flat level of pure counting statistics, so handing the same
+        numbers back in has to be a no-op.
+        """
+        level1 = poisson_level(
+            norm="none", meanrate=self.cs.nphots1 / self.cs.n / self.cs.dt, n_ph=self.cs.nphots1
+        )
+        level2 = poisson_level(
+            norm="none", meanrate=self.cs.nphots2 / self.cs.n / self.cs.dt, n_ph=self.cs.nphots2
+        )
+
+        default = getattr(self.cs, method)()[0]
+        explicit = getattr(self.cs, method)(power1_noise=level1, power2_noise=level2)[0]
+
+        assert np.allclose(default, explicit, equal_nan=True)
+
+    def test_intrinsic_coherence_uses_a_per_frequency_noise_level(self):
+        """A frequency-dependent level must reach the estimator, not be ignored.
+
+        Dead time makes the noise level frequency dependent, and the intrinsic
+        coherence subtracts it, so an override that silently did nothing would bias
+        every corrected measurement.
+        """
+        default = self.cs.intrinsic_coherence()[0]
+        level = np.linspace(0.5, 1.5, self.cs.unnorm_power.size) * poisson_level(
+            norm="none", meanrate=self.cs.nphots1 / self.cs.n / self.cs.dt, n_ph=self.cs.nphots1
+        )
+        overridden = self.cs.intrinsic_coherence(power1_noise=level, power2_noise=level)[0]
+
+        assert not np.allclose(default, overridden, equal_nan=True)
+        assert overridden.shape == default.shape
+
 
 class TestNormalization(object):
     def setup_class(self):

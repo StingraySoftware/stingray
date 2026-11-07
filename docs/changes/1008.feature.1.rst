@@ -1,0 +1,7 @@
+``AveragedCrossspectrum.raw_coherence`` and
+``AveragedCrossspectrum.intrinsic_coherence`` take an optional ``power1_noise`` and
+``power2_noise``, so a caller can supply a frequency-dependent Poisson noise level
+instead of the flat level of pure counting statistics. The functions underneath
+already accepted an array; there was simply no way to reach them. Dead time is the
+usual reason the level is neither flat nor equal to 2 in Leahy units, and the intrinsic
+coherence subtracts that level, so it was previously biased with no way to fix it.
