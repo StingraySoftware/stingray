@@ -102,6 +102,15 @@ class TestRebinData(object):
         # Correct: sqrt(4*2**2) / 4 = 4/4 = 1
         assert np.allclose(ybinerr, 1.0)
 
+    @pytest.mark.parametrize("method", ["sum", "mean"])
+    def test_rebin_data_integer_counts_non_integer_factor(self, method):
+        """Integer counts must not be truncated when new bins split old ones."""
+        x = np.arange(6.0)
+        expected = utils.rebin_data(x, np.full(6, 3.0), 1.5, dx=1.0, method=method)[1]
+        _, ybin, _, _ = utils.rebin_data(x, np.full(6, 3), 1.5, dx=1.0, method=method)
+        assert np.allclose(ybin, expected)
+        assert np.allclose(ybin, 4.5 if method == "sum" else 3.0)
+
 
 class TestRebinDataLog(object):
     @classmethod
