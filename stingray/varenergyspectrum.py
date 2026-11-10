@@ -27,6 +27,7 @@ __all__ = [
     "CovarianceSpectrum",
     "ComplexCovarianceSpectrum",
     "CountSpectrum",
+    "get_non_overlapping_ref_band",
 ]
 
 
@@ -126,7 +127,6 @@ def _decode_energy_specification(energy_spec):
 
 
 class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
-    main_array_attr = "energy"
     """
     Base class for variability-energy spectrum.
 
@@ -186,6 +186,8 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
     energy : array-like
         The centers of energy intervals
     """
+
+    main_array_attr = "energy"
 
     def __init__(
         self,
@@ -307,7 +309,7 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
 
         Parameters
         ----------
-        events : `EventList`
+        events : :class:`~stingray.events.EventList`
             Input event list
         erange : [e0, e1]
             Energy range in keV
@@ -319,7 +321,7 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
 
         Returns
         -------
-        out_ev : `EventList`
+        out_ev : :class:`~stingray.events.EventList`
             The filtered event list.
         """
         if use_pi:
@@ -334,13 +336,13 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
 
         Parameters
         ----------
-        freq : `np.array`, default None
+        freq : ``np.array``, default None
             The frequency array. If None, it will get calculated from the number
             of spectral bins using `np.fft.fftfreq`
 
         Returns
         -------
-        freq_mask : `np.array` of bool
+        freq_mask : ``np.array`` of bool
             The frequency mask.
         """
         if freq is None:

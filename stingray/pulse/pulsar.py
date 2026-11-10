@@ -222,16 +222,16 @@ def fold_events(
 ):
     """Epoch folding with exposure correction.
 
-    By default, the keyword `times` accepts a list of
+    By default, the keyword ``times`` accepts a list of
     unbinned photon arrival times. If the input data is
-    a (binned) light curve, then `times` will contain the
-    time stamps of the observation, and `weights` should
+    a (binned) light curve, then ``times`` will contain the
+    time stamps of the observation, and ``weights`` should
     be set to the corresponding fluxes or counts.
 
     Parameters
     ----------
     times : array of floats
-        Photon arrival times, or, if `weights` is set,
+        Photon arrival times, or, if ``weights`` is set,
         time stamps of a light curve.
 
     f, fdot, fddot... : float
@@ -319,7 +319,7 @@ def fold_events(
         if np.allclose(weights, 1.0):
             raise ValueError(
                 "Can only calculate PDM for binned light curves!"
-                + "`weights` attribute must be set to fluxes!"
+                + "``weights`` attribute must be set to fluxes!"
             )
 
         # For weighted pdm, the measured uncertainties (variances) for each event are required
@@ -461,13 +461,13 @@ def _z_n_fast_cached_sums_unnorm(prof, ks, cached_sin, cached_cos):
 
     Parameters
     ----------
-    prof : :class:`numpy.array`
+    prof : ``numpy.array``
         The pulsed profile
-    ks : :class:`numpy.array` of int
+    ks : ``numpy.array`` of int
         The harmonic numbers, from 1 to n
-    cached_sin : :class:`numpy.array`
+    cached_sin : ``numpy.array``
         Cached sine values for each phase bin in the profile
-    cached_cos : :class:`numpy.array`
+    cached_cos : ``numpy.array``
         Cached cosine values for each phase bin in the profile
     """
 
@@ -775,8 +775,8 @@ def fftfit(prof, template=None, quick=False, sigma=None, use_bootstrap=False, **
     sigma : array
         error on profile bins (currently has no effect)
     use_bootstrap : bool
-        Calculate errors using a bootstrap method, with `fftfit_error`
-    **fftfit_kwargs : additional arguments for `fftfit_error`
+        Calculate errors using a bootstrap method, with ``fftfit_error``
+    **fftfit_kwargs : additional arguments for ``fftfit_error``
 
     Returns
     -------
