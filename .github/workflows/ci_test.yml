@@ -87,8 +87,8 @@ jobs:
             tox_env: 'py311-test-cov'
             experimental: false
 
-          - name: Mac OS M1, Py3.11
-            os: macos-14
+          - name: Older Mac OS, Py3.11
+            os: macos-15
             python: '3.11'
             tox_env: 'py311-test'
             experimental: false
