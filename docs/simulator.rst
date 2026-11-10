@@ -151,7 +151,7 @@ Since, the new light curve is produced by the convolution of original light curv
 Channel Simulation
 ==================
 
-The :class:`~stingray.simulator.simulator.Simulator` class provides the functionality to simulate light curves independently for each channel. This is useful, for example, when dealing with energy dependent impulse responses where we can create a di↵erent simulation channel for each energy range. The module provides options to count, retrieve and delete channels.::
+The :class:`~stingray.simulator.simulator.Simulator` class provides the functionality to simulate light curves independently for each channel. This is useful, for example, when dealing with energy dependent impulse responses where we can create a different simulation channel for each energy range. The module provides options to count, retrieve and delete channels.::
 
   >>> sim = simulator.Simulator(N=1024, mean=0.5, dt=0.125, rms=1.0)
   >>> sim.simulate_channel('3.5 - 4.5', 2) # doctest: +IGNORE_WARNINGS

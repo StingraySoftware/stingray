@@ -194,7 +194,7 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
-- When rms is low, the calculation in compute_rms often gave ``NaN``. We now check for this situation and give 0 with an uncertainty as a result. (`#736 <https://github.com/StingraySoftware/stingray/pull/736>`__)
+- When the rms is low, the calculation in compute_rms often gave ``NaN``. We now check for this situation and give 0 with an uncertainty as a result. (`#736 <https://github.com/StingraySoftware/stingray/pull/736>`__)
 - Eliminates deprecated call to ``enable_deprecations_as_warnings``, and contextually, changes the code to be much more robust in catching harmful warnings. (`#738 <https://github.com/StingraySoftware/stingray/pull/738>`__)
 - Changes Crossspectrum.plot() function to plot the actual real and imaginary parts instead of their absolute values. (`#747 <https://github.com/StingraySoftware/stingray/pull/747>`__)
 - Make commits marked as [docs only] skip all CI but the docs build (`#749 <https://github.com/StingraySoftware/stingray/pull/749>`__)
