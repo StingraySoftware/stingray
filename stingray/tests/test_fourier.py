@@ -1,3 +1,4 @@
+import warnings
 import os
 
 from collections.abc import Iterable
@@ -214,84 +215,51 @@ class TestCoherence(object):
             coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 40)
             assert np.isnan(coh)
 
-    def test_intrinsic_low_coh_iteration(self):
-        # bsq = (8 * 8 - 6 * 6) / 2. = 14 for coherence = 1, 36 for coherence = 0
-        # C**2 = 36, so that C**2 - bsq is positive, but coherence is less than 1.
-        # This will trigger the iteration.
-
+    def test_intrinsic_value(self):
+        """The bias of |C|^2 is P1 P2 / m and the denominator loses |C|^2 / m: with
+        |C|^2 = 36, P = 8, N = 2, m = 2 the coherence is (36 - 32) / (36 - 4 / 2)."""
         C, P1, P2 = np.array([6, 6]), np.array([8, 8]), np.array([8, 8])
-        coh = intrinsic_coherence(C, P1, P2, 2, 2, 2, adjust_bias=True)
-        assert np.allclose(coh, 0.22, atol=0.01)
-
-        coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=True)
-        assert np.shape(coh) == ()
-        assert np.isclose(coh, 0.22, atol=0.01)
+        assert np.allclose(intrinsic_coherence(C, P1, P2, 2, 2, 2), 4 / 34)
+        coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2)
+        assert np.shape(coh) == () and np.isclose(coh, 4 / 34)
 
     def test_intrinsic_coh_all_arrays(self):
-        # bsq = (8 * 8 - 6 * 6) / 2. = 14 for coherence = 1, 36 for coherence = 0
-        # C**2 = 36, so that C**2 - bsq is positive, but coherence is less than 1.
-        # This will trigger the iteration.
-
+        """Noise levels and numbers of averaged segments can be given per frequency."""
         C, P1, P2 = np.array([6, 6]), np.array([8, 8]), np.array([8, 8])
-        P1n = np.array([2, 2])
-        P2n = np.array([2, 2])
-        n_ave = np.array([2, 2])
-        coh = intrinsic_coherence(C, P1, P2, P1n, P2n, n_ave, adjust_bias=True)
-        assert np.allclose(coh, 0.22, atol=0.01)
+        coh = intrinsic_coherence(C, P1, P2, np.array([2, 2]), np.array([2, 2]), np.array([2, 4]))
+        assert np.allclose(coh, [4 / 34, (36 - 16) / (36 - 20 / 4)])
 
-    def test_intrinsic_low_coh_many_iteration(self):
-        # bsq = (8 * 8 - 6 * 6) / 2. = 14 for coherence = 1, 36 for coherence = 0
-        # C**2 > 36, so that C**2 - bsq is positive, but coherence is less than 1.
-        # This will trigger the iteration.
+    def test_adjust_bias_is_deprecated(self):
+        """The bias is now exact, so the iterative adjustment is ignored, with a warning."""
+        C, P1, P2 = np.array([6, 6]), np.array([8, 8]), np.array([8, 8])
+        with pytest.warns(DeprecationWarning, match="adjust_bias"):
+            coh = intrinsic_coherence(C, P1, P2, 2, 2, 2, adjust_bias=True)
+        assert np.allclose(coh, 4 / 34)
 
-        C, P1, P2 = np.array([6.1, 6.1]), np.array([8, 8]), np.array([8, 8])
-        with pytest.warns(
-            UserWarning,
-            match="The iterative procedure to adjust the bias term did not converge after 40 iterations.",
-        ):
-            coh = intrinsic_coherence(C, P1, P2, 2, 2, 2, adjust_bias=True, atol=1e-15)
-        assert np.allclose(coh, 0.2894444, atol=0.00001)
-
-        with pytest.warns(
-            UserWarning,
-            match="The iterative procedure to adjust the bias term did not converge after 40 iterations.",
-        ):
-            coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=True, atol=1e-15)
-        assert np.isclose(coh, 0.28944444, atol=0.00001)
-
-    @pytest.mark.parametrize("adjust_bias", [True, False])
-    def test_intrinsic_neg_0(self, adjust_bias):
-        # bsq = (8 * 8 - gamma * 6 * 6) / 2. = 14 for gamma=1 and 36 for gamma=0
-        # C**2 = 9, so that C**2 - bsq is always negative.
-
+    def test_intrinsic_negative_not_clipped(self):
+        """A cross spectrum below its bias gives a negative coherence, kept as it is, and
+        a finite uncertainty."""
         C, P1, P2 = np.array([3, 3]), np.array([8, 8]), np.array([8, 8])
-        with pytest.warns(UserWarning, match="Zero values detected in intrinsic_coherence"):
-            coh, unc = intrinsic_coherence(
-                C, P1, P2, 2, 2, 2, adjust_bias=adjust_bias, return_uncertainty=True
-            )
-        assert np.allclose(coh, 0)
-        assert np.all(np.isnan(unc))
+        coh, unc = intrinsic_coherence(C, P1, P2, 2, 2, 2, return_uncertainty=True)
+        assert np.allclose(coh, (9 - 32) / 36)
+        assert np.all(np.isfinite(unc))
 
-        with pytest.warns(UserWarning, match="Zero values detected in intrinsic_coherence"):
-            coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=adjust_bias)
-        assert np.isclose(coh, 0)
-
-    @pytest.mark.parametrize("adjust_bias", [True, False])
-    def test_intrinsic_invalid_power(self, adjust_bias):
-        # bsq = (8 * 8 - gamma * 6 * 6) / 2. = 14 for gamma=1 and 36 for gamma=0
-        # C**2 = 9, so that C**2 - bsq is always negative.
-
+    def test_intrinsic_invalid_power(self):
+        """A power at or below its noise level makes the coherence undefined."""
         C, P1, P2 = np.array([3, 3]), np.array([1, 1]), np.array([8, 8])
         with pytest.warns(UserWarning, match="NaN values detected in intrinsic_coherence"):
-            coh, unc = intrinsic_coherence(
-                C, P1, P2, 2, 2, 2, adjust_bias=adjust_bias, return_uncertainty=True
-            )
-        assert np.all(np.isnan(unc))
-        assert np.all(np.isnan(coh))
+            coh, lo, hi = intrinsic_coherence(C, P1, P2, 2, 2, 2, return_interval=True)
+        assert np.all(np.isnan(coh)) and np.all(np.isnan(lo)) and np.all(np.isnan(hi))
 
-        with pytest.warns(UserWarning, match="NaN values detected in intrinsic_coherence"):
-            coh = intrinsic_coherence(C[0], P1[0], P2[0], 2, 2, 2, adjust_bias=adjust_bias)
-        assert np.isnan(coh)
+    def test_interval_contains_estimate(self):
+        """The interval contains the estimate, and may extend outside [0, 1] like the
+        estimate; return_uncertainty gives its half width."""
+        C, P1, P2 = np.array([1, 6, 7.9]), np.array([8, 8, 8]), np.array([8, 8, 8])
+        coh, lo, hi = intrinsic_coherence(C, P1, P2, 2, 2, 20, return_interval=True)
+        assert np.all((lo <= coh) & (coh <= hi))
+        assert lo[0] < 0 and hi[-1] > 1
+        _, unc = intrinsic_coherence(C, P1, P2, 2, 2, 20, return_uncertainty=True)
+        assert np.allclose(unc, (hi - lo) / 2)
 
     def test_raw_high_bias(self):
         """Test when squared bias higher than squared norm of cross spec"""
@@ -1168,3 +1136,57 @@ def test_raw_coherence_float32_computed_in_float64():
     )
     assert res32.dtype == np.float64
     assert np.array_equal(res32, expected)
+
+
+def _two_band_amplitudes(rng, snr, coherence, m, n_real, noise=1.0):
+    """Fourier amplitudes of two bands of one detector, averaged over m segments: signal
+    power snr x noise in both bands, intrinsic coherence ``coherence``, unit noise.
+    Returns the averaged cross spectrum and the two averaged power spectra."""
+
+    def cgauss():
+        return (rng.normal(size=(n_real, m)) + 1j * rng.normal(size=(n_real, m))) / np.sqrt(2)
+
+    x, y = cgauss(), cgauss()
+    s1 = np.sqrt(snr) * x
+    s2 = np.sqrt(snr) * (np.sqrt(coherence) * x * np.exp(-0.3j) + np.sqrt(1 - coherence) * y)
+    a1, a2 = s1 + np.sqrt(noise) * cgauss(), s2 + np.sqrt(noise) * cgauss()
+    cross = np.mean(np.conj(a1) * a2, -1)
+    return cross, np.mean(np.abs(a1) ** 2, -1), np.mean(np.abs(a2) ** 2, -1)
+
+
+def _interval_coverage(rng, snr, coherence, m, n_real=500):
+    cross, p1, p2 = _two_band_amplitudes(rng, snr, coherence, m, n_real)
+    with warnings.catch_warnings():
+        # weak signal, few segments: a power below its noise level gives NaN; skip it
+        warnings.filterwarnings("ignore", "NaN values detected")
+        _, lo, hi = intrinsic_coherence(cross, p1, p2, 1.0, 1.0, m, return_interval=True)
+    good = ~np.isnan(lo)
+    return np.mean((lo[good] <= coherence) & (coherence <= hi[good]))
+
+
+@pytest.mark.parametrize(
+    "snr, coherence, m", [(1.0, 0.0, 50), (0.3, 0.1, 300), (3.0, 0.5, 50), (10.0, 1.0, 50)]
+)
+def test_intrinsic_coherence_interval_coverage(snr, coherence, m):
+    """The 1-sigma interval contains the true coherence about 68% of the time, from no
+    coherence to full coherence and from weak to strong signal."""
+    rng = np.random.default_rng(int(100 * snr + 10 * coherence + m))
+    assert 0.60 < _interval_coverage(rng, snr, coherence, m) < 0.77
+
+
+@pytest.mark.slow
+def test_intrinsic_coherence_interval_coverage_grid():
+    """On a grid of signal strength, coherence and number of averaged segments, the
+    coverage of the 1-sigma interval stays close to 68% (conservative only when the signal
+    is too weak to say anything)."""
+    rng = np.random.default_rng(2026)
+    cov = np.array(
+        [
+            _interval_coverage(rng, snr, coh, m, n_real=1000)
+            for snr in (0.3, 1.0, 3.0, 10.0)
+            for m in (10, 50, 300)
+            for coh in (0.0, 0.02, 0.1, 0.3, 0.6, 0.9, 1.0)
+        ]
+    )
+    assert np.all((cov > 0.62) & (cov < 0.80))
+    assert np.mean(np.abs(cov - 0.68)) < 0.03

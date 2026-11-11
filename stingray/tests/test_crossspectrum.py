@@ -519,11 +519,17 @@ class TestCoherence(object):
         c.pds2 = p2
         cls.cs = c
 
-    @pytest.mark.parametrize("adjust_bias", [True, False])
-    def test_high_intr_coherence(self, adjust_bias):
-        coh, _ = self.cs.intrinsic_coherence(adjust_bias=adjust_bias)
+    def test_high_intr_coherence(self):
+        """Identical light curves have intrinsic coherence 1, within an interval around it."""
+        coh, lo, hi = self.cs.intrinsic_coherence(return_interval=True)
+        assert np.isclose(np.nanmean(coh), 1.0, atol=0.01)
+        assert np.all((lo <= coh) & (coh <= hi))
 
-        assert np.isclose(np.nanmean(coh).real, 1.0, atol=0.01)
+    def test_intr_coherence_adjust_bias_deprecated(self):
+        """adjust_bias is ignored, with a deprecation warning."""
+        with pytest.warns(DeprecationWarning, match="adjust_bias"):
+            coh, _ = self.cs.intrinsic_coherence(adjust_bias=True)
+        assert np.isclose(np.nanmean(coh), 1.0, atol=0.01)
 
     def test_coherence_is_one_on_single_interval(self):
         lc1 = Lightcurve([1, 2, 3, 4, 5], [2, 3, 2, 4, 1])
