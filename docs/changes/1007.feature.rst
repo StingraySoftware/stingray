@@ -1,8 +1,10 @@
-The ``limit_k`` argument of ``non_paralyzable_dead_time_model``, and of
-``Crossspectrum.deadtime_correct``, now defaults to ``None``, meaning that the number of
-terms kept in the model's inner sums is derived from the live time fraction implied by the
-detected rate, as ``ceil(30 / f_live)`` with a floor of 30. The number of terms needed grows
-as the live time falls, so the old fixed default of 200 was both insufficient below
-``f_live = 0.1`` and about 37 times slower than necessary at the ``f_live = 0.5`` typical of a
-bright NuSTAR source. Below ``f_live = 0.03`` the sums do not converge at all, and the model
-now warns and caps the number of terms instead of hanging.
+The ``limit_k`` argument of ``non_paralyzable_dead_time_model``, of ``pds_model_zhang``
+and of ``Crossspectrum.deadtime_correct`` now defaults to ``None``, meaning that the number
+of terms kept in the model's inner sums is derived from the live time fraction implied by
+the detected rate and from the binning, as ``ceil(10 * max(dead_time / bin_time, 1) /
+f_live)`` with a floor of 30. The dead-time correlations span a fixed time, so the number of
+terms needed grows with the number of bins per dead time and as the live time falls. The old
+fixed defaults, 200 and 60, were insufficient below ``f_live = 0.1`` and at fine binning --
+the low-frequency level came out 10% high at 41 bins per dead time and a factor 2.5 at 164
+-- and needlessly slow at coarse binning. Below ``f_live = 0.03`` the sums do not converge at
+all, and the model now warns and caps the number of terms instead of hanging.

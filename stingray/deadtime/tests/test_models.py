@@ -172,3 +172,22 @@ def test_non_paralyzable_model_limit_k_capped():
         non_paralyzable_dead_time_model(
             np.arange(1, 10.0), 2.5e-3, 395.0, bin_time=1 / 2048, n_approx=16
         )
+
+
+@pytest.mark.skipif("not HAS_NUMBA")
+@pytest.mark.parametrize("bins_per_dead_time", [5, 41, 164])
+def test_default_limit_k_follows_the_bin_time(bins_per_dead_time):
+    """The dead-time correlations span a fixed *time*, so the number of inner-sum terms
+    grows as dead_time / bin_time. Whatever the binning, the low-frequency level must be
+    2 f_live^2; a limit_k from the live time alone was 2.5x too high at 164 bins."""
+    deadtime = 2.5e-3
+    rate = 200.0
+    f_live = 1 - rate * deadtime
+    bin_time = deadtime / bins_per_dead_time
+
+    level = non_paralyzable_dead_time_model(np.array([1.0]), deadtime, rate, bin_time=bin_time)
+    # A long grid: Zhang's (N - k)/N weights bias a short one by 2% at 164 bins per td.
+    _, zhang = pds_model_zhang(65536, rate, deadtime, bin_time, rate_is_incident=False)
+
+    assert level[0] == pytest.approx(2 * f_live**2, rel=0.01)
+    assert zhang[1] == pytest.approx(2 * f_live**2, rel=0.01)

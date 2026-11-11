@@ -590,7 +590,30 @@ def _inner_loop_pds_zhang(N, tau, r0, td, tb, limit_k=60):
     return P
 
 
-def pds_model_zhang(N, rate, td, tb, limit_k=60, rate_is_incident=True):
+def _default_limit_k(f_live, td, tb):
+    """Number of inner-sum terms the Zhang model needs, from the live time and binning.
+
+    The dead-time correlations span a fixed *time*, of order ``td / f_live``, while
+    ``limit_k`` counts *bins*, so the terms needed grow as ``td / tb``. Mapped over
+    ``td / tb`` from 1 to 164 and ``f_live`` from 0.9 to 0.125, the smallest ``limit_k``
+    within 0.1% of a converged reference at every frequency is ``c (td / tb) / f_live``
+    with ``c`` from 1.5 at ``f_live = 0.9`` to 6.2 at 0.125, the same at every bin time
+    from 5 bins per dead time upwards. ``c = 10`` clears that by 1.6 or better.
+
+    Below ``f_live = 0.03`` the sums stop converging at all -- the model can return
+    negative powers -- so no number of terms helps; warn and use the value for 0.03.
+    """
+    if f_live < 0.03:
+        warnings.warn(
+            f"The live time fraction implied by the detected rate is {f_live:.3g}. "
+            "The Zhang model does not converge there: its result is unreliable "
+            "whatever limit_k is used."
+        )
+        f_live = 0.03
+    return max(int(np.ceil(10 * max(td / tb, 1) / f_live)), 30)
+
+
+def pds_model_zhang(N, rate, td, tb, limit_k=None, rate_is_incident=True):
     """Calculate the dead-time-modified power spectrum.
 
     Parameters
@@ -606,9 +629,12 @@ def pds_model_zhang(N, rate, td, tb, limit_k=60, rate_is_incident=True):
 
     Other Parameters
     ----------------
-    limit_k : int
+    limit_k : int, default None
         Limit to this value the number of terms in the inner loops of
-        calculations. Check the plots returned by  the `check_B` and
+        calculations. If None, ``ceil(10 * max(td / tb, 1) / f_live)`` with a floor of
+        30: the terms needed grow with the number of bins per dead time and as the live
+        time fraction falls. It used to be a flat 60, which is 10% wrong at 41 bins per
+        dead time and a factor 2.5 at 164. Check the plots returned by the `check_B` and
         `check_A` functions to test that this number is adequate.
     rate_is_incident : bool, default True
         If True, the input rate is the incident count rate. If False, it is the
@@ -627,6 +653,9 @@ def pds_model_zhang(N, rate, td, tb, limit_k=60, rate_is_incident=True):
     else:
         r0 = rate
         tau = 1 / r_in(td, rate)
+
+    if limit_k is None:
+        limit_k = _default_limit_k(1 - r0 * td, td, tb)
 
     # Nph = N / tau
     logger.info("Calculating PDS model (update)")
@@ -670,14 +699,14 @@ def non_paralyzable_dead_time_model(
         Bin time of the light curve
     limit_k : int, default None
         Limit to this value the number of terms in the inner loops of calculations. The
-        number of terms needed grows as the live time fraction falls, because the dead-time
-        correlations then reach further in time. If None, ``ceil(30 / f_live)`` is used, with
-        a floor of 30, where ``f_live = 1 - (rate + background_rate) * dead_time`` is the live
-        time fraction implied by the detected rate. That rule clears the measured requirement
-        by a factor 1.5 or better from ``f_live = 0.88`` down to 0.075; at NuSTAR's usual
-        bright-source ``f_live`` of 0.5 it gives 60, which is 37 times faster than the 200
-        this argument used to default to and identical to it. Check the plots returned by the
-        `check_B` and `check_A` functions to test that the number is adequate.
+        dead-time correlations span a fixed time, of order ``dead_time / f_live``, so the
+        number of terms needed grows with the number of bins per dead time and as the live
+        time fraction falls. If None, ``ceil(10 * max(dead_time / bin_time, 1) / f_live)``
+        is used, with a floor of 30, where ``f_live = 1 - (rate + background_rate) *
+        dead_time`` is the live time fraction implied by the detected rate. That clears the
+        measured requirement by a factor 1.6 or better from ``f_live = 0.9`` to 0.125 and
+        from 1 to 164 bins per dead time. Check the plots returned by the `check_B` and
+        `check_A` functions to test that the number is adequate.
     background_rate : float, default 0
         Detected background count rate. This is important to estimate when deadtime is given by the
         combination of the source counts and background counts (e.g. in an imaging X-ray detector).
@@ -706,24 +735,8 @@ def non_paralyzable_dead_time_model(
         bin_time = 1 / (2 * max(freqs))
 
     if limit_k is None:
-        # The dead-time correlations reach further in time as the live time falls, so more
-        # terms of the inner sums are needed. Measured at dead_time = 2.5 ms on an
-        # 8192-point grid, the smallest limit_k within 0.1% of a limit_k = 400 reference is
-        # 20 at f_live = 0.88, 30 at 0.50, 60 at 0.25, 100 at 0.20, 150 at 0.125 and 400 at
-        # 0.075 -- that is, roughly 30 / f_live. A fixed default is either wrong at low live
-        # time or needlessly slow at high live time.
         f_live = 1 - (rate + background_rate) * dead_time
-        limit_k = max(int(np.ceil(30 / f_live)), 30)
-        if limit_k > 1000:
-            # Below f_live = 0.03 the inner sums stop converging at all -- the model can
-            # return negative powers -- so there is no number of terms that would help, and
-            # a rate-derived limit_k this large would only make the call hang.
-            warnings.warn(
-                f"The live time fraction implied by the detected rate is {f_live:.3g}. "
-                "The Zhang model does not converge there: its result is unreliable "
-                "whatever limit_k is used. Capping limit_k at 1000."
-            )
-            limit_k = 1000
+        limit_k = _default_limit_k(f_live, dead_time, bin_time)
 
     # The Zhang grid always spans 0 to the Nyquist frequency of ``bin_time``, so
     # ``n_bins`` fixes the model's frequency resolution at ``0.5 / (bin_time * n_bins)``.
