@@ -59,6 +59,7 @@ __all__ = [
     "BICOHERENCE_NORMS",
     "check_powers_for_intrinsic_coherence",
     "estimate_intrinsic_coherence",
+    "cross_detector_coherence",
     "get_rms_from_rms_norm_periodogram",
     "rms_calculation",
     "extract_pds_slice_around_freq",
@@ -1271,6 +1272,45 @@ def estimate_intrinsic_coherence(cross_power, power1, power2, power1_noise, powe
         DeprecationWarning,
     )
     return intrinsic_coherence(cross_power, power1, power2, power1_noise, power2_noise, n_ave)
+
+
+def cross_detector_coherence(power1, power2, cross_power):
+    r"""Intrinsic coherence from a cross-spectral matrix built by crossing two detectors.
+
+    .. math:: \gamma^2 = \frac{|S_{12}|^2}{S_{11} S_{22}}
+
+    where, for detectors :math:`A` and :math:`B` and energy bands 1 and 2,
+    :math:`S_{11} = {\rm Re}\langle A_1^* B_1\rangle`,
+    :math:`S_{22} = {\rm Re}\langle A_2^* B_2\rangle` and
+    :math:`S_{12} = \langle A_1^* B_2 + B_1^* A_2\rangle / 2`. The Poisson noise of two
+    detectors is independent, so none of these entries contains a noise level and
+    nothing is subtracted (Bachetti et al. 2015 did this for the power spectrum).
+
+    Average or rebin the entries **first**, then take the ratio. In a single Fourier bin
+    the denominator can cross zero. Negative values are returned as they are, not
+    clipped: they are allowed when the signal is weak.
+
+    Parameters
+    ----------
+    power1, power2 : float or `np.ndarray`
+        The averaged cospectra :math:`S_{11}` and :math:`S_{22}` of the two bands.
+    cross_power : complex or `np.ndarray`
+        The averaged cross spectrum :math:`S_{12}` between the two bands.
+
+    Returns
+    -------
+    coherence : float or `np.ndarray`
+        The intrinsic coherence, 1 for perfectly correlated bands.
+
+    Examples
+    --------
+    >>> float(cross_detector_coherence(4.0, 1.0, 1 + 1j))
+    0.5
+    """
+    power1 = np.real(np.asanyarray(power1))
+    power2 = np.real(np.asanyarray(power2))
+    cross_power = np.asanyarray(cross_power)
+    return (cross_power.real**2 + cross_power.imag**2) / (power1 * power2)
 
 
 def get_rms_from_rms_norm_periodogram(power_sqrms, poisson_noise_sqrms, df, M, low_M_buffer_size=4):

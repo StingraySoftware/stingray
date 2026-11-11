@@ -22,6 +22,7 @@ from stingray.fourier import get_average_ctrate, normalize_leahy_from_variance
 from stingray.fourier import integrate_power_in_frequency_range
 from stingray.fourier import get_rms_from_rms_norm_periodogram, get_rms_from_unnorm_periodogram
 from stingray.fourier import check_powers_for_intrinsic_coherence
+from stingray.fourier import cross_detector_coherence
 
 from stingray.utils import check_allclose_and_print
 from astropy.modeling.models import Lorentz1D
@@ -1204,3 +1205,34 @@ def test_intrinsic_coherence_interval_coverage_grid():
     )
     assert np.all((cov > 0.62) & (cov < 0.80))
     assert np.mean(np.abs(cov - 0.68)) < 0.03
+
+
+class TestCrossDetectorCoherence:
+    def test_exact_ratio(self):
+        """The ratio of a noise-free matrix is |S12|^2 / (S11 S22), scalars and arrays alike."""
+        assert np.isclose(cross_detector_coherence(4.0, 1.0, 1 + 1j), 0.5)
+        res = cross_detector_coherence([4.0, 2.0], [1.0, 2.0], [1 + 1j, 2.0])
+        assert np.allclose(res, [0.5, 1.0])
+
+    def test_negative_cospectrum_not_clipped(self):
+        """A negative averaged cospectrum gives a negative coherence, kept as it is."""
+        assert cross_detector_coherence(-4.0, 1.0, 1 + 1j) == -0.5
+
+    def test_recovers_injected_coherence_from_amplitudes(self):
+        """Two detectors with independent noise, averaged over many samples, give the injected
+        coherence without any noise level being subtracted."""
+        rng = np.random.default_rng(1)
+
+        def cgauss(size):
+            return (rng.normal(size=size) + 1j * rng.normal(size=size)) / np.sqrt(2)
+
+        n, c = 200000, 0.5
+        x, y = cgauss(n), cgauss(n)
+        s1, s2 = x, np.sqrt(c) * x * np.exp(-0.3j) + np.sqrt(1 - c) * y
+        a1, b1, a2, b2 = (s + 2 * cgauss(n) for s in (s1, s1, s2, s2))
+        res = cross_detector_coherence(
+            np.mean(np.conj(a1) * b1).real,
+            np.mean(np.conj(a2) * b2).real,
+            np.mean(np.conj(a1) * b2 + np.conj(b1) * a2) / 2,
+        )
+        assert np.isclose(res, c, atol=0.03)

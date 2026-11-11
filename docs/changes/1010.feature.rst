@@ -1,0 +1,1 @@
+Added ``stingray.fourier.cross_detector_coherence``, the intrinsic coherence from a cross-spectral matrix built by crossing two detectors, which needs no Poisson noise level.
