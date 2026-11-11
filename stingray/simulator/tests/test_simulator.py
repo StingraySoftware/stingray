@@ -264,6 +264,21 @@ class TestSimulator(object):
         assert np.isclose(np.std(lowest) / np.mean(lowest), 1, atol=0.2)
         assert np.abs(np.corrcoef(lowest, high_band)[0, 1]) < 0.2
 
+    @pytest.mark.parametrize("nbins", [128, 129])
+    def test_highest_frequency_power(self, nbins):
+        """With a flat spectrum, the highest-frequency power has the same mean as the
+        others; for odd N it is a normal complex amplitude, so its std/mean is 1."""
+        nsim = 1000
+        sim = Simulator(N=nbins, mean=100, dt=1, rms=0.1, random_state=31415)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            counts = np.array([sim.simulate(0).counts for _ in range(nsim)])
+        powers = np.abs(np.fft.rfft(counts - 100, axis=1)[:, 1:]) ** 2
+        last = powers[:, -1]
+        assert np.isclose(np.mean(last) / np.mean(powers[:, :-1]), 1, atol=0.15)
+        if nbins % 2 == 1:
+            assert np.isclose(np.std(last) / np.mean(last), 1, atol=0.15)
+
     def test_rms_zero_mean(self):
         nsim = 1000
 

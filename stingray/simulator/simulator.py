@@ -395,7 +395,10 @@ class Simulator(object):
 
         var_real = 0.5 * pds_shape
         var_imag = 0.5 * pds_shape
-        var_imag[-1] = 0
+        if (self.N * self.red_noise) % 2 == 0:
+            # The Nyquist amplitude is real, and carries all the power
+            var_real[-1] = pds_shape[-1]
+            var_imag[-1] = 0
 
         real = self.random_state.normal(size=pds_size) * np.sqrt(var_real)
         imaginary = self.random_state.normal(size=pds_size) * np.sqrt(var_imag)

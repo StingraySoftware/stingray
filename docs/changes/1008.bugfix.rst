@@ -1,3 +1,5 @@
 ``Simulator`` rescales light curves by their expected rms, not by each light curve's own rms, which made the powers correlated and not exponentially distributed.
 
 ``Simulator`` draws all its random numbers from ``random_state``, so the same seed gives the same light curve.
+
+``Simulator`` gives the highest-frequency bin its full power: the Nyquist amplitude for even N, and a complex amplitude for odd N.
