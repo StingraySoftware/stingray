@@ -2120,13 +2120,20 @@ class TestCrossDetectorSpectralMatrix:
         )
 
     def test_recovers_injected_coherence(self):
-        """Averaged over a band, the matrix gives the injected coherence of 0.5."""
+        """Averaged over a band, the matrix gives the injected coherence of 0.5, within
+        its 1-sigma interval."""
         m = self.matrix
         band = (m.freq > 0.5) & (m.freq < 10)
-        res = cross_detector_coherence(
-            m.power1[band].mean(), m.power2[band].mean(), m.cross_power[band].mean()
+        res, lo, hi = cross_detector_coherence(
+            m.power1[band].mean(),
+            m.power2[band].mean(),
+            m.cross_power[band].mean(),
+            [a[band].mean() for a in m.auto_powers],
+            m.m * band.sum(),
+            return_interval=True,
         )
         assert res == pytest.approx(0.5, abs=0.05)
+        assert lo < res < hi
 
     def test_diagonal_has_no_poisson_level(self):
         """Far above the signal, the cospectra average to zero while each detector's power

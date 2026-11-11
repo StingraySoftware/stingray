@@ -1208,31 +1208,118 @@ def test_intrinsic_coherence_interval_coverage_grid():
 
 
 class TestCrossDetectorCoherence:
+    auto = (5.0, 6.0, 2.0, 3.0)
+
     def test_exact_ratio(self):
-        """The ratio of a noise-free matrix is |S12|^2 / (S11 S22), scalars and arrays alike."""
-        assert np.isclose(cross_detector_coherence(4.0, 1.0, 1 + 1j), 0.5)
-        res = cross_detector_coherence([4.0, 2.0], [1.0, 2.0], [1 + 1j, 2.0])
+        """Without averaging bias (n_ave infinite) it is |S12|^2 / (S11 S22), for scalars
+        and arrays alike."""
+        assert np.isclose(cross_detector_coherence(4.0, 1.0, 1 + 1j, self.auto, np.inf), 0.5)
+        auto = [np.array([a, a]) for a in self.auto]
+        res = cross_detector_coherence([4.0, 2.0], [1.0, 2.0], [1 + 1j, 2.0], auto, np.inf)
         assert np.allclose(res, [0.5, 1.0])
 
-    def test_negative_cospectrum_not_clipped(self):
-        """A negative averaged cospectrum gives a negative coherence, kept as it is."""
-        assert cross_detector_coherence(-4.0, 1.0, 1 + 1j) == -0.5
+    def test_bias_corrected_value(self):
+        """The numerator loses (pA1 pB2 + pB1 pA2 + 2 S11 S22) / (4 m), the denominator
+        |S12|^2 / m, with |S12|^2 itself bias-corrected."""
+        bias = (5 * 3 + 6 * 2 + 2 * 4 * 1) / 40
+        expected = (2 - bias) / (4 - (2 - bias) / 10)
+        assert np.isclose(cross_detector_coherence(4.0, 1.0, 1 + 1j, self.auto, 10), expected)
+
+    def test_negative_not_clipped(self):
+        """A cross spectrum below its bias gives a negative coherence, kept as it is."""
+        assert cross_detector_coherence(4.0, 1.0, 0.1, self.auto, 10) < 0
+
+    def test_nonpositive_cospectrum_is_nan(self):
+        """A cospectrum that is not positive means no signal in that band: NaN, with a
+        warning."""
+        with pytest.warns(UserWarning, match="NaN values detected in cross_detector"):
+            coh, lo, hi = cross_detector_coherence(
+                -4.0, 1.0, 1 + 1j, self.auto, 10, return_interval=True
+            )
+        assert np.isnan(coh) and np.isnan(lo) and np.isnan(hi)
+
+    def test_interval_contains_estimate(self):
+        """The interval contains the estimate; return_uncertainty gives its half width."""
+        cross = np.array([0.1, 1 + 1j, 1.9])
+        auto = [np.full(3, a) for a in self.auto]
+        coh, lo, hi = cross_detector_coherence(4.0, 1.0, cross, auto, 10, return_interval=True)
+        assert np.all((lo <= coh) & (coh <= hi)) and lo[0] < 0
+        _, unc = cross_detector_coherence(4.0, 1.0, cross, auto, 10, return_uncertainty=True)
+        assert np.allclose(unc, (hi - lo) / 2)
 
     def test_recovers_injected_coherence_from_amplitudes(self):
         """Two detectors with independent noise, averaged over many samples, give the injected
         coherence without any noise level being subtracted."""
-        rng = np.random.default_rng(1)
-
-        def cgauss(size):
-            return (rng.normal(size=size) + 1j * rng.normal(size=size)) / np.sqrt(2)
-
-        n, c = 200000, 0.5
-        x, y = cgauss(n), cgauss(n)
-        s1, s2 = x, np.sqrt(c) * x * np.exp(-0.3j) + np.sqrt(1 - c) * y
-        a1, b1, a2, b2 = (s + 2 * cgauss(n) for s in (s1, s1, s2, s2))
-        res = cross_detector_coherence(
-            np.mean(np.conj(a1) * b1).real,
-            np.mean(np.conj(a2) * b2).real,
-            np.mean(np.conj(a1) * b2 + np.conj(b1) * a2) / 2,
-        )
+        c = 0.5
+        a1, b1, a2, b2 = _four_amplitudes(np.random.default_rng(1), 1.0, c, 200000, 1, 4.0)
+        res = cross_detector_coherence(*_cross_matrix(a1, b1, a2, b2), 200000)
         assert np.isclose(res, c, atol=0.03)
+
+
+def _four_amplitudes(rng, snr, coherence, m, n_real, noise=(1.0, 1.0, 1.0, 1.0)):
+    """Fourier amplitudes of two bands seen by two detectors, shape (n_real, m) each:
+    signal power snr in both bands, shared by the detectors, with intrinsic coherence
+    ``coherence``; independent noise of power ``noise`` (A1, B1, A2, B2)."""
+
+    def cgauss():
+        return (rng.normal(size=(n_real, m)) + 1j * rng.normal(size=(n_real, m))) / np.sqrt(2)
+
+    x, y = cgauss(), cgauss()
+    s1 = np.sqrt(snr) * x
+    s2 = np.sqrt(snr) * (np.sqrt(coherence) * x * np.exp(-0.3j) + np.sqrt(1 - coherence) * y)
+    noise = np.broadcast_to(noise, 4)
+    return [s + np.sqrt(n) * cgauss() for s, n in zip((s1, s1, s2, s2), noise)]
+
+
+def _cross_matrix(a1, b1, a2, b2):
+    """Averaged S11, S22, S12 and single-detector powers, as cross_detector_coherence wants."""
+    s11 = np.mean(np.conj(a1) * b1, -1).real
+    s22 = np.mean(np.conj(a2) * b2, -1).real
+    s12 = np.mean(np.conj(a1) * b2 + np.conj(b1) * a2, -1) / 2
+    auto = [np.mean(np.abs(a) ** 2, -1) for a in (a1, b1, a2, b2)]
+    return s11, s22, s12, auto
+
+
+def _cross_interval_coverage(rng, snr, coherence, m, noise, n_real=500):
+    amps = _four_amplitudes(rng, snr, coherence, m, n_real, noise)
+    with warnings.catch_warnings():
+        # weak signal, few segments: a cospectrum below zero gives NaN; skip it
+        warnings.filterwarnings("ignore", "NaN values detected")
+        _, lo, hi = cross_detector_coherence(*_cross_matrix(*amps), m, return_interval=True)
+    good = ~np.isnan(lo)
+    return np.mean((lo[good] <= coherence) & (coherence <= hi[good]))
+
+
+@pytest.mark.parametrize(
+    "snr, coherence, m, noise",
+    [
+        (1.0, 0.0, 50, 1.0),
+        (0.3, 0.1, 300, (0.5, 2.0, 0.5, 2.0)),
+        (3.0, 0.5, 50, (0.2, 5.0, 1.0, 1.0)),
+        (3.0, 1.0, 50, 1.0),
+    ],
+)
+def test_cross_detector_coherence_interval_coverage(snr, coherence, m, noise):
+    """The 1-sigma interval contains the true coherence about 68% of the time, from no to
+    full coherence, from weak to strong signal, with equal or different detectors."""
+    rng = np.random.default_rng(int(100 * snr + 10 * coherence + m))
+    assert 0.60 < _cross_interval_coverage(rng, snr, coherence, m, noise) < 0.77
+
+
+@pytest.mark.slow
+def test_cross_detector_coherence_interval_coverage_grid():
+    """On a grid of signal strength, coherence, number of averaged segments and detector
+    noise, the coverage of the 1-sigma interval stays close to 68% wherever the coherence
+    can be measured (both cospectra positive in at least 90% of the cases)."""
+    rng = np.random.default_rng(2027)
+    cov = np.array(
+        [
+            _cross_interval_coverage(rng, snr, coh, m, noise, n_real=1000)
+            for noise in (1.0, (0.5, 2.0, 0.5, 2.0))
+            for snr in (0.3, 1.0, 3.0)
+            for m in (30, 100, 300)
+            for coh in (0.0, 0.1, 0.5, 0.9, 1.0)
+        ]
+    )
+    assert np.all((cov > 0.61) & (cov < 0.80))
+    assert np.mean(np.abs(cov - 0.68)) < 0.03

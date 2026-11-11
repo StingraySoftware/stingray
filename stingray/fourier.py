@@ -1036,7 +1036,9 @@ def _coherence_score_variance(g0, power1, power2, power1_sub, power2_sub, n_ave)
     return np.clip(first, 0, None) + second
 
 
-def _coherence_score_interval(coherence, *args, upper_limit=2.0, n_grid=201, n_bisect=30):
+def _coherence_score_interval(
+    coherence, *args, variance=None, upper_limit=2.0, n_grid=201, n_bisect=30
+):
     """1-sigma interval on the intrinsic coherence, by test inversion.
 
     It contains all the values ``g0`` for which the measured coherence is within one
@@ -1047,9 +1049,12 @@ def _coherence_score_interval(coherence, *args, upper_limit=2.0, n_grid=201, n_b
     the lower end there is analytic; above zero, the values are searched up to
     ``upper_limit``, or up to the estimate if larger; ``upper_limit`` is returned as the
     upper end if it is accepted (the data do not constrain the coherence). ``args`` are
-    the remaining arguments of ``_coherence_score_variance``, all with the shape of
-    ``coherence``. Input of any shape is flattened for the calculation.
+    the remaining arguments of ``variance``, all with the shape of ``coherence``;
+    ``variance`` defaults to ``_coherence_score_variance``. Input of any shape is
+    flattened for the calculation.
     """
+    if variance is None:
+        variance = _coherence_score_variance
     shape = coherence.shape
     coherence = coherence.ravel()
     args = [np.broadcast_to(a, shape).ravel() for a in args]
@@ -1064,7 +1069,7 @@ def _coherence_score_interval(coherence, *args, upper_limit=2.0, n_grid=201, n_b
         g = coherence[idx]
 
         def accepted(g0):
-            var = _coherence_score_variance(g0, *[col(a[idx]) for a in args])
+            var = variance(g0, *[col(a[idx]) for a in args])
             return (col(g) - g0) ** 2 <= var
 
         def refine(inside, outside):
@@ -1075,7 +1080,7 @@ def _coherence_score_interval(coherence, *args, upper_limit=2.0, n_grid=201, n_b
                 inside, outside = np.where(good, mid, inside), np.where(good, outside, mid)
             return inside
 
-        s0 = np.sqrt(_coherence_score_variance(0.0, *[a[idx] for a in args]))
+        s0 = np.sqrt(variance(0.0, *[a[idx] for a in args]))
         negative = g - s0 <= 0  # some values below zero are accepted
         # The estimate itself is always accepted; add it to the grid values, so that
         # intervals narrower than the grid step are found too.
@@ -1274,21 +1279,70 @@ def estimate_intrinsic_coherence(cross_power, power1, power2, power1_noise, powe
     return intrinsic_coherence(cross_power, power1, power2, power1_noise, power2_noise, n_ave)
 
 
-def cross_detector_coherence(power1, power2, cross_power):
+def _cross_coherence_score_variance(x, s11, s22, pa1, pb1, pa2, pb2, n_ave):
+    """Variance of the cross-detector coherence estimate if the true coherence were ``x``.
+
+    Same structure as ``_coherence_score_variance``: the exact first-order error
+    propagation for Gaussian Fourier amplitudes, with a noise-to-signal ratio for every
+    detector and band, plus a second-order term that dominates at low coherence.
+    """
+    ra1, rb1 = (pa1 - s11) / s11, (pb1 - s11) / s11
+    ra2, rb2 = (pa2 - s22) / s22, (pb2 - s22) / s22
+    x = np.clip(x, 0, None)
+    first = (
+        2 * x * (1 - x) ** 2
+        + x * (1 - x) * (ra1 + rb1 + ra2 + rb2) / 2
+        + x**2 * (ra1 * rb1 + ra2 * rb2) / 2
+        + x * (ra1 * rb2 + ra2 * rb1) / 2
+    ) / n_ave
+    bias = (pa1 * pb2 + pb1 * pa2 + 2 * s11 * s22) / 4
+    second = (_SCORE_KAPPA * (bias - x * s11 * s22) / (n_ave * s11 * s22)) ** 2
+    return np.clip(first, 0, None) + second
+
+
+def cross_detector_coherence(
+    power1,
+    power2,
+    cross_power,
+    auto_powers,
+    n_ave,
+    return_uncertainty=False,
+    return_interval=False,
+):
     r"""Intrinsic coherence from a cross-spectral matrix built by crossing two detectors.
 
-    .. math:: \gamma^2 = \frac{|S_{12}|^2}{S_{11} S_{22}}
-
-    where, for detectors :math:`A` and :math:`B` and energy bands 1 and 2,
-    :math:`S_{11} = {\rm Re}\langle A_1^* B_1\rangle`,
+    For detectors :math:`A` and :math:`B` and energy bands 1 and 2, the matrix has
+    entries :math:`S_{11} = {\rm Re}\langle A_1^* B_1\rangle`,
     :math:`S_{22} = {\rm Re}\langle A_2^* B_2\rangle` and
-    :math:`S_{12} = \langle A_1^* B_2 + B_1^* A_2\rangle / 2`. The Poisson noise of two
-    detectors is independent, so none of these entries contains a noise level and
-    nothing is subtracted (Bachetti et al. 2015 did this for the power spectrum).
+    :math:`S_{12} = \langle A_1^* B_2 + B_1^* A_2\rangle / 2`, averaged over :math:`m`
+    segments (and/or frequencies). The Poisson noise of two detectors is independent, so
+    none of these entries contains a noise level and nothing is subtracted (Bachetti et
+    al. 2015 did this for the power spectrum). The coherence is
 
-    Average or rebin the entries **first**, then take the ratio. In a single Fourier bin
-    the denominator can cross zero. Negative values are returned as they are, not
-    clipped: they are allowed when the signal is weak.
+    .. math::
+
+        \gamma^2 = \frac{|S_{12}|^2 - b^2}{S_{11} S_{22} - c^2}
+
+    * :math:`b^2 = (p_{A1} p_{B2} + p_{B1} p_{A2} + 2 S_{11} S_{22}) / (4m)` is the bias
+      of the squared cross spectrum, where :math:`p_{Xn} = \langle |X_n|^2 \rangle` are
+      the power spectra of each detector in each band. The averaged cross spectrum
+      scatters around its true value, and its squared modulus is on average larger than
+      the true one by the variance of this scatter.
+    * :math:`c^2 = \max(|S_{12}|^2 - b^2, 0) / m` corrects the bias of the denominator:
+      the two cospectra are correlated when the bands are coherent.
+
+    Average or rebin the entries **first**, then calculate the coherence. Negative values
+    are returned as they are, not clipped: they are expected when the signal is weak. The
+    result is NaN where a cospectrum is not positive, meaning that no signal is measured
+    in that band.
+
+    The 1-sigma interval works as in :func:`intrinsic_coherence` (see there): it contains
+    all values :math:`\gamma^2_0` for which the measured coherence is within one standard
+    deviation of :math:`\gamma^2_0`, the standard deviation being calculated assuming
+    that :math:`\gamma^2_0` is the true value. It is not restricted to [0, 1]. In
+    simulations with equal and unequal detectors, it contains the true value 63-76% of the
+    time when at least 30 segments are averaged and the coherence can be measured; with
+    10 segments, it can drop to 56% at high coherence.
 
     Parameters
     ----------
@@ -1296,21 +1350,72 @@ def cross_detector_coherence(power1, power2, cross_power):
         The averaged cospectra :math:`S_{11}` and :math:`S_{22}` of the two bands.
     cross_power : complex or `np.ndarray`
         The averaged cross spectrum :math:`S_{12}` between the two bands.
+    auto_powers : tuple of four floats or `np.ndarray`
+        The averaged power spectra of detector A in band 1, B in band 1, A in band 2 and B
+        in band 2 (as in ``CrossDetectorSpectralMatrix.auto_powers``), in the same
+        normalization as the cospectra.
+    n_ave : int, float or `np.ndarray`
+        Number of segments times number of frequencies averaged to obtain the entries.
+        With ``np.inf``, no bias is subtracted.
+
+    Other Parameters
+    ----------------
+    return_uncertainty : bool, default False
+        Also return a symmetric uncertainty, half the width of the 1-sigma interval.
+    return_interval : bool, default False
+        Also return the lower and upper ends of the 1-sigma interval. If True,
+        ``return_uncertainty`` is ignored.
 
     Returns
     -------
     coherence : float or `np.ndarray`
         The intrinsic coherence, 1 for perfectly correlated bands.
+    uncertainty : float or `np.ndarray`, optional
+        Half the width of the 1-sigma interval, if ``return_uncertainty`` is True.
+    lower, upper : float or `np.ndarray`, optional
+        The ends of the 1-sigma interval, if ``return_interval`` is True.
 
     Examples
     --------
-    >>> float(cross_detector_coherence(4.0, 1.0, 1 + 1j))
+    >>> float(cross_detector_coherence(4.0, 1.0, 1 + 1j, (5.0, 6.0, 2.0, 3.0), np.inf))
     0.5
     """
-    power1 = np.real(np.asanyarray(power1))
-    power2 = np.real(np.asanyarray(power2))
-    cross_power = np.asanyarray(cross_power)
-    return (cross_power.real**2 + cross_power.imag**2) / (power1 * power2)
+    single_power = np.ndim(cross_power) == 0
+    arrays = [
+        np.atleast_1d(a)
+        for a in np.broadcast_arrays(power1, power2, cross_power, *auto_powers, n_ave)
+    ]
+    s11, s22 = arrays[0].real.astype(float), arrays[1].real.astype(float)
+    cross_power = arrays[2]
+    auto = [a.real.astype(float) for a in arrays[3:7]]
+    n_ave = arrays[7].astype(float)
+
+    bad = (s11 <= 0) | (s22 <= 0)
+    s11, s22 = np.where(bad, np.nan, s11), np.where(bad, np.nan, s22)
+
+    pa1, pb1, pa2, pb2 = auto
+    bsq = (pa1 * pb2 + pb1 * pa2 + 2 * s11 * s22) / (4 * n_ave)
+    num = cross_power.real**2 + cross_power.imag**2 - bsq
+    coherence = num / (s11 * s22 - np.clip(num, 0, s11 * s22) / n_ave)
+
+    if np.any(bad):
+        warnings.warn(
+            "NaN values detected in cross_detector_coherence calculation. This happens when "
+            "a cospectrum is not positive, and the coherence is not defined. Consider "
+            "rebinning the spectra to increase the signal-to-noise ratio."
+        )
+
+    extra = ()
+    if return_interval or return_uncertainty:
+        lower, upper = _coherence_score_interval(
+            coherence, s11, s22, *auto, n_ave, variance=_cross_coherence_score_variance
+        )
+        extra = (lower, upper) if return_interval else ((upper - lower) / 2,)
+
+    out = (coherence,) + extra
+    if single_power:
+        out = tuple(o[0] for o in out)
+    return out if len(out) > 1 else out[0]
 
 
 def get_rms_from_rms_norm_periodogram(power_sqrms, poisson_noise_sqrms, df, M, low_M_buffer_size=4):

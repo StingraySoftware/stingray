@@ -1,1 +1,1 @@
-Added ``stingray.crossspectrum.cross_detector_spectral_matrix``, the cross-spectral matrix of two energy bands built by crossing two detectors, and ``stingray.fourier.cross_detector_coherence``, its intrinsic coherence. Neither needs a Poisson noise level.
+Added ``stingray.crossspectrum.cross_detector_spectral_matrix``, the cross-spectral matrix of two energy bands built by crossing two detectors, and ``stingray.fourier.cross_detector_coherence``, its bias-corrected intrinsic coherence with a 1-sigma interval (``return_interval``). Neither needs a Poisson noise level.

@@ -270,7 +270,9 @@ def cross_detector_spectral_matrix(
 
     where :math:`A` and :math:`B` are the Fourier amplitudes of the two detectors and the
     subscript is the energy band. This extends the cospectrum of Bachetti et al. 2015 to
-    the whole matrix. Pass the result to :func:`stingray.fourier.cross_detector_coherence`.
+    the whole matrix. Pass ``power1``, ``power2``, ``cross_power``, ``auto_powers`` and
+    ``m`` of the result (averaged over frequency, if needed, multiplying ``m`` by the
+    number of frequencies) to :func:`stingray.fourier.cross_detector_coherence`.
 
     Parameters
     ----------
