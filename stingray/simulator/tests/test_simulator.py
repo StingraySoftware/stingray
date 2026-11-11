@@ -195,12 +195,15 @@ class TestSimulator(object):
 
     @pytest.mark.parametrize("model_kind", ["astropy", "array", "float"])
     def test_rms_and_mean(self, model_kind):
+        """The rms requested is the expected rms: it is matched on average over many
+        light curves, while each light curve keeps its own random variance."""
         np.random.seed(103442357)
-        nbins = 8192
+        nbins = 1024
         dt = 1 / 128
         mean = 100
         rms = 0.2
-        nsim = 128
+        nsim = 256
+        sim = Simulator(N=nbins, mean=mean, dt=dt, rms=rms)
         astropy_model = astropy.modeling.models.PowerLaw1D(alpha=2)
         if model_kind == "astropy":
             model = astropy_model
@@ -209,24 +212,41 @@ class TestSimulator(object):
             model = astropy_model(freq_fine)
         elif model_kind == "float":
             model = 2.0
-        with pytest.warns(
-            UserWarning,
-            match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more.",
-        ):
-            lc_all = [self.simulator.simulate(model) for i in range(nsim)]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            lc_all = [sim.simulate(model) for i in range(nsim)]
 
-        mean_all = np.mean([np.mean(lc.counts) for lc in lc_all])
-        std_all = np.mean([np.std(lc.counts) for lc in lc_all])
+        means = np.array([np.mean(lc.counts) for lc in lc_all])
+        frac_var = np.array([np.var(lc.counts) for lc in lc_all]) / mean**2
 
-        assert np.isclose(mean_all, self.mean, rtol=0.001)
-        assert np.isclose(std_all / mean_all, self.rms, rtol=0.001)
+        assert np.allclose(means, mean)
+        # Each light curve has its own variance...
+        assert np.std(frac_var) > 0.1 * rms**2
+        # ...and the requested one is recovered on average
+        assert np.abs(np.mean(frac_var) - rms**2) < 4 * np.std(frac_var) / np.sqrt(nsim)
 
-        pds_all = [Powerspectrum(lc_all[i]) for i in range(nsim)]
+        pds_all = [Powerspectrum(lc, norm="frac") for lc in lc_all]
         pds = pds_all[0]
         model_compare = (mc := astropy_model(pds.freq)) / (np.sum(mc) * pds.df) * rms**2
 
         ratios = [pds.power / model_compare for pds in pds_all]
         assert np.all([np.mean(rat) / (np.std(rat) * 3) < 1 for rat in ratios])
+
+    def test_single_powers_are_independent_exponentials(self):
+        """Each simulated power scatters as an exponential (std/mean = 1), and the
+        noisy lowest-frequency power does not change the powers at high frequency."""
+        np.random.seed(2357)
+        nbins, nsim = 512, 400
+        sim = Simulator(N=nbins, mean=100, dt=1, rms=0.2)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            counts = np.array([sim.simulate(2).counts for _ in range(nsim)])
+        powers = np.abs(np.fft.rfft(counts - 100, axis=1)[:, 1:-1]) ** 2
+
+        lowest = powers[:, 0]
+        high_band = powers[:, nbins // 4 :].sum(axis=1)
+        assert np.isclose(np.std(lowest) / np.mean(lowest), 1, atol=0.2)
+        assert np.abs(np.corrcoef(lowest, high_band)[0, 1]) < 0.2
 
     def test_rms_zero_mean(self):
         nsim = 1000

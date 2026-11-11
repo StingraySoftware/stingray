@@ -1,0 +1,1 @@
+``Simulator`` rescales light curves by their expected rms, not by each light curve's own rms, which made the powers correlated and not exponentially distributed.
