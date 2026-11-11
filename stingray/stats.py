@@ -167,9 +167,11 @@ def _log_asymptotic_gamma(z):
     return x
 
 
-@np.vectorize
 def chi2_logp(chi2, dof):
     """Log survival function of the chi-squared distribution.
+
+    Returns a scalar if both arguments are scalars, and otherwise an array of the shape they
+    broadcast to.
 
     Examples
     --------
@@ -185,19 +187,34 @@ def chi2_logp(chi2, dof):
     >>> chi2 = np.array([5, 32])
     >>> assert np.allclose(chi2_logp(chi2, 2), stats.chi2.logsf(chi2, 2), atol=0.1)
     """
-    if dof < 2:
+    chi2 = np.asarray(chi2, dtype=float)
+    dof = np.asarray(dof)
+    if np.any(dof < 2):
         raise ValueError("The number of degrees of freedom cannot be < 2")
+
+    chi2, dof = np.broadcast_arrays(chi2, dof)
+    reduced_chi2 = chi2 / dof
 
     # If very large reduced chi squared, use approximation. This is an
     # eyeballed limit parameter space where the difference between the
     # approximation and the scipy version is tiny, but above which the scipy
     # version starts failing.
-    if (chi2 / dof > 15.0) or ((dof > 150) and (chi2 / dof > 6.0)):
-        return _log_asymptotic_incomplete_gamma(0.5 * dof, 0.5 * chi2) - _log_asymptotic_gamma(
-            0.5 * dof
-        )
+    asymptotic = (reduced_chi2 > 15.0) | ((dof > 150) & (reduced_chi2 > 6.0))
 
-    return stats.chi2.logsf(chi2, dof)
+    # Each branch is evaluated on the elements that need it, rather than on everything and
+    # then selected, so that scipy never sees the values it fails on.
+    logp = np.empty(chi2.shape, dtype=float)
+    if np.any(asymptotic):
+        half_dof = 0.5 * dof[asymptotic]
+        logp[asymptotic] = _log_asymptotic_incomplete_gamma(
+            half_dof, 0.5 * chi2[asymptotic]
+        ) - _log_asymptotic_gamma(half_dof)
+    exact = ~asymptotic
+    if np.any(exact):
+        logp[exact] = stats.chi2.logsf(chi2[exact], dof[exact])
+
+    # A ufunc returns a scalar when every input is a scalar
+    return logp[()] if logp.ndim == 0 else logp
 
 
 @lazy_vectorize([float64(float64, int64)], nopython=True, cache=True)

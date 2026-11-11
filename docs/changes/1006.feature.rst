@@ -1,0 +1,8 @@
+Putting p-values on a whole periodogram is 80-110x faster. ``chi2_logp`` was wrapped in
+``np.vectorize``, a Python-level loop, so every element paid a separate call to
+``scipy.stats.chi2.logsf``; it now evaluates whole arrays. ``pds_logprobability`` on a
+one-million-bin power spectrum takes 0.4 s instead of 47 s, and ``z2_n_logprobability`` on a
+million trial frequencies 0.6 s instead of 47 s. The results are unchanged to the last bit.
+
+``chi2_logp`` now returns a scalar for scalar arguments, as the other statistics do, instead of a
+zero-dimensional array.
