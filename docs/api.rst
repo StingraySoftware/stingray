@@ -104,6 +104,14 @@ objects.
 
 .. autofunction:: stingray.coherence
 
+The cross-spectral matrix of two energy bands, built by crossing two detectors so that no
+Poisson noise level has to be subtracted. Its coherence is given by
+:func:`stingray.fourier.cross_detector_coherence`.
+
+.. autofunction:: stingray.crossspectrum.cross_detector_spectral_matrix
+
+.. autoclass:: stingray.crossspectrum.CrossDetectorSpectralMatrix
+
 ----
 
 Powerspectrum
