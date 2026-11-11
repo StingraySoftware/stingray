@@ -131,12 +131,16 @@ def integrate_power_in_frequency_range(
 
     # The first and last bins are only partially included. We need to correct for the
     # fraction of the bin actually included.
-    correction_ratios[0] = (
-        freqs_to_integrate[0] + 0.5 * dfs_to_integrate[0] - frequency_range[0]
-    ) / dfs_to_integrate[0]
-    correction_ratios[-1] = (
-        frequency_range[-1] - freqs_to_integrate[-1] + 0.5 * dfs_to_integrate[-1]
-    ) / dfs_to_integrate[-1]
+    if freqs_to_integrate.size == 1:
+        # The whole range falls inside a single bin
+        correction_ratios[0] = (frequency_range[-1] - frequency_range[0]) / dfs_to_integrate[0]
+    else:
+        correction_ratios[0] = (
+            freqs_to_integrate[0] + 0.5 * dfs_to_integrate[0] - frequency_range[0]
+        ) / dfs_to_integrate[0]
+        correction_ratios[-1] = (
+            frequency_range[-1] - freqs_to_integrate[-1] + 0.5 * dfs_to_integrate[-1]
+        ) / dfs_to_integrate[-1]
     dfs_to_integrate = dfs_to_integrate * correction_ratios
 
     powers_to_integrate = power[frequency_mask]

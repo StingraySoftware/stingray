@@ -916,6 +916,14 @@ class TestIntegration(object):
         assert np.isclose(pow, 2)
         assert np.isclose(powe, np.sqrt(2))
 
+    @pytest.mark.parametrize("freq_range", [[1.1, 1.3], [2.0, 2.2], [1.6, 2.4]])
+    def test_power_integration_within_one_bin(self, freq_range):
+        # A range inside a single bin must use the fraction of that bin it covers
+        pow, powe = integrate_power_in_frequency_range(self.freq, self.power, freq_range, df=1)
+        width = freq_range[1] - freq_range[0]
+        assert np.isclose(pow, 2 * width)
+        assert np.isclose(powe, 2 * width)
+
     def test_power_integration_precise(self):
         freq_range = [0.5, 2.5]
         df = 1
