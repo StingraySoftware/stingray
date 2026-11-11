@@ -5,3 +5,5 @@
 ``Simulator`` gives the highest-frequency bin its full power: the Nyquist amplitude for even N, and a complex amplitude for odd N.
 
 ``Simulator.simulate`` with a user power spectrum and ``red_noise > 1`` uses the spectrum at the frequencies of the extended light curve, instead of squeezing it to low frequencies, and refuses spectra of the wrong size.
+
+``Simulator`` with ``red_noise > 1`` gives light curves with the requested mean and rms on average, instead of an rms that decreased with ``red_noise``; the mean of each light curve now scatters as the slow variability requires.

@@ -372,7 +372,13 @@ class Simulator(object):
         return np.fft.irfft(f, n=self.N * self.red_noise)
 
     def _expected_std(self, var_real, var_imag):
-        """Expected standard deviation of the inverse real FFT of random amplitudes.
+        """Expected standard deviation of a segment of the inverse real FFT of random
+        amplitudes.
+
+        The series returned by ``_find_inverse`` has length ``N * red_noise``, and the
+        light curve is a segment of length ``N`` of it. The standard deviation is
+        calculated around the mean of the segment, so the part of the variance of each
+        sinusoid that only changes this mean does not count.
 
         Parameters
         ----------
@@ -383,15 +389,19 @@ class Simulator(object):
         Returns
         -------
         std : float
-            Square root of the variance, averaged over time, of the series
-            returned by ``_find_inverse``.
+            Square root of the expected variance of the segment around its mean.
         """
         n = self.N * self.red_noise
         weight = np.full(var_real.size, 2.0)
         if n % 2 == 0:
             # The Nyquist amplitude appears once, not with its complex conjugate
             weight[-1] = 1.0
-        return np.sqrt(np.sum(weight * (var_real + var_imag)) / n**2)
+        # Fraction of the variance of a sinusoid at each frequency that goes into
+        # the mean of the segment (zero at the segment's own Fourier frequencies)
+        omega = 2 * np.pi * np.arange(1, var_real.size + 1) / n
+        into_mean = (np.sin(self.N * omega / 2) / (self.N * np.sin(omega / 2))) ** 2
+        var = weight * (var_real + var_imag) * (1 - into_mean)
+        return np.sqrt(np.sum(var) / n**2)
 
     def _timmerkoenig(self, pds_shape):
         """Straight application of T&K method to a PDS shape."""
@@ -585,9 +595,8 @@ class Simulator(object):
         i) Make a random cut and extract a light curve of required
         length.
 
-        ii) Rescale light curve i) with zero mean and unit standard
-        deviation, and ii) user provided mean and rms (fractional
-        rms * mean)
+        ii) Rescale it so that, on average, light curves have the user
+        provided mean and rms (fractional rms * mean)
 
         Parameters
         ----------
@@ -599,6 +608,9 @@ class Simulator(object):
         lc : numpy.ndarray
             Normalized and extracted lightcurve of length 'N'
         """
+        # The mean of the long light curve, not of the segment, is the requested one:
+        # the variability slower than the segment makes its mean scatter around it.
+        mean_long = np.mean(long_lc)
         if self.red_noise == 1:
             lc = long_lc
         else:
@@ -606,12 +618,10 @@ class Simulator(object):
             extract = self.random_state.randint(0, (self.red_noise - 1) * self.N + 1)
             lc = np.take(long_lc, range(extract, extract + self.N))
 
-        mean_lc = np.mean(lc)
-
         if self.mean == 0:
-            return (lc - mean_lc) / self.std * self.rms
+            return (lc - mean_long) / self.std * self.rms
         else:
-            return (lc - mean_lc) / self.std * self.mean * self.rms + self.mean
+            return (lc - mean_long) / self.std * self.mean * self.rms + self.mean
 
     def powerspectrum(self, lc, seg_size=None):
         """

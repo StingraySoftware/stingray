@@ -50,6 +50,14 @@ longer, and extracts a random segment of length ``N``. A user-defined power spec
 must then be given at the frequencies of the longer light curve,
 ``np.fft.rfftfreq(N * red_noise, d=dt)[1:]``.
 
+The requested ``mean`` and ``rms`` are, again, the expected values for the light curves
+returned, with the rms calculated around the mean of each light curve. With
+``red_noise > 1``, the slow variability also makes the mean of each light curve scatter
+around the requested one. For steep spectra this scatter can be much larger than the
+rms: for a power law with index 2 and ``red_noise=50``, the means scatter by about the
+mean itself, and many light curves go below zero. Use a spectrum that flattens at low
+frequencies, or a smaller ``red_noise``, to avoid it.
+
 The requested ``rms`` is the *expected* fractional rms. As for real light curves,
 each simulated light curve has its own random variance, and the requested value is
 recovered on average over many simulations. Forcing every light curve to have exactly

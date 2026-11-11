@@ -279,6 +279,25 @@ class TestSimulator(object):
         if nbins % 2 == 1:
             assert np.isclose(np.std(last) / np.mean(last), 1, atol=0.15)
 
+    @pytest.mark.parametrize("red_noise", [1, 10])
+    def test_expected_rms_and_mean_with_red_noise(self, red_noise):
+        """With or without red noise leakage, the light curves have the requested mean
+        and fractional rms on average; with leakage, their means scatter as well."""
+        nbins, mean, rms, nsim = 512, 100.0, 0.2, 500
+        sim = Simulator(N=nbins, mean=mean, dt=1, rms=rms, red_noise=red_noise, random_state=7)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            counts = np.array([sim.simulate(2).counts for _ in range(nsim)])
+        means = counts.mean(axis=1)
+        frac_var = counts.var(axis=1) / mean**2
+
+        assert np.abs(np.mean(frac_var) - rms**2) < 4 * np.std(frac_var) / np.sqrt(nsim)
+        if red_noise == 1:
+            assert np.allclose(means, mean)
+        else:
+            assert np.std(means) > 0.01 * mean
+            assert np.abs(np.mean(means) - mean) < 4 * np.std(means) / np.sqrt(nsim)
+
     def test_rms_zero_mean(self):
         nsim = 1000
 
