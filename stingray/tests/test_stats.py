@@ -413,7 +413,7 @@ def test_chi2_logp_array_matches_elementwise(dof, reduced_chi2):
 
 
 def test_chi2_logp_shape_follows_its_input():
-    """``chi2_logp`` returns a scalar for scalar arguments, as a ufunc does, and otherwise the
+    """``chi2_logp`` returns a scalar for scalar arguments, as a ufunc does, or, otherwise, the
     shape its arguments broadcast to.
 
     This test fails if ``chi2_logp`` is wrapped in ``np.vectorize`` again, which returns a
