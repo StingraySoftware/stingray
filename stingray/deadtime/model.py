@@ -23,6 +23,8 @@ __all__ = [
     "r_in",
     "pds_model_zhang",
     "non_paralyzable_dead_time_model",
+    "deadtime_response",
+    "vikhlinin_dead_time_model",
     "check_A",
     "check_B",
     "e_m_x_x_over_factorial",
@@ -116,6 +118,158 @@ def r_det(td, r_i):
     """
     tau = 1 / r_i
     return 1.0 / (tau + td)
+
+
+def _alias_sum(func, freqs, bin_time, n_alias):
+    r"""Fold ``func`` onto the frequency grid of a light curve binned at ``bin_time``.
+
+    Returns :math:`\sum_m F(f_m)\,{\rm sinc}^2(f_m t_b)` with :math:`f_m = f + m/t_b`,
+    :math:`|m| \le` ``n_alias``: binning multiplies the Fourier transform by the bin
+    window and sampling folds every frequency onto the grid below Nyquist.
+    """
+    out = 0.0
+    for m in range(-n_alias, n_alias + 1):
+        shifted = freqs + m / bin_time
+        out = out + func(shifted) * np.sinc(shifted * bin_time) ** 2
+    return out
+
+
+def deadtime_response(freqs, dead_time, bin_time=None, n_alias=100):
+    r"""Frequency response of a non-paralyzable detector's live time to the count rate.
+
+    The detector is dead after each event for ``dead_time``, so the live time at a given
+    moment responds to the count rate averaged over the preceding dead time, not to the
+    instantaneous rate. The Fourier transform of that running mean is
+
+    .. math::
+
+        W(f) = e^{-i\pi f t_d}\,{\rm sinc}(f t_d),
+
+    with numpy's convention :math:`{\rm sinc}(x) = \sin(\pi x)/(\pi x)` and the sign of
+    numpy's forward FFT. :math:`W \to 1` well below :math:`1/(2\pi t_d)`, which is the
+    limit in which the live time follows the rate instantaneously. This is the response
+    of the Vikhlinin et al. 1994 noise model, see :func:`vikhlinin_dead_time_model`.
+
+    Parameters
+    ----------
+    freqs : float or `np.ndarray`
+        Frequencies, in Hz.
+    dead_time : float
+        Dead time, in s.
+
+    Other Parameters
+    ----------------
+    bin_time : float, default None
+        If given, the response seen on a light curve binned at ``bin_time``: the
+        unbinned response folded back below the Nyquist frequency, weighted by the bin
+        window, as it applies to a signal whose power is flat across the folds. This is
+        the same aliasing that turns the unbinned noise model into the Zhang et al. 1995
+        one. A red signal has little power near Nyquist and is better described by the
+        unbinned response.
+    n_alias : int, default 100
+        Number of folds on each side used for the binned response. The terms fall as
+        :math:`m^{-3}`, so the default is far more than enough.
+
+    Returns
+    -------
+    response : complex or `np.ndarray`
+        :math:`W(f)`, with the shape of ``freqs``.
+
+    Examples
+    --------
+    >>> w = deadtime_response(np.array([0.0, 400.0]), 2.5e-3)
+    >>> bool(np.isclose(w[0], 1)), bool(np.isclose(w[1], 0))
+    (True, True)
+    """
+    freqs = np.asanyarray(freqs, dtype=float)
+
+    def unbinned(f):
+        return np.exp(-1j * np.pi * f * dead_time) * np.sinc(f * dead_time)
+
+    if bin_time is None:
+        return unbinned(freqs)
+    return _alias_sum(unbinned, freqs, bin_time, n_alias)
+
+
+def vikhlinin_dead_time_model(
+    freqs, dead_time, rate, bin_time=None, background_rate=0.0, n_alias=100
+):
+    r"""Dead-time-modified Poisson noise level, after Vikhlinin et al. 1994.
+
+    For unbinned events from a non-paralyzable detector, in Leahy normalisation,
+
+    .. math::
+
+        P(f) = \frac{2}{|1 + w\,W(f)|^2},
+        \qquad w = r_{\rm in} t_d = \frac{1 - f_{\rm live}}{f_{\rm live}},
+
+    where :math:`W` is :func:`deadtime_response` and
+    :math:`f_{\rm live} = 1 - r_{\rm det} t_d`. At low frequency this is
+    :math:`2 f_{\rm live}^2`. With ``bin_time`` it is folded onto the grid of the binned
+    light curve,
+
+    .. math::
+
+        P_b(f) = 2 + \sum_m \left[P(f_m) - 2\right] {\rm sinc}^2(f_m t_b),
+        \qquad f_m = f + m/t_b,
+
+    which reproduces :func:`non_paralyzable_dead_time_model` (Zhang et al. 1995) to a
+    few parts in a thousand, at a fraction of the cost and with no truncated sum to
+    converge: the Zhang model with too small a ``limit_k`` is wrong when there are many
+    bins per dead time, this one is not.
+
+    Parameters
+    ----------
+    freqs : `np.ndarray`
+        Frequencies, in Hz.
+    dead_time : float
+        Dead time, in s.
+    rate : float
+        Detected source count rate.
+
+    Other Parameters
+    ----------------
+    bin_time : float, default None
+        Bin time of the light curve. If None, the model for unbinned events.
+    background_rate : float, default 0
+        Detected background count rate, which causes dead time but is not part of the
+        source; handled as in :func:`non_paralyzable_dead_time_model`.
+    n_alias : int, default 100
+        Number of folds on each side used for the binned model.
+
+    Returns
+    -------
+    power : `np.ndarray`
+        The Leahy-normalised noise level at ``freqs``.
+
+    Examples
+    --------
+    >>> p = vikhlinin_dead_time_model(np.array([1.0]), 2.5e-3, 200.0)
+    >>> bool(np.isclose(p[0], 2 * 0.5**2, rtol=1e-3))
+    True
+    """
+    total = rate + background_rate
+    if total > 1 / dead_time:
+        raise ValueError(
+            "The sum of the source and background count rates is larger than the inverse "
+            "of the dead time. This is not a physical situation. Please check your input."
+        )
+    w = total * dead_time / (1 - total * dead_time)
+    freqs = np.asanyarray(freqs, dtype=float)
+
+    def unbinned(f):
+        return 2 / np.abs(1 + w * deadtime_response(f, dead_time)) ** 2
+
+    if bin_time is None:
+        power = unbinned(freqs)
+    else:
+        # The bin windows sum to one over all folds, so folding P - 2 rather than P
+        # leaves the flat part exact and makes the sum converge as m^-3.
+        power = 2 + _alias_sum(lambda f: unbinned(f) - 2, freqs, bin_time, n_alias)
+
+    if background_rate > 0:
+        power = (power - 2) * rate / total + 2
+    return power
 
 
 @njit()

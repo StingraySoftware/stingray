@@ -33,7 +33,9 @@ real,
    \qquad \mathrm{Im}\,C_{sh}(f) = 0 ,
 
 where :math:`P_\mathrm{tot}` is the dead-time-distorted total-band periodogram that
-:func:`stingray.deadtime.model.pds_model_zhang` predicts. This term is a
+:func:`stingray.deadtime.model.pds_model_zhang` predicts (or, equivalently and much
+faster, :func:`stingray.deadtime.model.vikhlinin_dead_time_model` with ``bin_time``,
+which needs no truncated sum to converge at fine binning). This term is a
 noise--noise correlation: it is there even when the source does not vary at all, and
 it does **not** average down with more data.
 

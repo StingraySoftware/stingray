@@ -1,0 +1,6 @@
+``stingray.deadtime.model.vikhlinin_dead_time_model`` gives the dead-time-modified
+Poisson noise level of Vikhlinin et al. 1994, ``2 / |1 + w W(f)|^2``, for unbinned events
+or, with ``bin_time``, folded onto a binned light curve's frequency grid, where it
+reproduces the Zhang et al. 1995 model to a few parts in a thousand with no truncated
+sum to converge. ``stingray.deadtime.model.deadtime_response`` returns the response
+``W(f)`` of the live time to the count rate on which it is built, unbinned or binned.
