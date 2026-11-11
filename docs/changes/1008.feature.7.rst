@@ -1,0 +1,1 @@
+New ``cross_module_lag_errors`` in ``stingray.deadtime.crosstalk`` gives the cross spectrum, the phase lag and its uncertainty from two detectors' (unmixed) band amplitudes, using the error formula for the average of the two detector pairings.

@@ -282,6 +282,22 @@ now gets its own live time fraction and band split, and the powers of the unmixe
 amplitudes are what the error bars on the corrected lag and coherence are built from.
 Use the same good time intervals for the two detectors so that the segments line up.
 
+:func:`stingray.deadtime.crosstalk.cross_module_lag_errors` turns the unmixed
+amplitudes into the cross spectrum, the phase lag and its uncertainty, averaging over
+the segments::
+
+    res = cross_module_lag_errors(u_a, u_b)
+    res.phase_lag, res.phase_lag_err
+
+The unmixing removes the correlation between the noise of the two bands of a detector,
+so the standard formula applies with the powers of the unmixed amplitudes: with
+:math:`T_{1,2}` the total and :math:`P_{1,2}` the noise-free band powers,
+:math:`\eta = \frac{1}{2}[(T_1 T_2 + P_1 P_2)/2 - |C|^2]` and
+:math:`\delta\phi \simeq \sqrt{\eta / (N |C|^2)}` for :math:`N` averaged segments.
+The :math:`P_1 P_2` term comes from averaging the two detector pairings, which roughly
+halves the variance when the noise dominates. Uncertainties on the coherence are not
+provided, and the error on a *measured* :math:`f_\mathrm{live}` is not propagated.
+
 :func:`stingray.deadtime.fad.FAD` is complementary rather than an alternative. FAD
 corrects the per-band white-noise *levels* under a variable source, but it does not
 touch the phase; the unmixing corrects the matrix. The two compose.

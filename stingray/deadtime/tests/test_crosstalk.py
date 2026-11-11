@@ -6,6 +6,7 @@ import pytest
 from stingray import EventList
 from stingray.crossspectrum import AveragedCrossspectrum
 from stingray.deadtime.crosstalk import (
+    cross_module_lag_errors,
     coherence_from_cross_spectral_matrix,
     cross_module_cross_spectral_matrix,
     deadtime_mixing_matrix,
@@ -786,3 +787,42 @@ def test_module_amplitudes_reproduce_the_per_segment_matrix(norm):
     )
     for got, want in zip(entries, (matrix.power1, matrix.power2, matrix.cross_power)):
         assert np.allclose(got, want)
+
+
+# ------------------------------------------------------------------ error bars
+
+
+def test_lag_error_without_noise_is_bendat_piersol():
+    """With identical, noise-free detectors (T = P) the error formula must reduce
+    exactly to the Bendat & Piersol one, sqrt((1 - gamma^2) / (2 gamma^2 N))."""
+    rng = np.random.default_rng(11)
+    nseg = 30
+    x, y = (rng.normal(size=(4, nseg)) + 1j * rng.normal(size=(4, nseg)) for _ in "xy")
+    y = y + 0.8 * x
+    res = cross_module_lag_errors((x, y), (x, y))
+
+    gamma2 = np.abs(res.cross_power) ** 2 / (res.power1 * res.power2)
+    assert res.m == nseg
+    assert np.allclose(res.total_power1, res.power1)
+    assert np.allclose(res.phase_lag_err, np.sqrt((1 - gamma2) / (2 * gamma2 * nseg)))
+
+
+def test_lag_error_matches_the_scatter_of_simulated_lags():
+    """On normal amplitudes with a known lag, partial coherence and independent noise
+    in each detector, the predicted lag error matches the scatter of the measured lags."""
+    rng = np.random.default_rng(12)
+    nreal, nseg, gamma2, lag, noise = 2000, 200, 0.5, 0.7, 2.0
+
+    def cnormal(power):
+        return np.sqrt(power / 2) * (
+            rng.normal(size=(nreal, nseg)) + 1j * rng.normal(size=(nreal, nseg))
+        )
+
+    s1 = cnormal(1.0)
+    s2 = np.exp(1j * lag) * (np.sqrt(gamma2) * s1 + np.sqrt(1 - gamma2) * cnormal(1.0))
+    det_a = (s1 + cnormal(noise), s2 + cnormal(noise))
+    det_b = (s1 + cnormal(noise), s2 + cnormal(noise))
+    res = cross_module_lag_errors(det_a, det_b)
+
+    assert np.isclose(np.mean(res.phase_lag), lag, atol=0.02)
+    assert np.isclose(np.std(res.phase_lag), np.median(res.phase_lag_err), rtol=0.1)

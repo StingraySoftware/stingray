@@ -93,8 +93,10 @@ __all__ = [
     "cross_module_cross_spectral_matrix",
     "dynamical_cross_module_cross_spectral_matrix",
     "module_fourier_amplitudes",
+    "cross_module_lag_errors",
     "CrossSpectralMatrix",
     "FourierAmplitudes",
+    "LagErrors",
 ]
 
 VALID_NORMS = ("none", "leahy", "frac")
@@ -148,6 +150,39 @@ norm : str
     Normalisation the amplitudes are scaled to.
 time : `np.ndarray`
     Mid-time of each segment.
+"""
+
+LagErrors = namedtuple(
+    "LagErrors",
+    [
+        "cross_power",
+        "power1",
+        "power2",
+        "total_power1",
+        "total_power2",
+        "eta",
+        "phase_lag",
+        "phase_lag_err",
+        "m",
+    ],
+)
+LagErrors.__doc__ = """Cross-module cross spectrum and phase lag with their uncertainties.
+
+Attributes
+----------
+cross_power : `np.ndarray`
+    The cross spectrum averaged over the two detector pairings and the segments.
+power1, power2 : `np.ndarray`
+    Noise-free band powers, from the cross products of the two detectors.
+total_power1, total_power2 : `np.ndarray`
+    Total band powers, noise included, averaged over the two detectors.
+eta : `np.ndarray`
+    Variance of a single cross-spectrum value perpendicular to its mean; the variance
+    along the mean is ``eta + |cross_power|**2``.
+phase_lag, phase_lag_err : `np.ndarray`
+    Phase lag of band 2 relative to band 1, rad, and its uncertainty.
+m : int
+    Number of averaged values.
 """
 
 
@@ -523,6 +558,82 @@ def module_fourier_amplitudes(band1, band2, segment_size, dt=None, norm="leahy",
         band_fraction=np.asarray(fractions),
         norm=norm,
         time=np.asarray(times),
+    )
+
+
+def cross_module_lag_errors(amplitudes_a, amplitudes_b, axis=-1):
+    r"""Cross spectrum, phase lag and their uncertainties from two detectors' amplitudes.
+
+    Pass the amplitudes through :func:`unmix_amplitudes` first to get the dead-time
+    corrected quantities: the unmixed bands behave like the bands of a detector without
+    dead time, so the standard error formulae apply with the powers of the unmixed
+    amplitudes (see the Notes).
+
+    Parameters
+    ----------
+    amplitudes_a, amplitudes_b : tuple of `np.ndarray`
+        ``(band1, band2)`` complex Fourier amplitudes of detector A and B, of equal
+        shape, e.g. from :func:`module_fourier_amplitudes` and :func:`unmix_amplitudes`.
+
+    Other Parameters
+    ----------------
+    axis : int, default -1
+        Axis to average over, the segment axis of a ``(frequency, segment)`` array.
+        Reshape first to average over neighbouring frequencies as well.
+
+    Returns
+    -------
+    result : `LagErrors`
+
+    Notes
+    -----
+    With :math:`T_{1,2}` the total and :math:`P_{1,2}` the noise-free powers of the two
+    bands and :math:`C` the cross spectrum averaged over the two pairings, a single
+    value of the cross spectrum has variance :math:`\eta` perpendicular to :math:`C`
+    and :math:`\eta + |C|^2` along it, with
+
+    .. math::
+
+        \eta = \frac{1}{2}\left[\frac{T_1 T_2 + P_1 P_2}{2} - |C|^2\right],
+
+    and the lag of the average of :math:`N` values has the uncertainty
+    :math:`\delta\phi \simeq \sqrt{\eta / (N |C|^2)}`, valid for :math:`N \gg 1`.
+    For identical, noise-free detectors this is the formula of Bendat & Piersol. It
+    assumes that the noise of the two bands is uncorrelated, which the unmixing
+    achieves. Uncertainties on the coherence are not provided.
+
+    Examples
+    --------
+    >>> rng = np.random.default_rng(0)
+    >>> x, y = (rng.normal(size=(3, 100)) + 1j * rng.normal(size=(3, 100)) for _ in "xy")
+    >>> res = cross_module_lag_errors((x, x + y), (x, x + y))
+    >>> res.phase_lag.shape, res.m
+    ((3,), 100)
+    """
+    a1, a2 = (np.asanyarray(amp) for amp in amplitudes_a)
+    b1, b2 = (np.asanyarray(amp) for amp in amplitudes_b)
+
+    def mean(x):
+        return np.mean(x, axis=axis)
+
+    total1 = 0.5 * mean(np.abs(a1) ** 2 + np.abs(b1) ** 2)
+    total2 = 0.5 * mean(np.abs(a2) ** 2 + np.abs(b2) ** 2)
+    power1 = mean(np.conj(a1) * b1).real
+    power2 = mean(np.conj(a2) * b2).real
+    cross = mean(0.5 * (np.conj(a1) * b2 + np.conj(b1) * a2))
+    m = a1.shape[axis]
+
+    eta = 0.5 * (0.5 * (total1 * total2 + power1 * power2) - np.abs(cross) ** 2)
+    return LagErrors(
+        cross_power=cross,
+        power1=power1,
+        power2=power2,
+        total_power1=total1,
+        total_power2=total2,
+        eta=eta,
+        phase_lag=np.angle(cross),
+        phase_lag_err=np.sqrt(eta / (m * np.abs(cross) ** 2)),
+        m=m,
     )
 
 
