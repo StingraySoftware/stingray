@@ -39,8 +39,15 @@ The simulator object can be instantiated as::
 
 Here, ``N`` specifies the bins count of the simulated light curve, ``mean`` specifies
 the mean value, ``dt`` is the time resolution, and ``rms`` is the fractional rms amplitude,
-defined as the ratio of standard deviation to the mean.. Additional arguments can be
+defined as the ratio of standard deviation to the mean. Additional arguments can be
 provided e.g. to account for the effect of red noise leakage.
+
+The requested ``rms`` is the *expected* fractional rms. As for real light curves,
+each simulated light curve has its own random variance, and the requested value is
+recovered on average over many simulations. Forcing every light curve to have exactly
+the requested rms would rescale all its powers by a factor dominated by the few,
+very noisy, low-frequency powers, making them correlated and no longer exponentially
+distributed.
 
 Simulate Method
 ---------------

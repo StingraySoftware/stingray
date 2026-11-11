@@ -367,17 +367,48 @@ class Simulator(object):
         # Obtain time series
         return np.fft.irfft(f, n=self.N * self.red_noise)
 
+    def _expected_std(self, var_real, var_imag):
+        """Expected standard deviation of the inverse real FFT of random amplitudes.
+
+        Parameters
+        ----------
+        var_real, var_imag : numpy.ndarray
+            Variances of the real and imaginary parts of the amplitudes at each
+            positive frequency (zero frequency excluded).
+
+        Returns
+        -------
+        std : float
+            Square root of the variance, averaged over time, of the series
+            returned by ``_find_inverse``.
+        """
+        n = self.N * self.red_noise
+        weight = np.full(var_real.size, 2.0)
+        if n % 2 == 0:
+            # The Nyquist amplitude appears once, not with its complex conjugate
+            weight[-1] = 1.0
+        return np.sqrt(np.sum(weight * (var_real + var_imag)) / n**2)
+
     def _timmerkoenig(self, pds_shape):
         """Straight application of T&K method to a PDS shape."""
         pds_size = pds_shape.size
 
-        real = np.random.normal(size=pds_size) * np.sqrt(0.5 * pds_shape)
-        imaginary = np.random.normal(size=pds_size) * np.sqrt(0.5 * pds_shape)
-        imaginary[-1] = 0
+        var_real = 0.5 * pds_shape
+        var_imag = 0.5 * pds_shape
+        if (self.N * self.red_noise) % 2 == 0:
+            # The Nyquist amplitude is real, and carries all the power
+            var_real[-1] = pds_shape[-1]
+            var_imag[-1] = 0
+
+        real = self.random_state.normal(size=pds_size) * np.sqrt(var_real)
+        imaginary = self.random_state.normal(size=pds_size) * np.sqrt(var_imag)
 
         counts = self._find_inverse(real, imaginary)
 
-        self.std = counts.std()
+        # Rescale by the expected standard deviation, not by the one of this
+        # realization: the latter is dominated by the few noisy low-frequency
+        # powers, and dividing by it would distort all the others.
+        self.std = self._expected_std(var_real, var_imag)
 
         rescaled_counts = self._extract_and_scale(counts)
         err = np.zeros_like(rescaled_counts)
@@ -389,7 +420,7 @@ class Simulator(object):
                 rescaled_counts[bad] = 0
             lc = Lightcurve(
                 self.time,
-                np.random.poisson(rescaled_counts),
+                self.random_state.poisson(rescaled_counts),
                 err_dist="poisson",
                 dt=self.dt,
                 skip_checks=True,
