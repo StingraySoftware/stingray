@@ -1,0 +1,1 @@
+``integrate_power_in_frequency_range`` gives the right power when the frequency range falls inside a single bin.
