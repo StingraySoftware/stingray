@@ -304,3 +304,14 @@ interval contained the true value 63-76% of the time wherever the coherence coul
 measured, both with simulated Fourier amplitudes and with simulated light curves. With
 only 10 segments, it is too narrow at high coherence, and covers as little as 56% of
 the time.
+
+Tutorial
+========
+
+The notebook below explains these methods step by step and checks them with simulations,
+including two detectors affected by dead time.
+
+.. toctree::
+   :maxdepth: 2
+
+   notebooks/Coherence/Coherence and its uncertainty.ipynb
