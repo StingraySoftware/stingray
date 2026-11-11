@@ -343,12 +343,37 @@ class TestSimulator(object):
         """
         Simulate light curve from any power spectrum.
         """
-        s = np.random.rand(1024)
+        s = np.random.rand(self.N // 2)
         with pytest.warns(
             UserWarning,
             match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more.",
         ):
-            assert len(self.simulator.simulate(s)), self.N
+            assert len(self.simulator.simulate(s)) == self.N
+
+    @pytest.mark.parametrize("nbins", [128, 129])
+    def test_user_spectrum_on_fine_grid(self, nbins):
+        """A user spectrum given on the frequency grid of the extended light curve
+        gives the same light curve as the equivalent power-law model."""
+        red_noise, dt = 4, 0.5
+        freq = np.fft.rfftfreq(nbins * red_noise, d=dt)[1:]
+        lcs = []
+        for model in [2, freq**-2.0]:
+            sim = Simulator(N=nbins, mean=100, dt=dt, rms=0.2, red_noise=red_noise, random_state=5)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                lcs.append(sim.simulate(model).counts)
+        assert np.allclose(lcs[0], lcs[1])
+
+    @pytest.mark.parametrize("red_noise", [1, 4])
+    def test_user_spectrum_wrong_size(self, red_noise):
+        """A user spectrum of the wrong size is refused, instead of being silently
+        cut or padded with zeros."""
+        sim = Simulator(N=128, mean=100, dt=1, rms=0.2, red_noise=red_noise)
+        with pytest.raises(ValueError, match="must have 64 \\* red_noise"):
+            sim.simulate(np.ones(64 * red_noise + 1))
+        if red_noise > 1:
+            with pytest.raises(ValueError, match="must have 64 \\* red_noise"):
+                sim.simulate(np.ones(64))
 
     def test_simulate_model_pars_not_list_or_dict(self):
         """

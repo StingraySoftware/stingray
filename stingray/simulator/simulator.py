@@ -93,9 +93,10 @@ class Simulator(object):
 
         * x = simulate(s):
            For generating a light curve from user-provided spectrum.
-            **Note**: In this case, the ``red_noise`` parameter is provided.
-            You can generate a longer light curve by providing a higher
-            frequency resolution on the input power spectrum.
+            **Note**: The spectrum must be given at the frequencies of the
+            extended light curve, ``np.fft.rfftfreq(N * red_noise, d=dt)[1:]``,
+            so it includes the frequencies below ``1 / (N * dt)`` needed
+            when ``red_noise > 1``.
 
               Parameters:
                 * s : array-like
@@ -460,15 +461,21 @@ class Simulator(object):
         Parameters
         ----------
         s : array-like
-            power spectrum
+            power spectrum, at the frequencies
+            ``np.fft.rfftfreq(N * red_noise, d=dt)[1:]``
 
         Returns
         -------
         lightCurve : ``LightCurve`` object
         """
-        # Cast spectrum as numpy array
-        pds_shape = np.zeros(s.size * self.red_noise)
-        pds_shape[: s.size] = s
+        pds_shape = np.asarray(s, dtype=float)
+        nfreq = self.N * self.red_noise // 2
+        if pds_shape.size != nfreq:
+            raise ValueError(
+                f"The power spectrum must have {self.N // 2} * red_noise = {nfreq} values, "
+                f"at the frequencies np.fft.rfftfreq(N * red_noise, d=dt)[1:], "
+                f"not {pds_shape.size}"
+            )
 
         return self._timmerkoenig(pds_shape)
 
