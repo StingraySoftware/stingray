@@ -61,6 +61,22 @@ class TestSimulator(object):
         ):
             assert len(self.simulator.simulate(2).counts), self.N
 
+    @pytest.mark.parametrize("poisson", [True, False])
+    def test_same_seed_gives_same_light_curve(self, poisson):
+        """The same random_state gives the same light curve, regardless of the global
+        numpy random state, and a different one gives a different light curve."""
+        lcs = []
+        for seed in [12, 12, 13]:
+            np.random.seed(len(lcs))
+            sim = Simulator(
+                N=128, mean=100, dt=1, rms=0.2, red_noise=2, poisson=poisson, random_state=seed
+            )
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                lcs.append(sim.simulate(2).counts)
+        assert np.array_equal(lcs[0], lcs[1])
+        assert not np.array_equal(lcs[0], lcs[2])
+
     def test_simulate_with_tstart(self):
         """
         Simulate with a random seed value.
@@ -195,12 +211,15 @@ class TestSimulator(object):
 
     @pytest.mark.parametrize("model_kind", ["astropy", "array", "float"])
     def test_rms_and_mean(self, model_kind):
+        """The rms requested is the expected rms: it is matched on average over many
+        light curves, while each light curve keeps its own random variance."""
         np.random.seed(103442357)
-        nbins = 8192
+        nbins = 1024
         dt = 1 / 128
         mean = 100
         rms = 0.2
-        nsim = 128
+        nsim = 256
+        sim = Simulator(N=nbins, mean=mean, dt=dt, rms=rms)
         astropy_model = astropy.modeling.models.PowerLaw1D(alpha=2)
         if model_kind == "astropy":
             model = astropy_model
@@ -209,24 +228,75 @@ class TestSimulator(object):
             model = astropy_model(freq_fine)
         elif model_kind == "float":
             model = 2.0
-        with pytest.warns(
-            UserWarning,
-            match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more.",
-        ):
-            lc_all = [self.simulator.simulate(model) for i in range(nsim)]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            lc_all = [sim.simulate(model) for i in range(nsim)]
 
-        mean_all = np.mean([np.mean(lc.counts) for lc in lc_all])
-        std_all = np.mean([np.std(lc.counts) for lc in lc_all])
+        means = np.array([np.mean(lc.counts) for lc in lc_all])
+        frac_var = np.array([np.var(lc.counts) for lc in lc_all]) / mean**2
 
-        assert np.isclose(mean_all, self.mean, rtol=0.001)
-        assert np.isclose(std_all / mean_all, self.rms, rtol=0.001)
+        assert np.allclose(means, mean)
+        # Each light curve has its own variance...
+        assert np.std(frac_var) > 0.1 * rms**2
+        # ...and the requested one is recovered on average
+        assert np.abs(np.mean(frac_var) - rms**2) < 4 * np.std(frac_var) / np.sqrt(nsim)
 
-        pds_all = [Powerspectrum(lc_all[i]) for i in range(nsim)]
+        pds_all = [Powerspectrum(lc, norm="frac") for lc in lc_all]
         pds = pds_all[0]
         model_compare = (mc := astropy_model(pds.freq)) / (np.sum(mc) * pds.df) * rms**2
 
         ratios = [pds.power / model_compare for pds in pds_all]
         assert np.all([np.mean(rat) / (np.std(rat) * 3) < 1 for rat in ratios])
+
+    def test_single_powers_are_independent_exponentials(self):
+        """Each simulated power scatters as an exponential (std/mean = 1), and the
+        noisy lowest-frequency power does not change the powers at high frequency."""
+        np.random.seed(2357)
+        nbins, nsim = 512, 400
+        sim = Simulator(N=nbins, mean=100, dt=1, rms=0.2)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            counts = np.array([sim.simulate(2).counts for _ in range(nsim)])
+        powers = np.abs(np.fft.rfft(counts - 100, axis=1)[:, 1:-1]) ** 2
+
+        lowest = powers[:, 0]
+        high_band = powers[:, nbins // 4 :].sum(axis=1)
+        assert np.isclose(np.std(lowest) / np.mean(lowest), 1, atol=0.2)
+        assert np.abs(np.corrcoef(lowest, high_band)[0, 1]) < 0.2
+
+    @pytest.mark.parametrize("nbins", [128, 129])
+    def test_highest_frequency_power(self, nbins):
+        """With a flat spectrum, the highest-frequency power has the same mean as the
+        others; for an odd number of bins it is a normal complex amplitude, so its std/mean is 1."""
+        nsim = 1000
+        sim = Simulator(N=nbins, mean=100, dt=1, rms=0.1, random_state=31415)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            counts = np.array([sim.simulate(0).counts for _ in range(nsim)])
+        powers = np.abs(np.fft.rfft(counts - 100, axis=1)[:, 1:]) ** 2
+        last = powers[:, -1]
+        assert np.isclose(np.mean(last) / np.mean(powers[:, :-1]), 1, atol=0.15)
+        if nbins % 2 == 1:
+            assert np.isclose(np.std(last) / np.mean(last), 1, atol=0.15)
+
+    @pytest.mark.parametrize("red_noise", [1, 10])
+    def test_expected_rms_and_mean_with_red_noise(self, red_noise):
+        """With or without red noise leakage, the light curves have the requested mean
+        and fractional rms on average; with leakage, their means scatter as well."""
+        nbins, mean, rms, nsim = 512, 100.0, 0.2, 500
+        sim = Simulator(N=nbins, mean=mean, dt=1, rms=rms, red_noise=red_noise, random_state=7)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            counts = np.array([sim.simulate(2).counts for _ in range(nsim)])
+        means = counts.mean(axis=1)
+        frac_var = counts.var(axis=1) / mean**2
+
+        assert np.abs(np.mean(frac_var) - rms**2) < 4 * np.std(frac_var) / np.sqrt(nsim)
+        if red_noise == 1:
+            assert np.allclose(means, mean)
+        else:
+            assert np.std(means) > 0.01 * mean
+            assert np.abs(np.mean(means) - mean) < 4 * np.std(means) / np.sqrt(nsim)
 
     def test_rms_zero_mean(self):
         nsim = 1000
@@ -292,12 +362,37 @@ class TestSimulator(object):
         """
         Simulate light curve from any power spectrum.
         """
-        s = np.random.rand(1024)
+        s = np.random.rand(self.N // 2)
         with pytest.warns(
             UserWarning,
             match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more.",
         ):
-            assert len(self.simulator.simulate(s)), self.N
+            assert len(self.simulator.simulate(s)) == self.N
+
+    @pytest.mark.parametrize("nbins", [128, 129])
+    def test_user_spectrum_on_fine_grid(self, nbins):
+        """A user spectrum given on the frequency grid of the extended light curve
+        gives the same light curve as the equivalent power-law model."""
+        red_noise, dt = 4, 0.5
+        freq = np.fft.rfftfreq(nbins * red_noise, d=dt)[1:]
+        lcs = []
+        for model in [2, freq**-2.0]:
+            sim = Simulator(N=nbins, mean=100, dt=dt, rms=0.2, red_noise=red_noise, random_state=5)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                lcs.append(sim.simulate(model).counts)
+        assert np.allclose(lcs[0], lcs[1])
+
+    @pytest.mark.parametrize("red_noise", [1, 4])
+    def test_user_spectrum_wrong_size(self, red_noise):
+        """A user spectrum of the wrong size is refused, instead of being silently
+        cut or padded with zeros."""
+        sim = Simulator(N=128, mean=100, dt=1, rms=0.2, red_noise=red_noise)
+        with pytest.raises(ValueError, match="must have 64 \\* red_noise"):
+            sim.simulate(np.ones(64 * red_noise + 1))
+        if red_noise > 1:
+            with pytest.raises(ValueError, match="must have 64 \\* red_noise"):
+                sim.simulate(np.ones(64))
 
     def test_simulate_model_pars_not_list_or_dict(self):
         """
