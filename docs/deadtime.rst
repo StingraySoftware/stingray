@@ -258,6 +258,30 @@ describing a segment whose rate varies strongly *within* it: shorten the segment
 until the correction stops changing. Dropping the brightest segments on a live-time
 threshold does not help, and makes the answer worse.
 
+Unmixing the amplitudes instead of the matrix
+---------------------------------------------
+
+The cross-module matrix is a product of the two detectors' Fourier amplitudes, so
+unmixing the matrix is the same as unmixing each detector's two band amplitudes,
+:math:`u = M^{-1} (X_1, X_2)`, and then crossing them.
+:func:`stingray.deadtime.crosstalk.module_fourier_amplitudes` returns the
+per-segment amplitudes of one detector, normalised so that their cross products are
+exactly the entries of the per-segment matrix, and
+:func:`stingray.deadtime.crosstalk.unmix_amplitudes` unmixes them::
+
+    amp_a = module_fourier_amplitudes(soft_a, hard_a, segment_size, dt=dt)
+    amp_b = module_fourier_amplitudes(soft_b, hard_b, segment_size, dt=dt)
+    u_a = unmix_amplitudes(amp_a.amplitude1, amp_a.amplitude2, f_live_a,
+                           amp_a.band_fraction, dead_time=dead_time,
+                           freq=amp_a.freq[:, None])
+    u_b = ...  # the same for detector B
+    cross = 0.5 * (np.conj(u_a[0]) * u_b[1] + np.conj(u_b[0]) * u_a[1])
+
+The result is the same as with :func:`unmix_cross_spectral_matrix`, but each detector
+now gets its own live time fraction and band split, and the powers of the unmixed
+amplitudes are what the error bars on the corrected lag and coherence are built from.
+Use the same good time intervals for the two detectors so that the segments line up.
+
 :func:`stingray.deadtime.fad.FAD` is complementary rather than an alternative. FAD
 corrects the per-band white-noise *levels* under a variable source, but it does not
 touch the phase; the unmixing corrects the matrix. The two compose.

@@ -76,15 +76,25 @@ import numpy as np
 
 from stingray.crossspectrum import AveragedCrossspectrum, DynamicalCrossspectrum
 from stingray.deadtime.model import deadtime_response
+from stingray.fourier import (
+    fix_segment_size_to_integer_samples,
+    get_flux_iterable_from_segments,
+    positive_fft_bins,
+)
+from stingray.gti import cross_two_gtis, time_intervals_from_gtis
+from stingray.utils import fft, fftfreq
 
 __all__ = [
     "live_time_fraction",
     "deadtime_mixing_matrix",
     "unmix_cross_spectral_matrix",
+    "unmix_amplitudes",
     "coherence_from_cross_spectral_matrix",
     "cross_module_cross_spectral_matrix",
     "dynamical_cross_module_cross_spectral_matrix",
+    "module_fourier_amplitudes",
     "CrossSpectralMatrix",
+    "FourierAmplitudes",
 ]
 
 VALID_NORMS = ("none", "leahy", "frac")
@@ -117,6 +127,27 @@ norm : str
 time : `np.ndarray` or None
     Mid-time of each segment for a per-segment matrix, `None` when the segments have
     already been averaged.
+"""
+
+FourierAmplitudes = namedtuple(
+    "FourierAmplitudes",
+    ["freq", "amplitude1", "amplitude2", "band_fraction", "norm", "time"],
+)
+FourierAmplitudes.__doc__ = """Normalised Fourier amplitudes of two energy bands of one detector.
+
+Attributes
+----------
+freq : `np.ndarray`
+    Fourier frequencies, zero excluded.
+amplitude1, amplitude2 : `np.ndarray`
+    Complex amplitudes of the two bands, shape ``(frequency, segment)``, scaled so that
+    ``conj(amplitude) * other_amplitude`` is a cross spectrum in ``norm``.
+band_fraction : `np.ndarray`
+    Fraction of this detector's counts in band 1, one value per segment.
+norm : str
+    Normalisation the amplitudes are scaled to.
+time : `np.ndarray`
+    Mid-time of each segment.
 """
 
 
@@ -347,6 +378,152 @@ def unmix_cross_spectral_matrix(
     out2 = cc * c * power1 + cc * d * cross_power + cd * c * conj + cd * d * power2
     out12 = ca * c * power1 + ca * d * cross_power + cb * c * conj + cb * d * power2
     return np.real(out1), np.real(out2), out12
+
+
+def unmix_amplitudes(
+    amplitude1,
+    amplitude2,
+    f_live,
+    band_fraction,
+    norm="leahy",
+    dead_time=None,
+    freq=None,
+    bin_time=None,
+):
+    r"""Undo the dead-time mixing of one detector's two band amplitudes.
+
+    Applies :math:`u = M^{-1} (X_1, X_2)` to the Fourier amplitudes of the two bands.
+    Crossing the unmixed amplitudes of two detectors gives exactly the matrix
+    :func:`unmix_cross_spectral_matrix` returns, because the cross-module matrix is
+    bilinear in the two detectors' amplitudes; the advantage of going through the
+    amplitudes is that the powers of ``u`` are also what the error bars on the
+    unmixed lag and coherence need.
+
+    Parameters
+    ----------
+    amplitude1, amplitude2 : `np.ndarray`
+        Complex Fourier amplitudes of band 1 and band 2, e.g. from
+        :func:`module_fourier_amplitudes`, in the normalisation ``norm``.
+    f_live : float or `np.ndarray`
+        Live time fraction of this detector, broadcast against the amplitudes.
+    band_fraction : float or `np.ndarray`
+        Fraction of this detector's counts in band 1.
+
+    Other Parameters
+    ----------------
+    norm : {'leahy', 'frac', 'none'}, default 'leahy'
+        Normalisation the amplitudes are in.
+    dead_time, freq, bin_time : float or `np.ndarray`, default None
+        As in :func:`deadtime_mixing_matrix`.
+
+    Returns
+    -------
+    amplitude1, amplitude2 : `np.ndarray`
+        The unmixed amplitudes, complex.
+
+    Examples
+    --------
+    >>> m = deadtime_mixing_matrix(0.5, 0.5)
+    >>> x = m @ np.array([1.0 + 1j, 2.0])
+    >>> u1, u2 = unmix_amplitudes(x[0], x[1], 0.5, 0.5)
+    >>> bool(np.isclose(u1, 1.0 + 1j) and np.isclose(u2, 2.0))
+    True
+    """
+    matrix = deadtime_mixing_matrix(
+        f_live, band_fraction, norm=norm, dead_time=dead_time, freq=freq, bin_time=bin_time
+    )
+    inverse = np.linalg.inv(matrix)
+    amplitude1 = np.asanyarray(amplitude1)
+    amplitude2 = np.asanyarray(amplitude2)
+    unmixed1 = inverse[..., 0, 0] * amplitude1 + inverse[..., 0, 1] * amplitude2
+    unmixed2 = inverse[..., 1, 0] * amplitude1 + inverse[..., 1, 1] * amplitude2
+    return unmixed1, unmixed2
+
+
+def _amplitude_scale(counts, n_bin, dt, norm):
+    """Factor that turns a segment's raw FFT into amplitudes whose cross products
+    are stingray's per-segment cross spectrum in ``norm``."""
+    if norm == "leahy":
+        return np.sqrt(2 / counts)
+    if norm == "frac":
+        return np.sqrt(2 * dt / n_bin) * n_bin / counts
+    return 1.0
+
+
+def module_fourier_amplitudes(band1, band2, segment_size, dt=None, norm="leahy", gti=None):
+    r"""Normalised Fourier amplitudes of two energy bands of one detector, per segment.
+
+    The building block of :func:`dynamical_cross_module_cross_spectral_matrix`: with
+    ``A`` and ``B`` the output for two detectors, ``conj(A.amplitude1) * B.amplitude1``
+    is its ``power1`` and the average of ``conj(A.amplitude1) * B.amplitude2`` and
+    ``conj(B.amplitude1) * A.amplitude2`` its ``cross_power``. Pass the amplitudes
+    through :func:`unmix_amplitudes` first to get the unmixed matrix instead.
+
+    Each segment is normalised by its own counts, as in the per-segment matrix builder
+    with ``use_common_mean=False``.
+
+    Parameters
+    ----------
+    band1, band2 : `stingray.EventList` or `stingray.Lightcurve`
+        The two energy bands of one detector.
+    segment_size : float
+        Length of each Fourier segment, s.
+
+    Other Parameters
+    ----------------
+    dt : float, default None
+        Bin time used to histogram event lists. Required for event lists; light curves
+        use their own.
+    norm : {'leahy', 'frac', 'none'}, default 'leahy'
+        Normalisation of the amplitudes.
+    gti : `np.ndarray`, default None
+        Good time intervals. Defaults to the intersection of those of the two bands.
+        Use the same for both detectors, or the segments will not line up.
+
+    Returns
+    -------
+    amplitudes : `FourierAmplitudes`
+    """
+    if norm not in VALID_NORMS:
+        raise ValueError(f"norm must be one of {VALID_NORMS}, not {norm!r}.")
+    if gti is None:
+        gti = cross_two_gtis(band1.gti, band2.gti)
+    binned = hasattr(band1, "counts")
+    if binned:
+        dt = band1.dt
+    elif dt is None:
+        raise ValueError("dt is required for event lists.")
+    segment_size, n_bin = fix_segment_size_to_integer_samples(segment_size, dt)
+
+    def _iterable(band):
+        if binned:
+            return get_flux_iterable_from_segments(
+                band.time, gti, segment_size, dt=dt, fluxes=band.counts
+            )
+        return get_flux_iterable_from_segments(band.time, gti, segment_size, n_bin=n_bin)
+
+    fgt0 = positive_fft_bins(n_bin)
+    start_times = time_intervals_from_gtis(gti, segment_size)[0]
+    amplitudes1, amplitudes2, fractions, times = [], [], [], []
+    for start, counts1, counts2 in zip(start_times, _iterable(band1), _iterable(band2)):
+        if counts1 is None or counts2 is None:
+            continue
+        n1, n2 = counts1.sum(), counts2.sum()
+        if n1 == 0 or n2 == 0:
+            continue
+        amplitudes1.append(fft(counts1)[fgt0] * _amplitude_scale(n1, n_bin, dt, norm))
+        amplitudes2.append(fft(counts2)[fgt0] * _amplitude_scale(n2, n_bin, dt, norm))
+        fractions.append(n1 / (n1 + n2))
+        times.append(start + segment_size / 2)
+
+    return FourierAmplitudes(
+        freq=fftfreq(n_bin, dt)[fgt0],
+        amplitude1=np.transpose(amplitudes1),
+        amplitude2=np.transpose(amplitudes2),
+        band_fraction=np.asarray(fractions),
+        norm=norm,
+        time=np.asarray(times),
+    )
 
 
 def coherence_from_cross_spectral_matrix(power1, power2, cross_power):

@@ -11,6 +11,8 @@ from stingray.deadtime.crosstalk import (
     deadtime_mixing_matrix,
     dynamical_cross_module_cross_spectral_matrix,
     live_time_fraction,
+    module_fourier_amplitudes,
+    unmix_amplitudes,
     unmix_cross_spectral_matrix,
 )
 from stingray.filters import filter_for_deadtime
@@ -720,3 +722,67 @@ def test_frequency_dependent_unmixing_matches_the_exact_dead_time_equation(norm)
 
     assert np.all(error(dead_time=DEAD_TIME, freq=freqs) < 2e-3)
     assert np.all(error()[1:] > 1)
+
+
+# ----------------------------------------------------------- unmixed amplitudes
+
+
+def _matrix_from_amplitudes(det1, det2):
+    """The cross-module entries of two detectors' (band 1, band 2) amplitudes."""
+    (a1, a2), (b1, b2) = det1, det2
+    return (
+        (np.conj(a1) * b1).real,
+        (np.conj(a2) * b2).real,
+        0.5 * (np.conj(a1) * b2 + np.conj(b1) * a2),
+    )
+
+
+@pytest.mark.parametrize("norm", NORMS)
+def test_unmixing_the_amplitudes_is_unmixing_the_matrix(norm):
+    """Unmixing each detector's amplitudes and then crossing them gives the unmixed
+    matrix (the identity behind the error bars), per segment and with W(f)."""
+    rng = np.random.default_rng(8)
+    nfreq, nseg = 40, 5
+    freq = np.linspace(0.5, 2 / DEAD_TIME, nfreq)[:, None]
+    f_live = rng.uniform(0.2, 0.9, nseg)
+    p1 = rng.uniform(0.1, 0.9, nseg)
+    dets = [
+        [rng.normal(size=(nfreq, nseg)) + 1j * rng.normal(size=(nfreq, nseg)) for _ in "ab"]
+        for _ in "AB"
+    ]
+    options = dict(norm=norm, dead_time=DEAD_TIME, freq=freq)
+
+    unmixed = [unmix_amplitudes(*det, f_live, p1, **options) for det in dets]
+    expected = unmix_cross_spectral_matrix(*_matrix_from_amplitudes(*dets), f_live, p1, **options)
+
+    for got, want in zip(_matrix_from_amplitudes(*unmixed), expected):
+        assert np.allclose(got, want)
+
+
+@pytest.mark.parametrize("norm", NORMS)
+def test_module_amplitudes_reproduce_the_per_segment_matrix(norm):
+    """Crossing the amplitudes of two detectors must give exactly the entries of
+    dynamical_cross_module_cross_spectral_matrix, on the same frequencies and segments."""
+    length, dt, segment_size = 64.0, 1 / 64, 8.0
+    rng = np.random.default_rng(3)
+    det_a = _steady_two_band_module(rng, length, dt, 200.0, 0.4)
+    det_b = _steady_two_band_module(rng, length, dt, 200.0, 0.4)
+
+    matrix = dynamical_cross_module_cross_spectral_matrix(
+        *det_a, *det_b, segment_size=segment_size, sample_time=dt, norm=norm
+    )
+    amp_a, amp_b = (
+        module_fourier_amplitudes(*det, segment_size=segment_size, dt=dt, norm=norm)
+        for det in (det_a, det_b)
+    )
+
+    assert np.allclose(amp_a.freq, matrix.freq)
+    assert np.allclose(amp_a.time, matrix.time)
+    edges = np.arange(0, length + segment_size, segment_size)
+    counts1, counts2 = (np.histogram(ev.time, bins=edges)[0] for ev in det_a)
+    assert np.allclose(amp_a.band_fraction, counts1 / (counts1 + counts2))
+    entries = _matrix_from_amplitudes(
+        (amp_a.amplitude1, amp_a.amplitude2), (amp_b.amplitude1, amp_b.amplitude2)
+    )
+    for got, want in zip(entries, (matrix.power1, matrix.power2, matrix.cross_power)):
+        assert np.allclose(got, want)

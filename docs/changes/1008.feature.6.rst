@@ -1,0 +1,1 @@
+New ``module_fourier_amplitudes`` and ``unmix_amplitudes`` in ``stingray.deadtime.crosstalk`` build the per-segment Fourier amplitudes of one detector's two bands and undo the dead-time mixing on them, so each detector is corrected with its own live time and band split; crossing the results reproduces the unmixed cross-spectral matrix.
