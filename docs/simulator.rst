@@ -39,31 +39,19 @@ The simulator object can be instantiated as::
 
 Here, ``N`` specifies the bins count of the simulated light curve, ``mean`` specifies
 the mean value, ``dt`` is the time resolution, and ``rms`` is the fractional rms amplitude,
-defined as the ratio of standard deviation to the mean.
+defined as the ratio of standard deviation to the mean. The rms is an *expected* value:
+like real light curves, each simulated one has its own random variance, and the
+requested rms is recovered on average over many simulations.
 
-By default, the simulated light curve is periodic: its end joins smoothly onto its
-start, and there is no variability on time scales longer than the light curve. A real
-observation, instead, is a segment of a much longer process, and the variability slower
-than the observation leaks into its power spectrum (red noise leakage). To simulate
-this effect, use ``red_noise``: the simulator produces a light curve ``red_noise`` times
-longer, and extracts a random segment of length ``N``. A user-defined power spectrum
-must then be given at the frequencies of the longer light curve,
-``np.fft.rfftfreq(N * red_noise, d=dt)[1:]``.
-
-The requested ``mean`` and ``rms`` are, again, the expected values for the light curves
-returned, with the rms calculated around the mean of each light curve. With
-``red_noise > 1``, the slow variability also makes the mean of each light curve scatter
-around the requested one. For steep spectra this scatter can be much larger than the
-rms: for a power law with index 2 and ``red_noise=50``, the means scatter by about the
-mean itself, and many light curves go below zero. Use a spectrum that flattens at low
-frequencies, or a smaller ``red_noise``, to avoid it.
-
-The requested ``rms`` is the *expected* fractional rms. As for real light curves,
-each simulated light curve has its own random variance, and the requested value is
-recovered on average over many simulations. Forcing every light curve to have exactly
-the requested rms would rescale all its powers by a factor dominated by the few,
-very noisy, low-frequency powers, making them correlated and no longer exponentially
-distributed.
+By default, the simulated light curve is periodic, with no variability slower than the
+light curve itself. A real observation is a short piece of a much longer signal, whose
+slow variations appear in it as trends and leak into its power spectrum (red noise
+leakage). To include them, use ``red_noise``: the simulator produces a light curve
+``red_noise`` times longer and extracts a random piece of length ``N``, whose mean now
+varies from one simulation to the next. A user-defined power spectrum must then be given
+at the frequencies ``np.fft.rfftfreq(N * red_noise, d=dt)[1:]``. For steep spectra,
+these variations of the mean can be large: for a power law with index 2 and
+``red_noise=50``, they are as large as the mean itself.
 
 Simulate Method
 ---------------
