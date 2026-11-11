@@ -12,8 +12,13 @@ with :math:`\det M = f_{\rm live}`. The consequences are not subtle. A completel
 steady source shows a cross spectrum between two of its bands with a purely real,
 negative value and manufactures a coherence of several tenths; a real partial coherence
 is suppressed by up to a factor of four; and a phase lag is stretched, by
-:math:`1/f_{\rm live}` when the two bands are perfectly coherent and by considerably
-more when they are not.
+:math:`1/f_{\rm live}` when the two bands are perfectly coherent and have equal counts
+and fractional rms, and by considerably more when they are only partly coherent.
+
+This :math:`M` is the low-frequency limit, valid well below :math:`1/(2\pi t_d)`. Pass
+``dead_time`` and ``freq`` to :func:`unmix_cross_spectral_matrix` for the
+frequency-dependent matrix, which also removes the delay that the instantaneous one
+leaves on the lag between unequal bands.
 
 Because :math:`M` is known from the live time fraction and from the way the detected
 counts split between the bands, the measurement simply inverts:
@@ -70,6 +75,7 @@ from collections import namedtuple
 import numpy as np
 
 from stingray.crossspectrum import AveragedCrossspectrum, DynamicalCrossspectrum
+from stingray.deadtime.model import deadtime_response
 
 __all__ = [
     "live_time_fraction",
@@ -145,7 +151,9 @@ def live_time_fraction(detected_rate, dead_time):
     return 1.0 - np.asanyarray(detected_rate) * dead_time
 
 
-def deadtime_mixing_matrix(f_live, band_fraction, norm="leahy"):
+def deadtime_mixing_matrix(
+    f_live, band_fraction, norm="leahy", dead_time=None, freq=None, bin_time=None
+):
     r"""The dead-time mixing matrix of two energy bands of one detector.
 
     With :math:`a = 1 - f_{\rm live}` and :math:`p_i` the fraction of detected counts
@@ -157,8 +165,22 @@ def deadtime_mixing_matrix(f_live, band_fraction, norm="leahy"):
                             -a\sqrt{p_1 p_2} & 1 - a p_2 \end{pmatrix},
         \qquad \det M = f_{\rm live}.
 
-    Its off-diagonal is the cross-talk term of Bachetti et al. 2015. The three
-    supported normalisations are the same operator in different units, related by the
+    Its off-diagonal is the cross-talk term of Bachetti et al. 2015.
+
+    This assumes that the live time follows the total count rate instantaneously,
+    which holds only well below :math:`1/(2\pi t_d)` (about 60 Hz for NuSTAR) and for
+    lags much longer than the dead time. The detector actually responds to the rate
+    averaged over the preceding dead time, :math:`W(f)` of
+    :func:`stingray.deadtime.model.deadtime_response`. Given ``dead_time`` and
+    ``freq``, :math:`a` is replaced by
+
+    .. math::
+
+        A(f) = \frac{w W(f)}{1 + w W(f)}, \qquad w = \frac{1 - f_{\rm live}}{f_{\rm live}},
+
+    and the matrix becomes complex. Its delay does not cancel between two bands with
+    different counts or fractional rms, where the instantaneous matrix leaves up to 10%
+    on a lag even at a few Hz. The three supported normalisations are the same operator in different units, related by the
     diagonal rescaling each normalisation applies to the bands, and they coincide when
     :math:`p_1 = p_2 = 1/2`.
 
@@ -178,11 +200,22 @@ def deadtime_mixing_matrix(f_live, band_fraction, norm="leahy"):
         Normalisation of the amplitudes the matrix will act on. It has to match the
         normalisation of the spectra, or the correction is wrong away from an equal
         band split.
+    dead_time : float, default None
+        Dead time. If given, the frequency-dependent matrix is returned and ``freq``
+        is required. If None, the instantaneous (low-frequency) matrix.
+    freq : float or `np.ndarray`, default None
+        Frequencies, broadcast against ``f_live``: for one ``f_live`` per segment,
+        pass ``freq[:, None]``.
+    bin_time : float, default None
+        If given with ``dead_time``, use the response aliased onto the grid of a light
+        curve binned at ``bin_time``, which applies to a signal with power up to the
+        Nyquist frequency. A red signal is better served by the unbinned response.
 
     Returns
     -------
     matrix : `np.ndarray`
-        Shape ``(..., 2, 2)``, the leading axes broadcast from the inputs.
+        Shape ``(..., 2, 2)``, the leading axes broadcast from the inputs. Complex if
+        ``dead_time`` is given.
 
     Examples
     --------
@@ -197,7 +230,16 @@ def deadtime_mixing_matrix(f_live, band_fraction, norm="leahy"):
             "mean rate and is not implemented."
         )
 
-    a = 1.0 - np.asanyarray(f_live, dtype=float)
+    f_live = np.asanyarray(f_live, dtype=float)
+    if dead_time is None:
+        if bin_time is not None:
+            raise ValueError("bin_time is only used with dead_time; pass both.")
+        a = 1.0 - f_live
+    else:
+        if freq is None:
+            raise ValueError("The frequency-dependent matrix needs freq as well as dead_time.")
+        w = (1.0 - f_live) / f_live * deadtime_response(freq, dead_time, bin_time=bin_time)
+        a = w / (1.0 + w)
     p1 = np.asanyarray(band_fraction, dtype=float)
     p2 = 1.0 - p1
 
@@ -217,10 +259,23 @@ def deadtime_mixing_matrix(f_live, band_fraction, norm="leahy"):
     return np.stack(rows, axis=-2)
 
 
-def unmix_cross_spectral_matrix(power1, power2, cross_power, f_live, band_fraction, norm="leahy"):
+def unmix_cross_spectral_matrix(
+    power1,
+    power2,
+    cross_power,
+    f_live,
+    band_fraction,
+    norm="leahy",
+    dead_time=None,
+    freq=None,
+    bin_time=None,
+):
     r"""Undo the dead-time mixing of a Poisson-free cross-spectral matrix.
 
-    Applies :math:`S_{\rm true} = M^{-1} S_{\rm meas} (M^{-1})^{T}` element by element,
+    Applies :math:`S_{\rm true} = \overline{M^{-1}} S_{\rm meas} (M^{-1})^{T}` element
+    by element (the conjugate matters only for the complex, frequency-dependent matrix,
+    and sits on the first factor because the cross spectrum is
+    :math:`\overline{X_1} X_2`),
     so it corrects the two band powers, the coherence and the phase lag in one step.
     There is no separate scalar correction for the lag: the familiar
     :math:`1/f_{\rm live}` stretch of the phase is only the limit of this expression at
@@ -248,6 +303,11 @@ def unmix_cross_spectral_matrix(power1, power2, cross_power, f_live, band_fracti
     ----------------
     norm : {'leahy', 'frac', 'none'}, default 'leahy'
         Normalisation the spectra are in. Must match them.
+    dead_time, freq, bin_time : float or `np.ndarray`, default None
+        As in :func:`deadtime_mixing_matrix`. Without ``dead_time`` the correction is
+        the instantaneous one, valid only well below :math:`1/(2\pi t_d)` and for lags
+        much longer than the dead time; with it, the frequency-dependent one. ``freq``
+        is broadcast against the spectra and ``f_live``.
 
     Returns
     -------
@@ -268,7 +328,9 @@ def unmix_cross_spectral_matrix(power1, power2, cross_power, f_live, band_fracti
     >>> bool(np.isclose(out[2], 1.0 + 0.5j))
     True
     """
-    matrix = deadtime_mixing_matrix(f_live, band_fraction, norm=norm)
+    matrix = deadtime_mixing_matrix(
+        f_live, band_fraction, norm=norm, dead_time=dead_time, freq=freq, bin_time=bin_time
+    )
     inverse = np.linalg.inv(matrix)
     a, b = inverse[..., 0, 0], inverse[..., 0, 1]
     c, d = inverse[..., 1, 0], inverse[..., 1, 1]
@@ -278,11 +340,12 @@ def unmix_cross_spectral_matrix(power1, power2, cross_power, f_live, band_fracti
     cross_power = np.asanyarray(cross_power)
     conj = np.conj(cross_power)
 
-    # S = [[p1, c], [conj(c), p2]] and T = Minv S Minv^T, written out term by term so
-    # that it broadcasts over frequency and segment without building a matrix per bin.
-    out1 = a * a * power1 + a * b * (cross_power + conj) + b * b * power2
-    out2 = c * c * power1 + c * d * (cross_power + conj) + d * d * power2
-    out12 = a * c * power1 + a * d * cross_power + b * c * conj + b * d * power2
+    # S = [[p1, c], [conj(c), p2]] and T = conj(Minv) S Minv^T, written out term by term
+    # so that it broadcasts over frequency and segment without building a matrix per bin.
+    ca, cb, cc, cd = np.conj(a), np.conj(b), np.conj(c), np.conj(d)
+    out1 = ca * a * power1 + ca * b * cross_power + cb * a * conj + cb * b * power2
+    out2 = cc * c * power1 + cc * d * cross_power + cd * c * conj + cd * d * power2
+    out12 = ca * c * power1 + ca * d * cross_power + cb * c * conj + cb * d * power2
     return np.real(out1), np.real(out2), out12
 
 

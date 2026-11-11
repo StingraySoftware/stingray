@@ -23,9 +23,13 @@ def _true_matrix(power, coherence, phase):
 
 
 def _mix(power1, power2, cross, matrix):
-    """Apply ``S_meas = M S_true M^T`` to the three independent entries."""
+    """Apply ``S_meas = conj(M) S_true M^T`` to the three independent entries.
+
+    The cross spectrum is ``conj(X_1) X_2``, so the first factor is conjugated; it only
+    matters for the complex, frequency-dependent matrix.
+    """
     s = np.array([[power1, cross], [np.conj(cross), power2]])
-    out = matrix @ s @ matrix.T
+    out = np.conj(matrix) @ s @ matrix.T
     return out[0, 0].real, out[1, 1].real, out[0, 1]
 
 
@@ -206,11 +210,17 @@ def test_a_partly_coherent_phase_is_distorted_by_more_than_one_over_f_live():
 # ------------------------------------------------------- the cross-module matrix
 
 
-def _two_band_events(rng, length, dt, rate, band_fraction, phase, frequency, amplitude):
-    """Event times for a soft and a hard band sharing one sinusoidal signal."""
+def _two_band_events(
+    rng, length, dt, rate, band_fraction, phase, frequency, amplitude, amplitude2=None
+):
+    """Event times for a soft and a hard band sharing one sinusoidal signal.
+
+    ``amplitude2``, if given, is the hard band's own fractional amplitude.
+    """
+    amplitude2 = amplitude if amplitude2 is None else amplitude2
     t = np.arange(0, length, dt)
     shape = 1 + amplitude * np.sin(2 * np.pi * frequency * t)
-    lagged = 1 + amplitude * np.sin(2 * np.pi * frequency * t - phase)
+    lagged = 1 + amplitude2 * np.sin(2 * np.pi * frequency * t - phase)
 
     out = []
     for fraction, curve in ((band_fraction, shape), (1 - band_fraction, lagged)):
@@ -220,9 +230,13 @@ def _two_band_events(rng, length, dt, rate, band_fraction, phase, frequency, amp
     return out
 
 
-def _module(rng, length, dt, rate, band_fraction, phase, frequency, amplitude, dead_time):
+def _module(
+    rng, length, dt, rate, band_fraction, phase, frequency, amplitude, dead_time, amplitude2=None
+):
     """One module: draw both bands, merge, apply dead time, split back."""
-    soft, hard = _two_band_events(rng, length, dt, rate, band_fraction, phase, frequency, amplitude)
+    soft, hard = _two_band_events(
+        rng, length, dt, rate, band_fraction, phase, frequency, amplitude, amplitude2
+    )
     merged = np.concatenate([soft, hard])
     label = np.concatenate([np.zeros(soft.size), np.ones(hard.size)])
     order = np.argsort(merged)
@@ -528,3 +542,96 @@ def test_per_segment_band_fraction_follows_a_changing_band_split():
     first, second = matrix.band_fraction[: nseg // 2], matrix.band_fraction[nseg // 2 :]
     assert np.mean(first) == pytest.approx(240 / 390, rel=0.05)
     assert np.mean(second) == pytest.approx(60 / 210, rel=0.1)
+
+
+# ------------------------------------------- the frequency-dependent correction
+
+DEAD_TIME = 2.5e-3
+
+
+def _mix_per_frequency(power1, power2, cross, matrix):
+    """``conj(M) S M^T`` with one matrix per frequency, ``matrix`` of shape (nf, 2, 2)."""
+    s = np.empty(matrix.shape, dtype=complex)
+    s[:, 0, 0], s[:, 1, 1], s[:, 0, 1] = power1, power2, cross
+    s[:, 1, 0] = np.conj(cross)
+    out = np.conj(matrix) @ s @ np.swapaxes(matrix, -1, -2)
+    return out[:, 0, 0].real, out[:, 1, 1].real, out[:, 0, 1]
+
+
+@pytest.mark.parametrize("bin_time", [None, DEAD_TIME / 4])
+@pytest.mark.parametrize("norm", NORMS)
+def test_frequency_dependent_unmixing_inverts_its_mixing(norm, bin_time):
+    """With the dead time, the matrix is complex and changes with frequency; mixing and
+    unmixing must still round-trip at an unequal split, on a grid reaching 2/td."""
+    f_live, p1 = 0.5, 0.3
+    freq = np.linspace(0.5, 2 / DEAD_TIME, 200)
+    options = dict(norm=norm, dead_time=DEAD_TIME, freq=freq, bin_time=bin_time)
+    truth = _true_matrix(3.0, 0.5, 0.3)
+    measured = _mix_per_frequency(*truth, deadtime_mixing_matrix(f_live, p1, **options))
+
+    recovered = unmix_cross_spectral_matrix(*measured, f_live, p1, **options)
+    assert np.allclose(recovered[0], truth[0])
+    assert np.allclose(recovered[1], truth[1])
+    assert np.allclose(recovered[2], truth[2])
+
+
+def test_frequency_dependent_matrix_tends_to_the_instantaneous_one():
+    """Far below 1/(2 pi td) the live time follows the rate instantaneously and the two
+    corrections agree; at a few hundred Hz they do not."""
+    measured = _true_matrix(3.0, 0.5, 0.3)
+    instantaneous = unmix_cross_spectral_matrix(*measured, 0.5, 0.3)
+    low, high = (
+        unmix_cross_spectral_matrix(*measured, 0.5, 0.3, dead_time=DEAD_TIME, freq=f)
+        for f in (1.0, 300.0)
+    )
+
+    assert abs(low[2] / instantaneous[2] - 1) < 0.01
+    assert abs(high[2] / instantaneous[2] - 1) > 0.1
+
+
+def test_frequency_dependent_matrix_needs_the_frequencies():
+    """A dead time without frequencies cannot give W(f), and a bin time without a dead
+    time would be silently ignored; both are errors."""
+    with pytest.raises(ValueError, match="freq"):
+        deadtime_mixing_matrix(0.5, 0.5, dead_time=DEAD_TIME)
+    with pytest.raises(ValueError, match="dead_time"):
+        deadtime_mixing_matrix(0.5, 0.5, freq=1.0, bin_time=1e-3)
+
+
+@pytest.mark.slow
+def test_frequency_dependent_correction_fixes_the_lag_of_unequal_bands():
+    """Unequal bands (30/70 counts, amplitudes 0.3/0.15) at 40 Hz: the instantaneous
+    matrix returns 0.19 rad for 0.30, the frequency-dependent one recovers it. The
+    single-realisation scatter is 0.017 rad; the gap between the two is paired."""
+    length, dt, rate = 1024.0, 1 / 512, 400.0
+    phase, frequency = 0.3, 40.0
+    rng = np.random.default_rng(11)
+    kwargs = dict(
+        length=length,
+        dt=dt,
+        rate=rate,
+        band_fraction=0.3,
+        phase=phase,
+        frequency=frequency,
+        amplitude=0.3,
+        amplitude2=0.15,
+        dead_time=DEAD_TIME,
+    )
+    soft_a, hard_a, _ = _module(rng, **kwargs)
+    soft_b, hard_b, _ = _module(rng, **kwargs)
+    matrix = cross_module_cross_spectral_matrix(
+        soft_a, hard_a, soft_b, hard_b, segment_size=8.0, dt=dt
+    )
+    detected = (soft_a.time.size + hard_a.time.size + soft_b.time.size + hard_b.time.size) / 2
+    f_live = live_time_fraction(detected / length, DEAD_TIME)
+    peak = np.argmin(np.abs(matrix.freq - frequency))
+    entries = (matrix.power1[peak], matrix.power2[peak], matrix.cross_power[peak])
+
+    def recovered(**options):
+        unmixed = unmix_cross_spectral_matrix(*entries, f_live, matrix.band_fraction, **options)
+        return -np.angle(unmixed[2])
+
+    with_w = recovered(dead_time=DEAD_TIME, freq=matrix.freq[peak])
+    without_w = recovered()
+    assert with_w == pytest.approx(phase, rel=0.15)
+    assert with_w - without_w > 0.05

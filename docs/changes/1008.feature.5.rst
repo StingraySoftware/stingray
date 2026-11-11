@@ -1,0 +1,6 @@
+``deadtime_mixing_matrix`` and ``unmix_cross_spectral_matrix`` in
+``stingray.deadtime.crosstalk`` take ``dead_time``, ``freq`` and optionally
+``bin_time``, and then use the frequency-dependent mixing matrix built on the live-time
+response ``W(f)`` instead of its low-frequency limit. The instantaneous matrix, still the
+default, returns half the true lag or less above about 100 Hz, and leaves up to 10% on a
+lag at any frequency when the two bands differ in counts or fractional rms.

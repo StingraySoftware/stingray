@@ -133,6 +133,55 @@ result into a coherence::
    from a single Fourier bin. Per bin the denominator :math:`P_1 P_2` crosses zero
    and the ratio explodes; average every entry of the matrix first, then divide.
 
+The matrix depends on frequency
+-------------------------------
+
+The matrix above assumes that the live time follows the total count rate
+instantaneously. It does not: the detector is dead because of an event in the
+*preceding* :math:`t_d`, so the live time responds to the rate averaged over that
+interval. In Fourier space the average is the response of
+:func:`stingray.deadtime.model.deadtime_response`,
+
+.. math::
+
+   W(f) = e^{-i\pi f t_d} \, \mathrm{sinc}(f t_d) ,
+
+the same function on which the Vikhlinin et al. 1994 noise level,
+:func:`stingray.deadtime.model.vikhlinin_dead_time_model`, is built. To first order
+the mixing matrix becomes :math:`M(f) = I - A(f) \, q q^T`, with
+:math:`q = (\sqrt{p_1}, \sqrt{p_2})` and
+
+.. math::
+
+   A(f) = \frac{w W(f)}{1 + w W(f)}, \qquad w = \frac{1 - f_\mathrm{live}}{f_\mathrm{live}} ,
+
+which is complex, and the correction is
+:math:`\overline{M^{-1}} S_\mathrm{meas} (M^{-1})^T`. :math:`W \to 1` well below
+:math:`1/(2\pi t_d)` (about 60 Hz for NuSTAR) and gives back the matrix above. Two
+consequences:
+
+* Above a few tens of Hz the instantaneous matrix is simply wrong: it returns half
+  the true lag or less above 100 Hz at :math:`f_\mathrm{live} = 0.5`.
+* The phase of :math:`W` is a delay of about :math:`f_\mathrm{live} t_d / 2`. It
+  cancels in the lag between two bands with equal counts and equal fractional rms,
+  and only there: otherwise the instantaneous matrix leaves up to 10% on the lag even
+  at a few Hz.
+
+Pass the dead time and the frequencies to use it::
+
+    power1, power2, cross = unmix_cross_spectral_matrix(
+        matrix.power1, matrix.power2, matrix.cross_power,
+        f_live, matrix.band_fraction, norm=matrix.norm,
+        dead_time=dead_time, freq=matrix.freq,
+    )
+
+For a per-segment matrix (below), pass ``freq=matrix.freq[:, None]`` so that it
+broadcasts against an :math:`f_\mathrm{live}` per segment. ``bin_time`` selects the
+response aliased onto the grid of a binned light curve, the same folding that turns
+the Vikhlinin noise level into the Zhang et al. 1995 one; it is the right choice
+only for a signal with power up to the Nyquist frequency, and a red signal is better
+served by the default, unbinned response.
+
 Variable sources: one matrix per segment
 ========================================
 
