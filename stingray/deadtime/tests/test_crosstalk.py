@@ -1,3 +1,5 @@
+import functools
+
 import numpy as np
 import pytest
 
@@ -12,6 +14,7 @@ from stingray.deadtime.crosstalk import (
     unmix_cross_spectral_matrix,
 )
 from stingray.filters import filter_for_deadtime
+from stingray.utils import njit
 
 NORMS = ["none", "leahy", "frac"]
 
@@ -635,3 +638,85 @@ def test_frequency_dependent_correction_fixes_the_lag_of_unequal_bands():
     without_w = recovered()
     assert with_w == pytest.approx(phase, rel=0.15)
     assert with_w - without_w > 0.05
+
+
+@njit()
+def _solve_dead_time_equation(r1, r2, k, dt):
+    """Detected rates of two bands from ``m_i = r_i [1 - int_{t-td}^t m_tot]``.
+
+    Trapezoid rule over the last ``k`` steps, implicit in the current one, started from
+    the steady state so that there is no start-up ringing.
+    """
+    n = r1.size
+    m1, m2, mt = np.zeros(n), np.zeros(n), np.zeros(n)
+    steady = (r1[0] + r2[0]) / (1.0 + (r1[0] + r2[0]) * k * dt)
+    window = k * steady
+    for i in range(n):
+        old = mt[i - k] if i >= k else steady
+        window -= old
+        rt = r1[i] + r2[i]
+        mt[i] = rt * (1.0 - dt * (window + 0.5 * old)) / (1.0 + 0.5 * dt * rt)
+        m1[i], m2[i] = r1[i] * mt[i] / rt, r2[i] * mt[i] / rt
+        window += mt[i]
+    return m1, m2
+
+
+@functools.cache
+def _time_domain_matrices():
+    """Measured and dead-time-free spectra of a deterministic, noise-free source.
+
+    Two bands with 15/85 of 1600 c/s (f_live = 0.2) and small sinusoids of different
+    amplitude and phase at 3, 211 and 700 Hz; two runs, so the matrix is not rank one.
+    """
+    dt, eps, freqs = DEAD_TIME / 100, 1e-4, np.array([3.0, 211.0, 700.0])
+    t = np.arange(0, 1.5, dt)
+    rng = np.random.default_rng(5)
+    keep = t >= 0.5
+    runs = []
+    for _ in range(2):
+        s1, s2 = (
+            sum(amp * np.cos(2 * np.pi * f * t + rng.uniform(0, 2 * np.pi)) for f in freqs)
+            for amp in (0.4, 1.0)
+        )
+        r1, r2 = 1600 * 0.15 * (1 + eps * s1), 1600 * 0.85 * (1 + eps * s2)
+        m1, m2 = _solve_dead_time_equation(r1, r2, 100, dt)
+        runs.append([x[keep] for x in (m1, m2, r1, r2)])
+    m1bar = np.mean([r[0].mean() for r in runs])
+    m2bar = np.mean([r[1].mean() for r in runs])
+    f_live = 1 - (m1bar + m2bar) * DEAD_TIME
+
+    def amplitude(x):
+        return np.exp(-2j * np.pi * np.outer(freqs, t[keep])) @ (x - x.mean())
+
+    def matrix(x1, x2, scale1, scale2):
+        a1, a2 = amplitude(x1) / scale1, amplitude(x2) / scale2
+        return np.array([np.abs(a1) ** 2, np.abs(a2) ** 2, np.conj(a1) * a2])
+
+    scales = {
+        "none": (1.0, 1.0),
+        "frac": (m1bar, m2bar),
+        "leahy": (np.sqrt(m1bar), np.sqrt(m2bar)),
+    }
+    out = {}
+    for norm, (sc1, sc2) in scales.items():
+        meas = sum(matrix(m1, m2, sc1, sc2) for m1, m2, _, _ in runs)
+        true = sum(matrix(f_live * r1, f_live * r2, sc1, sc2) for _, _, r1, r2 in runs)
+        out[norm] = (meas, true)
+    return freqs, f_live, m1bar / (m1bar + m2bar), out
+
+
+@pytest.mark.parametrize("norm", NORMS)
+def test_frequency_dependent_unmixing_matches_the_exact_dead_time_equation(norm):
+    """Against the dead-time equation solved in time, with no algebra shared with the
+    module: in every normalisation W(f) recovers the dead-time-free matrix up to 700 Hz
+    (left: the time step), and the instantaneous matrix is a factor of several off."""
+    freqs, f_live, p1, matrices = _time_domain_matrices()
+    meas, true = matrices[norm]
+    scale = np.max(np.abs(true), axis=0)
+
+    def error(**options):
+        got = unmix_cross_spectral_matrix(*meas, f_live, p1, norm=norm, **options)
+        return np.max(np.abs(np.array(got) - true) / scale, axis=0)
+
+    assert np.all(error(dead_time=DEAD_TIME, freq=freqs) < 2e-3)
+    assert np.all(error()[1:] > 1)
