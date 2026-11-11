@@ -267,7 +267,7 @@ class TestSimulator(object):
     @pytest.mark.parametrize("nbins", [128, 129])
     def test_highest_frequency_power(self, nbins):
         """With a flat spectrum, the highest-frequency power has the same mean as the
-        others; for odd N it is a normal complex amplitude, so its std/mean is 1."""
+        others; for an odd number of bins it is a normal complex amplitude, so its std/mean is 1."""
         nsim = 1000
         sim = Simulator(N=nbins, mean=100, dt=1, rms=0.1, random_state=31415)
         with warnings.catch_warnings():
