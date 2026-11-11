@@ -397,8 +397,8 @@ class Simulator(object):
         var_imag = 0.5 * pds_shape
         var_imag[-1] = 0
 
-        real = np.random.normal(size=pds_size) * np.sqrt(var_real)
-        imaginary = np.random.normal(size=pds_size) * np.sqrt(var_imag)
+        real = self.random_state.normal(size=pds_size) * np.sqrt(var_real)
+        imaginary = self.random_state.normal(size=pds_size) * np.sqrt(var_imag)
 
         counts = self._find_inverse(real, imaginary)
 
@@ -417,7 +417,7 @@ class Simulator(object):
                 rescaled_counts[bad] = 0
             lc = Lightcurve(
                 self.time,
-                np.random.poisson(rescaled_counts),
+                self.random_state.poisson(rescaled_counts),
                 err_dist="poisson",
                 dt=self.dt,
                 skip_checks=True,

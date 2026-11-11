@@ -61,6 +61,22 @@ class TestSimulator(object):
         ):
             assert len(self.simulator.simulate(2).counts), self.N
 
+    @pytest.mark.parametrize("poisson", [True, False])
+    def test_same_seed_gives_same_light_curve(self, poisson):
+        """The same random_state gives the same light curve, regardless of the global
+        numpy random state, and a different one gives a different light curve."""
+        lcs = []
+        for seed in [12, 12, 13]:
+            np.random.seed(len(lcs))
+            sim = Simulator(
+                N=128, mean=100, dt=1, rms=0.2, red_noise=2, poisson=poisson, random_state=seed
+            )
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                lcs.append(sim.simulate(2).counts)
+        assert np.array_equal(lcs[0], lcs[1])
+        assert not np.array_equal(lcs[0], lcs[2])
+
     def test_simulate_with_tstart(self):
         """
         Simulate with a random seed value.
