@@ -39,8 +39,16 @@ The simulator object can be instantiated as::
 
 Here, ``N`` specifies the bins count of the simulated light curve, ``mean`` specifies
 the mean value, ``dt`` is the time resolution, and ``rms`` is the fractional rms amplitude,
-defined as the ratio of standard deviation to the mean. Additional arguments can be
-provided e.g. to account for the effect of red noise leakage.
+defined as the ratio of standard deviation to the mean.
+
+By default, the simulated light curve is periodic: its end joins smoothly onto its
+start, and there is no variability on time scales longer than the light curve. A real
+observation, instead, is a segment of a much longer process, and the variability slower
+than the observation leaks into its power spectrum (red noise leakage). To simulate
+this effect, use ``red_noise``: the simulator produces a light curve ``red_noise`` times
+longer, and extracts a random segment of length ``N``. A user-defined power spectrum
+must then be given at the frequencies of the longer light curve,
+``np.fft.rfftfreq(N * red_noise, d=dt)[1:]``.
 
 The requested ``rms`` is the *expected* fractional rms. As for real light curves,
 each simulated light curve has its own random variance, and the requested value is

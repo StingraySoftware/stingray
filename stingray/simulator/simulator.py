@@ -35,7 +35,10 @@ class Simulator(object):
     err : float, default 0
         the errorbars on the final light curves.
     red_noise : int, default 1
-        Factor by which to extend the light curve length to mitigate red noise leakage.
+        Simulate a light curve ``red_noise`` times longer, and extract a random segment
+        of length ``N``. This includes variability slower than the light curve, which
+        leaks into its power spectrum as in real observations (red noise leakage).
+        With the default of 1, the light curve is periodic and has no leakage.
     random_state : int or numpy.random.RandomState, optional
         Seed or random state for reproducible random number generation.
     tstart : float, default 0
@@ -600,7 +603,7 @@ class Simulator(object):
             lc = long_lc
         else:
             # Make random cut and extract light curve of length 'N'
-            extract = self.random_state.randint(self.N - 1, self.red_noise * self.N - self.N + 1)
+            extract = self.random_state.randint(0, (self.red_noise - 1) * self.N + 1)
             lc = np.take(long_lc, range(extract, extract + self.N))
 
         mean_lc = np.mean(lc)
