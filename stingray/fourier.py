@@ -1279,22 +1279,48 @@ def estimate_intrinsic_coherence(cross_power, power1, power2, power1_noise, powe
     return intrinsic_coherence(cross_power, power1, power2, power1_noise, power2_noise, n_ave)
 
 
-def _cross_coherence_score_variance(x, s11, s22, pa1, pb1, pa2, pb2, n_ave):
-    """Variance of the cross-detector coherence estimate if the true coherence were ``x``.
+def _cross_coherence_score_variance(
+    x, s11, s22, pa1, pb1, pa2, pb2, n_ave, phase=0.0, crosstalk_a=0.0, crosstalk_b=0.0
+):
+    r"""Variance of the cross-detector coherence estimate if the true coherence were ``x``.
 
-    Same structure as ``_coherence_score_variance``: the exact first-order error
-    propagation for Gaussian Fourier amplitudes, with a noise-to-signal ratio for every
-    detector and band, plus a second-order term that dominates at low coherence.
+    First-order error propagation for Gaussian Fourier amplitudes, plus the second-order
+    term of ``_coherence_score_variance``, which dominates at low coherence. The first
+    order uses all the averaged products of the amplitudes :math:`(A_1, B_1, A_2, B_2)`
+    and Isserlis' theorem. If the true coherence is ``x``, then
+    :math:`S_{12} = \sqrt{x S_{11} S_{22}} e^{i\phi}`, and the same-detector cross spectra are
+    :math:`C_A = S_{12} + ` ``crosstalk_a`` and :math:`C_B = S_{12} + ` ``crosstalk_b``.
+    The crosstalk terms are what dead time adds to the cross spectrum of the two bands in
+    the same detector. Without them, the result does not depend on ``phase``.
     """
-    ra1, rb1 = (pa1 - s11) / s11, (pb1 - s11) / s11
-    ra2, rb2 = (pa2 - s22) / s22, (pb2 - s22) / s22
     x = np.clip(x, 0, None)
-    first = (
-        2 * x * (1 - x) ** 2
-        + x * (1 - x) * (ra1 + rb1 + ra2 + rb2) / 2
-        + x**2 * (ra1 * rb1 + ra2 * rb2) / 2
-        + x * (ra1 * rb2 + ra2 * rb1) / 2
-    ) / n_ave
+    s12 = np.sqrt(x * s11 * s22) * np.exp(1j * phase)
+    # R[i][j] = <a_i^* a_j>, for amplitudes 0: A1, 1: B1, 2: A2, 3: B2
+    upper = {
+        (0, 0): pa1,
+        (1, 1): pb1,
+        (2, 2): pa2,
+        (3, 3): pb2,
+        (0, 1): s11,
+        (2, 3): s22,
+        (0, 3): s12,
+        (1, 2): s12,
+        (0, 2): s12 + crosstalk_a,
+        (1, 3): s12 + crosstalk_b,
+    }
+
+    def r(i, j):
+        return upper[(i, j)] if i <= j else np.conj(upper[(j, i)])
+
+    # The estimate changes by Re(sum of c * d(a_i^* a_j)) when the averaged products change
+    c12 = np.conj(s12) / (s11 * s22)
+    terms = [(0, 1, -x / s11), (2, 3, -x / s22), (0, 3, c12), (1, 2, c12)]
+    total = 0
+    for i, j, c in terms:
+        for k, l, d in terms:
+            # Isserlis: covariance and pseudo-covariance of a_i^* a_j and a_k^* a_l
+            total = total + c * np.conj(d) * r(i, k) * r(l, j) + c * d * r(i, l) * r(k, j)
+    first = total.real / (2 * n_ave)
     bias = (pa1 * pb2 + pb1 * pa2 + 2 * s11 * s22) / 4
     second = (_SCORE_KAPPA * (bias - x * s11 * s22) / (n_ave * s11 * s22)) ** 2
     return np.clip(first, 0, None) + second
@@ -1308,6 +1334,7 @@ def cross_detector_coherence(
     n_ave,
     return_uncertainty=False,
     return_interval=False,
+    same_detector_cross=None,
 ):
     r"""Intrinsic coherence from a cross-spectral matrix built by crossing two detectors.
 
@@ -1344,6 +1371,14 @@ def cross_detector_coherence(
     time when at least 30 segments are averaged and the coherence can be measured; with
     10 segments, it can drop to 56% at high coherence.
 
+    Dead time correlates the noise of the two bands *within* each detector: a photon in one
+    band blinds the detector to the other. This does not bias the coherence, but it changes
+    its scatter, making the interval too wide or too narrow. Pass the cross spectra of the
+    two bands within each detector, :math:`C_A = \langle A_1^* A_2\rangle` and
+    :math:`C_B = \langle B_1^* B_2\rangle`, as ``same_detector_cross`` to take this into
+    account. In a simulation with 2.5 ms of dead time, at frequencies from 0.1 to 400 Hz,
+    the coverage is 64-72% with them, and 49-78% without them.
+
     Parameters
     ----------
     power1, power2 : float or `np.ndarray`
@@ -1365,6 +1400,10 @@ def cross_detector_coherence(
     return_interval : bool, default False
         Also return the lower and upper ends of the 1-sigma interval. If True,
         ``return_uncertainty`` is ignored.
+    same_detector_cross : tuple of two complex or `np.ndarray`, optional
+        The averaged cross spectra of band 1 and band 2 within detector A and within
+        detector B (as in ``CrossDetectorSpectralMatrix.same_detector_cross``). They only
+        change the interval. Recommended when the detectors have dead time.
 
     Returns
     -------
@@ -1381,14 +1420,17 @@ def cross_detector_coherence(
     0.5
     """
     single_power = np.ndim(cross_power) == 0
+    same = (cross_power, cross_power) if same_detector_cross is None else same_detector_cross
     arrays = [
         np.atleast_1d(a)
-        for a in np.broadcast_arrays(power1, power2, cross_power, *auto_powers, n_ave)
+        for a in np.broadcast_arrays(power1, power2, cross_power, *auto_powers, n_ave, *same)
     ]
     s11, s22 = arrays[0].real.astype(float), arrays[1].real.astype(float)
     cross_power = arrays[2]
     auto = [a.real.astype(float) for a in arrays[3:7]]
     n_ave = arrays[7].astype(float)
+    # what the same-detector cross spectra have in addition to the source (e.g. dead time)
+    crosstalk = [a.astype(complex) - cross_power for a in arrays[8:10]]
 
     bad = (s11 <= 0) | (s22 <= 0)
     s11, s22 = np.where(bad, np.nan, s11), np.where(bad, np.nan, s22)
@@ -1408,7 +1450,14 @@ def cross_detector_coherence(
     extra = ()
     if return_interval or return_uncertainty:
         lower, upper = _coherence_score_interval(
-            coherence, s11, s22, *auto, n_ave, variance=_cross_coherence_score_variance
+            coherence,
+            s11,
+            s22,
+            *auto,
+            n_ave,
+            np.angle(cross_power),
+            *crosstalk,
+            variance=_cross_coherence_score_variance,
         )
         extra = (lower, upper) if return_interval else ((upper - lower) / 2,)
 

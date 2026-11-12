@@ -242,6 +242,10 @@ class CrossDetectorSpectralMatrix(NamedTuple):
         Number of averaged segments.
     norm : str
         Normalisation of all the entries.
+    same_detector_cross : tuple of `np.ndarray`
+        Cross spectra of band 1 and band 2 within detector 1 and within detector 2. Dead
+        time makes the noise of the two bands correlated in the same detector; the
+        uncertainties need them in that case.
     """
 
     freq: np.ndarray
@@ -251,6 +255,7 @@ class CrossDetectorSpectralMatrix(NamedTuple):
     auto_powers: tuple
     m: int
     norm: str
+    same_detector_cross: tuple
 
 
 def cross_detector_spectral_matrix(
@@ -272,7 +277,8 @@ def cross_detector_spectral_matrix(
     subscript is the energy band. This extends the cospectrum of Bachetti et al. 2015 to
     the whole matrix. Pass ``power1``, ``power2``, ``cross_power``, ``auto_powers`` and
     ``m`` of the result (averaged over frequency, if needed, multiplying ``m`` by the
-    number of frequencies) to :func:`stingray.fourier.cross_detector_coherence`.
+    number of frequencies) to :func:`stingray.fourier.cross_detector_coherence`, and
+    ``same_detector_cross`` (averaged in the same way) if the detectors have dead time.
 
     Parameters
     ----------
@@ -302,6 +308,8 @@ def cross_detector_spectral_matrix(
     diag2 = AveragedCrossspectrum(band2_det1, band2_det2, **options)
     off_a = AveragedCrossspectrum(band1_det1, band2_det2, **options)
     off_b = AveragedCrossspectrum(band1_det2, band2_det1, **options)
+    same_a = AveragedCrossspectrum(band1_det1, band2_det1, **options)
+    same_b = AveragedCrossspectrum(band1_det2, band2_det2, **options)
 
     return CrossDetectorSpectralMatrix(
         freq=diag1.freq,
@@ -311,6 +319,7 @@ def cross_detector_spectral_matrix(
         auto_powers=(diag1.pds1.power, diag1.pds2.power, diag2.pds1.power, diag2.pds2.power),
         m=diag1.m,
         norm=norm,
+        same_detector_cross=(same_a.power, same_b.power),
     )
 
 

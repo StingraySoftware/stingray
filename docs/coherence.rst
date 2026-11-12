@@ -286,6 +286,8 @@ matrix over a frequency range before calculating the coherence:
         [p[band].mean() for p in mat.auto_powers],
         mat.m * band.sum(),  # segments times frequencies averaged
         return_interval=True,
+        # only needed with dead time, see below
+        same_detector_cross=[c[band].mean() for c in mat.same_detector_cross],
     )
 
 The 1-sigma interval is built in the same way as for the intrinsic coherence. The
@@ -304,6 +306,32 @@ interval contained the true value 63-76% of the time wherever the coherence coul
 measured, both with simulated Fourier amplitudes and with simulated light curves. With
 only 10 segments, it is too narrow at high coherence, and covers as little as 56% of
 the time.
+
+Dead time: correlated noise within each detector
+------------------------------------------------
+
+Dead time does not only change the noise level: it also correlates the noise of the two
+bands *in the same detector*. After a photon of either band, the detector is blind to
+both, so a band that receives more photons than average leaves fewer for the other. The
+cross spectrum of the two bands in one detector, :math:`C_A = \langle A_1^* A_2\rangle`,
+then contains a noise term that depends on frequency and count rate (in the simulation
+described below, it is negative up to about 200 Hz and positive near 300 Hz). This term
+cancels in all the entries of the matrix, so the coherence is not biased. However, it correlates the fluctuations of
+:math:`S_{11}` and :math:`S_{22}` with those of :math:`S_{12}`, and this changes the
+scatter of the coherence: the formula above, which ignores it, gives intervals too wide or
+too narrow.
+
+The more general calculation uses all the averaged products of the four amplitudes, which
+fix the scatter of any quantity built from them, for Gaussian amplitudes (Isserlis'
+theorem). Besides those in the formula above, these products include :math:`C_A` and
+:math:`C_B = \langle B_1^* B_2\rangle`. ``cross_detector_spectral_matrix`` returns both, as
+``same_detector_cross``; passing them to ``cross_detector_coherence`` gives the general
+variance. Without dead time, the result is the same as the formula above. In a simulation
+of two detectors with 2.5 ms of dead time, recording about half of 400 photons/s each, the
+interval contained the true coherence 64-72% of the time with :math:`C_A` and
+:math:`C_B`, in ten frequency windows from 0.1 to 400 Hz. Without them, it was too narrow
+below 150 Hz, where the crosstalk is negative (coverage down to 49%), and slightly too wide
+near 300 Hz, where it is positive (up to 78%).
 
 Tutorial
 ========

@@ -2151,3 +2151,13 @@ class TestCrossDetectorSpectralMatrix:
         cs2 = AveragedCrossspectrum(self.s_b, self.h_a, segment_size=8.0, norm="frac", silent=True)
         assert np.allclose(m.cross_power, (cs.power + cs2.power) / 2)
         assert m.m == cs.m and m.norm == "frac"
+
+    def test_same_detector_cross_spectra(self):
+        """The matrix also gives the cross spectra of the two bands within each detector,
+        which the interval needs when dead time correlates the bands."""
+        m = self.matrix
+        opts = dict(segment_size=8.0, norm="frac", silent=True)
+        ca = AveragedCrossspectrum(self.s_a, self.h_a, **opts)
+        cb = AveragedCrossspectrum(self.s_b, self.h_b, **opts)
+        assert np.allclose(m.same_detector_cross[0], ca.power)
+        assert np.allclose(m.same_detector_cross[1], cb.power)

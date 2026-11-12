@@ -22,7 +22,7 @@ from stingray.fourier import get_average_ctrate, normalize_leahy_from_variance
 from stingray.fourier import integrate_power_in_frequency_range
 from stingray.fourier import get_rms_from_rms_norm_periodogram, get_rms_from_unnorm_periodogram
 from stingray.fourier import check_powers_for_intrinsic_coherence
-from stingray.fourier import cross_detector_coherence
+from stingray.fourier import cross_detector_coherence, _cross_coherence_score_variance
 
 from stingray.utils import check_allclose_and_print
 from astropy.modeling.models import Lorentz1D
@@ -1256,10 +1256,12 @@ class TestCrossDetectorCoherence:
         assert np.isclose(res, c, atol=0.03)
 
 
-def _four_amplitudes(rng, snr, coherence, m, n_real, noise=(1.0, 1.0, 1.0, 1.0)):
+def _four_amplitudes(rng, snr, coherence, m, n_real, noise=(1.0, 1.0, 1.0, 1.0), crosstalk=0.0):
     """Fourier amplitudes of two bands seen by two detectors, shape (n_real, m) each:
     signal power snr in both bands, shared by the detectors, with intrinsic coherence
-    ``coherence``; independent noise of power ``noise`` (A1, B1, A2, B2)."""
+    ``coherence``; noise of power ``noise`` (A1, B1, A2, B2), independent between the
+    detectors and with correlation coefficient ``crosstalk`` between the two bands of the
+    same detector (as dead time does)."""
 
     def cgauss():
         return (rng.normal(size=(n_real, m)) + 1j * rng.normal(size=(n_real, m))) / np.sqrt(2)
@@ -1268,7 +1270,14 @@ def _four_amplitudes(rng, snr, coherence, m, n_real, noise=(1.0, 1.0, 1.0, 1.0))
     s1 = np.sqrt(snr) * x
     s2 = np.sqrt(snr) * (np.sqrt(coherence) * x * np.exp(-0.3j) + np.sqrt(1 - coherence) * y)
     noise = np.broadcast_to(noise, 4)
-    return [s + np.sqrt(n) * cgauss() for s, n in zip((s1, s1, s2, s2), noise)]
+    za, zb = cgauss(), cgauss()  # band 1 noise of detectors A and B
+    unit = [
+        za,
+        zb,
+        crosstalk * za + np.sqrt(1 - crosstalk**2) * cgauss(),
+        crosstalk * zb + np.sqrt(1 - crosstalk**2) * cgauss(),
+    ]
+    return [s + np.sqrt(n) * z for s, n, z in zip((s1, s1, s2, s2), noise, unit)]
 
 
 def _cross_matrix(a1, b1, a2, b2):
@@ -1280,12 +1289,20 @@ def _cross_matrix(a1, b1, a2, b2):
     return s11, s22, s12, auto
 
 
-def _cross_interval_coverage(rng, snr, coherence, m, noise, n_real=500):
-    amps = _four_amplitudes(rng, snr, coherence, m, n_real, noise)
+def _cross_interval_coverage(
+    rng, snr, coherence, m, noise, n_real=500, crosstalk=0.0, use_crosstalk=True
+):
+    a1, b1, a2, b2 = _four_amplitudes(rng, snr, coherence, m, n_real, noise, crosstalk)
+    same = (np.mean(np.conj(a1) * a2, -1), np.mean(np.conj(b1) * b2, -1))
     with warnings.catch_warnings():
         # weak signal, few segments: a cospectrum below zero gives NaN; skip it
         warnings.filterwarnings("ignore", "NaN values detected")
-        _, lo, hi = cross_detector_coherence(*_cross_matrix(*amps), m, return_interval=True)
+        _, lo, hi = cross_detector_coherence(
+            *_cross_matrix(a1, b1, a2, b2),
+            m,
+            return_interval=True,
+            same_detector_cross=same if use_crosstalk else None,
+        )
     good = ~np.isnan(lo)
     return np.mean((lo[good] <= coherence) & (coherence <= hi[good]))
 
@@ -1304,6 +1321,61 @@ def test_cross_detector_coherence_interval_coverage(snr, coherence, m, noise):
     full coherence, from weak to strong signal, with equal or different detectors."""
     rng = np.random.default_rng(int(100 * snr + 10 * coherence + m))
     assert 0.60 < _cross_interval_coverage(rng, snr, coherence, m, noise) < 0.77
+
+
+def test_cross_detector_variance_without_crosstalk():
+    """Without crosstalk, the general error propagation gives the closed-form first-order
+    variance (here the second-order term vanishes, as the bias equals g0 S11 S22)."""
+    rng = np.random.default_rng(5)
+    g0, s11, s22 = rng.uniform(0, 1, 50), rng.uniform(0.1, 2, 50), rng.uniform(0.1, 2, 50)
+    r = rng.uniform(0, 20, (4, 50))
+    pa1, pb1, pa2, pb2 = s11 * (1 + r[0]), s11 * (1 + r[1]), s22 * (1 + r[2]), s22 * (1 + r[3])
+    m = 37
+    closed = (
+        2 * g0 * (1 - g0) ** 2
+        + g0 * (1 - g0) * r.sum(0) / 2
+        + g0**2 * (r[0] * r[1] + r[2] * r[3]) / 2
+        + g0 * (r[0] * r[3] + r[2] * r[1]) / 2
+    ) / m
+    second = (0.83 * ((pa1 * pb2 + pb1 * pa2 + 2 * s11 * s22) / 4 - g0 * s11 * s22)) ** 2
+    second /= (m * s11 * s22) ** 2
+    phase = rng.uniform(-np.pi, np.pi, 50)
+    var = _cross_coherence_score_variance(g0, s11, s22, pa1, pb1, pa2, pb2, m, phase, 0.0, 0.0)
+    assert np.allclose(var, closed + second, rtol=1e-12)
+
+
+def test_cross_detector_coherence_interval_multidimensional():
+    """Multi-dimensional input gives the same interval, element by element, as the
+    flattened input, also with the same-detector cross spectra."""
+    rng = np.random.default_rng(3)
+    a1, b1, a2, b2 = _four_amplitudes(rng, 1.0, 0.5, 30, 12, 2.0, crosstalk=-0.4)
+    s11, s22, s12, auto = _cross_matrix(a1, b1, a2, b2)
+    same = (np.mean(np.conj(a1) * a2, -1), np.mean(np.conj(b1) * b2, -1))
+    entries = [s11, s22, s12, *auto, *same]
+    square = [e.reshape(3, 4) for e in entries]
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "NaN values detected")
+        res = cross_detector_coherence(
+            *square[:3], square[3:7], 30, return_interval=True, same_detector_cross=square[7:]
+        )
+        flat = cross_detector_coherence(
+            *entries[:3], entries[3:7], 30, return_interval=True, same_detector_cross=entries[7:]
+        )
+    for r, f in zip(res, flat):
+        assert np.allclose(r, f.reshape(3, 4), equal_nan=True)
+
+
+@pytest.mark.parametrize("crosstalk", [-0.5, 0.5])
+def test_cross_detector_coherence_interval_coverage_crosstalk(crosstalk):
+    """When the noise of the two bands is correlated within each detector (as dead time
+    does), the interval needs the same-detector cross spectra: with them the coverage is
+    about 68%, without them it is too low (negative crosstalk) or too high (positive)."""
+    rng = np.random.default_rng(int(10 * crosstalk) + 30)
+    args = (1.0, 0.5, 300, 5.0)
+    new = _cross_interval_coverage(rng, *args, crosstalk=crosstalk)
+    old = _cross_interval_coverage(rng, *args, crosstalk=crosstalk, use_crosstalk=False)
+    assert 0.60 < new < 0.77
+    assert old < 0.6 if crosstalk < 0 else old > 0.8
 
 
 @pytest.mark.slow
