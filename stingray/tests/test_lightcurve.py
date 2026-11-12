@@ -1621,6 +1621,20 @@ class TestLightcurveRebin(object):
         assert np.allclose(lc_new2.time, np.array([0, 1, 2]))
 
     @pytest.mark.parametrize("inplace", [True, False])
+    def test_apply_gtis_keeps_tstart_scalar(self, inplace):
+        time = np.arange(0.5, 100.5)
+        lc = Lightcurve(time, np.ones(time.size), dt=1, gti=[[0, 40], [60, 100]])
+        lc_new = lc.apply_gtis(inplace=inplace)
+        assert np.ndim(lc_new.tstart) == 0
+        assert lc_new.tstart == 0
+        assert "tstart" not in lc_new.array_attrs()
+
+        # A light curve with GTIs applied can still be joined with another one
+        lc_other = Lightcurve(time + 100, np.ones(time.size), dt=1, gti=[[100, 200]])
+        lc_join = lc_new.join(lc_other)
+        assert lc_join.n == lc_new.n + lc_other.n
+
+    @pytest.mark.parametrize("inplace", [True, False])
     def test_apply_gtis_lc_rate(self, inplace):
         dt = 1
         time = np.arange(1, 10, dt)

@@ -1380,6 +1380,8 @@ class GtiCorrPowerspectrum(Powerspectrum):
         if self.lc is None:
             return
 
+        # Work on a copy, so that the light curve passed by the user is not modified
+        self.lc = copy.deepcopy(self.lc)
         mask = create_gti_mask(self.lc.time, self.lc.gti)
         self.lc.counts = self.lc.counts.astype(float)
         self.lc.counts[~mask] = np.mean(self.lc.counts[mask])

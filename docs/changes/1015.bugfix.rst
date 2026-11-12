@@ -1,0 +1,2 @@
+``GtiCorrPowerspectrum`` no longer modifies the light curve passed by the user when filling the gaps between GTIs with the mean (``fill_lc=True``); the filling is done on an internal copy.
+``Lightcurve.apply_gtis()`` now keeps ``tstart`` a single number (the start of the first good bin) instead of turning it into an array, which broke ``Lightcurve.join()`` and other operations.

@@ -452,6 +452,8 @@ class TestGtiCorrPowerspectrum(object):
         """Filling BTIs or not changes the power spectrum."""
         lc = copy.deepcopy(self.lc)
         lc.gti = [[0, 30], [35, 100]]  # Two GTIs, one gap
+        # No counts in the gap, like real data outside GTIs
+        lc.counts[(lc.time > 30) & (lc.time < 35)] = 0
         gcps_fill = GtiCorrPowerspectrum(lc, norm=norm, fill_lc=True)
         gcps_nofill = GtiCorrPowerspectrum(lc, norm=norm, fill_lc=False)
         gcps_fill = gcps_fill.clean_gti_features()
@@ -498,6 +500,15 @@ class TestGtiCorrPowerspectrum(object):
         mean_ps = np.mean(ps.power)
         mean_gcps = np.mean(gcps.power)
         assert np.isclose(mean_gcps, mean_ps, rtol=0.1)
+
+    def test_gti_corr_fill_does_not_modify_input_lc(self):
+        """Filling BTIs with the mean does not change the light curve passed by the user."""
+        lc = copy.deepcopy(self.lc)
+        lc.gti = [[0, 30], [35, 100]]  # Two GTIs, one gap
+        counts_before = lc.counts.copy()
+        GtiCorrPowerspectrum(lc, norm="leahy", fill_lc=True)
+        assert lc.counts.dtype == counts_before.dtype
+        assert np.array_equal(lc.counts, counts_before)
 
     def test_gti_corr_apply_gti_lc_fails(self):
         """Applying GTIs to a light curve with gaps in the time array raises an error."""

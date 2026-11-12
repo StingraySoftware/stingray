@@ -1743,7 +1743,8 @@ class Lightcurve(StingrayTimeseries):
         dt = newlc.dt
         if "dt" in self.array_attrs():
             dt = newlc.dt[0]
-        newlc.tstart = newlc.time - 0.5 * dt
+        if newlc.time.size > 0:
+            newlc.tstart = newlc.time[0] - 0.5 * dt
         newlc.tseg = np.max(newlc.gti) - np.min(newlc.gti)
         return newlc
 
