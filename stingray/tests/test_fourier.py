@@ -261,6 +261,20 @@ class TestCoherence(object):
         _, unc = intrinsic_coherence(C, P1, P2, 2, 2, 20, return_uncertainty=True)
         assert np.allclose(unc, (hi - lo) / 2)
 
+    def test_interval_multidimensional(self):
+        """Multi-dimensional input (e.g. a dynamical cross spectrum) gives the same interval,
+        element by element, as the flattened input."""
+        rng = np.random.default_rng(0)
+        P1, P2 = rng.uniform(2, 4, (3, 5)), rng.uniform(2, 4, (3, 5))
+        C = rng.uniform(0.5, 1.5, (3, 5)) + 0.3j
+        res = intrinsic_coherence(C, P1, P2, 1.0, 1.0, 50, return_interval=True)
+        flat = intrinsic_coherence(
+            C.ravel(), P1.ravel(), P2.ravel(), 1.0, 1.0, 50, return_interval=True
+        )
+        for r, f in zip(res, flat):
+            assert r.shape == (3, 5)
+            assert np.allclose(r, f.reshape(3, 5), equal_nan=True)
+
     def test_raw_high_bias(self):
         """Test when squared bias higher than squared norm of cross spec"""
         # Values chosen to have a high bias term, larger than |C|^2

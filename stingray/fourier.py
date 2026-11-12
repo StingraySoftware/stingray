@@ -1047,8 +1047,11 @@ def _coherence_score_interval(coherence, *args, upper_limit=2.0, n_grid=201, n_b
     ``upper_limit``, or up to the estimate if larger; ``upper_limit`` is returned as the
     upper end if it is accepted (the data do not constrain the coherence). ``args`` are
     the remaining arguments of ``_coherence_score_variance``, all with the shape of
-    ``coherence``.
+    ``coherence``. Input of any shape is flattened for the calculation.
     """
+    shape = coherence.shape
+    coherence = coherence.ravel()
+    args = [np.broadcast_to(a, shape).ravel() for a in args]
     grid = np.linspace(0, upper_limit, n_grid)
     col = lambda x: np.asarray(x)[..., None]
     lower = np.full(coherence.shape, np.nan)
@@ -1090,7 +1093,7 @@ def _coherence_score_interval(coherence, *args, upper_limit=2.0, n_grid=201, n_b
         lower[idx] = np.where(negative, g - s0, lo)
         # nothing accepted above zero: the whole interval is negative
         upper[idx] = np.where(found | (g >= 0), hi, g + s0)
-    return lower, upper
+    return lower.reshape(shape), upper.reshape(shape)
 
 
 def intrinsic_coherence(
