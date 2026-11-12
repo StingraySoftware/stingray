@@ -605,6 +605,17 @@ class TestLightcurve(object):
         assert lc.meanrate == 5
         assert lc.meancounts == 5
 
+    def test_apply_gtis_tstart_remains_scalar(self):
+        # tstart should stay a scalar after apply_gtis, not become a
+        # per-bin array (see #1014).
+        t = np.arange(0.5, 100.5)
+        lc = Lightcurve(t, np.ones(t.size), dt=1, gti=[[0, 40], [60, 100]])
+        newlc = lc.apply_gtis(inplace=False)
+
+        assert np.ndim(newlc.tstart) == 0
+        assert "tstart" not in newlc.array_attrs()
+        assert newlc.tstart == newlc.time[0] - 0.5 * newlc.dt
+
     def test_creating_lightcurve_raises_type_error_when_input_is_none(self):
         dt = 0.5
         mean_counts = 2.0
