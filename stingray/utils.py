@@ -681,10 +681,10 @@ def rebin_data(x, y, dx_new, yerr=None, method="sum", dx=None):
     xbin: numpy.ndarray
         The midpoints of the new bins in ``x``
 
-    ybin: numpy.ndarray
+    ybin: float numpy.ndarray
         The binned quantity ``y``
 
-    ybin_err: numpy.ndarray
+    ybin_err: float numpy.ndarray
         The uncertainties of the binned values of ``y``.
 
     step_size: float
