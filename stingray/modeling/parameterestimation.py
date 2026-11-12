@@ -627,7 +627,7 @@ class ParameterEstimation(object):
             The number of threads for parallelization.
             Default is ``1``, i.e. no parallelization
             With the change to the new emcee version 3, threads is
-            deprecated. Use the `pool` keyword argument instead.
+            deprecated. Use the ``pool`` keyword argument instead.
             This will no longer have any effect.
 
         print_results : bool, optional, default ``True``
@@ -1044,7 +1044,7 @@ class SamplingResults(object):
 
         Parameters
         ----------
-        sampler : an `emcee.EnsembleSampler` object
+        sampler : an ``emcee.EnsembleSampler`` object
 
         References
         ----------
@@ -1399,7 +1399,7 @@ class PSDParEst(ParameterEstimation):
         Returns
         -------
         sim_ps : :class:`stingray.Powerspectrum` object
-            The simulated :class:`Powerspectrum` object
+            The simulated :class:`~stingray.Powerspectrum` object
 
         """
         # create own random state object

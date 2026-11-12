@@ -31,11 +31,14 @@ class Simulator(object):
     mean : float, default 0
         mean value of the simulated light curve.
     rms : float, default 1
-        Fractional RMS amplitude of the light curve; actual RMS is `mean * rms`.
+        Fractional RMS amplitude of the light curve; actual RMS is ``mean * rms``.
     err : float, default 0
         the errorbars on the final light curves.
     red_noise : int, default 1
-        Factor by which to extend the light curve length to mitigate red noise leakage.
+        Simulate a light curve ``red_noise`` times longer, and extract a random segment
+        of length ``N``. This includes variability slower than the light curve, which
+        leaks into its power spectrum as in real observations (red noise leakage).
+        With the default of 1, the light curve is periodic and has no leakage.
     random_state : int or numpy.random.RandomState, optional
         Seed or random state for reproducible random number generation.
     tstart : float, default 0
@@ -93,9 +96,10 @@ class Simulator(object):
 
         * x = simulate(s):
            For generating a light curve from user-provided spectrum.
-            **Note**: In this case, the `red_noise` parameter is provided.
-            You can generate a longer light curve by providing a higher
-            frequency resolution on the input power spectrum.
+            **Note**: The spectrum must be given at the frequencies of the
+            extended light curve, ``np.fft.rfftfreq(N * red_noise, d=dt)[1:]``,
+            so it includes the frequencies below ``1 / (N * dt)`` needed
+            when ``red_noise > 1``.
 
               Parameters:
                 * s : array-like
@@ -151,7 +155,7 @@ class Simulator(object):
 
         Returns
         -------
-        lightCurve : `LightCurve` object
+        lightCurve : ``LightCurve`` object
 
         """
         if isinstance(args[0], (numbers.Integral, float)) and len(args) == 1:
@@ -190,7 +194,7 @@ class Simulator(object):
 
         Returns
         -------
-            lightCurve : `LightCurve` object
+            lightCurve : ``LightCurve`` object
         """
 
         # Check that channel name does not already exist.
@@ -367,17 +371,58 @@ class Simulator(object):
         # Obtain time series
         return np.fft.irfft(f, n=self.N * self.red_noise)
 
+    def _expected_std(self, var_real, var_imag):
+        """Expected standard deviation of a segment of the inverse real FFT of random
+        amplitudes.
+
+        The series returned by ``_find_inverse`` has length ``N * red_noise``, and the
+        light curve is a segment of length ``N`` of it. The standard deviation is
+        calculated around the mean of the segment, so the part of the variance of each
+        sinusoid that only changes this mean does not count.
+
+        Parameters
+        ----------
+        var_real, var_imag : numpy.ndarray
+            Variances of the real and imaginary parts of the amplitudes at each
+            positive frequency (zero frequency excluded).
+
+        Returns
+        -------
+        std : float
+            Square root of the expected variance of the segment around its mean.
+        """
+        n = self.N * self.red_noise
+        weight = np.full(var_real.size, 2.0)
+        if n % 2 == 0:
+            # The Nyquist amplitude appears once, not with its complex conjugate
+            weight[-1] = 1.0
+        # Fraction of the variance of a sinusoid at each frequency that goes into
+        # the mean of the segment (zero at the segment's own Fourier frequencies)
+        omega = 2 * np.pi * np.arange(1, var_real.size + 1) / n
+        into_mean = (np.sin(self.N * omega / 2) / (self.N * np.sin(omega / 2))) ** 2
+        var = weight * (var_real + var_imag) * (1 - into_mean)
+        return np.sqrt(np.sum(var) / n**2)
+
     def _timmerkoenig(self, pds_shape):
         """Straight application of T&K method to a PDS shape."""
         pds_size = pds_shape.size
 
-        real = np.random.normal(size=pds_size) * np.sqrt(0.5 * pds_shape)
-        imaginary = np.random.normal(size=pds_size) * np.sqrt(0.5 * pds_shape)
-        imaginary[-1] = 0
+        var_real = 0.5 * pds_shape
+        var_imag = 0.5 * pds_shape
+        if (self.N * self.red_noise) % 2 == 0:
+            # The Nyquist amplitude is real, and carries all the power
+            var_real[-1] = pds_shape[-1]
+            var_imag[-1] = 0
+
+        real = self.random_state.normal(size=pds_size) * np.sqrt(var_real)
+        imaginary = self.random_state.normal(size=pds_size) * np.sqrt(var_imag)
 
         counts = self._find_inverse(real, imaginary)
 
-        self.std = counts.std()
+        # Rescale by the expected standard deviation, not by the one of this
+        # realization: the latter is dominated by the few noisy low-frequency
+        # powers, and dividing by it would distort all the others.
+        self.std = self._expected_std(var_real, var_imag)
 
         rescaled_counts = self._extract_and_scale(counts)
         err = np.zeros_like(rescaled_counts)
@@ -389,7 +434,7 @@ class Simulator(object):
                 rescaled_counts[bad] = 0
             lc = Lightcurve(
                 self.time,
-                np.random.poisson(rescaled_counts),
+                self.random_state.poisson(rescaled_counts),
                 err_dist="poisson",
                 dt=self.dt,
                 skip_checks=True,
@@ -429,15 +474,21 @@ class Simulator(object):
         Parameters
         ----------
         s : array-like
-            power spectrum
+            power spectrum, at the frequencies
+            ``np.fft.rfftfreq(N * red_noise, d=dt)[1:]``
 
         Returns
         -------
-        lightCurve : `LightCurve` object
+        lightCurve : ``LightCurve`` object
         """
-        # Cast spectrum as numpy array
-        pds_shape = np.zeros(s.size * self.red_noise)
-        pds_shape[: s.size] = s
+        pds_shape = np.asarray(s, dtype=float)
+        nfreq = self.N * self.red_noise // 2
+        if pds_shape.size != nfreq:
+            raise ValueError(
+                f"The power spectrum must have {self.N // 2} * red_noise = {nfreq} values, "
+                f"at the frequencies np.fft.rfftfreq(N * red_noise, d=dt)[1:], "
+                f"not {pds_shape.size}"
+            )
 
         return self._timmerkoenig(pds_shape)
 
@@ -454,7 +505,7 @@ class Simulator(object):
 
         Returns
         -------
-        lightCurve : :class:`stingray.lightcurve.LightCurve` object
+        lightCurve : :class:`~stingray.Lightcurve` object
         """
         # Frequencies at which the PSD is to be computed
         # (only positive frequencies, since the signal is real)
@@ -479,7 +530,7 @@ class Simulator(object):
 
         Returns
         -------
-        lightCurve : :class:`stingray.lightcurve.LightCurve` object
+        lightCurve : :class:`~stingray.Lightcurve` object
         """
         from . import models
 
@@ -525,7 +576,7 @@ class Simulator(object):
 
         Returns
         -------
-        lightCurve : :class:`stingray.lightcurve.LightCurve` object
+        lightCurve : :class:`~stingray.Lightcurve` object
         """
         lc = signal.fftconvolve(s, h)
 
@@ -544,9 +595,8 @@ class Simulator(object):
         i) Make a random cut and extract a light curve of required
         length.
 
-        ii) Rescale light curve i) with zero mean and unit standard
-        deviation, and ii) user provided mean and rms (fractional
-        rms * mean)
+        ii) Rescale it so that, on average, light curves have the user
+        provided mean and rms (fractional rms * mean)
 
         Parameters
         ----------
@@ -558,19 +608,20 @@ class Simulator(object):
         lc : numpy.ndarray
             Normalized and extracted lightcurve of length 'N'
         """
+        # The mean of the long light curve, not of the segment, is the requested one:
+        # the variability slower than the segment makes its mean scatter around it.
+        mean_long = np.mean(long_lc)
         if self.red_noise == 1:
             lc = long_lc
         else:
             # Make random cut and extract light curve of length 'N'
-            extract = self.random_state.randint(self.N - 1, self.red_noise * self.N - self.N + 1)
+            extract = self.random_state.randint(0, (self.red_noise - 1) * self.N + 1)
             lc = np.take(long_lc, range(extract, extract + self.N))
 
-        mean_lc = np.mean(lc)
-
         if self.mean == 0:
-            return (lc - mean_lc) / self.std * self.rms
+            return (lc - mean_long) / self.std * self.rms
         else:
-            return (lc - mean_lc) / self.std * self.mean * self.rms + self.mean
+            return (lc - mean_long) / self.std * self.mean * self.rms + self.mean
 
     def powerspectrum(self, lc, seg_size=None):
         """
@@ -607,7 +658,7 @@ class Simulator(object):
         Returns
         -------
         data : class instance
-            `TransferFunction` object
+            :class:`~stingray.simulator.transfer.TransferFunction` object
         """
         if fmt == "pickle":
             with open(filename, "rb") as fobj:

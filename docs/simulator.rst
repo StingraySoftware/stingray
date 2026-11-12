@@ -1,16 +1,16 @@
-Stingray Simulator (`stingray.simulator`)
-*****************************************
+Stingray Simulator (``stingray.simulator``)
+*******************************************
 
 Introduction
 ============
 
-`stingray.simulator` provides a framework to simulate light curves with given variability distributions. In time series experiments, understanding the certainty is crucial to interpret the derived results in context of physical models. The simulator module provides tools to assess this uncertainty by simulating time series and spectral data.
+``stingray.simulator`` provides a framework to simulate light curves with given variability distributions. In time series experiments, understanding the certainty is crucial to interpret the derived results in context of physical models. The simulator module provides tools to assess this uncertainty by simulating time series and spectral data.
 
 Stingray simulator supports multiple methods to carry out these simulation. Light curves can be simulated through power-law spectrum, through a user-defined or pre-defined model, or through impulse responses. The module is designed in a way such that all these methods can be accessed using similar set of commands.
 
 .. note::
 
-    `stingray.simulator` is currently a work-in-progress, and thus it is likely
+    ``stingray.simulator`` is currently a work-in-progress, and thus it is likely
     there will still be API changes in later versions of Stingray.  Backwards
     compatibility support between versions will still be maintained as much as
     possible, but new features and enhancements are coming in future versions.
@@ -37,10 +37,21 @@ The simulator object can be instantiated as::
 
 	>>> sim = simulator.Simulator(N=1024, mean=0.5, dt=0.125, rms=1.0)
 
-Here, `N` specifies the bins count of the simulated light curve, `mean` specifies
-the mean value, `dt` is the time resolution, and `rms` is the fractional rms amplitude,
-defined as the ratio of standard deviation to the mean.. Additional arguments can be
-provided e.g. to account for the effect of red noise leakage.
+Here, ``N`` specifies the bins count of the simulated light curve, ``mean`` specifies
+the mean value, ``dt`` is the time resolution, and ``rms`` is the fractional rms amplitude,
+defined as the ratio of standard deviation to the mean. The rms is an *expected* value:
+like real light curves, each simulated one has its own random variance, and the
+requested rms is recovered on average over many simulations.
+
+By default, the simulated light curve is periodic, with no variability slower than the
+light curve itself. A real observation is a short piece of a much longer signal, whose
+slow variations appear in it as trends and leak into its power spectrum (red noise
+leakage). To include them, use ``red_noise``: the simulator produces a light curve
+``red_noise`` times longer and extracts a random piece of length ``N``, whose mean now
+varies from one simulation to the next. A user-defined power spectrum must then be given
+at the frequencies ``np.fft.rfftfreq(N * red_noise, d=dt)[1:]``. For steep spectra,
+these variations of the mean can be large: for a power law with index 2 and
+``red_noise=50``, they are as large as the mean itself.
 
 Simulate Method
 ---------------
@@ -53,7 +64,7 @@ Stingray provides multiple ways to simulate a light curve. However, all these me
 Using Power-Law Spectrum
 ------------------------
 
-When only an integer argument (beta) is provided to the `simulate` method, that integer defines the shape of the power law spectrum. Passing `beta` as 1 gives a flicker-noise distribution, while a beta of 2 generates a random-walk distribution.
+When only an integer argument (beta) is provided to the :meth:`~stingray.simulator.simulator.Simulator.simulate` method, that integer defines the shape of the power law spectrum. Passing ``beta`` as 1 gives a flicker-noise distribution, while a beta of 2 generates a random-walk distribution.
 
 .. plot::
    :include-source:
@@ -116,7 +127,7 @@ passed on as function arguments.
 Using Impulse Response
 ----------------------
 
-In order to simulate a light curve using impulse response, we need the original light curve and impulse response. Stingray provides `TransferFunction` class which can be used to obtain time and energy averaged impulse response by passing in a 2-D intensity profile as the input. A detailed tutorial on obtaining impulse response is provided `here <https://github.com/StingraySoftware/notebooks/blob/master/Transfer%20Functions/TransferFunction%20Tutorial.ipynb>`__.
+In order to simulate a light curve using impulse response, we need the original light curve and impulse response. Stingray provides the :class:`~stingray.simulator.transfer.TransferFunction` class which can be used to obtain time and energy averaged impulse response by passing in a 2-D intensity profile as the input. A detailed tutorial on obtaining impulse response is provided `here <https://github.com/StingraySoftware/notebooks/blob/master/Transfer%20Functions/TransferFunction%20Tutorial.ipynb>`__.
 
 Here, for the sake of simplicity, we use a simulated impulse response.
 
@@ -146,12 +157,12 @@ Here, for the sake of simplicity, we use a simulated impulse response.
    plt.ylabel('Flux', fontsize='14')
    plt.show()
 
-Since, the new light curve is produced by the convolution of original light curveand impulse response, its length is truncated by default for ease of analysis. This can be changed, however, by supplying an additional parameter `full`. However, at times, we do not need to include lag delay portion in the output light curve. This can be done by changing the final function parameter to `filtered`. For a more detailed analysis on lag-frequency spectrum, follow the notebook `here <https://github.com/StingraySoftware/notebooks/blob/master/Simulator/Lag%20Analysis.ipynb>`__.
+Since, the new light curve is produced by the convolution of original light curveand impulse response, its length is truncated by default for ease of analysis. This can be changed, however, by supplying an additional parameter ``full``. However, at times, we do not need to include lag delay portion in the output light curve. This can be done by changing the final function parameter to ``filtered``. For a more detailed analysis on lag-frequency spectrum, follow the notebook `here <https://github.com/StingraySoftware/notebooks/blob/master/Simulator/Lag%20Analysis.ipynb>`__.
 
 Channel Simulation
 ==================
 
-The `simulator` class provides the functionality to simulate light curves independently for each channel. This is useful, for example, when dealing with energy dependent impulse responses where we can create a di↵erent simulation channel for each energy range. The module provides options to count, retrieve and delete channels.::
+The :class:`~stingray.simulator.simulator.Simulator` class provides the functionality to simulate light curves independently for each channel. This is useful, for example, when dealing with energy dependent impulse responses where we can create a different simulation channel for each energy range. The module provides options to count, retrieve and delete channels.::
 
   >>> sim = simulator.Simulator(N=1024, mean=0.5, dt=0.125, rms=1.0)
   >>> sim.simulate_channel('3.5 - 4.5', 2) # doctest: +IGNORE_WARNINGS
@@ -160,7 +171,7 @@ The `simulator` class provides the functionality to simulate light curves indepe
   >>> lc = sim.get_channel('3.5 - 4.5')
   >>> sim.delete_channel('3.5 - 4.5')
 
-Alternatively, assume that we have light curves in the simulated energy channels `3.5 - 4.5`, `4.5 - 5.5` and `5.5 - 6.5`. These channels can be retrieved or deleted in single commands.
+Alternatively, assume that we have light curves in the simulated energy channels ``3.5 - 4.5``, ``4.5 - 5.5`` and ``5.5 - 6.5``. These channels can be retrieved or deleted in single commands.
 
   >>> sim.count_channels()
   0

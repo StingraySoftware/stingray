@@ -7,7 +7,7 @@ Library of Time Series Methods For Astronomical X-ray Data.
 
 Base Class
 ==========
-Most `stingray`` classes are subclasses of a single class, :class:`stingray.StingrayObject`, which
+Most ``stingray`` classes are subclasses of a single class, :class:`stingray.StingrayObject`, which
 implements most of the I/O functionality and common behavior (e.g. strategies to combine data and
 make operations such as the sum, difference, or negation). This class is not intended to be
 instantiated directly, but rather to be used as a base class for other classes. Any class wanting
@@ -74,11 +74,19 @@ EventList
 ----
 
 
+Event list functions
+--------------------
+
+.. autofunction:: stingray.events.simple_events_from_lc
+
+----
+
+
 Fourier Products
 ================
 
-These classes implement commonly used Fourier analysis products, most importantly :class:`Crossspectrum` and
-:class:`Powerspectrum`, along with the variants for averaged cross/power spectra.
+These classes implement commonly used Fourier analysis products, most importantly :class:`~stingray.Crossspectrum` and
+:class:`~stingray.Powerspectrum`, along with the variants for averaged cross/power spectra.
 
 Crossspectrum
 -------------
@@ -127,10 +135,55 @@ AveragedPowerspectrum
 
 ----
 
+Dynamical Crossspectrum
+-----------------------
+
+.. autoclass:: stingray.DynamicalCrossspectrum
+   :members:
+   :inherited-members:
+
+----
+
 Dynamical Powerspectrum
 -----------------------
 
 .. autoclass:: stingray.DynamicalPowerspectrum
+   :members:
+   :inherited-members:
+
+----
+
+GtiCorrPowerspectrum
+--------------------
+
+.. autoclass:: stingray.GtiCorrPowerspectrum
+   :members:
+   :inherited-members:
+
+----
+
+Multitaper
+----------
+
+.. autoclass:: stingray.multitaper.Multitaper
+   :members:
+   :inherited-members:
+
+----
+
+Lomb-Scargle Crossspectrum
+--------------------------
+
+.. autoclass:: stingray.LombScargleCrossspectrum
+   :members:
+   :inherited-members:
+
+----
+
+Lomb-Scargle Powerspectrum
+--------------------------
+
+.. autoclass:: stingray.LombScarglePowerspectrum
    :members:
    :inherited-members:
 
@@ -153,6 +206,41 @@ AutoCorrelation
 
 ----
 
+Spectrum constructor functions
+------------------------------
+
+These build cross and power spectra directly from the various input containers, without
+going through the class constructors.
+
+.. autofunction:: stingray.crossspectrum.crossspectrum_from_time_array
+.. autofunction:: stingray.crossspectrum.crossspectrum_from_events
+.. autofunction:: stingray.crossspectrum.crossspectrum_from_lightcurve
+.. autofunction:: stingray.crossspectrum.crossspectrum_from_timeseries
+.. autofunction:: stingray.crossspectrum.crossspectrum_from_lc_iterable
+.. autofunction:: stingray.powerspectrum.powerspectrum_from_time_array
+.. autofunction:: stingray.powerspectrum.powerspectrum_from_events
+.. autofunction:: stingray.powerspectrum.powerspectrum_from_lightcurve
+.. autofunction:: stingray.powerspectrum.powerspectrum_from_timeseries
+.. autofunction:: stingray.powerspectrum.powerspectrum_from_lc_iterable
+.. autofunction:: stingray.lombscargle.lscrossspectrum_from_lightcurve
+
+----
+
+Cross spectrum functions
+------------------------
+
+The public functions of ``stingray.crossspectrum`` that are not constructors: the two
+normalizations, the single-trial p-value of a cospectrum power, the time lag between two
+light curves, and the flux generator that the averaged spectra are built from.
+
+.. autofunction:: stingray.crossspectrum.normalize_crossspectrum
+.. autofunction:: stingray.crossspectrum.normalize_crossspectrum_gauss
+.. autofunction:: stingray.crossspectrum.cospectra_pvalue
+.. autofunction:: stingray.crossspectrum.time_lag
+.. autofunction:: stingray.crossspectrum.get_flux_generator
+
+----
+
 Dead-Time Corrections
 ---------------------
 
@@ -170,7 +258,7 @@ Dead-Time Corrections
 Higher-Order Fourier and Spectral Timing Products
 =================================================
 
-These classes implement higher-order Fourier analysis products (e.g. :class:`Bispectrum`) and
+These classes implement higher-order Fourier analysis products (e.g. :class:`~stingray.bispectrum.Bispectrum`) and
 Spectral Timing related methods taking advantage of both temporal and spectral information in
 modern data sets.
 
@@ -245,7 +333,7 @@ AveragedCovariancespectrum
 ----
 
 VarEnergySpectrum
-------------------
+-----------------
 Abstract base class for spectral timing products including
 both variability and spectral information.
 
@@ -282,13 +370,76 @@ ExcessVarianceSpectrum
 ----
 
 CountSpectrum
-----------------------
+-------------
 
 .. autoclass:: stingray.varenergyspectrum.CountSpectrum
    :members:
    :inherited-members:
 
 ----
+
+RmsSpectrum
+-----------
+
+.. autoclass:: stingray.varenergyspectrum.RmsSpectrum
+   :members:
+   :inherited-members:
+
+----
+
+LagSpectrum
+-----------
+
+.. autoclass:: stingray.varenergyspectrum.LagSpectrum
+   :members:
+   :inherited-members:
+
+----
+
+CovarianceSpectrum
+------------------
+
+.. autoclass:: stingray.varenergyspectrum.CovarianceSpectrum
+   :members:
+   :inherited-members:
+
+----
+
+ComplexCovarianceSpectrum
+-------------------------
+
+.. autoclass:: stingray.varenergyspectrum.ComplexCovarianceSpectrum
+   :members:
+   :inherited-members:
+
+----
+
+Bispectrum constructor functions
+--------------------------------
+
+These build bispectra and cross bispectra directly from the various input containers,
+without going through the class constructors.
+
+.. autofunction:: stingray.bispectrum.bispectrum_from_time_array
+.. autofunction:: stingray.bispectrum.bispectrum_from_events
+.. autofunction:: stingray.bispectrum.bispectrum_from_lightcurve
+.. autofunction:: stingray.bispectrum.bispectrum_from_stingray_timeseries
+.. autofunction:: stingray.bispectrum.bispectrum_from_lc_iterable
+.. autofunction:: stingray.bispectrum.crossbispectrum_from_time_array
+.. autofunction:: stingray.bispectrum.crossbispectrum_from_events
+.. autofunction:: stingray.bispectrum.crossbispectrum_from_lightcurve
+.. autofunction:: stingray.bispectrum.crossbispectrum_from_stingray_timeseries
+.. autofunction:: stingray.bispectrum.crossbispectrum_from_lc_iterable
+
+----
+
+Variability-energy spectrum functions
+-------------------------------------
+
+.. autofunction:: stingray.varenergyspectrum.get_non_overlapping_ref_band
+
+----
+
 
 Utilities
 =========
@@ -315,6 +466,12 @@ GTI Functionality
 .. automodule:: stingray.gti
    :members:
    :imported-members:
+
+Filter Functionality
+--------------------
+
+.. automodule:: stingray.filters
+   :members:
 
 I/O Functionality
 -----------------
@@ -465,6 +622,14 @@ help users set priors in their :class:`stingray.modeling.Posterior` subclass obj
 
 ----
 
+Gaussian Process Modeling
+-------------------------
+
+.. automodule:: stingray.modeling.gpmodeling
+   :members:
+
+----
+
 Pulsar
 ======
 
@@ -487,6 +652,9 @@ of stochastic processes.
    :members:
    :undoc-members:
 
+.. automodule:: stingray.simulator.transfer
+   :members:
+
 Exceptions
 ==========
 
@@ -495,3 +663,15 @@ Some basic Stingray-related errors and exceptions.
 .. autoclass:: stingray.exceptions.StingrayError
    :members:
    :undoc-members:
+
+.. autoclass:: stingray.exceptions.StingrayWarning
+   :members:
+
+.. autoclass:: stingray.modeling.posterior.PriorUndefinedError
+   :members:
+
+.. autoclass:: stingray.modeling.posterior.LikelihoodUndefinedError
+   :members:
+
+.. autoclass:: stingray.modeling.posterior.IncorrectParameterError
+   :members:

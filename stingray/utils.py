@@ -89,6 +89,32 @@ except ImportError as e:
 
         return decorator
 
+    def _to_double_precision(value):
+        """Convert float and complex values with less than double precision to double precision."""
+        value = np.asarray(value)
+        if value.dtype.kind == "f" and value.dtype.itemsize < 8:
+            return value.astype(np.float64)
+        if value.dtype.kind == "c" and value.dtype.itemsize < 16:
+            return value.astype(np.complex128)
+        return value
+
+    def lazy_vectorize(signatures, **kwargs):
+        # As the Numba version with float64 signatures, compute float32 inputs in float64
+        def decorator(func):
+            vectorized = np.vectorize(func)
+
+            def wrapper(*args):
+                result = vectorized(*[_to_double_precision(arg) for arg in args])
+                # A ufunc returns a scalar when every input is a scalar; np.vectorize
+                # returns a zero-dimensional array instead.
+                return result[()] if result.ndim == 0 else result
+
+            wrapper.__name__ = func.__name__
+            wrapper.__doc__ = func.__doc__
+            return wrapper
+
+        return decorator
+
     def generic(*args, **kwargs):
         return None
 
@@ -102,6 +128,105 @@ if HAS_NUMBA:
     from numba import njit, prange, vectorize, float32, float64, int32, int64
 
     from numba.core.errors import NumbaValueError, NumbaNotImplementedError, TypingError
+    from numba.core import sigutils
+    from numba.core.compiler_lock import global_compiler_lock
+    from numba.np.numpy_support import ufunc_find_matching_loop
+    from numba.np.ufunc.dufunc import DUFunc
+
+    class _LazyDUFunc(DUFunc):
+        """Vectorized function compiled for a fixed list of signatures at its first call.
+
+        With a list of signatures, ``numba.vectorize`` compiles all of them when the
+        module is imported, which takes time even when they are loaded from the cache.
+        Without signatures, it compiles a new loop for each new combination of input
+        types, and NumPy uses the first loop that accepts the inputs: e.g., after a call
+        with a float64 and a float32 array, a call with a float64 array and a Python
+        float would compute in float32.
+
+        This class compiles all the signatures, in the given order, the first time the
+        function is called (from Python or from Numba-compiled code), and then disables
+        the compilation of other signatures, as ``numba.vectorize`` does when the
+        signatures are given.
+        """
+
+        def __init__(self, py_func, signatures, **kwargs):
+            super().__init__(py_func, **kwargs)
+            self._lazy_signatures = list(signatures)
+
+        @global_compiler_lock
+        def _compile_lazy_signatures(self):
+            """Compile the signatures, if not done yet. Return True if they were compiled now.
+
+            Numba's compiler lock makes compiling the signatures and freezing the function
+            atomic: without it, two threads calling the function for the first time could
+            both start compiling, and the one that gets there first would freeze the
+            function while the other is still compiling, raising a ``RuntimeError``. It is
+            the same lock that ``DUFunc._compile_for_argtys`` takes, and it is reentrant, so
+            taking it here cannot deadlock with the compilation of a Numba-compiled caller.
+            """
+            signatures = getattr(self, "_lazy_signatures", None)
+            if not signatures:
+                return False
+            for sig in signatures:
+                super()._compile_for_argtys(*sigutils.normalize_signature(sig))
+            self._lazy_signatures = None
+            self.disable_compile()
+            return True
+
+        def _compile_for_args(self, *args, **kws):
+            # Called from Python when no loop accepts the inputs. After compiling, the
+            # call is repeated, and NumPy chooses the loop (or raises) as for any ufunc
+            if self._compile_lazy_signatures() or self._frozen:
+                # NumPy does not hold any lock here, so another thread may have compiled
+                # the signatures in the meantime: there is nothing left to compile
+                return
+            return super()._compile_for_args(*args, **kws)  # pragma: no cover
+
+        def _compile_for_argtys(self, argtys, return_type=None):
+            # Called when typing a call from Numba-compiled code, and by ``add``. Numba only
+            # gets here if the function is not frozen yet, and it holds the compiler lock from
+            # that check to this call, so no other thread can have frozen it in between
+            if not self._compile_lazy_signatures():
+                return super()._compile_for_argtys(argtys, return_type)
+
+            # Numba-compiled callers expect a loop for these types
+            if ufunc_find_matching_loop(self, argtys) is None:
+                raise TypeError(f"{self.__name__} does not support the input types {argtys}")
+            for sig, cres in self._dispatcher.overloads.items():
+                if sig.args == argtys:
+                    return cres
+            return None
+
+        def _reduce_states(self):
+            return dict(super()._reduce_states(), signatures=self._lazy_signatures)
+
+        @classmethod
+        def _rebuild(cls, signatures, **states):
+            self = super()._rebuild(**states)
+            self._lazy_signatures = signatures
+            return self
+
+    def lazy_vectorize(signatures, identity=None, cache=False, **targetoptions):
+        """Like ``numba.vectorize`` with signatures, but compile at the first call.
+
+        Parameters
+        ----------
+        signatures : list
+            The signatures to compile, in order of preference: NumPy uses the first
+            one that accepts the input types without losing precision.
+
+        Other Parameters
+        ----------------
+        identity, cache, **targetoptions :
+            As in ``numba.vectorize``
+        """
+
+        def decorator(func):
+            return _LazyDUFunc(
+                func, signatures, identity=identity, cache=cache, targetoptions=targetoptions
+            )
+
+        return decorator
 
 
 try:
@@ -155,6 +280,8 @@ def mad(data, c=0.6744897501960817, axis=0):
 
 
 __all__ = [
+    "make_1d_arrays_into_nd",
+    "make_nd_into_arrays",
     "simon",
     "rebin_data",
     "rebin_data_log",
@@ -278,7 +405,7 @@ def make_nd_into_arrays(array: np.ndarray, label: str) -> dict:
 
     Parameters
     ----------
-    array : `np.ndarray`
+    array : ``np.ndarray``
         Input data
     label : `str`
         Label for the array
@@ -358,7 +485,7 @@ def make_1d_arrays_into_nd(data: dict, label: str) -> np.ndarray:
 
     Returns
     -------
-    array : `np.array`
+    array : ``np.array``
         N-dimensional array that was stored in the data.
 
     Examples
@@ -595,7 +722,7 @@ def rebin_data(x, y, dx_new, yerr=None, method="sum", dx=None):
         raise ValueError("New frequency resolution must be larger than old frequency resolution.")
 
     # left and right bin edges
-    # assumes that the points given in `x` correspond to
+    # assumes that the points given in ``x`` correspond to
     # the left bin edges
     xedges = np.hstack([x, x[-1] + dx_old[-1]])
 
@@ -1221,7 +1348,7 @@ def excess_variance(lc, normalization="fvar"):
 
     Parameters
     ----------
-    lc : a :class:`Lightcurve` object
+    lc : a :class:`~stingray.Lightcurve` object
     normalization : str
         if ``fvar``, return the fractional mean square variability :math:`F_{var}`.
         If ``none``, return the unnormalized excess variance variance
@@ -1442,7 +1569,7 @@ def standard_error(xs, mean):
 
 def nearest_power_of_two(x):
     """
-    Return a number which is nearest to `x` and is the integral power of two.
+    Return a number which is nearest to ``x`` and is the integral power of two.
 
     Parameters
     ----------
@@ -1451,7 +1578,7 @@ def nearest_power_of_two(x):
     Returns
     -------
     x_nearest : int
-        Number closest to `x` and is the integral power of two.
+        Number closest to ``x`` and is the integral power of two.
 
     """
     x = int(x)
@@ -2394,7 +2521,7 @@ def assign_if_not_finite(value, default):
 
     Parameters
     ----------
-    value : float, int or `np.array`
+    value : float, int or ``np.array``
         The input value
     default : float
         The default value

@@ -15,7 +15,7 @@ __all__ = ["CrossCorrelation", "AutoCorrelation"]
 class CrossCorrelation(object):
     r"""Make a cross-correlation from light curves or a cross spectrum.
 
-    You can also make an empty :class:`Crosscorrelation` object to populate
+    You can also make an empty :class:`~stingray.CrossCorrelation` object to populate
     with your own cross-correlation data.
 
     Parameters
@@ -274,7 +274,7 @@ class CrossCorrelation(object):
         self, labels=None, axis=None, title=None, marker="-", save=False, filename=None, ax=None
     ):
         """
-        Plot the :class:`Crosscorrelation` as function using Matplotlib.
+        Plot the :class:`~stingray.CrossCorrelation` as function using Matplotlib.
         Plot the Crosscorrelation object on a graph ``self.time_lags`` on x-axis and
         ``self.corr`` on y-axis
 

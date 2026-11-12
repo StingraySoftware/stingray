@@ -22,7 +22,7 @@ def simulate_times(lc, use_spline=False):
 
     Parameters
     ----------
-    lc: `Lightcurve` object
+    lc: :class:`~stingray.Lightcurve` object
         The `counts` array of the light curve should be give the expected
         number of photons in that bin. For this reason, please note that the
         light curve should not contain any negative values, or this method will
@@ -148,7 +148,7 @@ def simulate_with_inverse_cdf(
 
     Parameters
     ----------
-    binned_pdf : `np.array`
+    binned_pdf : ``np.array``
         The input "probability distribution". It does not need to be an actual
         probability distribution, but it can be a light curve, a spectrum, or
         any other histogram-like curve. It just needs to be positive definite!
@@ -157,9 +157,9 @@ def simulate_with_inverse_cdf(
 
     Other parameters
     ----------------
-    edges : `np.array`
+    edges : ``np.array``
         The edges of the PDF bins. The array is longer than binned_pdf by 1
-        bin, a la `np.histogram`
+        bin, a la ``np.histogram``
     x_range : [float, float], default None
         The range of the values to be generated. Defaults to [0, 1].
     interp_kind : str

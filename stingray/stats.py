@@ -4,7 +4,7 @@ from collections.abc import Iterable
 import numpy as np
 from scipy import stats
 from stingray.utils import simon
-from stingray.utils import vectorize, float64, float32, int32, int64
+from stingray.utils import lazy_vectorize, float64, int64
 
 __all__ = [
     "p_multitrial_from_single_trial",
@@ -34,10 +34,11 @@ __all__ = [
     "ssig_from_a",
     "ssig_from_pf",
     "amplitude_upper_limit",
+    "pds_logprobability",
 ]
 
 
-@vectorize([float64(float32), float64(float64)], nopython=True)
+@lazy_vectorize([float64(float64)], nopython=True, cache=True)
 def _extended_equiv_gaussian_Nsigma(logp):
     """Equivalent gaussian sigma for small log-probability.
 
@@ -121,7 +122,7 @@ def equivalent_gaussian_Nsigma(p):
     return equivalent_gaussian_Nsigma_from_logp(np.log(p))
 
 
-@vectorize([float64(float32, float32), float64(float64, float64)], nopython=True)
+@lazy_vectorize([float64(float64, float64)], nopython=True, cache=True)
 def _log_asymptotic_incomplete_gamma(a, z):
     """Asymptotic natural log of incomplete gamma function.
 
@@ -146,7 +147,7 @@ def _log_asymptotic_incomplete_gamma(a, z):
     return (a - 1.0) * np.log(z) - z + np.log(x)
 
 
-@vectorize([float64(float32), float64(float64)], nopython=True)
+@lazy_vectorize([float64(float64)], nopython=True, cache=True)
 def _log_asymptotic_gamma(z):
     """Natural log of the Gamma function in its asymptotic limit.
 
@@ -166,9 +167,11 @@ def _log_asymptotic_gamma(z):
     return x
 
 
-@np.vectorize
 def chi2_logp(chi2, dof):
     """Log survival function of the chi-squared distribution.
+
+    Returns a scalar if both arguments are scalars, and otherwise an array of the shape they
+    broadcast to.
 
     Examples
     --------
@@ -184,30 +187,37 @@ def chi2_logp(chi2, dof):
     >>> chi2 = np.array([5, 32])
     >>> assert np.allclose(chi2_logp(chi2, 2), stats.chi2.logsf(chi2, 2), atol=0.1)
     """
-    if dof < 2:
+    chi2 = np.asarray(chi2, dtype=float)
+    dof = np.asarray(dof)
+    if np.any(dof < 2):
         raise ValueError("The number of degrees of freedom cannot be < 2")
+
+    chi2, dof = np.broadcast_arrays(chi2, dof)
+    reduced_chi2 = chi2 / dof
 
     # If very large reduced chi squared, use approximation. This is an
     # eyeballed limit parameter space where the difference between the
     # approximation and the scipy version is tiny, but above which the scipy
     # version starts failing.
-    if (chi2 / dof > 15.0) or ((dof > 150) and (chi2 / dof > 6.0)):
-        return _log_asymptotic_incomplete_gamma(0.5 * dof, 0.5 * chi2) - _log_asymptotic_gamma(
-            0.5 * dof
-        )
+    asymptotic = (reduced_chi2 > 15.0) | ((dof > 150) & (reduced_chi2 > 6.0))
 
-    return stats.chi2.logsf(chi2, dof)
+    # Each branch is evaluated on the elements that need it, rather than on everything and
+    # then selected, so that scipy never sees the values it fails on.
+    logp = np.empty(chi2.shape, dtype=float)
+    if np.any(asymptotic):
+        half_dof = 0.5 * dof[asymptotic]
+        logp[asymptotic] = _log_asymptotic_incomplete_gamma(
+            half_dof, 0.5 * chi2[asymptotic]
+        ) - _log_asymptotic_gamma(half_dof)
+    exact = ~asymptotic
+    if np.any(exact):
+        logp[exact] = stats.chi2.logsf(chi2[exact], dof[exact])
+
+    # A ufunc returns a scalar when every input is a scalar
+    return logp[()] if logp.ndim == 0 else logp
 
 
-@vectorize(
-    [
-        float64(float32, int32),
-        float64(float32, int64),
-        float64(float64, int32),
-        float64(float64, int64),
-    ],
-    nopython=True,
-)
+@lazy_vectorize([float64(float64, int64)], nopython=True, cache=True)
 def _logp_multitrial_from_single_logp(logp1, n):
     """Calculate a multi-trial p-value from the log of a single-trial one.
 
@@ -271,18 +281,10 @@ def p_multitrial_from_single_trial(p1, n):
     """
     logpn = _logp_multitrial_from_single_logp(np.log(p1).astype(np.double), n)
 
-    return np.exp(np.longdouble(logpn))
+    return np.exp(np.asarray(logpn, dtype=np.longdouble))
 
 
-@vectorize(
-    [
-        float64(float32, int32),
-        float64(float32, int64),
-        float64(float64, int32),
-        float64(float64, int64),
-    ],
-    nopython=True,
-)
+@lazy_vectorize([float64(float64, int64)], nopython=True, cache=True)
 def _logp_single_trial_from_logp_multitrial(logpn, n):
     """Calculate a multi-trial p-value from the log of a single-trial one.
 
@@ -612,7 +614,7 @@ def z2_n_logprobability(z2, n, ntrial=1, n_summed_spectra=1):
         The probability that the Z^2_n value has been produced by noise
     """
 
-    epsilon_1 = chi2_logp(np.double(z2 * n_summed_spectra), 2 * n * n_summed_spectra)
+    epsilon_1 = chi2_logp(np.asarray(z2 * n_summed_spectra, dtype=float), 2 * n * n_summed_spectra)
     epsilon = _logp_multitrial_from_single_logp(epsilon_1, ntrial)
     return epsilon
 
@@ -836,8 +838,8 @@ def classical_pvalue(power, nspec):
     References
     ----------
 
-    * .. [Leahy 1983] https://ui.adsabs.harvard.edu/#abs/1983ApJ...266..160L/abstract
-    * .. [Groth 1975] https://ui.adsabs.harvard.edu/#abs/1975ApJS...29..285G/abstract
+    * .. [Leahy 1983] https://scixplorer.org/abs/1983ApJ...266..160L/abstract
+    * .. [Groth 1975] https://scixplorer.org/abs/1975ApJS...29..285G/abstract
 
     """
 

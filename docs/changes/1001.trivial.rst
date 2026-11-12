@@ -1,0 +1,15 @@
+The pins for the documentation toolchain have moved off versions with published
+security advisories:
+
+- ``jinja2`` is now asked for as 3.1.6 or later. The two places that pinned it, the
+  ``docs`` extra and ``docs/requirements.txt``, asked for exactly 3.1.3 and 3.1.5,
+  and both of those releases carry sandbox-escape advisories.
+- ``nbconvert`` is now asked for as 7.17.2 or later, in place of a ``<7.14`` cap.
+  Every release the cap allowed carries four advisories, two of them high severity,
+  and the cap was itself what kept the fixes from being installable.
+
+Neither pin was there for a compatibility reason; both were carried over unchanged
+when the packaging moved to ``pyproject.toml``. They are lower bounds now, so later
+fixes will be picked up without another release. The rendered documentation is
+unaffected: built against ``nbconvert`` 7.17.2, the HTML of all thirty-six notebook
+pages is byte-identical to the build against the newest release the cap allowed.

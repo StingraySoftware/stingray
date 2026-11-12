@@ -337,3 +337,99 @@ class TestClassicalSignificances(object):
         vals = np.random.uniform(0, maxval, 10)
         for val in vals:
             assert np.isclose(power_upper_limit(val, c=c, n=n, summed_flag=summed_flag), 0.0)
+
+
+@pytest.mark.parametrize(
+    "func,args",
+    [
+        ("_extended_equiv_gaussian_Nsigma", [[-50.0, -300.0, -1000.0]]),
+        ("_log_asymptotic_gamma", [[20.1, 75.3, 400.7]]),
+        ("_log_asymptotic_incomplete_gamma", [[2.0, 8.5, 20.0], [60.3, 200.1, 900.9]]),
+    ],
+)
+def test_vectorized_float32_computed_in_float64(func, args):
+    """The vectorized functions of stats have only float64 signatures, so float32 inputs have to be
+    computed in float64, with and without Numba.
+
+    This test fails if float32 signatures are added, or if the calculation is done in float32.
+    """
+    import stingray.stats as st
+
+    func = getattr(st, func)
+    res32 = func(*[np.asarray(a, dtype=np.float32) for a in args])
+    expected = func(*[np.asarray(a, dtype=np.float32).astype(np.float64) for a in args])
+    assert res32.dtype == np.float64
+    assert np.array_equal(res32, expected)
+
+
+def test_z2_n_logprobability_many_trials():
+    """With int32 signatures listed before int64 ones, a Python integer above 2**31 as number of
+    trials raised OverflowError.
+
+    This test fails if int32 signatures are listed before int64 ones again.
+    """
+    # A scalar, not an array: z2_n_logprobability calls np.double, which collapses a size-1
+    # array to a scalar on NumPy 1.24 but not on NumPy 2, so the result's shape is not the
+    # same across the supported range of NumPy versions.
+    logp = z2_n_logprobability(100.0, 2, ntrial=3_000_000_000)
+    logp_int64 = z2_n_logprobability(100.0, 2, ntrial=np.int64(3_000_000_000))
+    assert np.isfinite(logp)
+    assert logp == logp_int64
+
+
+@pytest.mark.parametrize(
+    "func,value,args",
+    [
+        (z2_n_logprobability, 100.0, (2,)),
+        (p_multitrial_from_single_trial, 0.01, (10,)),
+    ],
+)
+def test_stats_functions_preserve_the_shape_of_their_input(func, value, args):
+    """``np.double`` and ``np.longdouble`` collapse a size-1 array to a scalar on NumPy 1.24 but
+    not on NumPy 2, so these functions have to convert with ``np.asarray`` instead.
+
+    This test can only fail on the oldest supported NumPy, which is what the
+    ``py311-test-oldestdeps`` job is for.
+    """
+    assert np.ndim(func(value, *args)) == 0
+    assert np.shape(func(np.array([value]), *args)) == (1,)
+    assert np.shape(func(np.array([value, value * 1.2]), *args)) == (2,)
+
+
+@pytest.mark.parametrize(
+    "dof,reduced_chi2",
+    [(8, 3.0), (8, 40.0), (200, 10.0), (200, 3.0)],
+)
+def test_chi2_logp_array_matches_elementwise(dof, reduced_chi2):
+    """``chi2_logp`` evaluates whole arrays, picking a different formula per element, so every
+    element has to come out exactly as it would from a scalar call.
+
+    The four cases cover the ``scipy`` branch, the asymptotic branch, the ``dof > 150`` branch and
+    an array that straddles two of them. This test fails if the per-element results are
+    misplaced.
+    """
+    chi2 = np.linspace(0.3, 1.7, 25) * reduced_chi2 * dof
+    assert np.array_equal(chi2_logp(chi2, dof), [chi2_logp(c, dof) for c in chi2])
+
+
+def test_chi2_logp_shape_follows_its_input():
+    """``chi2_logp`` returns a scalar for scalar arguments, as a ufunc does, or, otherwise, the
+    shape its arguments broadcast to.
+
+    This test fails if ``chi2_logp`` is wrapped in ``np.vectorize`` again, which returns a
+    zero-dimensional array for scalar arguments.
+    """
+    res = chi2_logp(100.0, 2)
+    assert np.ndim(res) == 0
+    assert not isinstance(res, np.ndarray)
+    assert np.shape(chi2_logp(np.array([100.0]), 2)) == (1,)
+    assert np.shape(chi2_logp(np.array([100.0, 3.0]), np.array([2, 200]))) == (2,)
+
+
+def test_chi2_logp_rejects_dof_below_two_in_an_array():
+    """The check on the degrees of freedom applies to array arguments too.
+
+    This test fails if the check only looks at the first element.
+    """
+    with pytest.raises(ValueError, match="degrees of freedom cannot be < 2"):
+        chi2_logp(np.array([10.0, 10.0]), np.array([4, 1]))

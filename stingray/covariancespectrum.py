@@ -465,7 +465,7 @@ class AveragedCovariancespectrum(Covariancespectrum):
 
     dt : float
         The time resolution of the :class:`stingray.Lightcurve` formed
-        from the energy bin. Only used if `data` is an event list.
+        from the energy bin. Only used if ``data`` is an event list.
 
     band_interest : {``None``, iterable of tuples}
         If ``None``, all possible energy values will be assumed to be of
