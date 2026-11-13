@@ -152,6 +152,13 @@ Compatibility and Dependencies
       ``scipy.optimize``, ``astropy.table``, ``h5py``) are imported
       inside the functions that use them, not at the top of the module.
       ``stingray/tests/test_import.py`` checks this.
+   -  **Public names:** every module lists its public functions and
+      classes in ``__all__``; only those are documented. The names
+      available directly as ``stingray.<name>`` are imported one by one
+      in ``stingray/__init__.py``; add a new class there if users should
+      reach it without the module name. ``stingray/tests/test_import.py``
+      checks that every module has an ``__all__`` and that every name in
+      it exists.
 
 Coding Style and Conventions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

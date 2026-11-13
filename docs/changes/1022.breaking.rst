@@ -8,3 +8,5 @@ Removed everything deprecated in Stingray 2.0 or earlier:
 - the ``norm`` keyword of ``stingray.pulse.z_n`` (use ``datatype="binned"``) and the ``threads`` keyword of the ``sample`` methods in ``stingray.modeling`` (use ``pool``).
 
 Where a removed keyword sat in the middle of a signature, the keywords after it can now only be passed by name, so that old positional calls fail with an error instead of silently filling the wrong argument.
+
+Every module now declares its public names in ``__all__``, and ``stingray/__init__.py`` imports the top-level names one by one instead of with ``from ... import *``. As a result, ``setup_logger``, ``logger``, ``CustomFormatter`` and ``logging`` are no longer available as ``stingray.<name>``, and the documentation of ``stingray.io`` only lists the functions meant for users.

@@ -5,6 +5,12 @@ from astropy.time import Time
 from astropy.io import fits
 from stingray.utils import fits_open_including_remote
 
+__all__ = [
+    "pca_calibration_func",
+    "rxte_calibration_func",
+    "rxte_pca_event_file_interpretation",
+]
+
 c_match = re.compile(r"C\[(.*)\]")
 
 _EDGE_TIMES = [

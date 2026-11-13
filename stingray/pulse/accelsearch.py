@@ -27,6 +27,11 @@ from ..utils import njit, fft, fftfreq, fftn, ifftn, HAS_PYFFTW
 from ..stats import pds_probability, pds_detection_level
 from ..gti import create_gti_mask
 
+__all__ = [
+    "accelsearch",
+    "interbin_fft",
+]
+
 
 def convolve_ols(a, b, memout=None):
     """Convolution using overlap-and-save.
