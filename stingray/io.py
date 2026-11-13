@@ -55,6 +55,18 @@ try:
 except AttributeError:  # pragma: no cover
     HAS_128 = False
 
+__all__ = [
+    "EventReadOutput",
+    "FITSTimeseriesReader",
+    "lcurve_from_fits",
+    "load_events_and_gtis",
+    "pi_to_energy",
+    "read_rmf",
+    "run_flx2xsp",
+    "save_as_xspec",
+    "savefig",
+]
+
 logger = setup_logger()
 
 

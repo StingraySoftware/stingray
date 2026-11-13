@@ -3,6 +3,15 @@ from .fourier import integrate_power_in_frequency_range
 from .utils import force_array
 from collections.abc import Iterable
 
+__all__ = [
+    "DEFAULT_COLOR_CONFIGURATION",
+    "plot_power_colors",
+    "plot_hues",
+    "power_color",
+    "hue_from_power_color",
+    "hue_from_logpower_color",
+]
+
 DEFAULT_COLOR_CONFIGURATION = {
     "center": [4.51920, 0.453724],
     "ref_angle": 3 * np.pi / 4,

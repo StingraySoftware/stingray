@@ -4,6 +4,12 @@ import scipy.interpolate as sci
 from stingray import Lightcurve
 from stingray.gti import gti_border_bins
 
+__all__ = [
+    "simulate_times",
+    "simulate_times_from_count_array",
+    "simulate_with_inverse_cdf",
+]
+
 
 def simulate_times(lc, use_spline=False):
     """
