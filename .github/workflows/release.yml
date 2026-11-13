@@ -1,0 +1,75 @@
+name: Publish to PyPI
+
+# Publishing a GitHub release uploads it to PyPI through "trusted publishing":
+# PyPI accepts uploads only from this workflow, which proves its identity with a
+# short-lived token issued by GitHub. No PyPI password or API token is stored
+# anywhere. See https://docs.pypi.org/trusted-publishers/
+#
+# Pull requests that touch the packaging run only the build job, so a broken
+# build is found before release day.
+
+on:
+  release:
+    types: [published]
+  pull_request:
+    paths:
+      - pyproject.toml
+      - MANIFEST.in
+      - .github/workflows/release.yml
+
+jobs:
+  # Building is kept apart from publishing so that the build steps never run
+  # with the permission to upload.
+  # See https://github.com/pypa/gh-action-pypi-publish/issues/217#issuecomment-1965727093
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # setuptools_scm reads the version from the git tags, so it needs the
+          # full history. (fetch-tags: true fails on release events, where the
+          # tag is also the ref.)
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Build and check the distributions
+        run: |
+          python -m pip install --upgrade build twine
+          python -m build
+          python -m twine check --strict dist/*
+          echo ""
+          echo "Generated files:"
+          ls -lh dist/
+
+      - name: Store the distributions
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-package-distributions
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    if: github.repository == 'StingraySoftware/stingray' && github.event_name == 'release'
+    needs: [build]
+    runs-on: ubuntu-latest
+    # PyPI trusts uploads only from this workflow running in this environment.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/stingray
+    permissions:
+      id-token: write  # needed to obtain the short-lived token for PyPI
+    steps:
+      - name: Download the distributions
+        uses: actions/download-artifact@v8
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
