@@ -1,0 +1,1 @@
+``Lightcurve.apply_gtis()`` keeps ``tstart`` a scalar instead of turning it into a per-bin array, which previously broke ``join()`` after applying GTIs.
