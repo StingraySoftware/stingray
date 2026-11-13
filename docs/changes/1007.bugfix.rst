@@ -1,0 +1,1 @@
+Rebinning integer counts (e.g. with ``Lightcurve.rebin``) by a factor that is not an integer no longer truncates the fractions of the old bins that each new bin covers.
