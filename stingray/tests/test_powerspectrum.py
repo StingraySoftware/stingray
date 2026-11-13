@@ -743,14 +743,6 @@ class TestPowerspectrum(object):
             bin_ps.freq[0], (ps.freq[0] - ps.df * 0.5 + bin_ps.df * 0.5), atol=1e-4, rtol=1e-4
         )
 
-    def test_lc_keyword_deprecation(self):
-        cs1 = Powerspectrum(self.lc, norm="Leahy")
-        with pytest.warns(DeprecationWarning) as record:
-            cs2 = Powerspectrum(lc=self.lc, norm="Leahy")
-        assert np.any(["lc keyword" in r.message.args[0] for r in record])
-        assert np.allclose(cs1.power, cs2.power)
-        assert np.allclose(cs1.freq, cs2.freq)
-
     def test_classical_significances_runs(self):
         ps = Powerspectrum(self.lc, norm="Leahy")
         ps.classical_significances()
@@ -834,14 +826,6 @@ class TestAveragedPowerspectrum(object):
 
         ps = AveragedPowerspectrum(self.lc, segment_size)
         assert np.isclose(ps.segment_size, segment_size)
-
-    def test_lc_keyword_deprecation(self):
-        cs1 = AveragedPowerspectrum(self.lc, segment_size=self.lc.tseg)
-        with pytest.warns(DeprecationWarning) as record:
-            cs2 = AveragedPowerspectrum(lc=self.lc, segment_size=self.lc.tseg)
-        assert np.any(["lc keyword" in r.message.args[0] for r in record])
-        assert np.allclose(cs1.power, cs2.power)
-        assert np.allclose(cs1.freq, cs2.freq)
 
     def test_make_empty_periodogram(self):
         ps = AveragedPowerspectrum()

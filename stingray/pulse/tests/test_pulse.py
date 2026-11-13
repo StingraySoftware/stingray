@@ -294,15 +294,10 @@ class TestAll(object):
             fold_events(times, 1, nbin=nbin, mode="pdm")
 
     def test_zn_2(self):
-        with pytest.warns(DeprecationWarning) as record:
-            np.testing.assert_almost_equal(z_n(np.arange(1), n=1, norm=1), 2)
-            np.testing.assert_almost_equal(z_n(np.arange(1), n=2, norm=1), 4)
-            np.testing.assert_almost_equal(z_n(np.arange(2), n=2, norm=1), 8)
-            np.testing.assert_almost_equal(z_n(np.arange(2) + 0.5, n=2, norm=1), 8)
-
-        assert np.any(
-            ["The use of ``z_n(phase, norm=profile)``" in r.message.args[0] for r in record]
-        )
+        np.testing.assert_almost_equal(z_n(np.arange(1), n=1), 2)
+        np.testing.assert_almost_equal(z_n(np.arange(1), n=2), 4)
+        np.testing.assert_almost_equal(z_n(np.arange(2), n=2), 8)
+        np.testing.assert_almost_equal(z_n(np.arange(2) + 0.5, n=2), 8)
 
     def test_get_TOA1(self):
         np.random.seed(1234)
@@ -443,17 +438,6 @@ class TestZandH(object):
         prof512 = np.zeros(512)
         ksp, zp = z_n_binned_events_all(prof512, nmax=10)
         assert np.allclose(zp, 0)
-
-    def test_deprecated_norm_use(self):
-        prof512, bins = self.prof512, self.bins
-        with pytest.warns(DeprecationWarning) as record:
-            z = z_n(prof512, n=3, datatype="binned")
-            z_dep = z_n(np.zeros(prof512.size), norm=prof512, n=3, datatype="binned")
-            np.testing.assert_almost_equal(z, z_dep)
-
-        assert np.any(
-            ["The use of ``z_n(phase, norm=profile)``" in r.message.args[0] for r in record]
-        )
 
     def test_zn_gauss(self):
         nbin = 512

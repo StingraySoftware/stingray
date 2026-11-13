@@ -96,16 +96,6 @@ Crossspectrum
 
 ----
 
-Coherence
----------
-
-Convenience function to compute the coherence between two :class:`stingray.Lightcurve`
-objects.
-
-.. autofunction:: stingray.coherence
-
-----
-
 Powerspectrum
 -------------
 
@@ -229,14 +219,11 @@ going through the class constructors.
 Cross spectrum functions
 ------------------------
 
-The public functions of ``stingray.crossspectrum`` that are not constructors: the two
-normalizations, the single-trial p-value of a cospectrum power, the time lag between two
-light curves, and the flux generator that the averaged spectra are built from.
+The public functions of ``stingray.crossspectrum`` that are not constructors: the
+single-trial p-value of a cospectrum power, and the flux generator that the averaged
+spectra are built from.
 
-.. autofunction:: stingray.crossspectrum.normalize_crossspectrum
-.. autofunction:: stingray.crossspectrum.normalize_crossspectrum_gauss
 .. autofunction:: stingray.crossspectrum.cospectra_pvalue
-.. autofunction:: stingray.crossspectrum.time_lag
 .. autofunction:: stingray.crossspectrum.get_flux_generator
 
 ----

@@ -58,11 +58,8 @@ __all__ = [
     "check_powers_for_intrinsic_coherence",
     "estimate_intrinsic_coherence",
     "get_rms_from_rms_norm_periodogram",
-    "rms_calculation",
     "extract_pds_slice_around_freq",
     "avg_cs_from_iterables_quick",
-    "avg_pds_from_events",
-    "avg_cs_from_events",
 ]
 
 
@@ -1649,89 +1646,6 @@ def get_rms_from_unnorm_periodogram(
     return get_rms_from_rms_norm_periodogram(powers, poisson, df, M)
 
 
-def rms_calculation(
-    unnorm_powers,
-    min_freq,
-    max_freq,
-    nphots,
-    T,
-    M_freqs,
-    K_freqs,
-    freq_bins,
-    poisson_noise_unnorm,
-    deadtime=0.0,
-):
-    """
-    Compute the fractional rms amplitude in the given power or cross spectrum
-
-    NOTE: all array quantities are already in the correct energy range
-
-    Parameters
-    ----------
-    unnorm_powers : array of float
-        unnormalised power or cross spectrum, the array has already been
-        filtered for the given frequency range
-
-    min_freq : float
-        The lower frequency bound for the calculation (from the freq grid).
-
-    max_freq : float
-        The upper frequency bound for the calculation (from the freq grid).
-
-    nphots : float
-        Number of photons for the full power or cross spectrum
-
-    T : float
-        Time length of the light curve
-
-    M_freq : scalar or array of float
-        If scalar, it is the number of segments in the AveragedCrossspectrum
-        If array, it is the number of segments times the rebinning sample
-        in the given frequency range.
-
-    K_freq : scalar or array of float
-        If scalar, the power or cross spectrum is not rebinned (K_freq = 1)
-        If array,  the power or cross spectrum is rebinned and it is the
-        rebinned sample in the given frequency range.
-
-    freq_bins : integer
-        if the cross or power spectrum is rebinned freq_bins = 1,
-        if it NOT rebinned freq_bins is the number of frequency bins
-        in the given frequency range.
-
-    poisson_noise_unnorm : float
-        This is the Poisson noise level unnormalised.
-
-    Other parameters
-    ----------------
-    deadtime : float
-        Deadtime of the instrument
-
-    Returns
-    -------
-    rms : float
-        The fractional rms amplitude contained between ``min_freq`` and
-        ``max_freq``.
-
-    rms_err : float
-        The error on the fractional rms amplitude.
-
-    """
-    warnings.warn(
-        "The rms_calculation function is deprecated. Use get_rms_from_unnorm_periodogram instead.",
-        DeprecationWarning,
-    )
-    rms_norm_powers = unnorm_powers * 2 * T / nphots**2
-    rms_poisson_noise = poisson_noise_unnorm * 2 * T / nphots**2
-
-    df = 1 / T * K_freqs
-
-    rms, rms_err = get_rms_from_rms_norm_periodogram(
-        rms_norm_powers, rms_poisson_noise, df, M_freqs
-    )
-    return rms, rms_err
-
-
 def error_on_averaged_cross_spectrum(
     cross_power, seg_power, ref_power, n_ave, seg_power_noise, ref_power_noise, common_ref=False
 ):
@@ -2936,14 +2850,6 @@ def avg_cs_from_iterables(
     return results
 
 
-def avg_pds_from_events(*args, **kwargs):
-    warnings.warn(
-        "avg_pds_from_events is deprecated, use avg_cs_from_timeseries instead", DeprecationWarning
-    )
-
-    return avg_pds_from_timeseries(*args, **kwargs)
-
-
 def avg_pds_from_timeseries(
     times,
     gti,
@@ -3839,13 +3745,6 @@ def avg_cross_bispectrum_from_timeseries(
     if bs is not None:
         bs.meta["gti"] = gti
     return bs
-
-
-def avg_cs_from_events(*args, **kwargs):
-    warnings.warn(
-        "avg_cs_from_events is deprecated, use avg_cs_from_timeseries instead", DeprecationWarning
-    )
-    return avg_cs_from_timeseries(*args, **kwargs)
 
 
 def avg_cs_from_timeseries(

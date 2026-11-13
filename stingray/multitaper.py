@@ -3,7 +3,6 @@ import copy
 from stingray.gti import check_gtis, cross_two_gtis
 from stingray.fourier import normalize_periodograms
 from stingray.powerspectrum import Powerspectrum
-import warnings
 
 import numpy as np
 
@@ -135,18 +134,13 @@ class Multitaper(Powerspectrum):
         norm="frac",
         gti=None,
         dt=None,
-        lc=None,
+        *,
         NW=4,
         adaptive=False,
         jackknife=True,
         low_bias=True,
         lombscargle=False,
     ):
-        if lc is not None:
-            warnings.warn("The lc keyword is now deprecated. Use data instead", DeprecationWarning)
-        if data is None:
-            data = lc
-
         if isinstance(norm, str) is False:
             raise TypeError("norm must be a string")
 

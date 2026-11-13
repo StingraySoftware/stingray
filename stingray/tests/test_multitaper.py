@@ -38,14 +38,6 @@ class TestMultitaper(object):
             time, counts=gauss_counts, dt=dt, gti=[[tstart, tend]], err_dist="gauss"
         )
 
-    def test_lc_keyword_deprecation(self):
-        mtp1 = Multitaper(self.lc)
-        with pytest.warns(DeprecationWarning) as record:
-            mtp2 = Multitaper(lc=self.lc)
-        assert np.any(["lc keyword" in r.message.args[0] for r in record])
-        assert np.allclose(mtp1.power, mtp2.power)
-        assert np.allclose(mtp1.freq, mtp2.freq)
-
     def test_make_empty_multitaper(self):
         mtp = Multitaper()
         assert mtp.norm == "frac"

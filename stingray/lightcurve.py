@@ -1287,11 +1287,6 @@ class Lightcurve(StingrayTimeseries):
             mask = mask[::-1]
         return self.apply_mask(mask, inplace=inplace)
 
-    def estimate_chunk_length(self, *args, **kwargs):
-        """Deprecated alias of estimate_segment_size."""
-        warnings.warn("This function was renamed to estimate_segment_size", DeprecationWarning)
-        return self.estimate_segment_size(*args, **kwargs)
-
     def estimate_segment_size(self, min_counts=100, min_samples=100, even_sampling=None):
         """Estimate a reasonable segment length for segment-by-segment analysis.
 
@@ -1339,47 +1334,6 @@ class Lightcurve(StingrayTimeseries):
         >>> assert np.isclose(lc.estimate_segment_size(100, 40), 8.0)
         """
         return super().estimate_segment_size(min_counts, min_samples, even_sampling=even_sampling)
-
-    def analyze_lc_chunks(self, segment_size, func, fraction_step=1, **kwargs):
-        """Analyze segments of the light curve with any function.
-
-        .. deprecated:: 2.0
-            Use :meth:`~stingray.StingrayTimeseries.analyze_segments` instead.
-
-        Parameters
-        ----------
-        segment_size : float
-            Length in seconds of the light curve segments
-        func : function
-            Function accepting a :class:`Lightcurve` object as single argument, plus
-            possible additional keyword arguments, and returning a number or a
-            tuple - e.g., ``(result, error)`` where both ``result`` and ``error`` are
-            numbers.
-
-        Other parameters
-        ----------------
-        fraction_step : float
-            By default, segments do not overlap (``fraction_step`` = 1). If ``fraction_step`` < 1,
-            then the start points of consecutive segments are ``fraction_step * segment_size``
-            apart, and consecutive segments overlap. For example, for ``fraction_step`` = 0.5,
-            the window shifts one half of ``segment_size``)
-        kwargs : keyword arguments
-            These additional keyword arguments, if present, they will be passed
-            to ``func``
-
-        Returns
-        -------
-        start_times : array
-            Lower time boundaries of all time segments.
-        stop_times : array
-            upper time boundaries of all segments.
-        result : array of N elements
-            The result of ``func`` for each segment of the light curve
-        """
-        warnings.warn(
-            "The analyze_lc_chunks method was superseded by analyze_segments", DeprecationWarning
-        )
-        return super().analyze_segments(func, segment_size, fraction_step=fraction_step, **kwargs)
 
     def to_lightkurve(self):
         """
@@ -1580,7 +1534,6 @@ class Lightcurve(StingrayTimeseries):
         save=False,
         filename=None,
         axis_limits=None,
-        axis=None,
         plot_btis=True,
         attr=None,
     ):
@@ -1603,9 +1556,6 @@ class Lightcurve(StingrayTimeseries):
             Parameter to set axis properties of the ``matplotlib`` figure. For example
             it can be a list like ``[xmin, xmax, ymin, ymax]`` or any other
             acceptable argument for the``matplotlib.pyplot.axis()`` method.
-
-        axis : list, tuple, string, default ``None``
-            Deprecated in favor of ``axis_limits``, same functionality.
 
         title : str, default ``None``
             The title of the plot.
@@ -1633,14 +1583,6 @@ class Lightcurve(StingrayTimeseries):
             to any other array attribute of the light curve by passing its name
             as a string.
         """
-        if axis is not None:
-            warnings.warn(
-                "The ``axis`` argument is deprecated in favor of ``axis_limits``. "
-                "Please use that instead.",
-                DeprecationWarning,
-            )
-            axis_limits = axis
-
         if attr is not None:
             flux_attr = attr
         else:

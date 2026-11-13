@@ -40,7 +40,6 @@ __all__ = [
     "split_gtis_by_exposure",
     "split_gtis_at_indices",
     "find_large_bad_time_intervals",
-    "gti_len",
     "hdu_contains_gti",
     "join_equal_gti_boundaries",
     "merge_gtis",
@@ -50,14 +49,6 @@ __all__ = [
 ]
 
 logger = setup_logger()
-
-
-def gti_len(gti):
-    """Deprecated, will be removed in version 2.0. Use get_total_gti_length."""
-    warnings.warn(
-        "This function is deprecated. Use get_total_gti_length instead", DeprecationWarning
-    )
-    return get_total_gti_length(gti, minlen=0)
 
 
 def get_gti_lengths(gti):

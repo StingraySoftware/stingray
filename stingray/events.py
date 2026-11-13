@@ -109,9 +109,6 @@ class EventList(StingrayTimeseries):
     mjdref : float
         The MJD used as a reference for the time array.
 
-    ncounts: int
-        Number of desired data points in event list. Deprecated
-
     gtis: ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]``
         Good Time Intervals
 
@@ -203,7 +200,7 @@ class EventList(StingrayTimeseries):
         self,
         time=None,
         energy=None,
-        ncounts=None,
+        *,
         mjdref=0,
         dt=0,
         notes="",
@@ -221,12 +218,6 @@ class EventList(StingrayTimeseries):
         skip_checks=False,
         **other_kw,
     ):
-        if ncounts is not None:
-            warnings.warn(
-                "The ncounts keyword does nothing, and is maintained for backwards compatibility.",
-                DeprecationWarning,
-            )
-
         if rmf_file is not None:
             if pi is None:
                 warnings.warn("PI channels must be provided to calibrate the energy")
@@ -419,7 +410,7 @@ class EventList(StingrayTimeseries):
         """
         return simple_events_from_lc(lc)
 
-    def simulate_times(self, lc, use_spline=False, bin_time=None):
+    def simulate_times(self, lc, use_spline=False):
         """Simulate times from an input light curve.
 
         Randomly simulate photon arrival times to an :class:`~stingray.events.EventList` from a
@@ -438,9 +429,6 @@ class EventList(StingrayTimeseries):
         use_spline : bool
             Approximate the light curve with a spline to avoid binning effects
 
-        bin_time : float default None
-            Ignored and deprecated, maintained for backwards compatibility.
-
         Returns
         -------
         times : array-like
@@ -448,9 +436,6 @@ class EventList(StingrayTimeseries):
         """
         # Need import here, or there will be a circular import
         from .simulator.base import simulate_times
-
-        if bin_time is not None:
-            warnings.warn("Bin time will be ignored in simulate_times", DeprecationWarning)
 
         vals = simulate_times(lc, use_spline=use_spline)
         self.time = vals
