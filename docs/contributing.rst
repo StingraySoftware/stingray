@@ -324,13 +324,22 @@ preview of how your change will look in the final release notes.
 Making a Release
 ~~~~~~~~~~~~~~~~
 
-Releases reach PyPI automatically. Once the changelog is compiled with
-``towncrier build --version <version>`` and merged, a maintainer creates a
-release on GitHub with a new tag (e.g. ``v2.4``). The ``release.yml`` workflow
-then builds the package, takes its version from the tag, and uploads it to PyPI
-through `trusted publishing <https://docs.pypi.org/trusted-publishers/>`__:
+Releases reach PyPI automatically. A maintainer creates a release on GitHub
+with a new tag (e.g. ``v3.0.0``). The ``release.yml`` workflow then compiles
+the changelog from the fragments in ``docs/changes/``, builds the package,
+takes its version from the tag, and uploads it to PyPI through
+`trusted publishing <https://docs.pypi.org/trusted-publishers/>`__:
 PyPI accepts uploads only from that workflow, so no password or API token is
 needed. Do not upload releases by hand.
+
+Nobody needs to run ``towncrier`` by hand. After the upload, the workflow
+opens a pull request named "Changelog for <tag>", which adds the compiled
+changelog to ``CHANGELOG.rst`` and deletes the fragments it used. Merge it
+promptly: until then, those fragments are still on ``main``. GitHub does not
+run the tests on pull requests opened by a workflow, so if a required check
+stays pending, close and reopen the pull request to start it. Pre-releases
+(e.g. ``v3.0.0rc1``) get the compiled changelog in their package but open no
+pull request, so the final release still finds its fragments.
 
 Testing Guidelines
 ------------------

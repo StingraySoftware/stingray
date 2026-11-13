@@ -5,6 +5,11 @@ name: Publish to PyPI
 # short-lived token issued by GitHub. No PyPI password or API token is stored
 # anywhere. See https://docs.pypi.org/trusted-publishers/
 #
+# The changelog is compiled here from the fragments in docs/changes/, so the
+# released package always carries it, whether or not anyone ran towncrier by
+# hand. After a successful upload, the last job opens a pull request that
+# brings the compiled changelog to main and deletes the fragments it used.
+#
 # Pull requests that touch the packaging run only the build job, so a broken
 # build is found before release day.
 
@@ -37,14 +42,31 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Compile the changelog
+        run: |
+          python -m pip install --upgrade towncrier
+          # On pull requests there is no tag; a placeholder still checks
+          # that every fragment compiles.
+          towncrier build --yes --version "${TAG#v}"
+        env:
+          TAG: ${{ github.event.release.tag_name || 'v0.0.0.dev0' }}
+
       - name: Build and check the distributions
         run: |
           python -m pip install --upgrade build twine
+          if [ "$GITHUB_EVENT_NAME" = "release" ]; then
+            # towncrier has just modified the checkout, and setuptools_scm
+            # would turn that into a version like 3.0.1.dev0+gabc123.d20261113,
+            # which PyPI refuses. Take the version from the tag instead.
+            export SETUPTOOLS_SCM_PRETEND_VERSION="${TAG#v}"
+          fi
           python -m build
           python -m twine check --strict dist/*
           echo ""
           echo "Generated files:"
           ls -lh dist/
+        env:
+          TAG: ${{ github.event.release.tag_name }}
 
       - name: Store the distributions
         uses: actions/upload-artifact@v7
@@ -73,3 +95,63 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  # Bring the compiled changelog back to main. Without this, the fragments
+  # would stay in docs/changes/ and appear again in the next release.
+  # Pre-releases (e.g. v3.0.0rc1) are skipped, so that the final release
+  # still finds its fragments.
+  # Needs "Allow GitHub Actions to create and approve pull requests" in the
+  # repository settings (Settings > Actions > General).
+  changelog-pr:
+    name: Open the changelog pull request
+    if: >-
+      github.repository == 'StingraySoftware/stingray'
+      && github.event_name == 'release'
+      && !github.event.release.prerelease
+    needs: [publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # push the changelog branch
+      pull-requests: write  # open the pull request
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Compile the changelog on main and open a pull request
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -m pip install --upgrade towncrier
+          # Fragments merged after the tag belong to the next release:
+          # set them aside while towncrier runs.
+          later="$RUNNER_TEMP/later"
+          mkdir -p "$later"
+          for f in docs/changes/*.rst; do
+            [ "$(basename "$f")" = README.rst ] && continue
+            git cat-file -e "$TAG:$f" 2>/dev/null || mv "$f" "$later/"
+          done
+          towncrier build --yes --version "${TAG#v}"
+          if compgen -G "$later/*" > /dev/null; then
+            mv "$later"/* docs/changes/
+          fi
+
+          branch="changelog-$TAG"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add CHANGELOG.rst docs/changes
+          git commit -m "Compile the changelog for $TAG"
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title "Changelog for $TAG" \
+            --label no-changelog-entry-needed \
+            --body "Compiled by the release workflow from the fragments released in $TAG. Merging it removes those fragments from docs/changes/."

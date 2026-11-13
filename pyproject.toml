@@ -95,7 +95,7 @@ docs = [
     "nbconvert>=7.17.2",
     "pandoc",
     "ipython",
-    "towncrier<22.12.0",
+    "towncrier",
 ]
 
 [project.urls]
