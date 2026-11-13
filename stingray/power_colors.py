@@ -1,5 +1,3 @@
-import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d
 import numpy as np
 from .fourier import integrate_power_in_frequency_range
 from .utils import force_array
@@ -29,6 +27,8 @@ DEFAULT_COLOR_CONFIGURATION = {
 
 
 def _get_rms_span_functions(configuration=DEFAULT_COLOR_CONFIGURATION):
+    from scipy.interpolate import interp1d
+
     rms_spans = configuration["rms_spans"]
 
     x = list(rms_spans.keys())
@@ -42,6 +42,8 @@ def _get_rms_span_functions(configuration=DEFAULT_COLOR_CONFIGURATION):
 
 
 def _create_rms_hue_plot(polar=False, plot_spans=False, configuration=DEFAULT_COLOR_CONFIGURATION):
+    import matplotlib.pyplot as plt
+
     if polar:
         fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
         ax.set_rmax(0.75)
@@ -124,6 +126,8 @@ def _hue_line_data(center, angle, ref_angle=3 * np.pi / 4):
 
 
 def _trace_states(ax, configuration=DEFAULT_COLOR_CONFIGURATION, **kwargs):
+    import matplotlib.pyplot as plt
+
     center = [np.log10(c) for c in configuration["center"]]
     for state in configuration["state_definitions"].keys():
         color = configuration["state_definitions"][state]["color"]
@@ -165,6 +169,8 @@ def _create_pc_plot(
     configuration=DEFAULT_COLOR_CONFIGURATION,
 ):
     """Creates an empty power color plot with labels in the right place."""
+    import matplotlib.pyplot as plt
+
     fig = plt.figure()
     ax = plt.gca()
 

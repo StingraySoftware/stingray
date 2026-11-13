@@ -4,9 +4,6 @@ from collections.abc import Generator, Iterable
 
 import numpy as np
 import scipy
-import scipy.optimize
-import scipy.stats
-import matplotlib.pyplot as plt
 
 from stingray.crossspectrum import AveragedCrossspectrum, Crossspectrum, DynamicalCrossspectrum
 from stingray.stats import pds_probability, amplitude_upper_limit, pds_detection_level
@@ -249,6 +246,8 @@ class Powerspectrum(Crossspectrum):
         delta_rms: float
             The error on the fractional rms amplitude.
         """
+        import scipy.stats
+
         nphots = self.nphots
         p_err = scipy.stats.chi2(2.0 * self.m).var() * powers / self.m / nphots
 
@@ -1385,6 +1384,8 @@ class GtiCorrPowerspectrum(Powerspectrum):
         self.lc.counts[~mask] = np.mean(self.lc.counts[mask])
 
     def clean_gti_features(self, plot=False, figname="gti_features"):
+        import scipy.stats
+
         gti = getattr(self, "gti", None)
         if gti is None:
             raise AttributeError("GTI attribute is not set for this object.")
@@ -1427,6 +1428,8 @@ class GtiCorrPowerspectrum(Powerspectrum):
         figname : str
             The name of the figure file to be saved (without extension).
         """
+        import matplotlib.pyplot as plt
+
         fig = plt.figure(figname)
         plt.loglog(ps_gti.freq, ps_gti.power)
         plt.axhline(thresh)
