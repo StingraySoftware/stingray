@@ -4,7 +4,7 @@ import os
 
 from stingray.gti import cross_gtis, append_gtis, load_gtis, get_btis, join_gtis
 from stingray.gti import check_separate, create_gti_mask, check_gtis, merge_gtis
-from stingray.gti import create_gti_from_condition, gti_len, gti_border_bins
+from stingray.gti import create_gti_from_condition, gti_border_bins
 from stingray.gti import time_intervals_from_gtis, bin_intervals_from_gtis
 from stingray.gti import create_gti_mask_complete, join_equal_gti_boundaries
 from stingray.gti import split_gtis_at_indices, split_gtis_by_exposure
@@ -333,10 +333,6 @@ class TestGTI(object):
             a, b = bin_intervals_from_gtis([[0, 400]], 128, [500, 501])
         with pytest.raises(ValueError):
             a, b = bin_intervals_from_gtis([[1000, 1400]], 128, [500, 501])
-
-    def test_gti_length(self):
-        with pytest.warns(DeprecationWarning, match="This function is deprecated"):
-            assert gti_len([[0, 5], [6, 7]]) == 6
 
     def test_check_gtis_shape(self):
         with pytest.raises(TypeError):

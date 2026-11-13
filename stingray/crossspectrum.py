@@ -26,11 +26,7 @@ __all__ = [
     "AveragedCrossspectrum",
     "DynamicalCrossspectrum",
     "cospectra_pvalue",
-    "normalize_crossspectrum",
-    "time_lag",
-    "coherence",
     "get_flux_generator",
-    "normalize_crossspectrum_gauss",
     "crossspectrum_from_time_array",
     "crossspectrum_from_events",
     "crossspectrum_from_lightcurve",
@@ -126,205 +122,6 @@ def get_flux_generator(data, segment_size, dt=None):
         times, gti, segment_size, N, fluxes=counts, errors=err
     )
     return flux_iterable
-
-
-def coherence(lc1, lc2):
-    """
-    Estimate coherence function of two light curves.
-
-    .. note::
-
-        This function is deprecated because it does not make sense in the current
-        formulation. Please use the :func:`~stingray.fourier.raw_coherence` and :func:`~stingray.fourier.intrinsic_coherence` methods
-        of AveragedCrossspectrum, with the correct parameters.
-
-    Parameters
-    ----------
-    lc1: :class:`stingray.Lightcurve` object
-        The first light curve data for the channel of interest.
-    lc2: :class:`stingray.Lightcurve` object
-        The light curve data for reference band
-
-    Returns
-    -------
-    coh : ``np.ndarray``
-        The array of coherence versus frequency
-
-    """
-
-    warnings.warn(
-        "The coherence function, as implemented, does not work as expected. "
-        "Please use the :func:`~stingray.fourier.raw_coherence` function of AveragedCrossspectrum, with the "
-        "correct parameters.",
-        DeprecationWarning,
-    )
-    if not isinstance(lc1, Lightcurve):
-        raise TypeError("lc1 must be a lightcurve.Lightcurve object")
-
-    if not isinstance(lc2, Lightcurve):
-        raise TypeError("lc2 must be a lightcurve.Lightcurve object")
-
-    cs = Crossspectrum(lc1, lc2, norm="none")
-
-    return cs.coherence()
-
-
-def time_lag(lc1, lc2):
-    """
-    Estimate the time lag of two light curves.
-    Calculate time lag and uncertainty.
-    Equation from Bendat & Piersol, 2011 [bendat-2011]_.
-
-    Parameters
-    ----------
-    lc1: :class:`stingray.Lightcurve` object
-        The first light curve data for the channel of interest.
-    lc2: :class:`stingray.Lightcurve` object
-        The light curve data for reference band
-
-    Returns
-    -------
-    lag : np.ndarray
-        The time lag
-    lag_err : np.ndarray
-        The uncertainty in the time lag
-
-    References
-    ----------
-    .. [bendat-2011] https://www.wiley.com/en-us/Random+Data%3A+Analysis+and+Measurement+Procedures%2C+4th+Edition-p-9780470248775
-    """
-
-    warnings.warn(
-        "This standalone time_lag function is deprecated. "
-        "Please use the time_lag method of AveragedCrossspectrum, with the "
-        "correct parameters.",
-        DeprecationWarning,
-    )
-
-    if not isinstance(lc1, Lightcurve):
-        raise TypeError("lc1 must be a lightcurve.Lightcurve object")
-
-    if not isinstance(lc2, Lightcurve):
-        raise TypeError("lc2 must be a lightcurve.Lightcurve object")
-
-    cs = Crossspectrum(lc1, lc2, norm="none")
-    lag = cs.time_lag()
-
-    return lag
-
-
-def normalize_crossspectrum(
-    unnorm_power, tseg, nbins, nphots1, nphots2, norm="none", power_type="real"
-):
-    """
-    Normalize the real part of the cross spectrum to Leahy, absolute rms^2,
-    fractional rms^2 normalization, or not at all.
-
-    Here for API compatibility purposes. Will be removed in the next
-    major release.
-
-    Parameters
-    ----------
-    unnorm_power: numpy.ndarray
-        The unnormalized cross spectrum.
-
-    tseg: int
-        The length of the Fourier segment, in seconds.
-
-    nbins : int
-        Number of bins in the light curve
-
-    nphots1 : int
-        Number of photons in the light curve no. 1
-
-    nphots2 : int
-        Number of photons in the light curve no. 2
-
-    Other parameters
-    ----------------
-    norm : str
-        One of ``'leahy'`` (Leahy+83), ``'frac'`` (fractional rms), ``'abs'``
-        (absolute rms)
-
-    power_type : str
-        One of ``'real'`` (real part), ``'all'`` (all complex powers), ``'abs'``
-        (absolute value)
-
-    Returns
-    -------
-    power: numpy.nd.array
-        The normalized co-spectrum (real part of the cross spectrum). For
-        'none' normalization, imaginary part is returned as well.
-    """
-    warnings.warn(
-        "normalize_crossspectrum is now deprecated and will be removed "
-        "in the next major release. Please use "
-        "stingray.fourier.normalize_periodograms instead.",
-        DeprecationWarning,
-    )
-    dt = tseg / nbins
-    nph = np.sqrt(nphots1 * nphots2)
-    mean = nph / nbins
-    return normalize_periodograms(
-        unnorm_power, dt, nbins, mean, n_ph=nph, norm=norm, power_type=power_type
-    )
-
-
-def normalize_crossspectrum_gauss(
-    unnorm_power, mean_flux, var, dt, N, norm="none", power_type="real"
-):
-    """
-    Normalize the real part of the cross spectrum to Leahy, absolute rms^2,
-    fractional rms^2 normalization, or not at all.
-
-    Here for API compatibility purposes. Will be removed in the next
-    major release.
-
-    Parameters
-    ----------
-    unnorm_power: numpy.ndarray
-        The unnormalized cross spectrum.
-
-    mean_flux: float
-        The mean flux of the light curve (if a cross spectrum, the geometrical
-        mean of the flux in the two channels)
-
-    var: float
-        The variance of the light curve (if a cross spectrum, the geometrical
-        mean of the variance in the two channels)
-
-    dt: float
-        The sampling time of the light curve
-
-    N: int
-        The number of bins in the light curve
-
-    Other parameters
-    ----------------
-    norm : str
-        One of ``'leahy'`` (Leahy+83), ``'frac'`` (fractional rms), ``'abs'``
-        (absolute rms)
-
-    power_type : str
-        One of ``'real'`` (real part), ``'all'`` (all complex powers), ``'abs'``
-        (absolute value)
-
-    Returns
-    -------
-    power: numpy.nd.array
-        The normalized co-spectrum (real part of the cross spectrum). For
-        'none' normalization, imaginary part is returned as well.
-    """
-    warnings.warn(
-        "normalize_crossspectrum_gauss is now deprecated and will be "
-        "removed in the next major release. Please use "
-        "stingray.fourier.normalize_periodograms instead.",
-        DeprecationWarning,
-    )
-    mean = mean_flux * dt
-    return normalize_periodograms(
-        unnorm_power, dt, N, mean, variance=var, norm=norm, power_type=power_type
-    )
 
 
 def _averaged_cospectra_cdf(xcoord, n):
@@ -492,14 +289,6 @@ class Crossspectrum(StingrayObject):
         use this and only give GTIs to the :class:`~stingray.Lightcurve` objects before making
         the cross spectrum.
 
-    lc1: :class:`stingray.Lightcurve`object OR iterable of :class:`stingray.Lightcurve` objects
-        For backwards compatibility only. Like ``data1``, but no
-        :class:`stingray.events.EventList` objects allowed
-
-    lc2: :class:`stingray.Lightcurve`object OR iterable of :class:`stingray.Lightcurve` objects
-        For backwards compatibility only. Like ``data2``, but no
-        :class:`stingray.events.EventList` objects allowed
-
     dt: float
         The time resolution of the light curve. Only needed when constructing
         light curves in the case where ``data1``, ``data2`` are
@@ -560,8 +349,7 @@ class Crossspectrum(StingrayObject):
         data2=None,
         norm="frac",
         gti=None,
-        lc1=None,
-        lc2=None,
+        *,
         power_type="all",
         dt=None,
         fullspec=False,
@@ -570,11 +358,6 @@ class Crossspectrum(StingrayObject):
         channels_overlap=False,
     ):
         self._type = None
-        # for backwards compatibility
-        if data1 is None:
-            data1 = lc1
-        if data2 is None:
-            data2 = lc2
         self.channels_overlap = channels_overlap
         empty = data1 is None and data2 is None
         good_input = not empty
@@ -585,8 +368,6 @@ class Crossspectrum(StingrayObject):
                 data2=data2,
                 norm=norm,
                 gti=gti,
-                lc1=lc1,
-                lc2=lc2,
                 power_type=power_type,
                 dt=dt,
                 fullspec=fullspec,
@@ -617,8 +398,6 @@ class Crossspectrum(StingrayObject):
         data2=None,
         norm="frac",
         gti=None,
-        lc1=None,
-        lc2=None,
         segment_size=None,
         power_type="real",
         dt=None,
@@ -684,11 +463,6 @@ class Crossspectrum(StingrayObject):
 
         # check if input data is a Lightcurve object, if not make one or
         # make an empty Crossspectrum object if lc1 == ``None`` or lc2 == ``None``
-
-        if lc1 is not None or lc2 is not None:
-            warnings.warn(
-                "The lcN keywords are now deprecated. Use dataN instead", DeprecationWarning
-            )
 
         if data1 is None or data2 is None:
             if data1 is not None or data2 is not None:
@@ -1977,14 +1751,6 @@ class AveragedCrossspectrum(Crossspectrum):
          Do not show a progress bar when generating an averaged cross spectrum.
          Useful for the batch execution of many spectra
 
-    lc1: :class:`stingray.Lightcurve`object OR iterable of :class:`stingray.Lightcurve` objects
-        For backwards compatibility only. Like ``data1``, but no
-        :class:`stingray.events.EventList` objects allowed
-
-    lc2: :class:`stingray.Lightcurve`object OR iterable of :class:`stingray.Lightcurve` objects
-        For backwards compatibility only. Like ``data2``, but no
-        :class:`stingray.events.EventList` objects allowed
-
     fullspec: boolean, optional, default ``False``
         If True, return the full array of frequencies, otherwise return just the
         positive frequencies.
@@ -2063,8 +1829,7 @@ class AveragedCrossspectrum(Crossspectrum):
         gti=None,
         power_type="all",
         silent=False,
-        lc1=None,
-        lc2=None,
+        *,
         dt=None,
         fullspec=False,
         save_all=False,
@@ -2073,11 +1838,6 @@ class AveragedCrossspectrum(Crossspectrum):
         channels_overlap=False,
     ):
         self._type = None
-        # for backwards compatibility
-        if data1 is None:
-            data1 = lc1
-        if data2 is None:
-            data2 = lc2
 
         empty = data1 is None and data2 is None
         good_input = not empty
@@ -2088,8 +1848,6 @@ class AveragedCrossspectrum(Crossspectrum):
                 data2=data2,
                 norm=norm,
                 gti=gti,
-                lc1=lc1,
-                lc2=lc2,
                 power_type=power_type,
                 dt=dt,
                 fullspec=fullspec,

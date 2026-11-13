@@ -11,8 +11,6 @@ from stingray import Lightcurve
 from stingray import Crossspectrum, AveragedCrossspectrum, DynamicalCrossspectrum
 from stingray import AveragedPowerspectrum
 from stingray.crossspectrum import cospectra_pvalue, crossspectrum_from_time_array
-from stingray.crossspectrum import normalize_crossspectrum, normalize_crossspectrum_gauss
-from stingray.crossspectrum import coherence, time_lag
 from stingray import StingrayError
 from stingray.utils import HAS_NUMBA
 from stingray.simulator import Simulator
@@ -670,16 +668,6 @@ class TestNormalization(object):
         assert np.isclose(np.mean(power[1:]), norm, rtol=0.1)
 
     def test_failure_when_normalization_not_recognized(self):
-        with pytest.raises(ValueError):
-            with pytest.warns(DeprecationWarning):
-                power = normalize_crossspectrum(
-                    self.cs.power,
-                    self.lc1.tseg,
-                    self.lc1.n,
-                    self.cs.nphots1,
-                    self.cs.nphots2,
-                    norm="wrong",
-                )
         self.cs.norm = "asdgfasdfa"
         self.cs_norm.norm = "adfafaf"
         with pytest.raises(ValueError):
@@ -720,14 +708,6 @@ class TestCrossspectrum(object):
     def test_initialize_empty(self, skip_checks):
         cs = Crossspectrum(skip_checks=skip_checks)
         assert cs.freq is None
-
-    def test_lc_keyword_deprecation(self):
-        cs1 = Crossspectrum(self.lc1, self.lc2)
-        with pytest.warns(DeprecationWarning) as record:
-            cs2 = Crossspectrum(lc1=self.lc1, lc2=self.lc2)
-        assert np.any(["lcN keywords" in r.message.args[0] for r in record])
-        assert np.allclose(cs1.power, cs2.power)
-        assert np.allclose(cs1.freq, cs2.freq)
 
     def test_make_empty_crossspectrum(self):
         cs = Crossspectrum()
@@ -1067,14 +1047,6 @@ class TestAveragedCrossspectrum(object):
         cs = AveragedCrossspectrum(self.lc1, self.lc2, segment_size=1, save_all=True)
         assert hasattr(self.cs, "cs_all")
 
-    def test_lc_keyword_deprecation(self):
-        cs1 = AveragedCrossspectrum(data1=self.lc1, data2=self.lc2, segment_size=1)
-        with pytest.warns(DeprecationWarning) as record:
-            cs2 = AveragedCrossspectrum(lc1=self.lc1, lc2=self.lc2, segment_size=1)
-        assert np.any(["lcN keywords" in r.message.args[0] for r in record])
-        assert np.allclose(cs1.power, cs2.power)
-        assert np.allclose(cs1.freq, cs2.freq)
-
     def test_make_empty_crossspectrum(self):
         cs = AveragedCrossspectrum()
         assert cs.freq is None
@@ -1181,14 +1153,6 @@ class TestAveragedCrossspectrum(object):
     def test_failure_when_power_type_not_recognized(self):
         with pytest.raises(ValueError):
             self.cs = AveragedCrossspectrum(self.lc1, self.lc2, segment_size=1, power_type="wrong")
-
-    def test_old_normalize_crossspectrum_warns(self):
-        with pytest.warns(DeprecationWarning):
-            normalize_crossspectrum(1.0, 2.0, 3.0, 4.0, 5.0, norm="abs")
-
-    def test_old_normalize_crossspectrum_gauss_warns(self):
-        with pytest.warns(DeprecationWarning):
-            normalize_crossspectrum_gauss(1.0, 2.0, 3.0, 4.0, 5.0, norm="abs")
 
     def test_normalize_crossspectrum(self):
         cs1 = Crossspectrum(self.lc1, self.lc2, norm="leahy")
@@ -1335,68 +1299,6 @@ class TestAveragedCrossspectrum(object):
         cs = cs_dt.deadtime_correct(dead_time=0.0025, rate=np.size(events1_dt) / tmax)
         # Poisson noise has a scatter of sqrt(2/N) in the cospectrum
         assert np.isclose(np.std(cs.power.real), np.sqrt(2 / (tmax / segment_size)), rtol=0.1)
-
-
-class TestCoherenceFunction(object):
-    def setup_class(self):
-        self.lc1 = Lightcurve([1, 2, 3, 4, 5], [2, 3, 2, 4, 1])
-        self.lc2 = Lightcurve([1, 2, 3, 4, 5], [4, 8, 1, 9, 11])
-
-    def test_coherence_runs(self):
-        with pytest.warns(DeprecationWarning):
-            coherence(self.lc1, self.lc2)
-
-    def test_coherence_fails_if_data1_not_lc(self):
-        data = np.array([[1, 2, 3, 4, 5], [2, 3, 4, 5, 1]])
-
-        with pytest.warns(DeprecationWarning):
-            with pytest.raises(TypeError):
-                coherence(self.lc1, data)
-
-    def test_coherence_fails_if_data2_not_lc(self):
-        data = np.array([[1, 2, 3, 4, 5], [2, 3, 4, 5, 1]])
-
-        with pytest.warns(DeprecationWarning):
-            with pytest.raises(TypeError):
-                coherence(data, self.lc2)
-
-    def test_coherence_computes_correctly(self):
-        with pytest.warns(DeprecationWarning):
-            coh = coherence(self.lc1, self.lc2)
-
-        assert np.isclose(len(coh), 2, rtol=0.001)
-        assert np.isclose(np.abs(np.mean(coh)), 1, rtol=0.001)
-
-
-class TestTimelagFunction(object):
-    def setup_class(self):
-        self.lc1 = Lightcurve([1, 2, 3, 4, 5], [2, 3, 2, 4, 1])
-        self.lc2 = Lightcurve([1, 2, 3, 4, 5], [4, 8, 1, 9, 11])
-
-    def test_time_lag_runs(self):
-        with pytest.warns(DeprecationWarning):
-            time_lag(self.lc1, self.lc2)
-
-    def test_time_lag_fails_if_data1_not_lc(self):
-        data = np.array([[1, 2, 3, 4, 5], [2, 3, 4, 5, 1]])
-
-        with pytest.warns(DeprecationWarning):
-            with pytest.raises(TypeError):
-                time_lag(self.lc1, data)
-
-    def test_time_lag_fails_if_data2_not_lc(self):
-        data = np.array([[1, 2, 3, 4, 5], [2, 3, 4, 5, 1]])
-
-        with pytest.warns(DeprecationWarning):
-            with pytest.raises(TypeError):
-                time_lag(data, self.lc2)
-
-    def test_time_lag_computes_correctly(self):
-        with pytest.warns(DeprecationWarning):
-            lag = time_lag(self.lc1, self.lc2)
-
-        assert np.max(lag) <= np.pi
-        assert np.min(lag) >= -np.pi
 
 
 class TestRoundTrip:

@@ -584,7 +584,7 @@ class ParameterEstimation(object):
         nwalkers=500,
         niter=100,
         burnin=100,
-        threads=1,
+        *,
         print_results=True,
         plot=False,
         namestr="test",
@@ -623,13 +623,6 @@ class ParameterEstimation(object):
             before sampling from what is then assumed to be the posterior
             distribution desired.
 
-        threads : **DEPRECATED** int, optional, default 1
-            The number of threads for parallelization.
-            Default is ``1``, i.e. no parallelization
-            With the change to the new emcee version 3, threads is
-            deprecated. Use the ``pool`` keyword argument instead.
-            This will no longer have any effect.
-
         print_results : bool, optional, default ``True``
             Boolean flag setting whether the results of the MCMC run should
             be printed to standard output. Default: True
@@ -652,9 +645,6 @@ class ParameterEstimation(object):
             results of the MCMC run.
 
         """
-
-        if threads > 1:
-            raise DeprecationWarning("Keyword 'threads' is deprecated. Please use 'pool' instead.")
 
         if not can_sample:
             raise ImportError("emcee not installed! Can't sample!")
@@ -1298,7 +1288,7 @@ class PSDParEst(ParameterEstimation):
         nwalkers=500,
         niter=100,
         burnin=100,
-        threads=1,
+        *,
         print_results=True,
         plot=False,
         namestr="test",
@@ -1336,10 +1326,6 @@ class PSDParEst(ParameterEstimation):
             before sampling from what is then assumed to be the posterior
             distribution desired.
 
-        threads : int, optional, default 1
-            The number of threads for parallelization.
-            Default is ``1``, i.e. no parallelization
-
         print_results : bool, optional, default True
             Boolean flag setting whether the results of the MCMC run should
             be printed to standard output
@@ -1374,7 +1360,6 @@ class PSDParEst(ParameterEstimation):
             nwalkers=nwalkers,
             niter=niter,
             burnin=burnin,
-            threads=threads,
             print_results=print_results,
             plot=plot,
             namestr=namestr,
