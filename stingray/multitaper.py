@@ -6,11 +6,7 @@ from stingray.powerspectrum import Powerspectrum
 import warnings
 
 import numpy as np
-import scipy.optimize
-import scipy.stats
-from scipy import signal, interpolate
 
-from astropy.timeseries import LombScargle
 
 from .events import EventList
 from .lightcurve import Lightcurve
@@ -329,6 +325,7 @@ class Multitaper(Powerspectrum):
         psd_multitaper: numpy.ndarray
             The value of the PSD amplitudes at the given frequency mid-bins
         """
+        from scipy import signal
 
         if NW < 0.5:
             raise ValueError("The value of normalized half-bandwidth should be greater than 0.5")
@@ -726,6 +723,9 @@ class Multitaper(Powerspectrum):
         -----
         Does not currently support adaptive weighting or jack-knife estimates.
         """
+        from scipy import signal
+        from scipy import interpolate
+        from astropy.timeseries import LombScargle
 
         lc.apply_gtis()  # Remove bins with missing data
 

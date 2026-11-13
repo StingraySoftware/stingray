@@ -11,7 +11,6 @@ import warnings
 from collections.abc import Iterable
 
 import numpy as np
-from astropy.table import Table
 from astropy.time import TimeDelta, Time
 from astropy import units as u
 
@@ -1467,6 +1466,8 @@ class Lightcurve(StingrayTimeseries):
             If True, the data are converted to double precision before being saved.
             This is useful, e.g., for saving to FITS files, which do not support long double precision.
         """
+        from astropy.table import Table
+
         data = {}
 
         for attr in [

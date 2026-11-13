@@ -1,5 +1,6 @@
 import math
 import copy
+import importlib.util
 import os
 import sys
 import traceback
@@ -9,9 +10,7 @@ import subprocess as sp
 from collections.abc import Iterable
 
 import numpy as np
-from astropy.table import Table
 from astropy.logger import AstropyUserWarning
-import matplotlib.pyplot as plt
 from astropy.io import fits as pf
 from astropy import units as u
 
@@ -45,14 +44,10 @@ from .mission_support import (
 # Python 3
 import pickle
 
-_H5PY_INSTALLED = True
-DEFAULT_FORMAT = "hdf5"
-
-try:
-    import h5py
-except ImportError:
-    _H5PY_INSTALLED = False
-    DEFAULT_FORMAT = "pickle"
+# h5py is only needed to choose the default format, so check that it is
+# installed without importing it.
+_H5PY_INSTALLED = importlib.util.find_spec("h5py") is not None
+DEFAULT_FORMAT = "hdf5" if _H5PY_INSTALLED else "pickle"
 
 HAS_128 = True
 try:
@@ -1496,6 +1491,7 @@ def savefig(filename, **kwargs):
         ``matplotlib.pyplot``. For example use ``bbox_inches='tight'`` to
         remove the undesirable whitespace around the image.
     """
+    import matplotlib.pyplot as plt
 
     if not plt.fignum_exists(1):
         utils.simon(
@@ -1528,6 +1524,8 @@ def _can_save_longdouble(probe_file: str, fmt: str) -> bool:
     yes_it_can : bool
         Whether the format can serialize the metadata
     """
+    from astropy.table import Table
+
     if not HAS_128:  # pragma: no cover
         # There are no known issues with saving longdoubles where numpy.float128 is not defined
         return True
@@ -1570,6 +1568,8 @@ def _can_serialize_meta(probe_file: str, fmt: str) -> bool:
     yes_it_can : bool
         Whether the format can serialize the metadata
     """
+    from astropy.table import Table
+
     try:
         Table({"a": [3]}).write(probe_file, overwrite=True, format=fmt, serialize_meta=True)
 

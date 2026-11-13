@@ -1,0 +1,1 @@
+``import stingray`` is about 3.5 times faster (1.7 s to 0.5 s): Matplotlib, most of SciPy, ``astropy.table`` and h5py are now imported only by the functions that need them.

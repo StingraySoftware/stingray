@@ -2,7 +2,6 @@ import warnings
 from collections.abc import Iterable
 
 import numpy as np
-from scipy import stats
 from stingray.utils import simon
 from stingray.utils import lazy_vectorize, float64, int64
 
@@ -88,6 +87,8 @@ def equivalent_gaussian_Nsigma_from_logp(logp):
     >>> assert np.allclose(equivalent_gaussian_Nsigma_from_logp(log_pvalues),
     ...                    sigmas, atol=0.01)
     """
+    from scipy import stats
+
     if logp < -300:
         # print("Extended")
         return _extended_equiv_gaussian_Nsigma(logp)
@@ -175,6 +176,7 @@ def chi2_logp(chi2, dof):
 
     Examples
     --------
+    >>> from scipy import stats
     >>> chi2 = 31
     >>> # Test check on dof
     >>> chi2_logp(chi2, 1) # doctest:+ELLIPSIS
@@ -187,6 +189,8 @@ def chi2_logp(chi2, dof):
     >>> chi2 = np.array([5, 32])
     >>> assert np.allclose(chi2_logp(chi2, 2), stats.chi2.logsf(chi2, 2), atol=0.1)
     """
+    from scipy import stats
+
     chi2 = np.asarray(chi2, dtype=float)
     dof = np.asarray(dof)
     if np.any(dof < 2):
@@ -399,6 +403,8 @@ def fold_profile_probability(stat, nbin, ntrial=1):
     p : float
         The probability that the profile has been produced by noise
     """
+    from scipy import stats
+
     p1 = stats.chi2.sf(stat, (nbin - 1))
     return p_multitrial_from_single_trial(p1, ntrial)
 
@@ -451,6 +457,8 @@ def fold_detection_level(nbin, epsilon=0.01, ntrial=1):
         The epoch folding statistics corresponding to a probability
         epsilon * 100 % that the signal has been produced by noise
     """
+    from scipy import stats
+
     epsilon = p_single_trial_from_p_multitrial(epsilon, ntrial)
     return stats.chi2.isf(epsilon.astype(np.double), nbin - 1)
 
@@ -482,6 +490,8 @@ def phase_dispersion_probability(stat, nsamples, nbin, ntrial=1):
     p : float
         The probability that the profile has been produced by noise
     """
+    from scipy import stats
+
     d2 = nsamples - nbin
     d1 = nbin - 1
 
@@ -518,6 +528,8 @@ def phase_dispersion_logprobability(stat, nsamples, nbin, ntrial=1):
     logp : float
         The log-probability that the profile has been produced by noise
     """
+    from scipy import stats
+
     d2 = nsamples - nbin
     d1 = nbin - 1
 
@@ -554,6 +566,8 @@ def phase_dispersion_detection_level(nsamples, nbin, epsilon=0.01, ntrial=1):
         The epoch folding statistics corresponding to a probability
         epsilon * 100 % that the signal has been produced by noise
     """
+    from scipy import stats
+
     epsilon = p_single_trial_from_p_multitrial(epsilon, ntrial)
 
     d2 = nsamples - nbin
@@ -586,6 +600,8 @@ def z2_n_probability(z2, n, ntrial=1, n_summed_spectra=1):
     p : float
         The probability that the Z^2_n value has been produced by noise
     """
+    from scipy import stats
+
     epsilon_1 = stats.chi2.sf(z2 * n_summed_spectra, 2 * n * n_summed_spectra)
     epsilon = p_multitrial_from_single_trial(epsilon_1, ntrial)
     return epsilon
@@ -644,6 +660,7 @@ def z2_n_detection_level(n=2, epsilon=0.01, ntrial=1, n_summed_spectra=1):
         The epoch folding statistics corresponding to a probability
         epsilon * 100 % that the signal has been produced by noise
     """
+    from scipy import stats
 
     epsilon = p_single_trial_from_p_multitrial(epsilon, ntrial)
     retlev = stats.chi2.isf(epsilon.astype(np.double), 2 * n_summed_spectra * n) / (
@@ -682,6 +699,7 @@ def pds_probability(level, ntrial=1, n_summed_spectra=1, n_rebin=1):
     epsilon : float
         The probability value(s)
     """
+    from scipy import stats
 
     epsilon_1 = stats.chi2.sf(level * n_summed_spectra * n_rebin, 2 * n_summed_spectra * n_rebin)
 
@@ -767,6 +785,8 @@ def pds_detection_level(epsilon=0.01, ntrial=1, n_summed_spectra=1, n_rebin=1):
     >>> assert np.isclose(pds_detection_level(0.1), 4.6, atol=0.1)
     >>> assert np.allclose(pds_detection_level(0.1, n_rebin=[1]), [4.6], atol=0.1)
     """
+    from scipy import stats
+
     epsilon = p_single_trial_from_p_multitrial(epsilon, ntrial)
     epsilon = epsilon.astype(np.double)
     if isinstance(n_rebin, Iterable):
@@ -952,6 +972,8 @@ def power_confidence_limits(preal, n=1, c=0.95, summed_flag=True):
     >>> cl = power_confidence_limits(150, c=0.68, n=8, summed_flag=False)
     >>> assert np.allclose(cl, [143, 160], atol=1)
     """
+    from scipy import stats
+
     if summed_flag:
         rv = stats.ncx2(2 * n, preal)
         ints = rv.ppf([(1 - c) / 2, (1 + c) / 2])
@@ -1010,6 +1032,7 @@ def power_upper_limit(pmeas, n=1, c=0.95, summed_flag=True):
     >>> pup = power_upper_limit(40, 1, 0.99)
     >>> assert np.isclose(pup, 75, atol=2)
     """
+    from scipy import stats
     from scipy.optimize import brentq
 
     def ppf(x):

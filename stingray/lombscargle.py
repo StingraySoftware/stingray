@@ -6,8 +6,6 @@ from typing import Optional, Union
 import numpy as np
 import numpy.typing as npt
 import scipy
-import scipy.stats
-from astropy.timeseries.periodograms import LombScargle
 
 from .crossspectrum import Crossspectrum
 from .events import EventList
@@ -498,6 +496,8 @@ class LombScargleCrossspectrum(Crossspectrum):
         delta_rms: float
             The error on the fractional rms amplitude.
         """
+        import scipy.stats
+
         nphots = self.nphots
         p_err = scipy.stats.chi2(2.0 * self.m).var() * powers / self.m / nphots
 
