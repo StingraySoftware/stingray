@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>stingray.multitaper &#8212; stingray v2.3.3.dev214+g1195de7f1</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=f8405dd2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=0c99ad66"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../index.html">stingray v2.3.3.dev214+g1195de7f1</a>
+	 &#187;
+      </li>
+      <li><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for stingray.multitaper</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.gti</span><span class="w"> </span><span class="kn">import</span> <span class="n">check_gtis</span><span class="p">,</span> <span class="n">cross_two_gtis</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.fourier</span><span class="w"> </span><span class="kn">import</span> <span class="n">normalize_periodograms</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.powerspectrum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Powerspectrum</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.optimize</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.stats</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">signal</span><span class="p">,</span> <span class="n">interpolate</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.timeseries</span><span class="w"> </span><span class="kn">import</span> <span class="n">LombScargle</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.events</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventList</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.lightcurve</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">rebin_data</span><span class="p">,</span> <span class="n">simon</span><span class="p">,</span> <span class="n">fft</span><span class="p">,</span> <span class="n">rfft</span><span class="p">,</span> <span class="n">rfftfreq</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">integration_func</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">trapezoid</span>
+<span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+    <span class="c1"># &lt; Numpy 2.0.0</span>
+    <span class="n">integration_func</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">trapz</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"Multitaper"</span><span class="p">]</span>
+
+<span class="c1"># Inspired from nitime (https://nipy.org/nitime/)</span>
+
+
+<div class="viewcode-block" id="Multitaper">
+<a class="viewcode-back" href="../../api.html#stingray.multitaper.Multitaper">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Multitaper</span><span class="p">(</span><span class="n">Powerspectrum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Class to calculate the multitaper periodogram from lightcurve data.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data: :class:`stingray.Lightcurve` object, optional, default ``None``</span>
+<span class="sd">        The light curve data to be Fourier-transformed.</span>
+
+<span class="sd">    norm: {``leahy`` | ``frac`` | ``abs`` | ``none`` }, optional, default ``frac``</span>
+<span class="sd">        The normaliation of the power spectrum to be used. Options are</span>
+<span class="sd">        ``leahy``, ``frac``, ``abs`` and ``none``, default is ``frac``.</span>
+
+<span class="sd">    NW: float, optional, default ``4``</span>
+<span class="sd">        The normalized half-bandwidth of the data tapers, indicating a</span>
+<span class="sd">        multiple of the fundamental frequency of the DFT (Fs/N).</span>
+<span class="sd">        Common choices are n/2, for n &gt;= 4.</span>
+
+<span class="sd">    adaptive: boolean, optional, default ``False``</span>
+<span class="sd">        Use an adaptive weighting routine to combine the PSD estimates of</span>
+<span class="sd">        different tapers.</span>
+
+<span class="sd">    jackknife: boolean, optional, default ``True``</span>
+<span class="sd">        Use the jackknife method to make an estimate of the PSD variance</span>
+<span class="sd">        at each point.</span>
+
+<span class="sd">    low_bias: boolean, optional, default ``True``</span>
+<span class="sd">        Rather than use 2NW tapers, only use the tapers that have better than</span>
+<span class="sd">        90% spectral concentration within the bandwidth (still using</span>
+<span class="sd">        a maximum of 2NW tapers)</span>
+
+<span class="sd">    lombscargle: boolean, optional, default ``False``</span>
+<span class="sd">        Whether to use the Lomb (1976) Scargle (1982) periodogram when</span>
+<span class="sd">        calculating the Multitaper spectral estimate. Highly recommended for</span>
+<span class="sd">        unevenly sampled time-series. Adaptive weighting and jack-knife</span>
+<span class="sd">        estimated variance are yet not supported.</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    gti: 2-d float array</span>
+<span class="sd">        ``[[gti0_0, gti0_1], [gti1_0, gti1_1], ...]`` -- Good Time intervals.</span>
+<span class="sd">        This choice overrides the GTIs in the single light curves. Use with</span>
+<span class="sd">        care!</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    norm: {``leahy`` | ``frac`` | ``abs`` | ``none`` }</span>
+<span class="sd">        the normalization of the power spectrun</span>
+
+<span class="sd">    freq: numpy.ndarray</span>
+<span class="sd">        The array of mid-bin frequencies that the Fourier transform samples</span>
+
+<span class="sd">    power: numpy.ndarray</span>
+<span class="sd">        The array of normalized squared absolute values of Fourier</span>
+<span class="sd">        amplitudes</span>
+
+<span class="sd">    unnorm_power: numpy.ndarray</span>
+<span class="sd">        The array of unnormalized values of Fourier amplitudes</span>
+
+<span class="sd">    multitaper_norm_power: numpy.ndarray</span>
+<span class="sd">        The array of normalized values of Fourier amplitudes, normalized</span>
+<span class="sd">        according to the scheme followed in nitime, that is, by the length and</span>
+<span class="sd">        the sampling frequency.</span>
+
+<span class="sd">    power_err: numpy.ndarray</span>
+<span class="sd">        The uncertainties of ``power``.</span>
+<span class="sd">        An approximation for each bin given by ``power_err= power/sqrt(m)``.</span>
+<span class="sd">        Where ``m`` is the number of power averaged in each bin (by frequency</span>
+<span class="sd">        binning, or averaging power spectrum). Note that for a single</span>
+<span class="sd">        realization (``m=1``) the error is equal to the power.</span>
+
+<span class="sd">    df: float</span>
+<span class="sd">        The frequency resolution</span>
+
+<span class="sd">    m: int</span>
+<span class="sd">        The number of averaged powers in each bin</span>
+
+<span class="sd">    n: int</span>
+<span class="sd">        The number of data points in the light curve</span>
+
+<span class="sd">    k: array of int</span>
+<span class="sd">        The rebinning scheme if the object has been rebinned otherwise is set to 1.</span>
+
+<span class="sd">    nphots: float</span>
+<span class="sd">        The total number of photons in the light curve</span>
+
+<span class="sd">    jk_var_deg_freedom: numpy.ndarray</span>
+<span class="sd">        Array differs depending on whether</span>
+<span class="sd">        the jackknife was used. It is either</span>
+
+<span class="sd">        * The jackknife estimated variance of the log-psd, OR</span>
+<span class="sd">        * The degrees of freedom in a chi2 model of how the estimated</span>
+<span class="sd">          PSD is distributed about the true log-PSD (this is either</span>
+<span class="sd">          2*floor(2*NW), or calculated from adaptive weights)</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The bandwidth of the windowing function will determine the number of</span>
+<span class="sd">    tapers to use. This parameter (NW) represents trade-off between frequency</span>
+<span class="sd">    resolution (lower main lobe BW for the taper) and variance reduction</span>
+<span class="sd">    (higher BW and number of averaged estimates). Typically, the number of</span>
+<span class="sd">    tapers is calculated as 2x the bandwidth-to-fundamental-frequency</span>
+<span class="sd">    ratio (NW), as these eigenfunctions have the best energy concentration.</span>
+
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">norm</span><span class="o">=</span><span class="s2">"frac"</span><span class="p">,</span>
+        <span class="n">gti</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">lc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">NW</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">adaptive</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">jackknife</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">low_bias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">lombscargle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">lc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">"The lc keyword is now deprecated. Use data instead"</span><span class="p">,</span> <span class="ne">DeprecationWarning</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">lc</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">norm</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"norm must be a string"</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">norm</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"frac"</span><span class="p">,</span> <span class="s2">"abs"</span><span class="p">,</span> <span class="s2">"leahy"</span><span class="p">,</span> <span class="s2">"none"</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"norm must be 'frac', 'abs', 'leahy', or 'none'!"</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">norm</span> <span class="o">=</span> <span class="n">norm</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">EventList</span><span class="p">)</span> <span class="ow">and</span> <span class="n">dt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">"If using event lists, please specify the bin time to generate lightcurves."</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">freq</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">power</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">multitaper_norm_power</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eigvals</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">power_err</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">nphots</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">jk_var_deg_freedom</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">return</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">EventList</span><span class="p">):</span>
+            <span class="n">lc</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lc</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">gti</span> <span class="o">=</span> <span class="n">gti</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lc</span> <span class="o">=</span> <span class="n">lc</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">power_type</span> <span class="o">=</span> <span class="s2">"real"</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fullspec</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">segment_size</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_make_multitaper_periodogram</span><span class="p">(</span>
+            <span class="n">lc</span><span class="p">,</span>
+            <span class="n">NW</span><span class="o">=</span><span class="n">NW</span><span class="p">,</span>
+            <span class="n">adaptive</span><span class="o">=</span><span class="n">adaptive</span><span class="p">,</span>
+            <span class="n">jackknife</span><span class="o">=</span><span class="n">jackknife</span><span class="p">,</span>
+            <span class="n">low_bias</span><span class="o">=</span><span class="n">low_bias</span><span class="p">,</span>
+            <span class="n">lombscargle</span><span class="o">=</span><span class="n">lombscargle</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_make_multitaper_periodogram</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">lc</span><span class="p">,</span> <span class="n">NW</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">adaptive</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">jackknife</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">low_bias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">lombscargle</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Compute the normalized multitaper spectral estimate.</span>
+
+<span class="sd">        This includes checking for the presence of and applying Good Time Intervals,</span>
+<span class="sd">        computing the a nitime inspired normalized power spectrum, unnormalizing it,</span>
+<span class="sd">        and then renormalizing it using the required normalization.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        lc : :class:`stingray.Lightcurve` objects</span>
+<span class="sd">            Two light curves used for computing the cross spectrum.</span>
+
+<span class="sd">        NW: float, optional, default ``4``</span>
+<span class="sd">            The normalized half-bandwidth of the data tapers, indicating a</span>
+<span class="sd">            multiple of the fundamental frequency of the DFT (Fs/N).</span>
+<span class="sd">        Common choices are n/2, for n &gt;= 4.</span>
+
+<span class="sd">        adaptive: boolean, optional, default ``False``</span>
+<span class="sd">            Use an adaptive weighting routine to combine the PSD estimates of</span>
+<span class="sd">            different tapers.</span>
+
+<span class="sd">        jackknife: boolean, optional, default ``True``</span>
+<span class="sd">            Use the jackknife method to make an estimate of the PSD variance</span>
+<span class="sd">            at each point.</span>
+
+<span class="sd">        low_bias: boolean, optional, default ``True``</span>
+<span class="sd">            Rather than use 2NW tapers, only use the tapers that have better than</span>
+<span class="sd">            90% spectral concentration within the bandwidth (still using</span>
+<span class="sd">            a maximum of 2NW tapers)</span>
+<span class="sd">        """</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">Lightcurve</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"lc must be a lightcurve.Lightcurve object"</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">gti</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gti</span> <span class="o">=</span> <span class="n">cross_two_gtis</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">gti</span><span class="p">,</span> <span class="n">lc</span><span class="o">.</span><span class="n">gti</span><span class="p">)</span>
+
+        <span class="n">check_gtis</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">gti</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"Non-averaged Spectra need a single Good Time Interval"</span><span class="p">)</span>
+
+        <span class="n">lc</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">split_by_gti</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">meancounts</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">meancounts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nphots</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">err_dist</span> <span class="o">=</span> <span class="s2">"poisson"</span>
+        <span class="k">if</span> <span class="n">lc</span><span class="o">.</span><span class="n">err_dist</span> <span class="o">==</span> <span class="s2">"poisson"</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">meancounts</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">counts_err</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">err_dist</span> <span class="o">=</span> <span class="s2">"gauss"</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">dt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">n</span>
+
+        <span class="c1"># the frequency resolution</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">lc</span><span class="o">.</span><span class="n">tseg</span>
+
+        <span class="c1"># the number of averaged periodograms in the final output</span>
+        <span class="c1"># This should *always* be 1 here</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">lombscargle</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">multitaper_norm_power</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fourier_multitaper_lomb_scargle</span><span class="p">(</span>
+                <span class="n">lc</span><span class="p">,</span> <span class="n">NW</span><span class="o">=</span><span class="n">NW</span><span class="p">,</span> <span class="n">low_bias</span><span class="o">=</span><span class="n">low_bias</span>
+            <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">unnorm_power</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">multitaper_norm_power</span> <span class="o">*</span> <span class="n">lc</span><span class="o">.</span><span class="n">n</span> <span class="o">*</span> <span class="mi">2</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">multitaper_norm_power</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fourier_multitaper</span><span class="p">(</span>
+                <span class="n">lc</span><span class="p">,</span> <span class="n">NW</span><span class="o">=</span><span class="n">NW</span><span class="p">,</span> <span class="n">adaptive</span><span class="o">=</span><span class="n">adaptive</span><span class="p">,</span> <span class="n">jackknife</span><span class="o">=</span><span class="n">jackknife</span><span class="p">,</span> <span class="n">low_bias</span><span class="o">=</span><span class="n">low_bias</span>
+            <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">unnorm_power</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">multitaper_norm_power</span> <span class="o">*</span> <span class="n">lc</span><span class="o">.</span><span class="n">n</span> <span class="o">/</span> <span class="n">lc</span><span class="o">.</span><span class="n">dt</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">power</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize_multitaper</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unnorm_power</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">lc</span><span class="o">.</span><span class="n">err_dist</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">!=</span> <span class="s2">"poisson"</span><span class="p">:</span>
+            <span class="n">simon</span><span class="p">(</span>
+                <span class="s2">"Looks like your lightcurve statistic is not poisson."</span>
+                <span class="s2">"The errors in the Powerspectrum will be incorrect."</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">power_err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">power</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_fourier_multitaper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lc</span><span class="p">,</span> <span class="n">NW</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">adaptive</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">jackknife</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">low_bias</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Compute the multitaper periodogram.</span>
+
+<span class="sd">        Auxiliary method to apply the multitaper algorithm by first computing</span>
+<span class="sd">        the DPSS windows, then fourier transforming the data tapered with these</span>
+<span class="sd">        DPSS windows, and then calculating the power spectral density using a</span>
+<span class="sd">        desired scheme (a combination of adaptive and low_bias parameters).</span>
+<span class="sd">        Also set some of the multitaper specific attributes.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        lc : :class:`stingray.Lightcurve` objects</span>
+<span class="sd">            Two light curves used for computing the spectrum estimate.</span>
+
+<span class="sd">        NW: float, optional, default ``4``</span>
+<span class="sd">            The normalized half-bandwidth of the data tapers, indicating a</span>
+<span class="sd">            multiple of the fundamental frequency of the DFT (Fs/N).</span>
+<span class="sd">            Common choices are n/2, for n &gt;= 4.</span>
+
+<span class="sd">        adaptive: boolean, optional, default ``False``</span>
+<span class="sd">            Use an adaptive weighting routine to combine the PSD estimates of</span>
+<span class="sd">            different tapers.</span>
+
+<span class="sd">        jackknife: boolean, optional, default ``True``</span>
+<span class="sd">            Use the jackknife method to make an estimate of the PSD variance</span>
+<span class="sd">            at each point.</span>
+
+<span class="sd">        low_bias: boolean, optional, default ``True``</span>
+<span class="sd">            Rather than use 2NW tapers, only use the tapers that have better than</span>
+<span class="sd">            90% spectral concentration within the bandwidth (still using</span>
+<span class="sd">            a maximum of 2NW tapers)</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        freq_multitaper: numpy.ndarray</span>
+<span class="sd">            The frequency mid-bins of the PSD amplitudes</span>
+
+<span class="sd">        psd_multitaper: numpy.ndarray</span>
+<span class="sd">            The value of the PSD amplitudes at the given frequency mid-bins</span>
+<span class="sd">        """</span>
+
+        <span class="k">if</span> <span class="n">NW</span> <span class="o">&lt;</span> <span class="mf">0.5</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"The value of normalized half-bandwidth should be greater than 0.5"</span><span class="p">)</span>
+
+        <span class="n">Kmax</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">NW</span><span class="p">)</span>
+
+        <span class="n">dpss_tapers</span><span class="p">,</span> <span class="n">eigvals</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">windows</span><span class="o">.</span><span class="n">dpss</span><span class="p">(</span>
+            <span class="n">M</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="n">NW</span><span class="o">=</span><span class="n">NW</span><span class="p">,</span> <span class="n">Kmax</span><span class="o">=</span><span class="n">Kmax</span><span class="p">,</span> <span class="n">sym</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">return_ratios</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">low_bias</span><span class="p">:</span>
+            <span class="n">selected_tapers</span> <span class="o">=</span> <span class="n">eigvals</span> <span class="o">&gt;</span> <span class="mf">0.9</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">selected_tapers</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="n">simon</span><span class="p">(</span><span class="s2">"Could not properly use low_bias, keeping the lowest-bias taper"</span><span class="p">)</span>
+                <span class="n">selected_tapers</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">eigvals</span><span class="p">)]</span>
+
+            <span class="n">eigvals</span> <span class="o">=</span> <span class="n">eigvals</span><span class="p">[</span><span class="n">selected_tapers</span><span class="p">]</span>
+            <span class="n">dpss_tapers</span> <span class="o">=</span> <span class="n">dpss_tapers</span><span class="p">[</span><span class="n">selected_tapers</span><span class="p">,</span> <span class="p">:]</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Using </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">eigvals</span><span class="p">)</span><span class="si">}</span><span class="s2"> DPSS windows for multitaper spectrum estimator"</span><span class="p">)</span>
+
+        <span class="n">data_multitaper</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">counts</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">)</span>  <span class="c1"># De-mean</span>
+        <span class="n">data_multitaper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">data_multitaper</span><span class="p">,</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">eigvals</span><span class="p">),</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">data_multitaper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">data_multitaper</span><span class="p">,</span> <span class="n">dpss_tapers</span><span class="p">)</span>
+
+        <span class="n">freq_response</span> <span class="o">=</span> <span class="n">rfft</span><span class="p">(</span><span class="n">data_multitaper</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+
+        <span class="c1"># Adjust DC and maybe Nyquist, depending on one-sided transform</span>
+        <span class="n">freq_response</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">lc</span><span class="o">.</span><span class="n">n</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">freq_response</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)</span>
+
+        <span class="n">freq_response</span> <span class="o">=</span> <span class="n">freq_response</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">freq_multitaper</span> <span class="o">=</span> <span class="n">rfftfreq</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">)[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">adaptive</span><span class="p">:</span>
+            <span class="n">psd_multitaper</span><span class="p">,</span> <span class="n">weights_multitaper</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_adaptive_psd</span><span class="p">(</span><span class="n">freq_response</span><span class="p">,</span> <span class="n">eigvals</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">weights_multitaper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">eigvals</span><span class="p">)[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+            <span class="n">psd_multitaper</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">psd_from_freq_response</span><span class="p">(</span><span class="n">freq_response</span><span class="p">,</span> <span class="n">weights_multitaper</span><span class="p">)</span>
+
+        <span class="n">psd_multitaper</span> <span class="o">*=</span> <span class="n">lc</span><span class="o">.</span><span class="n">dt</span>  <span class="c1"># /= sampling_freq</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eigvals</span> <span class="o">=</span> <span class="n">eigvals</span>
+
+        <span class="k">if</span> <span class="n">jackknife</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">jk_var_deg_freedom</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jackknifed_sdf_variance</span><span class="p">(</span><span class="n">freq_response</span><span class="p">,</span> <span class="n">eigvals</span><span class="p">,</span> <span class="n">adaptive</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">adaptive</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">jk_var_deg_freedom</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">weights_multitaper</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">jk_var_deg_freedom</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">freq_multitaper</span><span class="p">)),</span> <span class="mi">2</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">eigvals</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">freq_multitaper</span><span class="p">,</span> <span class="n">psd_multitaper</span>
+
+<div class="viewcode-block" id="Multitaper.psd_from_freq_response">
+<a class="viewcode-back" href="../../api.html#stingray.multitaper.Multitaper.psd_from_freq_response">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">psd_from_freq_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">freq_response</span><span class="p">,</span> <span class="n">weights</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Calculate the weighted PSD from the Fourier transformed data.</span>
+
+<span class="sd">        Calculate the weighted PSD from the Fourier transformed data by</span>
+<span class="sd">        combining the frequencies responses of these tapered data using the given</span>
+<span class="sd">        weights.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        freq_response: numpy.ndarray</span>
+<span class="sd">            The frequency responses or the Fourier transforms of the tapered data</span>
+
+<span class="sd">        weights: numpy.ndarray</span>
+<span class="sd">            The weights to combine the different Fourier transforms of the data</span>
+<span class="sd">            tapered with different windows to produce the weighted PSD.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        psd: numpy.ndarray</span>
+<span class="sd">            The weighted power spectral density of the provided Fourier</span>
+<span class="sd">            transformed data.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        The shape of ``freq_response`` and ``weights`` must either be same or</span>
+<span class="sd">        broadcastable.</span>
+<span class="sd">        """</span>
+
+        <span class="n">psd</span> <span class="o">=</span> <span class="n">freq_response</span> <span class="o">*</span> <span class="n">weights</span>
+        <span class="n">psd</span> <span class="o">*=</span> <span class="n">psd</span><span class="o">.</span><span class="n">conj</span><span class="p">()</span>
+        <span class="n">psd</span> <span class="o">=</span> <span class="n">psd</span><span class="o">.</span><span class="n">real</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># Sum all rows</span>
+        <span class="n">psd</span> <span class="o">*=</span> <span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="n">weights</span> <span class="o">*</span> <span class="n">weights</span><span class="o">.</span><span class="n">conj</span><span class="p">())</span><span class="o">.</span><span class="n">real</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">psd</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_adaptive_psd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">freq_response</span><span class="p">,</span> <span class="n">eigvals</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">150</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""Compute the PSD from tapered data.</span>
+
+<span class="sd">        Performs an iterative procedure to compute the PSD from tapered data</span>
+<span class="sd">        by finding the optimal weights for the direct spectral estimators</span>
+<span class="sd">        of the DPSS tapered signals.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        freq_response: numpy.ndarray</span>
+<span class="sd">            The frequency responses or the Fourier transforms of the tapered data</span>
+
+<span class="sd">        eigvals: numpy.ndarray</span>
+<span class="sd">            The eigenvalues of the DPSS tapers</span>
+
+<span class="sd">        max_iter: int, optional, default ``150``</span>
+<span class="sd">            Maximum number of iterations for weight computation</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        psd : numpy.ndarray</span>
+<span class="sd">            The adaptively computed PSD</span>
+
+<span class="sd">        weights : numpy.ndarray</span>
+<span class="sd">            The weights used to combine the tapered spectra</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        The weights to use for making the multitaper estimate, such that</span>
+<span class="sd">        :math:`S_{mt} = \sum_{k} |w_k|^2S_k^{mt} / \sum_{k} |w_k|^2`</span>
+
+<span class="sd">        If the number of tapers are less than 3, no adaptive weights are</span>
+<span class="sd">        calculated and the square roots of eigenvalues are used as weights</span>
+<span class="sd">        to produce the weighted PSD</span>
+<span class="sd">        """</span>
+
+        <span class="n">n_tapers</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">eigvals</span><span class="p">)</span>
+        <span class="n">n_freqs</span> <span class="o">=</span> <span class="n">freq_response</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">sqrt_eigvals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">eigvals</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">n_tapers</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">simon</span><span class="p">(</span><span class="s2">"Not adaptively combining, number of tapers &lt; 3"</span><span class="p">)</span>
+            <span class="n">weights</span> <span class="o">=</span> <span class="n">sqrt_eigvals</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">psd_from_freq_response</span><span class="p">(</span><span class="n">freq_response</span><span class="p">,</span> <span class="n">weights</span><span class="p">),</span> <span class="n">weights</span>
+
+        <span class="n">psd_est</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">psd_from_freq_response</span><span class="p">(</span><span class="n">freq_response</span><span class="p">,</span> <span class="n">sqrt_eigvals</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])</span>
+
+        <span class="n">var</span> <span class="o">=</span> <span class="n">integration_func</span><span class="p">(</span><span class="n">psd_est</span><span class="p">,</span> <span class="n">dx</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="n">n_freqs</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+        <span class="k">del</span> <span class="n">psd_est</span>
+
+        <span class="n">psd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n_freqs</span><span class="p">)</span>
+
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">n_tapers</span><span class="p">,</span> <span class="n">n_freqs</span><span class="p">))</span>
+
+        <span class="c1"># combine the SDFs in the traditional way in order to estimate</span>
+        <span class="c1"># the variance of the timeseries</span>
+
+        <span class="c1"># The process is to iteratively switch solving for the following</span>
+        <span class="c1"># two expressions:</span>
+        <span class="c1"># (1) Adaptive Multitaper SDF:</span>
+        <span class="c1"># S^{mt}(f) = [ sum |d_k(f)|^2 S_k(f) ]/ sum |d_k(f)|^2</span>
+        <span class="c1">#</span>
+        <span class="c1"># (2) Weights</span>
+        <span class="c1"># d_k(f) = [sqrt(lam_k) S^{mt}(f)] / [lam_k S^{mt}(f) + E{B_k(f)}]</span>
+        <span class="c1">#</span>
+        <span class="c1"># Where lam_k are the eigenvalues corresponding to the DPSS tapers,</span>
+        <span class="c1"># and the expected value of the broadband bias function</span>
+        <span class="c1"># E{B_k(f)} is replaced by its full-band integration</span>
+        <span class="c1"># (1/2pi) int_{-pi}^{pi} E{B_k(f)} = sig^2(1-lam_k)</span>
+
+        <span class="c1"># start with an estimate from incomplete data--the first 2 tapers</span>
+        <span class="n">psd_iter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">psd_from_freq_response</span><span class="p">(</span><span class="n">freq_response</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">sqrt_eigvals</span><span class="p">[:</span><span class="mi">2</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])</span>
+
+        <span class="n">err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">freq_response</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">ite</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
+            <span class="n">d_k</span> <span class="o">=</span> <span class="n">psd_iter</span> <span class="o">/</span> <span class="p">(</span>
+                <span class="n">eigvals</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">*</span> <span class="n">psd_iter</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">eigvals</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])</span> <span class="o">*</span> <span class="n">var</span>
+            <span class="p">)</span>
+            <span class="n">d_k</span> <span class="o">*=</span> <span class="n">sqrt_eigvals</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+            <span class="c1"># Test for convergence -- this is overly conservative, since</span>
+            <span class="c1"># iteration only stops when all frequencies have converged.</span>
+            <span class="c1"># A better approach is to iterate separately for each freq, but</span>
+            <span class="c1"># that is a nonvectorized algorithm.</span>
+            <span class="c1"># Take the RMS difference in weights from the previous iterate</span>
+            <span class="c1"># across frequencies. If the maximum RMS error across freqs is</span>
+            <span class="c1"># less than 1e-10, then we're converged</span>
+
+            <span class="n">err</span> <span class="o">-=</span> <span class="n">d_k</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">err</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mf">1e-10</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="c1"># update the iterative estimate with this d_k</span>
+            <span class="n">psd_iter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">psd_from_freq_response</span><span class="p">(</span><span class="n">freq_response</span><span class="p">,</span> <span class="n">d_k</span><span class="p">)</span>
+            <span class="n">err</span> <span class="o">=</span> <span class="n">d_k</span>
+        <span class="k">if</span> <span class="n">ite</span> <span class="o">==</span> <span class="n">max_iter</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">simon</span><span class="p">(</span><span class="s2">"Iterative multi-taper PSD computation did not converge."</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">psd_iter</span><span class="p">,</span> <span class="n">d_k</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_multitaper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unnorm_power</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Normalize the real part of the cross spectrum to Leahy, absolute rms^2,</span>
+<span class="sd">        fractional rms^2 normalization, or not at all.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        unnorm_power: numpy.ndarray</span>
+<span class="sd">            The unnormalized spectrum estimate.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        power: numpy.nd.array</span>
+<span class="sd">            The normalized spectrum estimate (real part of the spectrum). For</span>
+<span class="sd">            'none' normalization, imaginary part is returned as well.</span>
+<span class="sd">        """</span>
+
+        <span class="n">mean</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nphots</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span>
+        <span class="n">variance</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">err_dist</span> <span class="o">!=</span> <span class="s2">"poisson"</span><span class="p">:</span>
+            <span class="n">variance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">var</span>
+        <span class="k">return</span> <span class="n">normalize_periodograms</span><span class="p">(</span>
+            <span class="n">unnorm_power</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span>
+            <span class="n">mean</span><span class="p">,</span>
+            <span class="n">n_ph</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nphots</span><span class="p">,</span>
+            <span class="n">variance</span><span class="o">=</span><span class="n">variance</span><span class="p">,</span>
+            <span class="n">norm</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">norm</span><span class="p">,</span>
+            <span class="n">power_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">power_type</span><span class="p">,</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="Multitaper.jackknifed_sdf_variance">
+<a class="viewcode-back" href="../../api.html#stingray.multitaper.Multitaper.jackknifed_sdf_variance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">jackknifed_sdf_variance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">freq_response</span><span class="p">,</span> <span class="n">eigvals</span><span class="p">,</span> <span class="n">adaptive</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""Compute the variance of the spectrum through jack-knife.</span>
+
+<span class="sd">        Returns the variance of the log-sdf estimated through jack-knifing</span>
+<span class="sd">        a group of independent sdf estimates.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        freq_response: numpy.ndarray</span>
+<span class="sd">            The frequency responses or the Fourier transforms of the tapered data</span>
+
+<span class="sd">        eigvals: numpy.ndarray</span>
+<span class="sd">            The eigenvalues of the DPSS tapers</span>
+
+<span class="sd">        adaptive: boolean</span>
+<span class="sd">            Whether or not to use the adaptive weighting method to calculate</span>
+<span class="sd">            the log-sdf through jack-knife method</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        var : The estimate for log-sdf variance</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+
+<span class="sd">        The jackknifed mean estimate is distributed about the true mean as</span>
+<span class="sd">        a Student's t-distribution with (K-1) degrees of freedom, and</span>
+<span class="sd">        standard error equal to sqrt(var). However, Thompson and Chave [1]</span>
+<span class="sd">        point out that this variance better describes the sample mean.</span>
+<span class="sd">        [1] Thomson D J, Chave A D (1991) Advances in Spectrum Analysis and Array</span>
+<span class="sd">        Processing (Prentice-Hall, Englewood Cliffs, NJ), 1, pp 58-113.</span>
+<span class="sd">        """</span>
+
+        <span class="n">K</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">eigvals</span><span class="p">)</span>
+
+        <span class="n">all_indices</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">K</span><span class="p">))</span>
+        <span class="n">jk_sdk</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">K</span><span class="p">):</span>
+            <span class="n">selected_indices</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">all_indices</span><span class="o">.</span><span class="n">difference</span><span class="p">([</span><span class="n">i</span><span class="p">]))</span>
+            <span class="n">selected_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="n">freq_response</span><span class="p">,</span> <span class="n">selected_indices</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">selected_eigvals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="n">eigvals</span><span class="p">,</span> <span class="n">selected_indices</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">adaptive</span><span class="p">:</span>
+                <span class="n">selected_psd</span><span class="p">,</span> <span class="n">selected_weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_adaptive_psd</span><span class="p">(</span>
+                    <span class="n">selected_data</span><span class="p">,</span> <span class="n">selected_eigvals</span>
+                <span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">selected_weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">selected_eigvals</span><span class="p">)[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+                <span class="n">selected_psd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">psd_from_freq_response</span><span class="p">(</span><span class="n">selected_data</span><span class="p">,</span> <span class="n">selected_weights</span><span class="p">)</span>
+
+            <span class="n">jk_sdk</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">selected_psd</span><span class="p">)</span>
+
+        <span class="n">jk_sdk</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jk_sdk</span><span class="p">)</span>
+        <span class="n">jk_var</span> <span class="o">=</span> <span class="n">jk_sdk</span> <span class="o">-</span> <span class="n">jk_sdk</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">jk_var</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">jk_var</span><span class="p">)</span>
+        <span class="n">jk_var</span> <span class="o">=</span> <span class="n">jk_var</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Thompson's recommended factor, eq 18</span>
+        <span class="c1"># Jackknifing Multitaper Spectrum Estimates</span>
+        <span class="c1"># IEEE SIGNAL PROCESSING MAGAZINE [20] JULY 2007</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">K</span><span class="p">)</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="n">K</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">K</span> <span class="o">/</span> <span class="p">(</span><span class="n">K</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span>
+        <span class="n">jk_var</span> <span class="o">*=</span> <span class="n">f</span>
+        <span class="k">return</span> <span class="n">jk_var</span></div>
+
+
+<div class="viewcode-block" id="Multitaper.rebin">
+<a class="viewcode-back" href="../../api.html#stingray.multitaper.Multitaper.rebin">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">rebin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">"mean"</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Rebin the multitaper spectrum to a new frequency resolution ``df``.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        df: float</span>
+<span class="sd">            The new frequency resolution</span>
+
+<span class="sd">        Other Parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        f: float</span>
+<span class="sd">            the rebin factor. If specified, it substitutes df with ``f*self.df``</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        bin_cs = :class:`Multitaper` (or one of its subclasses) object</span>
+<span class="sd">            The newly binned multitaper spectrum.</span>
+<span class="sd">            Note: this object will be of the same type as the object</span>
+<span class="sd">            that called this method. For example, if this method is called</span>
+<span class="sd">            from :class:`~stingray.AveragedPowerspectrum`, it will return an object of class</span>
+<span class="sd">            :class:`~stingray.AveragedPowerspectrum`, too.</span>
+<span class="sd">        """</span>
+
+        <span class="k">if</span> <span class="n">f</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">df</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"You need to specify at least one between f and df"</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">f</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">f</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span>
+
+        <span class="c1"># rebin cross spectrum to new resolution</span>
+        <span class="n">binfreq</span><span class="p">,</span> <span class="n">binmtp</span><span class="p">,</span> <span class="n">binerr</span><span class="p">,</span> <span class="n">step_size</span> <span class="o">=</span> <span class="n">rebin_data</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_err</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">dx</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span>
+        <span class="p">)</span>
+        <span class="c1"># make an empty cross spectrum object</span>
+        <span class="c1"># note: syntax deliberate to work with subclass Powerspectrum</span>
+        <span class="n">bin_mtp</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c1"># store the binned periodogram in the new object</span>
+        <span class="n">bin_mtp</span><span class="o">.</span><span class="n">freq</span> <span class="o">=</span> <span class="n">binfreq</span>
+        <span class="n">bin_mtp</span><span class="o">.</span><span class="n">power</span> <span class="o">=</span> <span class="n">binmtp</span>
+        <span class="n">bin_mtp</span><span class="o">.</span><span class="n">eigvals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eigvals</span>
+        <span class="n">bin_mtp</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="n">df</span>
+        <span class="n">bin_mtp</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span>
+        <span class="n">bin_mtp</span><span class="o">.</span><span class="n">norm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm</span>
+        <span class="n">bin_mtp</span><span class="o">.</span><span class="n">nphots</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nphots</span>
+        <span class="n">bin_mtp</span><span class="o">.</span><span class="n">power_err</span> <span class="o">=</span> <span class="n">binerr</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"unnorm_power"</span><span class="p">):</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">binpower_unnorm</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">rebin_data</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">unnorm_power</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">dx</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span>
+            <span class="p">)</span>
+
+            <span class="n">bin_mtp</span><span class="o">.</span><span class="n">unnorm_power</span> <span class="o">=</span> <span class="n">binpower_unnorm</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"multitaper_norm_power"</span><span class="p">):</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">bin_multitaper_norm_power</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">rebin_data</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">multitaper_norm_power</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">dx</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span>
+            <span class="p">)</span>
+
+            <span class="n">bin_mtp</span><span class="o">.</span><span class="n">multitaper_norm_power</span> <span class="o">=</span> <span class="n">bin_multitaper_norm_power</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"jk_var_deg_freedom"</span><span class="p">):</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">bin_jk_var_deg_freedom</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">rebin_data</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">jk_var_deg_freedom</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">dx</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span>
+            <span class="p">)</span>
+
+            <span class="n">bin_mtp</span><span class="o">.</span><span class="n">jk_var_deg_freedom</span> <span class="o">=</span> <span class="n">bin_jk_var_deg_freedom</span>
+
+        <span class="n">bin_mtp</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">rint</span><span class="p">(</span><span class="n">step_size</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">bin_mtp</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_fourier_multitaper_lomb_scargle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lc</span><span class="p">,</span> <span class="n">NW</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">low_bias</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Compute the multitaper lomb-scargle spectral estimate.</span>
+
+<span class="sd">        Use the multitapering concept to calculate the spectral estimate of</span>
+<span class="sd">        an unevenly sampled time-series, using the Lomb (1976) - Scargle (1982)</span>
+<span class="sd">        periodogram. (Springford et al. 2020)</span>
+
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        lc : :class:`stingray.Lightcurve` objects</span>
+<span class="sd">            Two light curves used for computing the spectrum estimate.</span>
+
+<span class="sd">        NW: float, optional, default ``4``</span>
+<span class="sd">            The normalized half-bandwidth of the data tapers, indicating a</span>
+<span class="sd">            multiple of the fundamental frequency of the DFT (Fs/N).</span>
+<span class="sd">            Common choices are n/2, for n &gt;= 4.</span>
+
+<span class="sd">        low_bias: boolean, optional, default ``True``</span>
+<span class="sd">            Rather than use 2NW tapers, only use the tapers that have better than</span>
+<span class="sd">            90% spectral concentration within the bandwidth (still using</span>
+<span class="sd">            a maximum of 2NW tapers)</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        freq_multitaper: numpy.ndarray</span>
+<span class="sd">            The frequency mid-bins of the PSD amplitudes</span>
+
+<span class="sd">        psd_multitaper: numpy.ndarray</span>
+<span class="sd">            The value of the PSD amplitudes at the given frequency mid-bins</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Does not currently support adaptive weighting or jack-knife estimates.</span>
+<span class="sd">        """</span>
+
+        <span class="n">lc</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">()</span>  <span class="c1"># Remove bins with missing data</span>
+
+        <span class="k">if</span> <span class="n">NW</span> <span class="o">&lt;</span> <span class="mf">0.5</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"The value of normalized half-bandwidth should be greater than 0.5"</span><span class="p">)</span>
+
+        <span class="n">Kmax</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">NW</span><span class="p">)</span>
+
+        <span class="n">dpss_tapers</span><span class="p">,</span> <span class="n">eigvals</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">windows</span><span class="o">.</span><span class="n">dpss</span><span class="p">(</span>
+            <span class="n">M</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="n">NW</span><span class="o">=</span><span class="n">NW</span><span class="p">,</span> <span class="n">Kmax</span><span class="o">=</span><span class="n">Kmax</span><span class="p">,</span> <span class="n">sym</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">return_ratios</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">low_bias</span><span class="p">:</span>
+            <span class="n">selected_tapers</span> <span class="o">=</span> <span class="n">eigvals</span> <span class="o">&gt;</span> <span class="mf">0.9</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">selected_tapers</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="n">simon</span><span class="p">(</span><span class="s2">"Could not properly use low_bias, keeping the lowest-bias taper"</span><span class="p">)</span>
+                <span class="n">selected_tapers</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">eigvals</span><span class="p">)]</span>
+
+            <span class="n">eigvals</span> <span class="o">=</span> <span class="n">eigvals</span><span class="p">[</span><span class="n">selected_tapers</span><span class="p">]</span>
+            <span class="n">dpss_tapers</span> <span class="o">=</span> <span class="n">dpss_tapers</span><span class="p">[</span><span class="n">selected_tapers</span><span class="p">,</span> <span class="p">:]</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Using </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">eigvals</span><span class="p">)</span><span class="si">}</span><span class="s2"> DPSS windows for multitaper spectrum estimator"</span><span class="p">)</span>
+
+        <span class="n">dpss_data_interpolated</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">data_irregular</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">counts</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">counts</span><span class="p">)</span>
+        <span class="n">times_regular</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">lc</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">dpss_taper</span> <span class="ow">in</span> <span class="n">dpss_tapers</span><span class="p">:</span>
+            <span class="n">cubic_spline_interp</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">InterpolatedUnivariateSpline</span><span class="p">(</span>
+                <span class="n">times_regular</span><span class="p">,</span> <span class="n">dpss_taper</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">3</span>
+            <span class="p">)</span>
+            <span class="c1"># Interpolating DPSS tapers to IRREGULAR times</span>
+            <span class="n">dpss_interpolated</span> <span class="o">=</span> <span class="n">cubic_spline_interp</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
+            <span class="n">dpss_interpolated</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dpss_interpolated</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># Re normalizing</span>
+            <span class="c1"># From Springford R implementation</span>
+            <span class="n">dpss_interpolated</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+            <span class="n">dpss_interpolated</span> <span class="o">*=</span> <span class="n">data_irregular</span>
+            <span class="n">dpss_data_interpolated</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dpss_interpolated</span><span class="p">)</span>
+
+        <span class="n">psd_multitaper_ls</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">tseg</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># These are the frequencies given in Springford et al. (2020)</span>
+        <span class="c1"># freq_mtls = np.arange(0, lc.times.shape[0])*(1/tseg) # This works</span>
+        <span class="c1"># freq_mtls = freq_mtls[1:]</span>
+
+        <span class="c1"># The frequencies rest of Stingray uses</span>
+        <span class="n">freq_multitaper_ls</span> <span class="o">=</span> <span class="n">rfftfreq</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">dt</span><span class="p">)[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># Avoiding zero</span>
+
+        <span class="k">for</span> <span class="n">values</span> <span class="ow">in</span> <span class="n">dpss_data_interpolated</span><span class="p">:</span>
+            <span class="n">psd</span> <span class="o">=</span> <span class="n">LombScargle</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span><span class="o">.</span><span class="n">power</span><span class="p">(</span>
+                <span class="n">frequency</span><span class="o">=</span><span class="n">freq_multitaper_ls</span><span class="p">,</span> <span class="n">normalization</span><span class="o">=</span><span class="s2">"psd"</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Normalization in Springford et al. (2020)</span>
+            <span class="c1"># psd *= 0.5 * tseg / lc.time.shape[0]</span>
+
+            <span class="n">psd_multitaper_ls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">psd</span><span class="p">)</span>
+
+        <span class="n">psd_multitaper_ls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">psd_multitaper_ls</span><span class="p">)</span>
+        <span class="n">psd_multitaper_ls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">psd_multitaper_ls</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">jk_var_deg_freedom</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eigvals</span> <span class="o">=</span> <span class="n">eigvals</span>
+
+        <span class="k">return</span> <span class="n">freq_multitaper_ls</span><span class="p">,</span> <span class="n">psd_multitaper_ls</span></div>
+
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 9.0.4. &nbsp;
+    Last built 13 Nov 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

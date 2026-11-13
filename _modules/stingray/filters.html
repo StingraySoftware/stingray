@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>stingray.filters &#8212; stingray v2.3.3.dev214+g1195de7f1</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=f8405dd2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=0c99ad66"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../index.html">stingray v2.3.3.dev214+g1195de7f1</a>
+	 &#187;
+      </li>
+      <li><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for stingray.filters</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy.random</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ra</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">njit</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.loggingconfig</span><span class="w"> </span><span class="kn">import</span> <span class="n">setup_logger</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">"Window1D"</span><span class="p">,</span>
+    <span class="s2">"Optimal1D"</span><span class="p">,</span>
+    <span class="s2">"DeadtimeFilterOutput"</span><span class="p">,</span>
+    <span class="s2">"get_deadtime_mask"</span><span class="p">,</span>
+    <span class="s2">"filter_for_deadtime"</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">setup_logger</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="Window1D">
+<a class="viewcode-back" href="../../api.html#stingray.filters.Window1D">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Window1D</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Make a top hat filter (window function) for power spectrum or cross</span>
+<span class="sd">    spectrum. It assumes that the first model is the QPO component</span>
+<span class="sd">    Lorentzian model.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model: astropy.modeling.models class instance</span>
+<span class="sd">        The compound model fit to the spectrum.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model:  astropy.modeling.models class instance</span>
+<span class="sd">        The compound model fit to the spectrum.</span>
+
+<span class="sd">    x_o: Parameter class instance</span>
+<span class="sd">        Centroid of Lorentzian model.</span>
+
+<span class="sd">    fwhm: Parameter class instance</span>
+<span class="sd">        Full width at half maximum of Lorentzian model.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x_0</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">x_0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">fwhm</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">),),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_0</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">return</span> <span class="n">y</span></div>
+
+
+
+<div class="viewcode-block" id="Optimal1D">
+<a class="viewcode-back" href="../../api.html#stingray.filters.Optimal1D">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Optimal1D</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Make a optimal filter for power spectrum or cross spectrum.</span>
+<span class="sd">    It assumes that the first model is the QPO component.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model: astropy.modeling.models class instance</span>
+<span class="sd">        The compound model fit to the spectrum.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model:  astropy.modeling.models class instance</span>
+<span class="sd">        The compound model fit to the spectrum.</span>
+
+<span class="sd">    filter: astropy.modeling.models class instance</span>
+<span class="sd">        It s the ratio of QPO component to the model fit to the spectrum.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="n">qpo_component_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">all_components_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filter</span> <span class="o">=</span> <span class="n">qpo_component_model</span> <span class="o">/</span> <span class="n">all_components_model</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_paralyzable_dead_time</span><span class="p">(</span><span class="n">event_list</span><span class="p">,</span> <span class="n">dead_time</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Apply paralyzable dead time to an event list.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    event_list : array of floats</span>
+<span class="sd">        Event times of arrival</span>
+<span class="sd">    dead_time: float</span>
+<span class="sd">        Dead time (single value)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    output_event_list : array of floats</span>
+<span class="sd">        Filtered event times</span>
+<span class="sd">    mask : array of bools</span>
+<span class="sd">        Final mask, showing all good events in the original event list.</span>
+<span class="sd">    """</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">event_list</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">dead_time_end</span> <span class="o">=</span> <span class="n">event_list</span> <span class="o">+</span> <span class="n">dead_time</span>
+    <span class="n">bad</span> <span class="o">=</span> <span class="n">dead_time_end</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">event_list</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="c1"># Easy: paralyzable case. Here, events coming during dead time produce</span>
+    <span class="c1"># more dead time. So...</span>
+    <span class="n">mask</span><span class="p">[</span><span class="mi">1</span><span class="p">:][</span><span class="n">bad</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="n">event_list</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="n">mask</span>
+
+
+<span class="nd">@njit</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_nonpar_core</span><span class="p">(</span><span class="n">event_list</span><span class="p">,</span> <span class="n">dead_time_end</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Numba-compiled core of the non-paralyzable dead time calculation.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    event_list : array of floats</span>
+<span class="sd">        Event times of arrival</span>
+<span class="sd">    dead_time_end : array of floats</span>
+<span class="sd">        End of the dead time of each event</span>
+<span class="sd">    mask : array of bools</span>
+<span class="sd">        Final mask of good events. Initially, all entries must be ``True``</span>
+
+<span class="sd">    Return</span>
+<span class="sd">    ------</span>
+<span class="sd">    mask : array of bools</span>
+<span class="sd">        Final mask of good events</span>
+<span class="sd">    """</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">event_list</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">event_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">dead_time_end</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]:</span>
+            <span class="n">dead_time_end</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">dead_time_end</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">mask</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="n">mask</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_non_paralyzable_dead_time</span><span class="p">(</span><span class="n">event_list</span><span class="p">,</span> <span class="n">dead_time</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Apply non-paralyzable dead time to an event list.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    event_list : array of floats</span>
+<span class="sd">        Event times of arrival</span>
+<span class="sd">    dead_time: float</span>
+<span class="sd">        Dead time (single value)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    output_event_list : array of floats</span>
+<span class="sd">        Filtered event times</span>
+<span class="sd">    mask : array of bools</span>
+<span class="sd">        Final mask, showing all good events in the original event list.</span>
+<span class="sd">    """</span>
+    <span class="n">event_list_dbl</span> <span class="o">=</span> <span class="p">(</span><span class="n">event_list</span> <span class="o">-</span> <span class="n">event_list</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">double</span><span class="p">)</span>
+    <span class="n">dead_time_end</span> <span class="o">=</span> <span class="n">event_list_dbl</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">double</span><span class="p">(</span><span class="n">dead_time</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">event_list_dbl</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">_nonpar_core</span><span class="p">(</span><span class="n">event_list_dbl</span><span class="p">,</span> <span class="n">dead_time_end</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">event_list</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="n">mask</span>
+
+
+<div class="viewcode-block" id="DeadtimeFilterOutput">
+<a class="viewcode-back" href="../../api.html#stingray.filters.DeadtimeFilterOutput">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DeadtimeFilterOutput</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Container for the extra output of :func:`get_deadtime_mask`.</span>
+
+<span class="sd">    All attributes are ``None`` until that function is called with ``return_all=True``,</span>
+<span class="sd">    which fills in the event list the dead time was applied to (``uf_events``), a flag</span>
+<span class="sd">    separating signal from background events (``is_event``), the ``deadtime`` values and</span>
+<span class="sd">    the background events (``bkg``).</span>
+
+<span class="sd">    When the dead time is positive, ``uf_events`` and ``bkg`` hold the filtered events</span>
+<span class="sd">    rather than the unfiltered ones the ``uf_`` prefix suggests. ``mask`` is left</span>
+<span class="sd">    ``None``: the mask of good events is the first value :func:`get_deadtime_mask`</span>
+<span class="sd">    returns, beside this container.</span>
+<span class="sd">    """</span>
+
+    <span class="n">uf_events</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">is_event</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">deadtime</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">bkg</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="get_deadtime_mask">
+<a class="viewcode-back" href="../../api.html#stingray.filters.get_deadtime_mask">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_deadtime_mask</span><span class="p">(</span>
+    <span class="n">ev_list</span><span class="p">,</span>
+    <span class="n">deadtime</span><span class="p">,</span>
+    <span class="n">bkg_ev_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">dt_sigma</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">paralyzable</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">return_all</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Filter an event list for a given dead time.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ev_list : array-like</span>
+<span class="sd">        The event list</span>
+<span class="sd">    deadtime: float</span>
+<span class="sd">        The (mean, if not constant) value of deadtime</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    bkg_ev_list : array-like</span>
+<span class="sd">        A background event list that affects dead time</span>
+<span class="sd">    dt_sigma : float</span>
+<span class="sd">        If specified, dead time will not have a single value but it will have</span>
+<span class="sd">        a normal distribution with mean ``deadtime`` and standard deviation</span>
+<span class="sd">        ``dt_sigma``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    mask : array-like, optional</span>
+<span class="sd">        The mask that filters the input event list and produces the output</span>
+<span class="sd">        event list.</span>
+<span class="sd">    additional_output : object</span>
+<span class="sd">        Object with all the following attributes. Only returned if</span>
+<span class="sd">        ``return_all`` is True</span>
+
+<span class="sd">        uf_events : array-like</span>
+<span class="sd">            Unfiltered event list (events + background)</span>
+<span class="sd">        is_event : array-like</span>
+<span class="sd">            Boolean values; True if event, False if background</span>
+<span class="sd">        deadtime : array-like</span>
+<span class="sd">            Dead time values</span>
+<span class="sd">        bkg : array-like</span>
+<span class="sd">            The filtered background event list</span>
+
+<span class="sd">    """</span>
+    <span class="n">additional_output</span> <span class="o">=</span> <span class="n">DeadtimeFilterOutput</span><span class="p">()</span>
+
+    <span class="c1"># Create the total lightcurve, and a "kind" array that keeps track</span>
+    <span class="c1"># of the events classified as "signal" (True) and "background" (False)</span>
+    <span class="k">if</span> <span class="n">bkg_ev_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">tot_ev_list</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ev_list</span><span class="p">,</span> <span class="n">bkg_ev_list</span><span class="p">)</span>
+        <span class="n">ev_kind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ev_list</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">bkg_ev_list</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">tot_ev_list</span><span class="p">)</span>
+        <span class="n">tot_ev_list</span> <span class="o">=</span> <span class="n">tot_ev_list</span><span class="p">[</span><span class="n">order</span><span class="p">]</span>
+        <span class="n">ev_kind</span> <span class="o">=</span> <span class="n">ev_kind</span><span class="p">[</span><span class="n">order</span><span class="p">]</span>
+        <span class="k">del</span> <span class="n">order</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">tot_ev_list</span> <span class="o">=</span> <span class="n">ev_list</span>
+        <span class="n">ev_kind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ev_list</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+    <span class="n">additional_output</span><span class="o">.</span><span class="n">uf_events</span> <span class="o">=</span> <span class="n">tot_ev_list</span>
+    <span class="n">additional_output</span><span class="o">.</span><span class="n">is_event</span> <span class="o">=</span> <span class="n">ev_kind</span>
+    <span class="n">additional_output</span><span class="o">.</span><span class="n">deadtime</span> <span class="o">=</span> <span class="n">deadtime</span>
+    <span class="n">additional_output</span><span class="o">.</span><span class="n">uf_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">tot_ev_list</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">additional_output</span><span class="o">.</span><span class="n">bkg</span> <span class="o">=</span> <span class="n">tot_ev_list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">ev_kind</span><span class="p">)]</span>
+
+    <span class="k">if</span> <span class="n">deadtime</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">deadtime</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Dead time is less than 0. Please check."</span><span class="p">)</span>
+        <span class="n">retval</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">ev_list</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">),</span> <span class="n">additional_output</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">retval</span>
+
+    <span class="n">nevents</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tot_ev_list</span><span class="p">)</span>
+    <span class="n">all_ev_kind</span> <span class="o">=</span> <span class="n">ev_kind</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">dt_sigma</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">deadtime_values</span> <span class="o">=</span> <span class="n">ra</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">deadtime</span><span class="p">,</span> <span class="n">dt_sigma</span><span class="p">,</span> <span class="n">nevents</span><span class="p">)</span>
+        <span class="n">deadtime_values</span><span class="p">[</span><span class="n">deadtime_values</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">deadtime_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nevents</span><span class="p">)</span> <span class="o">+</span> <span class="n">deadtime</span>
+
+    <span class="n">initial_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tot_ev_list</span><span class="p">)</span>
+
+    <span class="c1"># Note: saved_mask gives the mask that produces tot_ev_list_filt from</span>
+    <span class="c1"># tot_ev_list. The same mask can be used to also filter all other arrays.</span>
+    <span class="k">if</span> <span class="n">paralyzable</span><span class="p">:</span>
+        <span class="n">tot_ev_list_filt</span><span class="p">,</span> <span class="n">saved_mask</span> <span class="o">=</span> <span class="n">_paralyzable_dead_time</span><span class="p">(</span><span class="n">tot_ev_list</span><span class="p">,</span> <span class="n">deadtime_values</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">tot_ev_list_filt</span><span class="p">,</span> <span class="n">saved_mask</span> <span class="o">=</span> <span class="n">_non_paralyzable_dead_time</span><span class="p">(</span><span class="n">tot_ev_list</span><span class="p">,</span> <span class="n">deadtime_values</span><span class="p">)</span>
+    <span class="k">del</span> <span class="n">tot_ev_list</span>
+
+    <span class="n">ev_kind</span> <span class="o">=</span> <span class="n">ev_kind</span><span class="p">[</span><span class="n">saved_mask</span><span class="p">]</span>
+    <span class="n">deadtime_values</span> <span class="o">=</span> <span class="n">deadtime_values</span><span class="p">[</span><span class="n">saved_mask</span><span class="p">]</span>
+    <span class="n">final_len</span> <span class="o">=</span> <span class="n">tot_ev_list_filt</span><span class="o">.</span><span class="n">size</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s2">"filter_for_deadtime: </span><span class="si">{0}</span><span class="s2">/</span><span class="si">{1}</span><span class="s2"> events rejected"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">initial_len</span> <span class="o">-</span> <span class="n">final_len</span><span class="p">,</span> <span class="n">initial_len</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="n">retval</span> <span class="o">=</span> <span class="n">saved_mask</span><span class="p">[</span><span class="n">all_ev_kind</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">return_all</span><span class="p">:</span>
+        <span class="c1"># uf_events: source and background events together</span>
+        <span class="c1"># ev_kind : kind of each event in uf_events.</span>
+        <span class="c1"># bkg : Background events</span>
+        <span class="n">additional_output</span><span class="o">.</span><span class="n">uf_events</span> <span class="o">=</span> <span class="n">tot_ev_list_filt</span>
+        <span class="n">additional_output</span><span class="o">.</span><span class="n">is_event</span> <span class="o">=</span> <span class="n">ev_kind</span>
+        <span class="n">additional_output</span><span class="o">.</span><span class="n">deadtime</span> <span class="o">=</span> <span class="n">deadtime_values</span>
+        <span class="n">additional_output</span><span class="o">.</span><span class="n">bkg</span> <span class="o">=</span> <span class="n">tot_ev_list_filt</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">ev_kind</span><span class="p">)]</span>
+        <span class="n">retval</span> <span class="o">=</span> <span class="p">[</span><span class="n">retval</span><span class="p">,</span> <span class="n">additional_output</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">retval</span></div>
+
+
+
+<div class="viewcode-block" id="filter_for_deadtime">
+<a class="viewcode-back" href="../../api.html#stingray.filters.filter_for_deadtime">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">filter_for_deadtime</span><span class="p">(</span><span class="n">event_list</span><span class="p">,</span> <span class="n">deadtime</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Filter an event list for a given dead time.</span>
+
+<span class="sd">    This function accepts either a list of times or a</span>
+<span class="sd">    `stingray.events.EventList` object.</span>
+
+<span class="sd">    For the complete optional parameter list, see :func:`~stingray.filters.get_deadtime_mask`</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ev_list : array-like or class:`stingray.events.EventList`</span>
+<span class="sd">        The event list</span>
+<span class="sd">    deadtime: float</span>
+<span class="sd">        The (mean, if not constant) value of deadtime</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    new_ev_list : class:`stingray.events.EventList` object</span>
+<span class="sd">        The filtered event list</span>
+<span class="sd">    additional_output : dict</span>
+<span class="sd">        See :func:`~stingray.filters.get_deadtime_mask`</span>
+
+<span class="sd">    """</span>
+    <span class="c1"># Need to import here to avoid circular imports in the top module.</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">stingray.events</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventList</span>
+
+    <span class="n">local_retall</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"return_all"</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event_list</span><span class="p">,</span> <span class="n">EventList</span><span class="p">):</span>
+        <span class="n">retval</span> <span class="o">=</span> <span class="n">event_list</span><span class="o">.</span><span class="n">apply_deadtime</span><span class="p">(</span><span class="n">deadtime</span><span class="p">,</span> <span class="n">return_all</span><span class="o">=</span><span class="n">local_retall</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">mask</span><span class="p">,</span> <span class="n">retall</span> <span class="o">=</span> <span class="n">get_deadtime_mask</span><span class="p">(</span><span class="n">event_list</span><span class="p">,</span> <span class="n">deadtime</span><span class="p">,</span> <span class="n">return_all</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">retval</span> <span class="o">=</span> <span class="n">event_list</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">local_retall</span><span class="p">:</span>
+            <span class="n">retval</span> <span class="o">=</span> <span class="p">[</span><span class="n">retval</span><span class="p">,</span> <span class="n">retall</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">retval</span></div>
+
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 9.0.4. &nbsp;
+    Last built 13 Nov 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

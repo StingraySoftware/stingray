@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Bispectrum Tutorial &#8212; stingray v2.3.3.dev214+g1195de7f1</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=f8405dd2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=0c99ad66"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Baysian Excess Variance (Bexvar)" href="../Bexvar/Bexvar%20tutorial.html" />
+    <link rel="prev" title="CrossCorrelation" href="../CrossCorrelation/cross_correlation_notebook.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="../Bexvar/Bexvar%20tutorial.html" title="Baysian Excess Variance (Bexvar)">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="../CrossCorrelation/cross_correlation_notebook.html" title="CrossCorrelation">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="../../index.html">stingray v2.3.3.dev214+g1195de7f1</a>
+	 &#187;
+      </li>
+      <li><a href="../../core.html" accesskey="U">Core Stingray Functionality</a> &#187;</li>
+      
+      <li>Bispectrum Tutorial</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="Bispectrum-Tutorial">
+<h1>Bispectrum Tutorial<a class="headerlink" href="#Bispectrum-Tutorial" title="Link to this heading">¶</a></h1>
+<p>This tutorial demonstrates bispectrum analysis of <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> data.</p>
+<p>The bispectrum is an example of a Higher Order Spectrum (HOS). Where the power spectrum measures how variability power is distributed across frequencies, the bispectrum measures <em>quadratic phase coupling</em> between pairs of Fourier components — that is, whether the phases at frequencies <span class="math notranslate nohighlight">\(f_1\)</span>, <span class="math notranslate nohighlight">\(f_2\)</span> and <span class="math notranslate nohighlight">\(f_1+f_2\)</span> are locked together. This makes it sensitive to non-linearity and non-Gaussianity that the power spectrum is completely blind to.</p>
+<p>For <span class="math notranslate nohighlight">\(m\)</span> segments with Fourier transforms <span class="math notranslate nohighlight">\(X_i(f)\)</span>, Stingray estimates the bispectrum directly from the Fourier components,</p>
+<div class="math notranslate nohighlight">
+\[B(f_1, f_2) = \frac{1}{m} \sum_{i=0}^{m-1} X_i(f_1)\, X_i(f_2)\, X_i^{*}(f_1 + f_2),\]</div>
+<p>from which it also derives the <strong>bicoherence</strong> (a normalized measure of coupling strength between 0 and 1) and the <strong>biphase</strong> (the phase of the bispectrum). For detailed background see Maccarone (2013): <a class="reference external" href="https://arxiv.org/pdf/1308.3150">https://arxiv.org/pdf/1308.3150</a></p>
+<p>First we import the relevant classes.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">matplotlib</span> inline
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray.bispectrum</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Bispectrum</span><span class="p">,</span>
+    <span class="n">AveragedBispectrum</span><span class="p">,</span>
+    <span class="n">CrossBispectrum</span><span class="p">,</span>
+    <span class="n">AveragedCrossBispectrum</span><span class="p">,</span>
+    <span class="n">DynamicalBispectrum</span><span class="p">,</span>
+    <span class="n">DynamicalCrossBispectrum</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<section id="A-first-bispectrum">
+<h2>A first bispectrum<a class="headerlink" href="#A-first-bispectrum" title="Link to this heading">¶</a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">Lightcurve</span></code> can be built from an array of time stamps and an array of counts. We start with a short light curve to show the basic mechanics.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">11</span><span class="p">)</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">counts</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lc</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s1">'time'</span><span class="p">,</span> <span class="s1">'counts'</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;Axes: xlabel=&#39;time&#39;, ylabel=&#39;counts&#39;&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_5_1.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_5_1.png" />
+</div>
+</div>
+<p>A <code class="docutils literal notranslate"><span class="pre">Bispectrum</span></code> is created directly from the light curve. The main parameters are:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">data</span></code>: the light curve (or an <code class="docutils literal notranslate"><span class="pre">EventList</span></code>, in which case a <code class="docutils literal notranslate"><span class="pre">dt</span></code> is required).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bicoherence_norm</span></code>: which normalization to use for the bicoherence (<code class="docutils literal notranslate"><span class="pre">&quot;kim_powers&quot;</span></code> by default; more on this below).</p></li>
+</ol>
+<p>A single <code class="docutils literal notranslate"><span class="pre">Bispectrum</span></code> treats the whole light curve as one segment.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span> <span class="o">=</span> <span class="n">Bispectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>The results are held in a set of attributes. The most commonly used are:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">freq</span></code> — the positive Fourier frequencies the bispectrum is sampled on.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bispec</span></code> — the complex bispectrum, an <code class="docutils literal notranslate"><span class="pre">nf</span> <span class="pre">x</span> <span class="pre">nf</span></code> matrix.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bispec_mag</span></code> — its magnitude, <span class="math notranslate nohighlight">\(|B(f_1, f_2)|\)</span>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">biphase</span></code> — the phase of the bispectrum (also available as <code class="docutils literal notranslate"><span class="pre">bispec_phase</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bicoherence</span></code> — the normalized coupling strength.</p></li>
+</ol>
+<p>The bispectrum is only defined where <span class="math notranslate nohighlight">\(f_1 + f_2\)</span> is a resolved frequency (at or below the Nyquist frequency); the redundant part of the plane is set to <code class="docutils literal notranslate"><span class="pre">NaN</span></code>.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">freq</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([0.1, 0.2, 0.3, 0.4])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">bispec</span><span class="o">.</span><span class="n">shape</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(4, 4)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">bispec_mag</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([[104.24363358, 129.13985605, 110.3444497 ,  58.43670762],
+       [129.13985605, 105.87350937,  84.72397065,          nan],
+       [110.3444497 ,  84.72397065,          nan,          nan],
+       [ 58.43670762,          nan,          nan,          nan]])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">biphase</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([[1.10955024, 3.08726097, 0.64841299, 0.8879145 ],
+       [3.08726097, 2.62612372, 0.42677724,        nan],
+       [0.64841299, 0.42677724,        nan,        nan],
+       [0.8879145 ,        nan,        nan,        nan]])
+</pre></div></div>
+</div>
+</section>
+</section>
+<section id="Plots">
+<h1>Plots<a class="headerlink" href="#Plots" title="Link to this heading">¶</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">Bispectrum</span></code> provides contour plots as a function of frequency for:</p>
+<ol class="arabic simple">
+<li><p>the bispectrum magnitude (<code class="docutils literal notranslate"><span class="pre">plot_mag</span></code>),</p></li>
+<li><p>the biphase (<code class="docutils literal notranslate"><span class="pre">plot_phase</span></code>),</p></li>
+<li><p>the bicoherence (<code class="docutils literal notranslate"><span class="pre">plot_bicoherence</span></code>).</p></li>
+</ol>
+<p>Each returns a Matplotlib <code class="docutils literal notranslate"><span class="pre">Axes</span></code>, so the plot can be customised or dropped into a larger figure.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">plot_mag</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_15_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_15_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">plot_phase</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_16_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_16_0.png" />
+</div>
+</div>
+</section>
+<section id="The-cumulant-method-(indirect-estimator)">
+<h1>The cumulant method (indirect estimator)<a class="headerlink" href="#The-cumulant-method-(indirect-estimator)" title="Link to this heading">¶</a></h1>
+<p>Everything above uses the <strong>direct</strong>, or <em>Fourier</em>, estimator: Stingray Fourier-transforms each segment and averages the triple product <span class="math notranslate nohighlight">\(B(f_1,f_2)=\langle X(f_1)\,X(f_2)\,X^{*}(f_1+f_2)\rangle\)</span>. There is an older, mathematically equivalent route to the same quantity — the <strong>indirect</strong>, or <em>cumulant</em>, method (Rao &amp; Gabr 1984).</p>
+<p>Rather than transforming first, the cumulant method works in the lag domain. It estimates the <strong>third-order cumulant</strong> of the mean-subtracted light curve,</p>
+<div class="math notranslate nohighlight">
+\[c_3(\tau_1,\tau_2)=\frac{1}{N}\sum_t x(t)\,x(t+\tau_1)\,x(t+\tau_2),\]</div>
+<p>and then takes its <strong>two-dimensional Fourier transform</strong> to obtain the bispectrum, <span class="math notranslate nohighlight">\(B(f_1,f_2)=\mathcal{F}_2\{c_3\}\)</span>. The third-order cumulant is the higher-order analogue of the autocovariance — whose 1-D transform is the power spectrum — so this is simply the bispectral generalization of the Wiener–Khinchin theorem.</p>
+<p>Select it with <code class="docutils literal notranslate"><span class="pre">method=&quot;cumulant&quot;</span></code>. Three extra parameters control the estimate:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">maxlag</span></code> — the largest lag <span class="math notranslate nohighlight">\(|\tau|\)</span> at which the cumulant is evaluated (defaults to <span class="math notranslate nohighlight">\(N/2\)</span>). It sets the frequency resolution and the size of the output grid, <span class="math notranslate nohighlight">\((2\,\mathrm{maxlag}+1)^2\)</span>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">window</span></code> — an optional lag taper (<code class="docutils literal notranslate"><span class="pre">&quot;parzen&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;hamming&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;hanning&quot;</span></code>, …) that down-weights the noisy high-lag cumulant estimates, trading resolution for lower variance; <code class="docutils literal notranslate"><span class="pre">None</span></code> applies no taper.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scale</span></code> — <code class="docutils literal notranslate"><span class="pre">&quot;biased&quot;</span></code> (divide by <span class="math notranslate nohighlight">\(N\)</span>) or <code class="docutils literal notranslate"><span class="pre">&quot;unbiased&quot;</span></code> (divide by the number of overlapping samples at each lag).</p></li>
+</ul>
+<p>Because it is built from a real cumulant, this estimator is <strong>auto-bispectrum only</strong> and returns <strong>no bicoherence</strong>, so <code class="docutils literal notranslate"><span class="pre">bicoherence_norm</span></code>, <code class="docutils literal notranslate"><span class="pre">poisson_subtract</span></code> and <code class="docutils literal notranslate"><span class="pre">bias_subtract</span></code> are ignored. It also samples the full signed <span class="math notranslate nohighlight">\((f_1,f_2)\)</span> grid rather than the positive Nyquist triangle of the Fourier estimator. The Fourier estimator method is the default method because it also yields the bicoherence and extends to the cross-, averaged- and dynamical-bispectrum classes. The
+<code class="docutils literal notranslate"><span class="pre">plot_cum3()</span></code> method lets you inspect the cumulant itself.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># The same light curve as the first bispectrum, now estimated via the 3rd-order cumulant</span>
+<span class="n">bs_cum</span> <span class="o">=</span> <span class="n">Bispectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">"cumulant"</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">"method     :"</span><span class="p">,</span> <span class="n">bs_cum</span><span class="o">.</span><span class="n">method</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"maxlag     :"</span><span class="p">,</span> <span class="n">bs_cum</span><span class="o">.</span><span class="n">maxlag</span><span class="p">,</span> <span class="s2">"(defaults to N // 2)"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"cum3 shape :"</span><span class="p">,</span> <span class="n">bs_cum</span><span class="o">.</span><span class="n">cum3</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"bispec     :"</span><span class="p">,</span> <span class="n">bs_cum</span><span class="o">.</span><span class="n">bispec</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="s2">"-&gt; full signed (f1, f2) grid"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"bicoherence:"</span><span class="p">,</span> <span class="n">bs_cum</span><span class="o">.</span><span class="n">bicoherence</span><span class="p">,</span> <span class="s2">"(the cumulant method produces none)"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+method     : cumulant
+maxlag     : 5 (defaults to N // 2)
+cum3 shape : (11, 11)
+bispec     : (11, 11) -&gt; full signed (f1, f2) grid
+bicoherence: None (the cumulant method produces none)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># The 3rd-order cumulant in the lag domain -- the quantity that gets Fourier-transformed</span>
+<span class="n">bs_cum</span><span class="o">.</span><span class="n">plot_cum3</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_19_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_19_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Its 2-D Fourier transform is the bispectrum magnitude (compare with plot_mag() above)</span>
+<span class="n">bs_cum</span><span class="o">.</span><span class="n">plot_mag</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_20_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_20_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># The bispectrum really is just the 2-D FFT of the cumulant:</span>
+<span class="n">recomputed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftshift</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fft2</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifftshift</span><span class="p">(</span><span class="n">bs_cum</span><span class="o">.</span><span class="n">cum3</span><span class="p">)))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"max |bispec - FFT2(cum3)| ="</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">bs_cum</span><span class="o">.</span><span class="n">bispec</span> <span class="o">-</span> <span class="n">recomputed</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+max |bispec - FFT2(cum3)| = 7.105427357601002e-15
+</pre></div></div>
+</div>
+</section>
+<section id="Averaging-over-segments">
+<h1>Averaging over segments<a class="headerlink" href="#Averaging-over-segments" title="Link to this heading">¶</a></h1>
+<p>A single realization is noisy, and the bicoherence only becomes meaningful once several segments are averaged together. <code class="docutils literal notranslate"><span class="pre">AveragedBispectrum</span></code> splits the light curve into segments of length <code class="docutils literal notranslate"><span class="pre">segment_size</span></code> (in seconds), computes a bispectrum for each, and averages them.</p>
+<p>As an example we build a longer light curve from a periodic, non-sinusoidal signal (a train of narrow pulses) buried in Poisson noise. Because the pulse shape is not a pure sine, its harmonics are phase-locked to the fundamental — exactly the kind of coupling the bicoherence reveals.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="n">dt</span> <span class="o">=</span> <span class="mf">0.002</span>            <span class="c1"># seconds</span>
+<span class="n">exposure</span> <span class="o">=</span> <span class="mf">200.0</span>      <span class="c1"># seconds</span>
+<span class="n">f0</span> <span class="o">=</span> <span class="mf">5.0</span>              <span class="c1"># pulse frequency, Hz</span>
+<span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">exposure</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span>
+
+<span class="c1"># A narrow Gaussian pulse once per 1/f0 period -&gt; phase-locked harmonics</span>
+<span class="n">phase</span> <span class="o">=</span> <span class="p">(</span><span class="n">t</span> <span class="o">*</span> <span class="n">f0</span><span class="p">)</span> <span class="o">%</span> <span class="mf">1.0</span>
+<span class="n">pulse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">((</span><span class="n">phase</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">/</span> <span class="mf">0.03</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">rate</span> <span class="o">=</span> <span class="mf">200.0</span> <span class="o">*</span> <span class="p">(</span><span class="mf">0.2</span> <span class="o">+</span> <span class="n">pulse</span><span class="p">)</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">rate</span> <span class="o">*</span> <span class="n">dt</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">lc</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;Axes: xlabel=&#39;Time (s)&#39;, ylabel=&#39;counts&#39;&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_23_1.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_23_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span> <span class="o">=</span> <span class="n">AveragedBispectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+<span class="n">bs</span><span class="o">.</span><span class="n">m</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100it [00:00, 124.94it/s]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+100
+</pre></div></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">m</span></code> is the number of averaged segments. The bicoherence now clearly picks out the harmonic couplings — peaks appear at frequency pairs such as <span class="math notranslate nohighlight">\((5, 5)\)</span>, <span class="math notranslate nohighlight">\((5, 10)\)</span> and <span class="math notranslate nohighlight">\((10, 5)\)</span> Hz, where two harmonics sum to a third.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">plot_bicoherence</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_26_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_26_0.png" />
+</div>
+</div>
+</section>
+<section id="Detecting-quadratic-phase-coupling">
+<h1>Detecting quadratic phase coupling<a class="headerlink" href="#Detecting-quadratic-phase-coupling" title="Link to this heading">¶</a></h1>
+<p>To see the diagnostic power of the bispectrum most clearly, we construct a signal with a single, controlled coupling: oscillations at <span class="math notranslate nohighlight">\(f_1 = 8\)</span> Hz and <span class="math notranslate nohighlight">\(f_2 = 21\)</span> Hz with independent random phases each segment, plus a third component at <span class="math notranslate nohighlight">\(f_1 + f_2 = 29\)</span> Hz whose phase is <em>locked</em> to the sum of the other two. The power spectrum cannot distinguish this from three independent tones, but the bispectrum can.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+
+<span class="n">dt</span> <span class="o">=</span> <span class="mf">0.005</span>
+<span class="n">segment_size</span> <span class="o">=</span> <span class="mf">4.0</span>
+<span class="n">n_seg</span> <span class="o">=</span> <span class="mi">400</span>
+<span class="n">n_bin</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">segment_size</span> <span class="o">/</span> <span class="n">dt</span><span class="p">)</span>
+<span class="n">f1</span><span class="p">,</span> <span class="n">f2</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">21.0</span>
+<span class="n">tt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_bin</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span>
+
+<span class="n">chunks</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_seg</span><span class="p">):</span>
+    <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="mf">0.3</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">f1</span> <span class="o">*</span> <span class="n">tt</span> <span class="o">+</span> <span class="n">p1</span><span class="p">)</span>
+        <span class="o">+</span> <span class="mf">0.3</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">f2</span> <span class="o">*</span> <span class="n">tt</span> <span class="o">+</span> <span class="n">p2</span><span class="p">)</span>
+        <span class="o">+</span> <span class="mf">0.3</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="p">(</span><span class="n">f1</span> <span class="o">+</span> <span class="n">f2</span><span class="p">)</span> <span class="o">*</span> <span class="n">tt</span> <span class="o">+</span> <span class="n">p1</span> <span class="o">+</span> <span class="n">p2</span><span class="p">)</span>  <span class="c1"># phase-coupled</span>
+    <span class="p">)</span>
+    <span class="n">chunks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="mf">400.0</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">s</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">))</span>
+
+<span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">counts</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">bs</span> <span class="o">=</span> <span class="n">AveragedBispectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">)</span>
+<span class="n">bs</span><span class="o">.</span><span class="n">m</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+400it [00:01, 208.99it/s]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+400
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">plot_bicoherence</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">40</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">40</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_29_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_29_0.png" />
+</div>
+</div>
+<p>The bicoherence shows a sharp peak at <span class="math notranslate nohighlight">\((8, 21)\)</span> Hz (and its mirror image), isolating the coupling. We can read the value and the biphase off directly.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">i1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">bs</span><span class="o">.</span><span class="n">freq</span> <span class="o">-</span> <span class="n">f1</span><span class="p">))</span>
+<span class="n">i2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">bs</span><span class="o">.</span><span class="n">freq</span> <span class="o">-</span> <span class="n">f2</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'bicoherence(8, 21 Hz) = </span><span class="si">{</span><span class="n">bs</span><span class="o">.</span><span class="n">bicoherence</span><span class="p">[</span><span class="n">i1</span><span class="p">,</span><span class="w"> </span><span class="n">i2</span><span class="p">]</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'biphase(8, 21 Hz)     = </span><span class="si">{</span><span class="n">bs</span><span class="o">.</span><span class="n">biphase</span><span class="p">[</span><span class="n">i1</span><span class="p">,</span><span class="w"> </span><span class="n">i2</span><span class="p">]</span><span class="si">:</span><span class="s1">+.3f</span><span class="si">}</span><span class="s1"> rad'</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+bicoherence(8, 21 Hz) = 0.931
+biphase(8, 21 Hz)     = -0.003 rad
+</pre></div></div>
+</div>
+<p>The biphase is close to zero here because we coupled the third component with zero relative phase. The full biphase map is available too:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">plot_phase</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">40</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">40</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_33_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_33_0.png" />
+</div>
+</div>
+</section>
+<section id="Bicoherence-normalizations">
+<h1>Bicoherence normalizations<a class="headerlink" href="#Bicoherence-normalizations" title="Link to this heading">¶</a></h1>
+<p>Several conventions exist for normalizing the bicoherence, all bounded between 0 and 1. Stingray supports three, selectable through the <code class="docutils literal notranslate"><span class="pre">bicoherence_norm</span></code> argument:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;kim_powers&quot;</span></code> (default) — the squared bicoherence of Kim &amp; Powers (1979).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;sigl_chamoun&quot;</span></code> — Sigl &amp; Chamoun (1994); the square root of the above.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;hagihira&quot;</span></code> — Hagihira (2001); normalized by the summed magnitude of the per-segment triple products.</p></li>
+</ul>
+<p>You can pass the choice at construction time, e.g. <code class="docutils literal notranslate"><span class="pre">AveragedBispectrum(lc,</span> <span class="pre">segment_size=4.0,</span> <span class="pre">bicoherence_norm=&quot;hagihira&quot;)</span></code>, or switch between them afterwards with <code class="docutils literal notranslate"><span class="pre">recompute_bicoherence</span></code>, which reuses the already-computed Fourier sums.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">norm</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">'kim_powers'</span><span class="p">,</span> <span class="s1">'sigl_chamoun'</span><span class="p">,</span> <span class="s1">'hagihira'</span><span class="p">]:</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">bs</span><span class="o">.</span><span class="n">recompute_bicoherence</span><span class="p">(</span><span class="n">norm</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">norm</span><span class="si">:</span><span class="s1">14s</span><span class="si">}</span><span class="s1"> bicoherence(8, 21 Hz) = </span><span class="si">{</span><span class="n">b</span><span class="p">[</span><span class="n">i1</span><span class="p">,</span><span class="w"> </span><span class="n">i2</span><span class="p">]</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+kim_powers     bicoherence(8, 21 Hz) = 0.931
+sigl_chamoun   bicoherence(8, 21 Hz) = 0.965
+hagihira       bicoherence(8, 21 Hz) = 0.984
+</pre></div></div>
+</div>
+</section>
+<section id="Correcting-for-Poisson-noise">
+<h1>Correcting for Poisson noise<a class="headerlink" href="#Correcting-for-Poisson-noise" title="Link to this heading">¶</a></h1>
+<p>For photon-counting data the bispectrum is biased by Poisson noise. Because Poisson noise is non-linear it adds a real contribution to the bispectrum — and therefore to the biphase — even where there is no genuine coupling. Passing <code class="docutils literal notranslate"><span class="pre">poisson_subtract=True</span></code> removes this bias segment by segment, following Wirnitzer (1985):</p>
+<div class="math notranslate nohighlight">
+\[X(f_1)X(f_2)X^{*}(f_1{+}f_2) \;\rightarrow\; X(f_1)X(f_2)X^{*}(f_1{+}f_2) - |X(f_1)|^2 - |X(f_2)|^2 - |X(f_1{+}f_2)|^2 + 2N,\]</div>
+<p>where <span class="math notranslate nohighlight">\(N\)</span> is the number of photons in the segment. It is only appropriate for photon-counting (Poisson) light curves.</p>
+<p>As a check, we build a light curve of <em>pure</em> Poisson noise — no coupling at all — and compare the mean real part of the bispectrum with and without the correction. Without it, the bispectrum carries a spurious real offset equal to the photon count <span class="math notranslate nohighlight">\(N\)</span>; with it, that offset is removed.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">dt</span> <span class="o">=</span> <span class="mf">0.01</span>
+<span class="n">segment_size</span> <span class="o">=</span> <span class="mf">2.0</span>
+<span class="n">n_bin</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">segment_size</span> <span class="o">/</span> <span class="n">dt</span><span class="p">)</span>
+<span class="n">n_seg</span> <span class="o">=</span> <span class="mi">500</span>
+
+<span class="c1"># pure Poisson noise: constant rate, no variability</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="n">n_bin</span> <span class="o">*</span> <span class="n">n_seg</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">counts</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">raw</span> <span class="o">=</span> <span class="n">AveragedBispectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">)</span>
+<span class="n">corrected</span> <span class="o">=</span> <span class="n">AveragedBispectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">poisson_subtract</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">valid</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">valid</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'photons per segment (N)        = </span><span class="si">{</span><span class="n">raw</span><span class="o">.</span><span class="n">nphots</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'mean Re(B), no correction      = </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">raw</span><span class="o">.</span><span class="n">bispec</span><span class="p">[</span><span class="n">valid</span><span class="p">]</span><span class="o">.</span><span class="n">real</span><span class="p">)</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'mean Re(B), Poisson-subtracted = </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">corrected</span><span class="o">.</span><span class="n">bispec</span><span class="p">[</span><span class="n">valid</span><span class="p">]</span><span class="o">.</span><span class="n">real</span><span class="p">)</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+500it [00:00, 6973.68it/s]
+500it [00:00, 5702.30it/s]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+photons per segment (N)        = 4000
+mean Re(B), no correction      = 3833
+mean Re(B), Poisson-subtracted = -166.7
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+
+</pre></div></div>
+</div>
+<p>The uncorrected bispectrum sits at <span class="math notranslate nohighlight">\(\sim N\)</span>, while the corrected one is consistent with zero. The same <code class="docutils literal notranslate"><span class="pre">poisson_subtract=True</span></code> option is available on every constructor (<code class="docutils literal notranslate"><span class="pre">Bispectrum</span></code>, <code class="docutils literal notranslate"><span class="pre">AveragedBispectrum</span></code>, and the <code class="docutils literal notranslate"><span class="pre">from_*</span></code> methods).</p>
+</section>
+<section id="Jellyfish-plots">
+<h1>Jellyfish plots<a class="headerlink" href="#Jellyfish-plots" title="Link to this heading">¶</a></h1>
+<p>A compact way to visualise the <em>autobispectrum</em> — the diagonal <span class="math notranslate nohighlight">\(f_1 = f_2 = \nu\)</span>, which couples a frequency <span class="math notranslate nohighlight">\(\nu\)</span> to its harmonic <span class="math notranslate nohighlight">\(2\nu\)</span> — is the ‘jellyfish plot’ (Nathan et al. 2022). For each <span class="math notranslate nohighlight">\(\nu\)</span>, the per-segment triple products <span class="math notranslate nohighlight">\(X(\nu)\,X(\nu)\,X^{*}(2\nu)\)</span> are summed segment by segment and the running total is drawn as a path in the complex plane, scaled so that the end point’s distance from the origin is the bicoherence and its angle is the biphase.</p>
+<p>Phase-coupled frequencies contribute in a consistent direction, so their path marches outward into a ‘tentacle’; uncoupled frequencies random-walk near the origin, forming the ‘body’. Reference circles mark constant bicoherence.</p>
+<p>The jellyfish plot needs the individual per-segment bispectra. It only ever uses the <em>diagonal</em> (<span class="math notranslate nohighlight">\(f_1 = f_2\)</span>), so the light option <code class="docutils literal notranslate"><span class="pre">save_diagonal=True</span></code> — which keeps just that diagonal — is all it needs (more on the memory saving below). Here we use a signal with a fundamental at 5 Hz and a phase-locked harmonic at 10 Hz (plus an uncoupled tone at 13 Hz as a control), and highlight the fundamental by passing <code class="docutils literal notranslate"><span class="pre">f0</span></code>.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+
+<span class="n">dt</span> <span class="o">=</span> <span class="mf">0.01</span>
+<span class="n">segment_size</span> <span class="o">=</span> <span class="mf">4.0</span>
+<span class="n">n_seg</span> <span class="o">=</span> <span class="mi">400</span>
+<span class="n">n_bin</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">segment_size</span> <span class="o">/</span> <span class="n">dt</span><span class="p">)</span>
+<span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_bin</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span>
+<span class="n">f0</span> <span class="o">=</span> <span class="mf">5.0</span>
+
+<span class="n">chunks</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_seg</span><span class="p">):</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+    <span class="n">jitter</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">1.1</span><span class="p">)</span>  <span class="c1"># weakens the phase locking a little</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="mf">0.30</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">f0</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="n">p</span><span class="p">)</span>
+        <span class="o">+</span> <span class="mf">0.06</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">f0</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">p</span> <span class="o">+</span> <span class="mf">0.6</span> <span class="o">+</span> <span class="n">jitter</span><span class="p">)</span>  <span class="c1"># harmonic</span>
+        <span class="o">+</span> <span class="mf">0.20</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mf">13.0</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span>  <span class="c1"># uncoupled</span>
+    <span class="p">)</span>
+    <span class="n">chunks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="mi">500</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">s</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">))</span>
+
+<span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">counts</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># save_diagonal=True keeps only the diagonal the jellyfish plot needs</span>
+<span class="n">bs</span> <span class="o">=</span> <span class="n">AveragedBispectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">save_diagonal</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+400it [00:00, 1569.19it/s]
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">plot_jellyfish</span><span class="p">(</span><span class="n">f0</span><span class="o">=</span><span class="n">f0</span><span class="p">,</span> <span class="n">bicoherence_levels</span><span class="o">=</span><span class="p">(</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="o">-</span><span class="mf">0.28</span><span class="p">,</span> <span class="mf">0.28</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="o">-</span><span class="mf">0.28</span><span class="p">,</span> <span class="mf">0.28</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_41_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_41_0.png" />
+</div>
+</div>
+<p>The 5 Hz fundamental reaches out into a clear tentacle — its coupling to the 10 Hz harmonic — while the uncoupled frequencies stay bunched in the body near the origin.</p>
+<section id="Lightweight-vs-heavy-per-segment-storage">
+<h2>Lightweight vs heavy per-segment storage<a class="headerlink" href="#Lightweight-vs-heavy-per-segment-storage" title="Link to this heading">¶</a></h2>
+<p>There are two ways to keep the per-segment bispectra a jellyfish plot needs:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">save_all=True</span></code> keeps the <strong>full</strong> 2-D bispectrum of every segment — an <span class="math notranslate nohighlight">\(n_f \times n_f\)</span> complex matrix per segment, i.e. an <span class="math notranslate nohighlight">\(m \times n_f \times n_f\)</span> cube.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">save_diagonal=True</span></code> keeps only the <strong>diagonal</strong> (<span class="math notranslate nohighlight">\(f_1 = f_2\)</span>) of each segment — an <span class="math notranslate nohighlight">\(m \times n_f\)</span> array.</p></li>
+</ul>
+<p>Because the jellyfish is built purely from the autobispectrum diagonal, the two give <em>identical</em> plots — but the diagonal store is smaller by a factor of <span class="math notranslate nohighlight">\(n_f\)</span> (the number of frequencies), which for realistic segment lengths is hundreds to thousands. Building both here shows the difference:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[26]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">heavy</span> <span class="o">=</span> <span class="n">AveragedBispectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">save_all</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">light</span> <span class="o">=</span> <span class="n">AveragedBispectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">save_diagonal</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">heavy_store</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">heavy</span><span class="o">.</span><span class="n">bispec_all</span><span class="p">)</span>       <span class="c1"># (m, nf, nf)</span>
+<span class="n">light_store</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">light</span><span class="o">.</span><span class="n">bispec_diagonal</span><span class="p">)</span>  <span class="c1"># (m, nf)</span>
+
+<span class="n">nf</span> <span class="o">=</span> <span class="n">bs</span><span class="o">.</span><span class="n">freq</span><span class="o">.</span><span class="n">size</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'segments (m)        = </span><span class="si">{</span><span class="n">heavy</span><span class="o">.</span><span class="n">m</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'frequencies (nf)    = </span><span class="si">{</span><span class="n">nf</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'save_all      store: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">heavy_store</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="si">:</span><span class="s1">16s</span><span class="si">}</span><span class="s1"> -&gt; </span><span class="si">{</span><span class="n">heavy_store</span><span class="o">.</span><span class="n">nbytes</span><span class="o">/</span><span class="mf">1e6</span><span class="si">:</span><span class="s1">8.2f</span><span class="si">}</span><span class="s1"> MB'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'save_diagonal store: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">light_store</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="si">:</span><span class="s1">16s</span><span class="si">}</span><span class="s1"> -&gt; </span><span class="si">{</span><span class="n">light_store</span><span class="o">.</span><span class="n">nbytes</span><span class="o">/</span><span class="mf">1e6</span><span class="si">:</span><span class="s1">8.2f</span><span class="si">}</span><span class="s1"> MB'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'memory reduction    ~ nf = </span><span class="si">{</span><span class="n">heavy_store</span><span class="o">.</span><span class="n">nbytes</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">light_store</span><span class="o">.</span><span class="n">nbytes</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1">x'</span><span class="p">)</span>
+
+<span class="c1"># the diagonal store is exactly the diagonal of the full cube ...</span>
+<span class="n">same_diag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">light_store</span><span class="p">,</span> <span class="n">heavy_store</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nf</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nf</span><span class="p">)])</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'diagonal matches full cube: </span><span class="si">{</span><span class="n">same_diag</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+400it [00:00, 1687.74it/s]
+400it [00:00, 2288.91it/s]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+segments (m)        = 400
+frequencies (nf)    = 199
+save_all      store: (400, 199, 199)  -&gt;   253.45 MB
+save_diagonal store: (400, 199)       -&gt;     1.27 MB
+memory reduction    ~ nf = 199x
+diagonal matches full cube: True
+</pre></div></div>
+</div>
+<p>So a jellyfish plot that would need a multi-gigabyte <code class="docutils literal notranslate"><span class="pre">save_all</span></code> cube for a long, finely sampled light curve needs only a few megabytes with <code class="docutils literal notranslate"><span class="pre">save_diagonal=True</span></code> — the recommended option unless you specifically need the full off-diagonal per-segment bispectra for something else.</p>
+</section>
+<section id="Poisson-subtraction-in-the-jellyfish-plot">
+<h2>Poisson subtraction in the jellyfish plot<a class="headerlink" href="#Poisson-subtraction-in-the-jellyfish-plot" title="Link to this heading">¶</a></h2>
+<p>The Poisson-noise bias adds a real offset to the bispectrum, which in a jellyfish plot pushes the ‘body’ of uncoupled frequencies off the origin toward positive <span class="math notranslate nohighlight">\(\mathrm{Re}(B)\)</span> and can drag a spurious tentacle out with it. Passing <code class="docutils literal notranslate"><span class="pre">poisson_subtract=True</span></code> removes it. The effect is largest at low count rates (the bias scales as <span class="math notranslate nohighlight">\(\sim 1/\sqrt{N}\)</span>), so we use a fainter light curve here and plot the jellyfish with and without the correction. Note we can afford many segments cheaply
+because <code class="docutils literal notranslate"><span class="pre">save_diagonal=True</span></code> keeps the per-segment store tiny.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[27]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">dt</span> <span class="o">=</span> <span class="mf">0.01</span>
+<span class="n">segment_size</span> <span class="o">=</span> <span class="mf">4.0</span>
+<span class="n">n_seg</span> <span class="o">=</span> <span class="mi">700</span>
+<span class="n">n_bin</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">segment_size</span> <span class="o">/</span> <span class="n">dt</span><span class="p">)</span>
+<span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_bin</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span>
+<span class="n">f0</span> <span class="o">=</span> <span class="mf">5.0</span>
+
+<span class="n">chunks</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_seg</span><span class="p">):</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+    <span class="n">jitter</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="mf">0.6</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">f0</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="n">p</span><span class="p">)</span>
+        <span class="o">+</span> <span class="mf">0.3</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">f0</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">p</span> <span class="o">+</span> <span class="mf">0.6</span> <span class="o">+</span> <span class="n">jitter</span><span class="p">)</span>  <span class="c1"># harmonic</span>
+        <span class="o">+</span> <span class="mf">0.3</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mf">13.0</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span>  <span class="c1"># uncoupled</span>
+    <span class="p">)</span>
+    <span class="n">chunks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mf">0.30</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">s</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)))</span>  <span class="c1"># ~0.3 counts/bin -&gt; low N</span>
+
+<span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">counts</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">raw</span> <span class="o">=</span> <span class="n">AveragedBispectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">save_diagonal</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">corrected</span> <span class="o">=</span> <span class="n">AveragedBispectrum</span><span class="p">(</span>
+    <span class="n">lc</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">save_diagonal</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">poisson_subtract</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'photons per segment (N) = </span><span class="si">{</span><span class="n">raw</span><span class="o">.</span><span class="n">nphots</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1">   -&gt;   1/sqrt(N) = </span><span class="si">{</span><span class="mi">1</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">raw</span><span class="o">.</span><span class="n">nphots</span><span class="p">)</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+700it [00:00, 2007.07it/s]
+700it [00:00, 1874.25it/s]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+photons per segment (N) = 120   -&gt;   1/sqrt(N) = 0.091
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[28]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sharey</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">raw</span><span class="o">.</span><span class="n">plot_jellyfish</span><span class="p">(</span><span class="n">f0</span><span class="o">=</span><span class="n">f0</span><span class="p">,</span> <span class="n">bicoherence_levels</span><span class="o">=</span><span class="p">(</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">),</span> <span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">corrected</span><span class="o">.</span><span class="n">plot_jellyfish</span><span class="p">(</span><span class="n">f0</span><span class="o">=</span><span class="n">f0</span><span class="p">,</span> <span class="n">bicoherence_levels</span><span class="o">=</span><span class="p">(</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">),</span> <span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">'No Poisson subtraction'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">'Poisson-subtracted'</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">:</span>
+    <span class="n">a</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="o">-</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">)</span>
+    <span class="n">a</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="o">-</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_48_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_48_0.png" />
+</div>
+</div>
+<p>Without the correction (left), the body of uncoupled frequencies is pushed to positive <span class="math notranslate nohighlight">\(\mathrm{Re}(B)\)</span> by the Poisson bias, and the subharmonic is dragged out with it. With <code class="docutils literal notranslate"><span class="pre">poisson_subtract=True</span></code> (right), the body re-centers on the origin and the spurious subharmonic collapses, while the genuine 5 Hz fundamental tentacle is preserved.</p>
+</section>
+</section>
+<section id="Cross-bispectrum">
+<h1>Cross-bispectrum<a class="headerlink" href="#Cross-bispectrum" title="Link to this heading">¶</a></h1>
+<p>So far every bispectrum has been an <em>auto</em>-bispectrum — coupling within a single light curve. The <strong>cross-bispectrum</strong> is the higher-order analogue of the cross spectrum: it measures quadratic phase coupling <em>between</em> channels (usually two energy bands),</p>
+<div class="math notranslate nohighlight">
+\[B(f_1, f_2) = \langle X(f_1)\, Y(f_2)\, Z^{*}(f_1+f_2) \rangle,\]</div>
+<p>with the three factors drawn from up to three simultaneous light curves. The <code class="docutils literal notranslate"><span class="pre">Bispectrum</span></code> is the special case <span class="math notranslate nohighlight">\(X = Y = Z\)</span>, just as the power spectrum is the auto case of the cross spectrum. <code class="docutils literal notranslate"><span class="pre">CrossBispectrum</span></code> and <code class="docutils literal notranslate"><span class="pre">AveragedCrossBispectrum</span></code> take up to three inputs (<code class="docutils literal notranslate"><span class="pre">data1</span></code>, <code class="docutils literal notranslate"><span class="pre">data2</span></code>, <code class="docutils literal notranslate"><span class="pre">data3</span></code>); the missing ones default to <code class="docutils literal notranslate"><span class="pre">data1</span></code>.</p>
+<p>Because <span class="math notranslate nohighlight">\(X(f_1)\,Y(f_2)\)</span> is not symmetric under <span class="math notranslate nohighlight">\(f_1 \leftrightarrow f_2\)</span> in general, the cross-bispectrum is sampled on the full <strong>signed</strong> frequency plane (positive and negative <span class="math notranslate nohighlight">\(f_1\)</span>, <span class="math notranslate nohighlight">\(f_2\)</span>), not just the positive triangle.</p>
+<p>As a demonstration we build two simultaneous bands: band A carries oscillations at <span class="math notranslate nohighlight">\(f_1 = 5\)</span> Hz and <span class="math notranslate nohighlight">\(f_2 = 12\)</span> Hz (random phases each segment), and band B carries the sum frequency 17 Hz, either phase-locked to band A (coupled) or with an independent phase (control). The cross-bispectrum with <span class="math notranslate nohighlight">\(X = A(f_1)\)</span>, <span class="math notranslate nohighlight">\(Y = A(f_2)\)</span>, <span class="math notranslate nohighlight">\(Z = B(f_1+f_2)\)</span> should light up at <span class="math notranslate nohighlight">\((5, 12)\)</span> Hz only when the bands are coupled.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[29]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">7</span><span class="p">)</span>
+<span class="n">dt</span> <span class="o">=</span> <span class="mf">0.01</span>
+<span class="n">segment_size</span> <span class="o">=</span> <span class="mf">4.0</span>
+<span class="n">n_seg</span> <span class="o">=</span> <span class="mi">400</span>
+<span class="n">n_bin</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">segment_size</span> <span class="o">/</span> <span class="n">dt</span><span class="p">)</span>
+<span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_bin</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span>
+<span class="n">f1</span><span class="p">,</span> <span class="n">f2</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">12.0</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">two_bands</span><span class="p">(</span><span class="n">couple</span><span class="p">):</span>
+    <span class="n">ca</span><span class="p">,</span> <span class="n">cb</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_seg</span><span class="p">):</span>
+        <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">f1</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="n">p1</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">f2</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="n">p2</span><span class="p">)</span>
+        <span class="n">pb</span> <span class="o">=</span> <span class="p">(</span><span class="n">p1</span> <span class="o">+</span> <span class="n">p2</span><span class="p">)</span> <span class="k">if</span> <span class="n">couple</span> <span class="k">else</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>  <span class="c1"># locked or free</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="p">(</span><span class="n">f1</span> <span class="o">+</span> <span class="n">f2</span><span class="p">)</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="n">pb</span><span class="p">)</span>
+        <span class="n">ca</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">500</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">a</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">))</span>
+        <span class="n">cb</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">500</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">b</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">))</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">ca</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">lca</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">lcb</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">lca</span><span class="p">,</span> <span class="n">lcb</span>
+
+<span class="n">lcA_c</span><span class="p">,</span> <span class="n">lcB_c</span> <span class="o">=</span> <span class="n">two_bands</span><span class="p">(</span><span class="n">couple</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">lcA_u</span><span class="p">,</span> <span class="n">lcB_u</span> <span class="o">=</span> <span class="n">two_bands</span><span class="p">(</span><span class="n">couple</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="c1"># X = A(f1), Y = A(f2), Z = B(f1+f2)</span>
+<span class="n">xbs_coupled</span> <span class="o">=</span> <span class="n">AveragedCrossBispectrum</span><span class="p">(</span>
+    <span class="n">lcA_c</span><span class="p">,</span> <span class="n">lcA_c</span><span class="p">,</span> <span class="n">lcB_c</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">bicoherence_norm</span><span class="o">=</span><span class="s1">'sigl_chamoun'</span>
+<span class="p">)</span>
+<span class="n">xbs_control</span> <span class="o">=</span> <span class="n">AveragedCrossBispectrum</span><span class="p">(</span>
+    <span class="n">lcA_u</span><span class="p">,</span> <span class="n">lcA_u</span><span class="p">,</span> <span class="n">lcB_u</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">bicoherence_norm</span><span class="o">=</span><span class="s1">'sigl_chamoun'</span>
+<span class="p">)</span>
+
+<span class="n">i1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">xbs_coupled</span><span class="o">.</span><span class="n">freq</span> <span class="o">-</span> <span class="n">f1</span><span class="p">))</span>
+<span class="n">i2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">xbs_coupled</span><span class="o">.</span><span class="n">freq</span> <span class="o">-</span> <span class="n">f2</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'cross-bicoherence(5, 12 Hz), coupled = </span><span class="si">{</span><span class="n">xbs_coupled</span><span class="o">.</span><span class="n">bicoherence</span><span class="p">[</span><span class="n">i1</span><span class="p">,</span><span class="w"> </span><span class="n">i2</span><span class="p">]</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'cross-bicoherence(5, 12 Hz), control = </span><span class="si">{</span><span class="n">xbs_control</span><span class="o">.</span><span class="n">bicoherence</span><span class="p">[</span><span class="n">i1</span><span class="p">,</span><span class="w"> </span><span class="n">i2</span><span class="p">]</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+400it [00:00, 478.98it/s]
+400it [00:00, 451.13it/s]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+cross-bicoherence(5, 12 Hz), coupled = 0.988
+cross-bicoherence(5, 12 Hz), control = 0.018
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">13</span><span class="p">,</span> <span class="mf">5.5</span><span class="p">),</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sharey</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">xbs_coupled</span><span class="o">.</span><span class="n">plot_bicoherence</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">xbs_control</span><span class="o">.</span><span class="n">plot_bicoherence</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">'Coupled bands'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">'Independent bands'</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">:</span>
+    <span class="n">a</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="o">-</span><span class="mi">25</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
+    <span class="n">a</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="o">-</span><span class="mi">25</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_52_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_52_0.png" />
+</div>
+</div>
+<p>The coupling stands out at <span class="math notranslate nohighlight">\((5, 12)\)</span> Hz (and its symmetry-related points) in the left panel and is absent on the right — even though the two datasets have the same per-band power spectra. Note the axes now span negative and positive frequencies: the signed domain of the cross-bispectrum.</p>
+<p>For photon-counting data the cross-bispectrum of <em>independent</em> bands is unbiased by Poisson noise (the noise is uncorrelated between detectors), so no correction is needed; the <code class="docutils literal notranslate"><span class="pre">poisson_subtract</span></code> / <code class="docutils literal notranslate"><span class="pre">channels_overlap</span></code> options apply only when the channels share photons.</p>
+<section id="When-all-three-channels-differ">
+<h2>When all three channels differ<a class="headerlink" href="#When-all-three-channels-differ" title="Link to this heading">¶</a></h2>
+<p>In the example above <span class="math notranslate nohighlight">\(X\)</span> and <span class="math notranslate nohighlight">\(Y\)</span> were the <em>same</em> band (band A), so <span class="math notranslate nohighlight">\(X(f_1)\,Y(f_2) = A(f_1)\,A(f_2)\)</span> is still symmetric under <span class="math notranslate nohighlight">\(f_1 \leftrightarrow f_2\)</span> and the coupling appears at both <span class="math notranslate nohighlight">\((5, 12)\)</span> and <span class="math notranslate nohighlight">\((12, 5)\)</span> Hz. The cross-bispectrum only becomes genuinely asymmetric when the three factors are drawn from three <em>different</em> signals.</p>
+<p>To see this we build three separate bands in the same segments: <span class="math notranslate nohighlight">\(X\)</span> at <span class="math notranslate nohighlight">\(f_1 = 5\)</span> Hz and <span class="math notranslate nohighlight">\(Y\)</span> at <span class="math notranslate nohighlight">\(f_2 = 12\)</span> Hz, each with an independent random phase per segment, and <span class="math notranslate nohighlight">\(Z\)</span> at the sum <span class="math notranslate nohighlight">\(17\)</span> Hz whose phase is locked to <span class="math notranslate nohighlight">\(p_1 + p_2\)</span>. Now the coupling lives specifically at <span class="math notranslate nohighlight">\((f_1, f_2) = (5, 12)\)</span>: at the swapped point <span class="math notranslate nohighlight">\((12, 5)\)</span> the estimator asks for <span class="math notranslate nohighlight">\(X(12\,\mathrm{Hz})\)</span> and <span class="math notranslate nohighlight">\(Y(5\,\mathrm{Hz})\)</span>, but <span class="math notranslate nohighlight">\(X\)</span> has no power at 12 Hz and
+<span class="math notranslate nohighlight">\(Y\)</span> none at 5 Hz, so nothing lights up there.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[31]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span>
+<span class="n">fX</span><span class="p">,</span> <span class="n">fY</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">12.0</span>
+<span class="n">fZ</span> <span class="o">=</span> <span class="n">fX</span> <span class="o">+</span> <span class="n">fY</span>  <span class="c1"># 17 Hz</span>
+
+<span class="n">cX</span><span class="p">,</span> <span class="n">cY</span><span class="p">,</span> <span class="n">cZ</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_seg</span><span class="p">):</span>
+    <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">fX</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="n">p1</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">fY</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="n">p2</span><span class="p">)</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">fZ</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="p">(</span><span class="n">p1</span> <span class="o">+</span> <span class="n">p2</span><span class="p">))</span>  <span class="c1"># locked to X and Y</span>
+    <span class="n">cX</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">500</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">x</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">))</span>
+    <span class="n">cY</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">500</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">y</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">))</span>
+    <span class="n">cZ</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">500</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">z</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">))</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">cX</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">Y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">cY</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">Z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">cZ</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">lcX</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">lcY</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">Y</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">lcZ</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">Z</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># X = X(f1), Y = Y(f2), Z = Z(f1+f2) -- three distinct channels</span>
+<span class="n">xbs</span> <span class="o">=</span> <span class="n">AveragedCrossBispectrum</span><span class="p">(</span>
+    <span class="n">lcX</span><span class="p">,</span> <span class="n">lcY</span><span class="p">,</span> <span class="n">lcZ</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">bicoherence_norm</span><span class="o">=</span><span class="s1">'sigl_chamoun'</span>
+<span class="p">)</span>
+
+<span class="n">iX</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">xbs</span><span class="o">.</span><span class="n">freq</span> <span class="o">-</span> <span class="n">fX</span><span class="p">))</span>
+<span class="n">iY</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">xbs</span><span class="o">.</span><span class="n">freq</span> <span class="o">-</span> <span class="n">fY</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'cross-bicoherence(f1=5, f2=12 Hz) = </span><span class="si">{</span><span class="n">xbs</span><span class="o">.</span><span class="n">bicoherence</span><span class="p">[</span><span class="n">iX</span><span class="p">,</span><span class="w"> </span><span class="n">iY</span><span class="p">]</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'cross-bicoherence(f1=12, f2=5 Hz) = </span><span class="si">{</span><span class="n">xbs</span><span class="o">.</span><span class="n">bicoherence</span><span class="p">[</span><span class="n">iY</span><span class="p">,</span><span class="w"> </span><span class="n">iX</span><span class="p">]</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+400it [00:00, 404.45it/s]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+cross-bicoherence(f1=5, f2=12 Hz) = 0.988
+cross-bicoherence(f1=12, f2=5 Hz) = 0.047
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[32]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">6.5</span><span class="p">,</span> <span class="mf">5.5</span><span class="p">))</span>
+<span class="n">xbs</span><span class="o">.</span><span class="n">plot_bicoherence</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">fX</span><span class="p">,</span> <span class="o">-</span><span class="n">fX</span><span class="p">],</span> <span class="p">[</span><span class="n">fY</span><span class="p">,</span> <span class="o">-</span><span class="n">fY</span><span class="p">],</span> <span class="s1">'o'</span><span class="p">,</span> <span class="n">mfc</span><span class="o">=</span><span class="s1">'none'</span><span class="p">,</span> <span class="n">mec</span><span class="o">=</span><span class="s1">'cyan'</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">mew</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">label</span><span class="o">=</span><span class="s1">'(f1, f2) = (5, 12): coupled'</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">fY</span><span class="p">,</span> <span class="o">-</span><span class="n">fY</span><span class="p">],</span> <span class="p">[</span><span class="n">fX</span><span class="p">,</span> <span class="o">-</span><span class="n">fX</span><span class="p">],</span> <span class="s1">'s'</span><span class="p">,</span> <span class="n">mfc</span><span class="o">=</span><span class="s1">'none'</span><span class="p">,</span> <span class="n">mec</span><span class="o">=</span><span class="s1">'white'</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">mew</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">label</span><span class="o">=</span><span class="s1">'(f1, f2) = (12, 5): absent'</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="o">-</span><span class="mi">25</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="o">-</span><span class="mi">25</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">'upper left'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_56_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_56_0.png" />
+</div>
+</div>
+<p>The bright spot sits at <span class="math notranslate nohighlight">\((5, 12)\)</span> Hz (cyan circle) but the swapped point <span class="math notranslate nohighlight">\((12, 5)\)</span> Hz (white square) is dark — the cross-bicoherence is no longer symmetric across the <span class="math notranslate nohighlight">\(f_1 = f_2\)</span> diagonal. The only symmetry left is the reality relation <span class="math notranslate nohighlight">\(B(-f_1, -f_2) = B^{*}(f_1, f_2)\)</span>, which mirrors the coupling to <span class="math notranslate nohighlight">\((-5, -12)\)</span> Hz (with the biphase conjugated) but does <strong>not</strong> reflect it across the diagonal. That is exactly why the auto-bispectrum’s positive triangle is no longer
+enough: with the <span class="math notranslate nohighlight">\(f_1 \leftrightarrow f_2\)</span> symmetry gone, the full signed plane carries independent information and cannot be folded away.</p>
+</section>
+</section>
+<section id="Dynamical-bispectrum">
+<h1>Dynamical bispectrum<a class="headerlink" href="#Dynamical-bispectrum" title="Link to this heading">¶</a></h1>
+<p>Just as a <code class="docutils literal notranslate"><span class="pre">DynamicalPowerspectrum</span></code> tracks how power moves across frequency <em>over time</em>, a <code class="docutils literal notranslate"><span class="pre">DynamicalBispectrum</span></code> tracks how quadratic phase coupling evolves. There is one important difference from the power case. A power spectrum from a single segment is already a valid (if noisy) estimate, so the dynamical power spectrum can use one segment per time bin. A bicoherence from a single segment is <strong>identically 1</strong> and carries no information — it only becomes meaningful once several segments are
+averaged. So the dynamical bispectrum needs <em>two</em> time scales:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">segment_size</span></code> — the FFT length, which sets <code class="docutils literal notranslate"><span class="pre">df</span></code> and the Nyquist frequency;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bin_size</span></code> — the length of each dynamical row, an integer multiple of <code class="docutils literal notranslate"><span class="pre">segment_size</span></code>. Each row averages <code class="docutils literal notranslate"><span class="pre">bin_size</span> <span class="pre">/</span> <span class="pre">segment_size</span></code> segments.</p></li>
+</ul>
+<p>The bicoherence bias floor is <span class="math notranslate nohighlight">\(\sim 1/\sqrt{m}\)</span> with <span class="math notranslate nohighlight">\(m\)</span> segments per bin, so the code warns you if a bin holds fewer than about ten.</p>
+<p>Each time bin holds a whole 2-D <span class="math notranslate nohighlight">\((f_1, f_2)\)</span> map, so the object is a 3-D cube. By default only the <span class="math notranslate nohighlight">\(f_1 = f_2\)</span> <strong>diagonal</strong> is kept (<code class="docutils literal notranslate"><span class="pre">store=&quot;diagonal&quot;</span></code>), which is enough for the diagonal and trace views below and is much lighter; pass <code class="docutils literal notranslate"><span class="pre">store=&quot;full&quot;</span></code> to keep the whole cube (needed for the slice, frame and montage plots).</p>
+<p>As a demonstration we build a light curve with a persistent harmonic coupling at <span class="math notranslate nohighlight">\(\nu = 4\)</span> Hz (so <span class="math notranslate nohighlight">\(4 + 4 \to 8\)</span> Hz, on the diagonal) and an off-diagonal coupling <span class="math notranslate nohighlight">\(5 + 12 \to 17\)</span> Hz that switches <strong>on only in the middle</strong> of the observation.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[33]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">dt</span> <span class="o">=</span> <span class="mf">0.01</span>
+<span class="n">segment_size</span> <span class="o">=</span> <span class="mf">2.0</span>
+<span class="n">bin_size</span> <span class="o">=</span> <span class="mf">80.0</span>
+<span class="n">n_bin</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">segment_size</span> <span class="o">/</span> <span class="n">dt</span><span class="p">)</span>
+<span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_bin</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span>
+<span class="n">n_blocks</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">seg_per_block</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">bin_size</span> <span class="o">/</span> <span class="n">segment_size</span><span class="p">)</span>  <span class="c1"># 40 segments per time bin</span>
+<span class="n">coupled</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_blocks</span><span class="p">)]</span>  <span class="c1"># (5,12) on mid-observation</span>
+
+<span class="n">flux</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_blocks</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">seg_per_block</span><span class="p">):</span>
+        <span class="n">pa</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+        <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="c1"># harmonic 4 -&gt; 8 Hz, phase-locked throughout (diagonal coupling)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="n">pa</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mi">8</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">pa</span><span class="p">)</span>
+        <span class="c1"># off-diagonal triad 5, 12 -&gt; 17 Hz</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="n">p1</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mi">12</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="n">p2</span><span class="p">)</span>
+        <span class="n">p3</span> <span class="o">=</span> <span class="p">(</span><span class="n">p1</span> <span class="o">+</span> <span class="n">p2</span><span class="p">)</span> <span class="k">if</span> <span class="n">coupled</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="k">else</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mi">17</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="n">p3</span><span class="p">)</span>
+        <span class="n">flux</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">500</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">s</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">))</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">flux</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">counts</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[34]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dyn</span> <span class="o">=</span> <span class="n">DynamicalBispectrum</span><span class="p">(</span>
+    <span class="n">lc</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">bin_size</span><span class="o">=</span><span class="n">bin_size</span><span class="p">,</span>
+    <span class="n">store</span><span class="o">=</span><span class="s1">'full'</span><span class="p">,</span> <span class="n">bicoherence_norm</span><span class="o">=</span><span class="s1">'sigl_chamoun'</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'frequencies:'</span><span class="p">,</span> <span class="n">dyn</span><span class="o">.</span><span class="n">freq</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="s1">' time bins:'</span><span class="p">,</span> <span class="n">dyn</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'dt (bin_size) = </span><span class="si">{</span><span class="n">dyn</span><span class="o">.</span><span class="n">dt</span><span class="si">}</span><span class="s1"> s;  df = </span><span class="si">{</span><span class="n">dyn</span><span class="o">.</span><span class="n">df</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1"> Hz;  segments per bin m = </span><span class="si">{</span><span class="n">dyn</span><span class="o">.</span><span class="n">m</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+frequencies: 99  time bins: 10
+dt (bin_size) = 80.0 s;  df = 0.500 Hz;  segments per bin m = 40
+</pre></div></div>
+</div>
+<section id="Diagonal-view">
+<h2>Diagonal view<a class="headerlink" href="#Diagonal-view" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">plot_diagonal</span></code> shows the diagonal bicoherence <span class="math notranslate nohighlight">\(b(\nu, \nu, t)\)</span> — the closest analogue of the dynamical power spectrum, where each <span class="math notranslate nohighlight">\(\nu\)</span> couples to its harmonic <span class="math notranslate nohighlight">\(2\nu\)</span>. The persistent harmonic coupling shows up as a steady bright band at <span class="math notranslate nohighlight">\(\nu = 4\)</span> Hz across the whole observation.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[35]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<span class="n">dyn</span><span class="o">.</span><span class="n">plot_diagonal</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_62_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_62_0.png" />
+</div>
+</div>
+</section>
+<section id="Tracing-a-fixed-coupling">
+<h2>Tracing a fixed coupling<a class="headerlink" href="#Tracing-a-fixed-coupling" title="Link to this heading">¶</a></h2>
+<p>The off-diagonal <span class="math notranslate nohighlight">\((5, 12)\)</span> coupling is not on the diagonal, so to watch it we trace a fixed frequency pair. <code class="docutils literal notranslate"><span class="pre">plot_trace</span></code> shows the bicoherence and biphase at <span class="math notranslate nohighlight">\((f_1, f_2)\)</span> as a function of time; the coupling rises from the <span class="math notranslate nohighlight">\(1/\sqrt{m}\)</span> noise floor to <span class="math notranslate nohighlight">\(\approx 1\)</span> during the middle bins and falls back, while the biphase is only well-defined (and near <span class="math notranslate nohighlight">\(0\)</span>) while the coupling is on.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[36]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dyn</span><span class="o">.</span><span class="n">plot_trace</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_64_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_64_0.png" />
+</div>
+</div>
+</section>
+<section id="Fixed-f_1-slice,-single-frames-and-montages">
+<h2>Fixed-<span class="math notranslate nohighlight">\(f_1\)</span> slice, single frames and montages<a class="headerlink" href="#Fixed-f_1-slice,-single-frames-and-montages" title="Link to this heading">¶</a></h2>
+<p>With <code class="docutils literal notranslate"><span class="pre">store=&quot;full&quot;</span></code> the whole <span class="math notranslate nohighlight">\((f_1, f_2)\)</span> map is available in every bin, so we can also fix one frequency and watch the rest evolve (<code class="docutils literal notranslate"><span class="pre">plot_slice</span></code>), draw the full map at one time (<code class="docutils literal notranslate"><span class="pre">plot_frame</span></code>), or lay out a grid of maps over time (<code class="docutils literal notranslate"><span class="pre">plot_montage</span></code>). The slice at <span class="math notranslate nohighlight">\(f_1 = 5\)</span> Hz lights up at <span class="math notranslate nohighlight">\(f_2 = 12\)</span> Hz exactly when the coupling switches on.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[37]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<span class="n">dyn</span><span class="o">.</span><span class="n">plot_slice</span><span class="p">(</span><span class="mf">5.0</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_66_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_66_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[38]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">dyn</span><span class="o">.</span><span class="n">plot_montage</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_67_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_67_0.png" />
+</div>
+</div>
+</section>
+<section id="Rebinning-and-tracking-a-drifting-feature">
+<h2>Rebinning and tracking a drifting feature<a class="headerlink" href="#Rebinning-and-tracking-a-drifting-feature" title="Link to this heading">¶</a></h2>
+<p>Because the dynamical bispectrum stores the <em>additive</em> per-bin sums rather than the finished bicoherence, it can be re-combined correctly after the fact: <code class="docutils literal notranslate"><span class="pre">rebin_time</span></code> and <code class="docutils literal notranslate"><span class="pre">rebin_frequency</span></code> sum the stored quantities over coarser bins and recompute the bicoherence (averaging the bicoherence directly would be wrong, since it is a ratio). <code class="docutils literal notranslate"><span class="pre">trace_maximum</span></code> returns the peak-bicoherence frequency in each bin.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">shift_and_add</span></code> method is for a coupling whose frequency <strong>drifts</strong> over the observation — a wandering QPO, say. Averaging the whole observation together smears the feature across many frequency bins; instead we track its frequency <span class="math notranslate nohighlight">\(f_0(t)\)</span> and shift each bin so <span class="math notranslate nohighlight">\(f_0\)</span> lands on a common reference before co-adding. Here we build a harmonic pair whose fundamental drifts from <span class="math notranslate nohighlight">\(4\)</span> to <span class="math notranslate nohighlight">\(6\)</span> Hz, track it with <code class="docutils literal notranslate"><span class="pre">trace_maximum</span></code>, and compare the naive whole-observation average
+with the shifted-and-added one.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[39]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rng2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
+<span class="n">f0_true</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">,</span> <span class="n">n_blocks</span><span class="p">)</span>  <span class="c1"># fundamental drifts across the observation</span>
+<span class="n">flux2</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_blocks</span><span class="p">):</span>
+    <span class="n">f0</span> <span class="o">=</span> <span class="n">f0_true</span><span class="p">[</span><span class="n">b</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">seg_per_block</span><span class="p">):</span>
+        <span class="n">pa</span> <span class="o">=</span> <span class="n">rng2</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">f0</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="n">pa</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">f0</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">pa</span><span class="p">)</span>
+        <span class="n">flux2</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rng2</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">500</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">s</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">))</span>
+<span class="n">counts2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">flux2</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">lc2</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">counts2</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">,</span> <span class="n">counts2</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># diagonal store (the default) is all shift_and_add needs</span>
+<span class="n">dynd</span> <span class="o">=</span> <span class="n">DynamicalBispectrum</span><span class="p">(</span>
+    <span class="n">lc2</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">bin_size</span><span class="o">=</span><span class="n">bin_size</span><span class="p">,</span> <span class="n">bicoherence_norm</span><span class="o">=</span><span class="s1">'sigl_chamoun'</span>
+<span class="p">)</span>
+
+<span class="c1"># track the drifting fundamental, then shift-and-add to it</span>
+<span class="n">f0_track</span> <span class="o">=</span> <span class="n">dynd</span><span class="o">.</span><span class="n">freq</span><span class="p">[</span><span class="n">dynd</span><span class="o">.</span><span class="n">trace_maximum</span><span class="p">(</span><span class="n">min_freq</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">max_freq</span><span class="o">=</span><span class="mi">10</span><span class="p">)]</span>
+<span class="n">rel_freq</span><span class="p">,</span> <span class="n">bic_aligned</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">dynd</span><span class="o">.</span><span class="n">shift_and_add</span><span class="p">(</span><span class="n">f0_track</span><span class="p">)</span>
+
+<span class="c1"># naive comparison: average the whole observation without aligning</span>
+<span class="n">whole</span> <span class="o">=</span> <span class="n">AveragedBispectrum</span><span class="p">(</span><span class="n">lc2</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">bicoherence_norm</span><span class="o">=</span><span class="s1">'sigl_chamoun'</span><span class="p">)</span>
+<span class="n">bic_naive</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">whole</span><span class="o">.</span><span class="n">bicoherence</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'tracked f0 per bin:'</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">f0_track</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+400it [00:00, 7188.83it/s]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+tracked f0 per bin: [4.  4.  4.5 4.5 5.  5.  5.5 5.5 6.  6. ]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[40]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">sharey</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">whole</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">bic_naive</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">12</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">'frequency (Hz)'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">'diagonal bicoherence'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">'Whole-observation average</span><span class="se">\n</span><span class="s1">(drift smears the coupling)'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">rel_freq</span><span class="p">,</span> <span class="n">bic_aligned</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="o">-</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">'frequency $-\ f_0$ (Hz)'</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">'Shift-and-add</span><span class="se">\n</span><span class="s1">(aligned to the drifting $f_0$)'</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_70_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_70_0.png" />
+</div>
+</div>
+<p>The whole-observation average spreads the coupling across the entire <span class="math notranslate nohighlight">\(4\)</span>–<span class="math notranslate nohighlight">\(6\)</span> Hz drift range, whereas shift-and-add concentrates it into a single sharp peak at zero relative frequency — recovering a well-defined coupling frequency and biphase, and lifting the signal clear of the surrounding noise.</p>
+</section>
+<section id="Dynamical-cross-bispectrum">
+<h2>Dynamical cross-bispectrum<a class="headerlink" href="#Dynamical-cross-bispectrum" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">DynamicalCrossBispectrum</span></code> is the time-resolved cross case — three channels, on the full signed frequency plane — and shares all the same plotting, rebinning and tracking methods. Here three separate bands carry <span class="math notranslate nohighlight">\(5\)</span>, <span class="math notranslate nohighlight">\(12\)</span> and <span class="math notranslate nohighlight">\(17\)</span> Hz with the sum phase-locked throughout, and we trace the cross-bicoherence at <span class="math notranslate nohighlight">\((5, 12)\)</span> Hz.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[41]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rng3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">Z</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_blocks</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">seg_per_block</span><span class="p">):</span>
+        <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">rng3</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">X</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rng3</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">500</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="n">p1</span><span class="p">)),</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">))</span>
+        <span class="n">Y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rng3</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">500</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mi">12</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="n">p2</span><span class="p">)),</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">))</span>
+        <span class="n">Z</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rng3</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">500</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mi">17</span> <span class="o">*</span> <span class="n">t</span> <span class="o">+</span> <span class="n">p1</span> <span class="o">+</span> <span class="n">p2</span><span class="p">)),</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">))</span>
+<span class="n">lcX</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="n">dt</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">),</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">lcY</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">lcX</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">Y</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">),</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">lcZ</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">lcX</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">Z</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">),</span> <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">skip_checks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">xdyn</span> <span class="o">=</span> <span class="n">DynamicalCrossBispectrum</span><span class="p">(</span>
+    <span class="n">lcX</span><span class="p">,</span> <span class="n">lcY</span><span class="p">,</span> <span class="n">lcZ</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="n">segment_size</span><span class="p">,</span> <span class="n">bin_size</span><span class="o">=</span><span class="n">bin_size</span><span class="p">,</span>
+    <span class="n">store</span><span class="o">=</span><span class="s1">'full'</span><span class="p">,</span> <span class="n">bicoherence_norm</span><span class="o">=</span><span class="s1">'sigl_chamoun'</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">_</span><span class="p">,</span> <span class="n">bic_xt</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">xdyn</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">12</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'cross-bicoherence(5, 12 Hz) per time bin:'</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">bic_xt</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+cross-bicoherence(5, 12 Hz) per time bin: [0.97 0.98 0.98 0.98 0.97 0.98 0.98 0.98 0.98 0.98]
+</pre></div></div>
+</div>
+</section>
+</section>
+<section id="Testing-with-real-data">
+<h1>Testing with real data<a class="headerlink" href="#Testing-with-real-data" title="Link to this heading">¶</a></h1>
+<p>In this example, we will work with an RXTE observation of GRS 1915+105. The obsid is 91701-01-55-00. The reduced data for use in this tutorial can be found <a class="reference external" href="https://zenodo.org/records/22206699">here</a>. We are only looking at one orbit of three for this example.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[42]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Read in the flux and errors the data</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="s2">"grs1915_data.txt"</span><span class="p">)</span>
+<span class="n">times</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.0078125</span>  <span class="c1">#converting to counts/bin as Stingray expects</span>
+
+<span class="n">lc</span> <span class="o">=</span> <span class="n">Lightcurve</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">counts</span><span class="p">)</span>
+
+<span class="n">ct</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">counts</span>
+<span class="n">t</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">time</span>
+<span class="n">err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">ct</span><span class="p">)</span>
+<span class="n">dt</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">dt</span>
+
+<span class="c1">#Check that everything is as expected</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'Time resolution is'</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="s1">'seconds'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">'Length of light curve is'</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">ct</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Time resolution is 0.0078125 seconds
+Length of light curve is 409472
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/Users/benr/projects/stingray_software/stingray/stingray/utils.py:492: UserWarning: SIMON says: Bin sizes in input time array aren&#39;t equal throughout! This could cause problems with Fourier transforms. Please make the input time evenly sampled.Only use with LombScargleCrossspectrum, LombScarglePowerspectrum and QPO using GPResult
+  warnings.warn(&#34;SIMON says: {0}&#34;.format(message), **kwargs)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[43]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Plot the light curve</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">[</span><span class="mi">12</span><span class="p">,</span><span class="mi">6</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">ct</span><span class="p">,</span> <span class="n">yerr</span><span class="o">=</span><span class="n">err</span><span class="p">,</span>
+            <span class="n">color</span><span class="o">=</span><span class="s1">'purple'</span><span class="p">,</span> <span class="n">ecolor</span><span class="o">=</span><span class="s1">'0.8'</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">capsize</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">'GRS 1915+105 (RXTE)'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">'Count rate'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">'Time [seconds]'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_76_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_76_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[44]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Make averaged power spectrum using 16s segments</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">stingray</span><span class="w"> </span><span class="kn">import</span> <span class="n">AveragedPowerspectrum</span>
+
+<span class="n">avg_ps</span> <span class="o">=</span> <span class="n">AveragedPowerspectrum</span><span class="o">.</span><span class="n">from_lightcurve</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="mf">16.</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="s2">"leahy"</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Number of segments: </span><span class="si">%d</span><span class="s2">"</span> <span class="o">%</span> <span class="n">avg_ps</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+199it [00:00, 38966.69it/s]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Number of segments: 199
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[45]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1">####Plot power spectrum</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="n">avg_ps</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span> <span class="n">avg_ps</span><span class="o">.</span><span class="n">power</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">"Power Spectrum"</span><span class="p">)</span>
+<span class="c1"># plt.xlim([4e-2,7e1])</span>
+<span class="c1"># plt.ylim([1,150])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">"Frequency (Hz)"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">"Power (Leahy Normalised)"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_78_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_78_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[46]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1">#Calculate bispectrum</span>
+<span class="n">bs</span> <span class="o">=</span> <span class="n">AveragedBispectrum</span><span class="p">(</span><span class="n">lc</span><span class="p">,</span> <span class="n">segment_size</span><span class="o">=</span><span class="mf">16.0</span><span class="p">)</span>
+<span class="n">bs</span><span class="o">.</span><span class="n">m</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+199it [00:05, 35.32it/s]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[46]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+199
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[47]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bs</span><span class="o">.</span><span class="n">plot_bicoherence</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/notebooks_Bispectrum_bispectrum_tutorial_80_0.png" src="../../_images/notebooks_Bispectrum_bispectrum_tutorial_80_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[48]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get the biphase value at the f1=f2=2Hz region</span>
+<span class="n">f1</span> <span class="o">=</span> <span class="mf">2.</span>
+<span class="n">f2</span> <span class="o">=</span> <span class="mf">2.</span>
+
+<span class="n">i1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">bs</span><span class="o">.</span><span class="n">freq</span> <span class="o">-</span> <span class="n">f1</span><span class="p">))</span>
+<span class="n">i2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">bs</span><span class="o">.</span><span class="n">freq</span> <span class="o">-</span> <span class="n">f2</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'bicoherence(2, 2 Hz)   = </span><span class="si">{</span><span class="n">bs</span><span class="o">.</span><span class="n">bicoherence</span><span class="p">[</span><span class="n">i1</span><span class="p">,</span><span class="w"> </span><span class="n">i2</span><span class="p">]</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'biphase(2, 2 Hz)       = </span><span class="si">{</span><span class="n">bs</span><span class="o">.</span><span class="n">biphase</span><span class="p">[</span><span class="n">i1</span><span class="p">,</span><span class="w"> </span><span class="n">i2</span><span class="p">]</span><span class="si">:</span><span class="s1">+.3f</span><span class="si">}</span><span class="s1"> rad'</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+bicoherence(2, 2 Hz)   = 0.351
+biphase(2, 2 Hz)       = +1.885 rad
+</pre></div></div>
+</div>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Bispectrum Tutorial</a><ul>
+<li><a class="reference internal" href="#A-first-bispectrum">A first bispectrum</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Plots">Plots</a></li>
+<li><a class="reference internal" href="#The-cumulant-method-(indirect-estimator)">The cumulant method (indirect estimator)</a></li>
+<li><a class="reference internal" href="#Averaging-over-segments">Averaging over segments</a></li>
+<li><a class="reference internal" href="#Detecting-quadratic-phase-coupling">Detecting quadratic phase coupling</a></li>
+<li><a class="reference internal" href="#Bicoherence-normalizations">Bicoherence normalizations</a></li>
+<li><a class="reference internal" href="#Correcting-for-Poisson-noise">Correcting for Poisson noise</a></li>
+<li><a class="reference internal" href="#Jellyfish-plots">Jellyfish plots</a><ul>
+<li><a class="reference internal" href="#Lightweight-vs-heavy-per-segment-storage">Lightweight vs heavy per-segment storage</a></li>
+<li><a class="reference internal" href="#Poisson-subtraction-in-the-jellyfish-plot">Poisson subtraction in the jellyfish plot</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Cross-bispectrum">Cross-bispectrum</a><ul>
+<li><a class="reference internal" href="#When-all-three-channels-differ">When all three channels differ</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Dynamical-bispectrum">Dynamical bispectrum</a><ul>
+<li><a class="reference internal" href="#Diagonal-view">Diagonal view</a></li>
+<li><a class="reference internal" href="#Tracing-a-fixed-coupling">Tracing a fixed coupling</a></li>
+<li><a class="reference internal" href="#Fixed-f_1-slice,-single-frames-and-montages">Fixed-<span class="math notranslate nohighlight">\(f_1\)</span> slice, single frames and montages</a></li>
+<li><a class="reference internal" href="#Rebinning-and-tracking-a-drifting-feature">Rebinning and tracking a drifting feature</a></li>
+<li><a class="reference internal" href="#Dynamical-cross-bispectrum">Dynamical cross-bispectrum</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Testing-with-real-data">Testing with real data</a></li>
+</ul>
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="../../_sources/notebooks/Bispectrum/bispectrum_tutorial.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 9.0.4. &nbsp;
+    Last built 13 Nov 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

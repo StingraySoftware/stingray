@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>stingray.lombscargle &#8212; stingray v2.3.3.dev214+g1195de7f1</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bootstrap-astropy.css?v=f8405dd2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../_static/documentation_options.js?v=0c99ad66"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../index.html">stingray v2.3.3.dev214+g1195de7f1</a>
+	 &#187;
+      </li>
+      <li><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for stingray.lombscargle</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">npt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.stats</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.timeseries.periodograms</span><span class="w"> </span><span class="kn">import</span> <span class="n">LombScargle</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.crossspectrum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Crossspectrum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.events</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventList</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">StingrayError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.fourier</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">impose_symmetry_lsft</span><span class="p">,</span>
+    <span class="n">lsft_fast</span><span class="p">,</span>
+    <span class="n">lsft_slow</span><span class="p">,</span>
+    <span class="n">get_rms_from_unnorm_periodogram</span><span class="p">,</span>
+    <span class="n">poisson_level</span><span class="p">,</span>
+    <span class="n">unnormalize_periodograms</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.lightcurve</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lightcurve</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">simon</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">"LombScarglePowerspectrum"</span><span class="p">,</span>
+    <span class="s2">"LombScargleCrossspectrum"</span><span class="p">,</span>
+    <span class="s2">"lscrossspectrum_from_lightcurve"</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_autofrequency</span><span class="p">(</span><span class="n">min_freq</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_freq</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">df</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nyquist_factor</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Decide the frequency grid for the periodogram if not provided explicitly.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    min_freq : float</span>
+<span class="sd">        Minimum frequency to take the Lomb-Scargle Fourier Transform</span>
+<span class="sd">    max_freq : float</span>
+<span class="sd">        Maximum frequency to take the Lomb-Scargle Fourier Transform</span>
+<span class="sd">    df : float</span>
+<span class="sd">        The frequency resolution of the final periodogram. Defaults to 1 / length.</span>
+<span class="sd">    dt : float</span>
+<span class="sd">        The time resolution of the light curve.</span>
+<span class="sd">    length : float</span>
+<span class="sd">        The total length of the light curve.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    freq : numpy.ndarray</span>
+<span class="sd">        The array of mid-bin frequencies that the Fourier transform samples</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; freqs = _autofrequency(min_freq=0.1, max_freq=0.5, df=0.1)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(freqs, [0.1, 0.2, 0.3, 0.4, 0.5])</span>
+<span class="sd">    &gt;&gt;&gt; freqs = _autofrequency(min_freq=0.1, max_freq=0.5, length=10)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(freqs, [0.1, 0.2, 0.3, 0.4, 0.5])</span>
+<span class="sd">    &gt;&gt;&gt; freqs = _autofrequency(min_freq=0.1, dt=1, length=10)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(freqs, [0.1, 0.2, 0.3, 0.4, 0.5])</span>
+<span class="sd">    &gt;&gt;&gt; freqs = _autofrequency(max_freq=0.5, df=0.2)</span>
+<span class="sd">    &gt;&gt;&gt; assert np.allclose(freqs, [0.1, 0.3, 0.5])</span>
+<span class="sd">    """</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">df</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">df</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="n">length</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Either df or length must be specified."</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">df</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">df</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">length</span>
+
+    <span class="k">if</span> <span class="n">max_freq</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">dt</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">dt</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Either max_freq or dt must be specified."</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">max_freq</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">max_freq</span> <span class="o">=</span> <span class="n">nyquist_factor</span> <span class="o">*</span> <span class="mf">0.5</span> <span class="o">/</span> <span class="n">dt</span>
+
+    <span class="k">if</span> <span class="n">min_freq</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">min_freq</span> <span class="o">=</span> <span class="n">df</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="k">elif</span> <span class="n">min_freq</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">"min_freq must be positive and &gt;0. Setting to df / 2."</span><span class="p">)</span>
+        <span class="n">min_freq</span> <span class="o">=</span> <span class="n">df</span> <span class="o">/</span> <span class="mi">2</span>
+
+    <span class="n">freq</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">min_freq</span><span class="p">,</span> <span class="n">max_freq</span> <span class="o">+</span> <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">freq</span>
+
+
+<div class="viewcode-block" id="LombScargleCrossspectrum">
+<a class="viewcode-back" href="../../api.html#stingray.LombScargleCrossspectrum">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LombScargleCrossspectrum</span><span class="p">(</span><span class="n">Crossspectrum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Make a cross spectrum from an unevenly sampled (binned) light curve.</span>
+<span class="sd">    You can also make an empty :class:`~stingray.lombscargle.LombScargleCrossspectrum` object to populate with your</span>
+<span class="sd">    own Fourier-transformed data (this can sometimes be useful when making</span>
+<span class="sd">    binned power spectra).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data1: :class:`stingray.lightcurve.Lightcurve` or :class:`stingray.events.EventList`, optional, default ``None``</span>
+<span class="sd">        The dataset for the first channel/band of interest.</span>
+
+<span class="sd">    data2: :class:`stingray.lightcurve.Lightcurve` or :class:`stingray.events.EventList`, optional, default ``None``</span>
+<span class="sd">        The dataset for the second, or "reference", band.</span>
+
+<span class="sd">    norm: {``frac``, ``abs``, ``leahy``, ``none``}, string, optional, default ``none``</span>
+<span class="sd">        The normalization of the cross spectrum.</span>
+
+<span class="sd">    power_type: {``real``, ``absolute``, ``all`}, string, optional, default ``all``</span>
+<span class="sd">        Parameter to choose among complete, real part and magnitude of the cross spectrum.</span>
+
+<span class="sd">    fullspec: boolean, optional, default ``False``</span>
+<span class="sd">        If False, keep only the positive frequencies, or if True, keep all of them .</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    dt: float</span>
+<span class="sd">        The time resolution of the light curve. Only needed when constructing</span>
+<span class="sd">        light curves in the case where ``data1``, ``data2`` are</span>
+<span class="sd">        :class:`~stingray.events.EventList` objects</span>
+
+<span class="sd">    skip_checks: bool</span>
+<span class="sd">        Skip initial checks, for speed or other reasons (you need to trust your</span>
+<span class="sd">        inputs!)</span>
+
+<span class="sd">    min_freq : float</span>
+<span class="sd">        Minimum frequency to take the Lomb-Scargle Fourier Transform</span>
+
+<span class="sd">    max_freq: float</span>
+<span class="sd">        Maximum frequency to take the Lomb-Scargle Fourier Transform</span>
+
+<span class="sd">    df : float</span>
+<span class="sd">        The frequency resolution of the final periodogram.</span>
+
+<span class="sd">    method : str</span>
+<span class="sd">        The method to be used by the Lomb-Scargle Fourier Transformation function. ``fast``</span>
+<span class="sd">        and ``slow`` are the allowed values. Default is ``fast``. fast uses the optimized Press</span>
+<span class="sd">        and Rybicki O(n*log(n))</span>
+
+<span class="sd">    oversampling : float, optional, default: 10</span>
+<span class="sd">        Interpolation Oversampling Factor (for the fast algorithm)</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    freq: numpy.ndarray</span>
+<span class="sd">        The array of mid-bin frequencies that the Fourier transform samples</span>
+
+<span class="sd">    power: numpy.ndarray</span>
+<span class="sd">        The array of cross spectra (complex numbers)</span>
+
+<span class="sd">    power_err: numpy.ndarray</span>
+<span class="sd">        The uncertainties of ``power``.</span>
+<span class="sd">        An approximation for each bin given by ``power_err= power/sqrt(m)``.</span>
+<span class="sd">        Where ``m`` is the number of power averaged in each bin (by frequency</span>
+<span class="sd">        binning, or averaging more than one spectra). Note that for a single</span>
+<span class="sd">        realization (``m=1``) the error is equal to the power.</span>
+
+<span class="sd">    df: float</span>
+<span class="sd">        The frequency resolution</span>
+
+<span class="sd">    m: int</span>
+<span class="sd">        The number of averaged cross-spectra amplitudes in each bin.</span>
+
+<span class="sd">    n: int</span>
+<span class="sd">        The number of data points/time bins in one segment of the light</span>
+<span class="sd">        curves.</span>
+
+<span class="sd">    k: array of int</span>
+<span class="sd">        The rebinning scheme if the object has been rebinned otherwise is set to 1.</span>
+
+<span class="sd">    nphots1: float</span>
+<span class="sd">        The total number of photons in light curve 1</span>
+
+<span class="sd">    nphots2: float</span>
+<span class="sd">        The total number of photons in light curve 2</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] Scargle, J. D. , "Studies in astronomical time series analysis. III - Fourier</span>
+<span class="sd">        transforms, autocorrelation functions, and cross-correlation</span>
+<span class="sd">        functions of unevenly spaced data". ApJ 1:343, p874-887, 1989</span>
+<span class="sd">    .. [2] Press W.H. and Rybicki, G.B, "Fast algorithm for spectral analysis</span>
+<span class="sd">        of unevenly sampled data". ApJ 1:338, p277, 1989</span>
+<span class="sd">    """</span>
+
+    <span class="n">main_array_attr</span> <span class="o">=</span> <span class="s2">"freq"</span>
+    <span class="nb">type</span> <span class="o">=</span> <span class="s2">"crossspectrum"</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data1</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">EventList</span><span class="p">,</span> <span class="n">Lightcurve</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">data2</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">EventList</span><span class="p">,</span> <span class="n">Lightcurve</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">norm</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"none"</span><span class="p">,</span>
+        <span class="n">power_type</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"all"</span><span class="p">,</span>
+        <span class="n">dt</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">fullspec</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">skip_checks</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">min_freq</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">max_freq</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">df</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"fast"</span><span class="p">,</span>
+        <span class="n">oversampling</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_type</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">data1</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">data2</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_empty</span><span class="p">()</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">dt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span> <span class="n">Lightcurve</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data2</span><span class="p">,</span> <span class="n">EventList</span><span class="p">):</span>
+                <span class="n">dt</span> <span class="o">=</span> <span class="n">data1</span><span class="o">.</span><span class="n">dt</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data2</span><span class="p">,</span> <span class="n">Lightcurve</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data2</span><span class="p">,</span> <span class="n">EventList</span><span class="p">)</span> <span class="ow">and</span> <span class="n">dt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">dt</span> <span class="o">=</span> <span class="n">data2</span><span class="o">.</span><span class="n">dt</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">skip_checks</span><span class="p">:</span>
+            <span class="n">good_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_checks</span><span class="p">(</span>
+                <span class="n">data1</span><span class="o">=</span><span class="n">data1</span><span class="p">,</span>
+                <span class="n">data2</span><span class="o">=</span><span class="n">data2</span><span class="p">,</span>
+                <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+                <span class="n">power_type</span><span class="o">=</span><span class="n">power_type</span><span class="p">,</span>
+                <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+                <span class="n">fullspec</span><span class="o">=</span><span class="n">fullspec</span><span class="p">,</span>
+                <span class="n">min_freq</span><span class="o">=</span><span class="n">min_freq</span><span class="p">,</span>
+                <span class="n">max_freq</span><span class="o">=</span><span class="n">max_freq</span><span class="p">,</span>
+                <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+                <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+                <span class="n">oversampling</span><span class="o">=</span><span class="n">oversampling</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">data1</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">data2</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_from_any_input</span><span class="p">(</span>
+                <span class="n">data1</span><span class="p">,</span>
+                <span class="n">data2</span><span class="p">,</span>
+                <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+                <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+                <span class="n">power_type</span><span class="o">=</span><span class="n">power_type</span><span class="p">,</span>
+                <span class="n">fullspec</span><span class="o">=</span><span class="n">fullspec</span><span class="p">,</span>
+                <span class="n">min_freq</span><span class="o">=</span><span class="n">min_freq</span><span class="p">,</span>
+                <span class="n">max_freq</span><span class="o">=</span><span class="n">max_freq</span><span class="p">,</span>
+                <span class="n">df</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+                <span class="n">oversampling</span><span class="o">=</span><span class="n">oversampling</span><span class="p">,</span>
+            <span class="p">)</span>
+
+<div class="viewcode-block" id="LombScargleCrossspectrum.initial_checks">
+<a class="viewcode-back" href="../../api.html#stingray.LombScargleCrossspectrum.initial_checks">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">initial_checks</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data1</span><span class="p">,</span>
+        <span class="n">data2</span><span class="p">,</span>
+        <span class="n">norm</span><span class="p">,</span>
+        <span class="n">power_type</span><span class="p">,</span>
+        <span class="n">dt</span><span class="p">,</span>
+        <span class="n">min_freq</span><span class="p">,</span>
+        <span class="n">max_freq</span><span class="p">,</span>
+        <span class="n">fullspec</span><span class="p">,</span>
+        <span class="n">df</span><span class="p">,</span>
+        <span class="n">method</span><span class="p">,</span>
+        <span class="n">oversampling</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">norm</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"norm must be a string"</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">power_type</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"power_type must be a string"</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">norm</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"frac"</span><span class="p">,</span> <span class="s2">"abs"</span><span class="p">,</span> <span class="s2">"leahy"</span><span class="p">,</span> <span class="s2">"none"</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"norm must be one of ['frac','abs','leahy','none']"</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">power_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"all"</span><span class="p">,</span> <span class="s2">"absolute"</span><span class="p">,</span> <span class="s2">"real"</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"power_type must be one of ['all','absolute','real']"</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">data1</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">data2</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">data1</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">data2</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"You can't do a cross spectrum with just one lightcurve"</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">min_freq</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">min_freq</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"min_freq must be non-negative"</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">max_freq</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">max_freq</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"max_freq must be non-negative"</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">max_freq</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">min_freq</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">max_freq</span> <span class="o">&lt;=</span> <span class="n">min_freq</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"max_freq must be greater than min_freq"</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"fast"</span><span class="p">,</span> <span class="s2">"slow"</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"method must be one of ['fast','slow']"</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">oversampling</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"oversampling must be an integer"</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fullspec</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"fullspec must be a boolean"</span><span class="p">)</span>
+
+        <span class="n">dt_is_invalid</span> <span class="o">=</span> <span class="p">(</span><span class="n">dt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">dt</span> <span class="o">&lt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">resolution</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">data1</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">type</span><span class="p">(</span><span class="n">data2</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"data1 and data2 must be of the same kind"</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span> <span class="n">EventList</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">dt_is_invalid</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">"If using event lists, please specify the bin time to generate lightcurves."</span>
+                <span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span> <span class="n">Lightcurve</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">data1</span><span class="o">.</span><span class="n">err_dist</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">!=</span> <span class="n">data2</span><span class="o">.</span><span class="n">err_dist</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                <span class="n">simon</span><span class="p">(</span>
+                    <span class="s2">"Your lightcurves have different statistics."</span>
+                    <span class="s2">"The errors in the Crossspectrum will be incorrect."</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"Input data are invalid"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_from_any_input</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data1</span><span class="p">,</span>
+        <span class="n">data2</span><span class="p">,</span>
+        <span class="n">dt</span><span class="p">,</span>
+        <span class="n">norm</span><span class="p">,</span>
+        <span class="n">power_type</span><span class="p">,</span>
+        <span class="n">fullspec</span><span class="p">,</span>
+        <span class="n">min_freq</span><span class="p">,</span>
+        <span class="n">max_freq</span><span class="p">,</span>
+        <span class="n">df</span><span class="p">,</span>
+        <span class="n">method</span><span class="p">,</span>
+        <span class="n">oversampling</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Not required for unevenly sampled data"""</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span> <span class="n">EventList</span><span class="p">):</span>
+            <span class="n">data1</span> <span class="o">=</span> <span class="n">data1</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data2</span><span class="p">,</span> <span class="n">EventList</span><span class="p">):</span>
+            <span class="n">data2</span> <span class="o">=</span> <span class="n">data2</span><span class="o">.</span><span class="n">to_lc</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">lc1</span> <span class="o">=</span> <span class="n">data1</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">(</span><span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lc2</span> <span class="o">=</span> <span class="n">data2</span><span class="o">.</span><span class="n">apply_gtis</span><span class="p">(</span><span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="n">spec</span> <span class="o">=</span> <span class="n">lscrossspectrum_from_lightcurve</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lc1</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lc2</span><span class="p">,</span>
+            <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+            <span class="n">power_type</span><span class="o">=</span><span class="n">power_type</span><span class="p">,</span>
+            <span class="n">fullspec</span><span class="o">=</span><span class="n">fullspec</span><span class="p">,</span>
+            <span class="n">min_freq</span><span class="o">=</span><span class="n">min_freq</span><span class="p">,</span>
+            <span class="n">max_freq</span><span class="o">=</span><span class="n">max_freq</span><span class="p">,</span>
+            <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+            <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+            <span class="n">oversampling</span><span class="o">=</span><span class="n">oversampling</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">spec</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_empty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">freq</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">power</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">power_err</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unnorm_power</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unnorm_power_err</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nphots1</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nphots2</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fullspec</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">err_dist</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meancounts1</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meancounts2</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">oversampling</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">variance1</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">variance2</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">variance</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span>
+
+<div class="viewcode-block" id="LombScargleCrossspectrum.time_lag">
+<a class="viewcode-back" href="../../api.html#stingray.LombScargleCrossspectrum.time_lag">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">time_lag</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="vm">__doc__</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">phase_lag</span><span class="p">()</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LombScargleCrossspectrum.classical_significances">
+<a class="viewcode-back" href="../../api.html#stingray.LombScargleCrossspectrum.classical_significances">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">classical_significances</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Not applicable for unevenly sampled data"""</span>
+        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+            <span class="s2">"Object has no attribute named 'classical_significances' ! Not applicable for unevenly sampled data"</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LombScargleCrossspectrum.from_time_array">
+<a class="viewcode-back" href="../../api.html#stingray.LombScargleCrossspectrum.from_time_array">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_time_array</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Not applicable for unevenly sampled data"""</span>
+        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+            <span class="s2">"Object has no attribute named 'from_time_array' ! Not applicable for unevenly sampled data"</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LombScargleCrossspectrum.from_events">
+<a class="viewcode-back" href="../../api.html#stingray.LombScargleCrossspectrum.from_events">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_events</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Not applicable for unevenly sampled data"""</span>
+        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+            <span class="s2">"Object has no attribute named 'from_events' ! Not applicable for unevenly sampled data"</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LombScargleCrossspectrum.from_lightcurve">
+<a class="viewcode-back" href="../../api.html#stingray.LombScargleCrossspectrum.from_lightcurve">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_lightcurve</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Not applicable for unevenly sampled data"""</span>
+        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+            <span class="s2">"Object has no attribute named 'from_lightcurve' ! Not applicable for unevenly sampled data"</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LombScargleCrossspectrum.from_lc_iterable">
+<a class="viewcode-back" href="../../api.html#stingray.LombScargleCrossspectrum.from_lc_iterable">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_lc_iterable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Not applicable for unevenly sampled data"""</span>
+        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+            <span class="s2">"Object has no attribute named 'from_lc_iterable' ! Not applicable for unevenly sampled data"</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="LombScargleCrossspectrum.compute_rms">
+<a class="viewcode-back" href="../../api.html#stingray.LombScargleCrossspectrum.compute_rms">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_rms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_freq</span><span class="p">,</span> <span class="n">max_freq</span><span class="p">,</span> <span class="n">poisson_noise_level</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Compute the fractional rms amplitude in the power spectrum</span>
+<span class="sd">        between two frequencies.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        min_freq: float</span>
+<span class="sd">            The lower frequency bound for the calculation.</span>
+
+<span class="sd">        max_freq: float</span>
+<span class="sd">            The upper frequency bound for the calculation.</span>
+
+<span class="sd">        Other parameters</span>
+<span class="sd">        ----------------</span>
+<span class="sd">        poisson_noise_level : float, default is None</span>
+<span class="sd">            This is the Poisson noise level of the PDS with same</span>
+<span class="sd">            normalization as the PDS. If poissoin_noise_level is None,</span>
+<span class="sd">            the Poisson noise is calculated in the idealcase</span>
+<span class="sd">            e.g. 2./&lt;countrate&gt; for fractional rms normalisation</span>
+<span class="sd">            Dead time and other instrumental effects can alter it.</span>
+<span class="sd">            The user can fit the Poisson noise level outside</span>
+<span class="sd">            this function using the same normalisation of the PDS</span>
+<span class="sd">            and it will get subtracted from powers here.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        rms: float</span>
+<span class="sd">            The fractional rms amplitude contained between ``min_freq`` and</span>
+<span class="sd">            ``max_freq``.</span>
+
+<span class="sd">        rms_err: float</span>
+<span class="sd">            The error on the fractional rms amplitude.</span>
+
+<span class="sd">        """</span>
+        <span class="n">good</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">freq</span> <span class="o">&gt;=</span> <span class="n">min_freq</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">freq</span> <span class="o">&lt;=</span> <span class="n">max_freq</span><span class="p">)</span>
+
+        <span class="n">M_freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span>
+        <span class="n">K_freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">):</span>
+            <span class="n">K_freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">[</span><span class="n">good</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">):</span>
+            <span class="n">M_freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">[</span><span class="n">good</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">poisson_noise_level</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">poisson_noise_unnorm</span> <span class="o">=</span> <span class="n">poisson_level</span><span class="p">(</span><span class="s2">"none"</span><span class="p">,</span> <span class="n">n_ph</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nphots</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">poisson_noise_unnorm</span> <span class="o">=</span> <span class="n">unnormalize_periodograms</span><span class="p">(</span>
+                <span class="n">poisson_noise_level</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nphots</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">norm</span>
+            <span class="p">)</span>
+
+        <span class="n">rms</span><span class="p">,</span> <span class="n">rmse</span> <span class="o">=</span> <span class="n">get_rms_from_unnorm_periodogram</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">unnorm_power</span><span class="p">[</span><span class="n">good</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">nphots</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">*</span> <span class="n">K_freq</span><span class="p">,</span>
+            <span class="n">M</span><span class="o">=</span><span class="n">M_freq</span><span class="p">,</span>
+            <span class="n">poisson_noise_unnorm</span><span class="o">=</span><span class="n">poisson_noise_unnorm</span><span class="p">,</span>
+            <span class="n">segment_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">kind</span><span class="o">=</span><span class="s2">"frac"</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">rms</span><span class="p">,</span> <span class="n">rmse</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_rms_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">powers</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">"""</span>
+<span class="sd">        Compute the error on the fractional rms amplitude using error</span>
+<span class="sd">        propagation.</span>
+<span class="sd">        Note: this uses the actual measured powers, which is not</span>
+<span class="sd">        strictly correct. We should be using the underlying power spectrum,</span>
+<span class="sd">        but in the absence of an estimate of that, this will have to do.</span>
+
+<span class="sd">        .. math::</span>
+
+<span class="sd">           r = \sqrt{P}</span>
+
+<span class="sd">        .. math::</span>
+
+<span class="sd">           \delta r = \\frac{1}{2 * \sqrt{P}} \delta P</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        powers: iterable</span>
+<span class="sd">            The list of powers used to compute the fractional rms amplitude.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        delta_rms: float</span>
+<span class="sd">            The error on the fractional rms amplitude.</span>
+<span class="sd">        """</span>
+        <span class="n">nphots</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nphots</span>
+        <span class="n">p_err</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">)</span><span class="o">.</span><span class="n">var</span><span class="p">()</span> <span class="o">*</span> <span class="n">powers</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">/</span> <span class="n">nphots</span>
+
+        <span class="n">rms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">powers</span><span class="p">)</span> <span class="o">/</span> <span class="n">nphots</span>
+        <span class="nb">pow</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">rms</span><span class="p">)</span>
+
+        <span class="n">drms_dp</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="nb">pow</span><span class="p">)</span>
+
+        <span class="n">sq_sum_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">p_err</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">delta_rms</span> <span class="o">=</span> <span class="n">sq_sum_err</span> <span class="o">*</span> <span class="n">drms_dp</span>
+        <span class="k">return</span> <span class="n">delta_rms</span></div>
+
+
+
+<div class="viewcode-block" id="LombScarglePowerspectrum">
+<a class="viewcode-back" href="../../api.html#stingray.LombScarglePowerspectrum">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LombScarglePowerspectrum</span><span class="p">(</span><span class="n">LombScargleCrossspectrum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Make a :class:`~stingray.lombscargle.LombScarglePowerspectrum` (also called periodogram) from a unevenly sampled (binned)</span>
+<span class="sd">    light curve. Periodograms can be normalized by either Leahy normalization,</span>
+<span class="sd">    fractional rms normalization, absolute rms normalization, or not at all.</span>
+
+<span class="sd">    You can also make an empty :class:`~stingray.lombscargle.LombScarglePowerspectrum` object to populate with</span>
+<span class="sd">    your own fourier-transformed data (this can sometimes be useful when making</span>
+<span class="sd">    binned power spectra).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data: :class:`stingray.lightcurve.Lightcurve` or :class:`stingray.events.EventList` object, optional, default ``None``</span>
+<span class="sd">        The light curve data to be Fourier-transformed.</span>
+
+<span class="sd">    norm: {``frac``, ``abs``, ``leahy``, ``none``}, string, optional, default ``none``</span>
+<span class="sd">        The normalization of the power spectrum.</span>
+
+<span class="sd">    power_type: {``real``, ``absolute``, ``all`}, string, optional, default ``all``</span>
+<span class="sd">        Parameter to choose among complete, real part and magnitude of the power spectrum.</span>
+
+<span class="sd">    fullspec: boolean, optional, default ``False``</span>
+<span class="sd">        If False, keep only the positive frequencies, or if True, keep all of them .</span>
+
+<span class="sd">    Other Parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    dt: float</span>
+<span class="sd">        The time resolution of the light curve. Only needed when constructing</span>
+<span class="sd">        light curves in the case where ``data`` is a</span>
+<span class="sd">        :class:`~stingray.events.EventList` object</span>
+
+<span class="sd">    skip_checks: bool</span>
+<span class="sd">        Skip initial checks, for speed or other reasons (you need to trust your</span>
+<span class="sd">        inputs!).</span>
+
+<span class="sd">    min_freq : float</span>
+<span class="sd">        Minimum frequency to take the Lomb-Scargle Fourier Transform</span>
+
+<span class="sd">    max_freq: float</span>
+<span class="sd">        Maximum frequency to take the Lomb-Scargle Fourier Transform</span>
+
+<span class="sd">    df : float</span>
+<span class="sd">        The time resolution of the light curve. Only needed where ``data`` is a :class`stingray.Eventlist` object</span>
+
+<span class="sd">    method : str</span>
+<span class="sd">        The method to be used by the Lomb-Scargle Fourier Transformation function. ``fast``</span>
+<span class="sd">        and ``slow`` are the allowed values. Default is ``fast``. fast uses the optimized Press</span>
+<span class="sd">        and Rybicki O(n*log(n))</span>
+
+<span class="sd">    oversampling : float, optional, default: 10</span>
+<span class="sd">        Interpolation Oversampling Factor (for the fast algorithm)</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    freq: numpy.ndarray</span>
+<span class="sd">        The array of mid-bin frequencies that the Fourier transform samples.</span>
+
+<span class="sd">    power: numpy.ndarray</span>
+<span class="sd">        The array of normalized squared absolute values of Fourier</span>
+<span class="sd">        amplitudes.</span>
+
+<span class="sd">    power_err: numpy.ndarray</span>
+<span class="sd">        The uncertainties of ``power``.</span>
+<span class="sd">        An approximation for each bin given by ``power_err= power/sqrt(m)``.</span>
+<span class="sd">        Where ``m`` is the number of power averaged in each bin (by frequency</span>
+<span class="sd">        binning, or averaging power spectra of segments of a light curve).</span>
+<span class="sd">        Note that for a single realization (``m=1``) the error is equal to the</span>
+<span class="sd">        power.</span>
+
+<span class="sd">    df: float</span>
+<span class="sd">        The frequency resolution.</span>
+
+<span class="sd">    m: int</span>
+<span class="sd">        The number of averaged powers in each bin.</span>
+
+<span class="sd">    n: int</span>
+<span class="sd">        The number of data points in the light curve.</span>
+
+<span class="sd">    nphots: float</span>
+<span class="sd">        The total number of photons in the light curve.</span>
+<span class="sd">    """</span>
+
+    <span class="nb">type</span> <span class="o">=</span> <span class="s2">"powerspectrum"</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Lightcurve</span><span class="p">,</span> <span class="n">EventList</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">norm</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"frac"</span><span class="p">,</span>
+        <span class="n">power_type</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"all"</span><span class="p">,</span>
+        <span class="n">dt</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">fullspec</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">skip_checks</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">min_freq</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">max_freq</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">df</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">method</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"fast"</span><span class="p">,</span>
+        <span class="n">oversampling</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_type</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_empty</span><span class="p">()</span>
+        <span class="n">good_input</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">skip_checks</span><span class="p">:</span>
+            <span class="n">good_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_checks</span><span class="p">(</span>
+                <span class="n">data</span><span class="p">,</span>
+                <span class="n">data</span><span class="p">,</span>
+                <span class="n">norm</span><span class="p">,</span>
+                <span class="n">power_type</span><span class="p">,</span>
+                <span class="n">dt</span><span class="p">,</span>
+                <span class="n">min_freq</span><span class="p">,</span>
+                <span class="n">max_freq</span><span class="p">,</span>
+                <span class="n">fullspec</span><span class="p">,</span>
+                <span class="n">df</span><span class="p">,</span>
+                <span class="n">method</span><span class="p">,</span>
+                <span class="n">oversampling</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_from_any_input</span><span class="p">(</span>
+            <span class="n">data1</span><span class="o">=</span><span class="n">data</span><span class="p">,</span>
+            <span class="n">data2</span><span class="o">=</span><span class="n">data</span><span class="p">,</span>
+            <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+            <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
+            <span class="n">power_type</span><span class="o">=</span><span class="n">power_type</span><span class="p">,</span>
+            <span class="n">fullspec</span><span class="o">=</span><span class="n">fullspec</span><span class="p">,</span>
+            <span class="n">min_freq</span><span class="o">=</span><span class="n">min_freq</span><span class="p">,</span>
+            <span class="n">max_freq</span><span class="o">=</span><span class="n">max_freq</span><span class="p">,</span>
+            <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+            <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+            <span class="n">oversampling</span><span class="o">=</span><span class="n">oversampling</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nphots</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nphots1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="n">dt</span></div>
+
+
+
+<div class="viewcode-block" id="lscrossspectrum_from_lightcurve">
+<a class="viewcode-back" href="../../api.html#stingray.lscrossspectrum_from_lightcurve">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">lscrossspectrum_from_lightcurve</span><span class="p">(</span>
+    <span class="n">lc1</span><span class="p">,</span>
+    <span class="n">lc2</span><span class="p">,</span>
+    <span class="n">norm</span><span class="o">=</span><span class="s2">"frac"</span><span class="p">,</span>
+    <span class="n">power_type</span><span class="o">=</span><span class="s2">"all"</span><span class="p">,</span>
+    <span class="n">fullspec</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">min_freq</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">max_freq</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">df</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">method</span><span class="o">=</span><span class="s2">"fast"</span><span class="p">,</span>
+    <span class="n">oversampling</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">nyquist_factor</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Creates a Lomb Scargle Cross Spectrum from two light curves</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    lc1: :class:`stingray.lightcurve.Lightcurve` object</span>
+<span class="sd">        Light curve from channel 1.</span>
+<span class="sd">    lc2 : :class:`stingray.lightcurve.Lightcurve` object</span>
+<span class="sd">        Light curve from channel 2.</span>
+
+<span class="sd">    Other parameters</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    norm : str, default "none"</span>
+<span class="sd">        The normalization of the periodogram. "frac" is fractional rms,"abs" is absolute</span>
+<span class="sd">        rms, "leahy" is Leahy normalization, and "none" is the unnormalized periodogram</span>
+
+<span class="sd">    power_type : str, default "all"</span>
+<span class="sd">        Parameter to choose among complete, real part and magnitude of the spectrum</span>
+
+<span class="sd">    fullspec : bool, default False</span>
+<span class="sd">        If False, keep only the positive frequencies, or if True, keep all of them</span>
+
+<span class="sd">    min_freq : float, default 0</span>
+<span class="sd">        Minimum frequency to take the Lomb-Scargle Fourier Transform</span>
+
+<span class="sd">    max_freq : float, default None</span>
+<span class="sd">        Maximum frequency to take the Lomb-Scargle Fourier Transform</span>
+
+<span class="sd">    method : str, default "fast"</span>
+<span class="sd">        The method to be used by the Lomb-Scargle Fourier Transformation function.</span>
+<span class="sd">        ``fast`` and ``slow`` are the allowed values. Default is ``fast``. fast uses the</span>
+<span class="sd">        optimized Press and Rybicki O(n*log(n)) algorithm, while slow uses the original</span>
+<span class="sd">        O(n^2) algorithm.</span>
+
+<span class="sd">    oversampling : int, default 10</span>
+<span class="sd">        Interpolation Oversampling Factor (for the fast algorithm)</span>
+<span class="sd">    nyquist_factor : int, default 1</span>
+<span class="sd">        How many times the Nyquist frequency to use as the maximum frequency</span>
+<span class="sd">    """</span>
+    <span class="n">lscs</span> <span class="o">=</span> <span class="n">LombScargleCrossspectrum</span><span class="p">()</span>
+
+    <span class="n">length</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">lc1</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">lc2</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> <span class="nb">min</span><span class="p">(</span><span class="n">lc1</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">lc2</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">([</span><span class="n">lc1</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span> <span class="n">lc2</span><span class="o">.</span><span class="n">dt</span><span class="p">])</span>
+
+    <span class="n">freq</span> <span class="o">=</span> <span class="n">_autofrequency</span><span class="p">(</span>
+        <span class="n">min_freq</span><span class="o">=</span><span class="n">min_freq</span><span class="p">,</span>
+        <span class="n">max_freq</span><span class="o">=</span><span class="n">max_freq</span><span class="p">,</span>
+        <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+        <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+        <span class="n">length</span><span class="o">=</span><span class="n">length</span><span class="p">,</span>
+        <span class="n">nyquist_factor</span><span class="o">=</span><span class="n">nyquist_factor</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">freq</span><span class="p">,</span> <span class="n">cross</span> <span class="o">=</span> <span class="n">_ls_cross</span><span class="p">(</span>
+        <span class="n">lc1</span><span class="p">,</span>
+        <span class="n">lc2</span><span class="p">,</span>
+        <span class="n">freq</span><span class="o">=</span><span class="n">freq</span><span class="p">,</span>
+        <span class="n">fullspec</span><span class="o">=</span><span class="n">fullspec</span><span class="p">,</span>
+        <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+        <span class="n">oversampling</span><span class="o">=</span><span class="n">oversampling</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">lscs</span><span class="o">.</span><span class="n">unnorm_power</span> <span class="o">=</span> <span class="n">cross</span>
+    <span class="n">lscs</span><span class="o">.</span><span class="n">freq</span> <span class="o">=</span> <span class="n">freq</span>
+    <span class="n">lscs</span><span class="o">.</span><span class="n">lc1</span> <span class="o">=</span> <span class="n">lc1</span>
+    <span class="n">lscs</span><span class="o">.</span><span class="n">lc2</span> <span class="o">=</span> <span class="n">lc2</span>
+    <span class="n">lscs</span><span class="o">.</span><span class="n">norm</span> <span class="o">=</span> <span class="n">norm</span>
+    <span class="n">lscs</span><span class="o">.</span><span class="n">power_type</span> <span class="o">=</span> <span class="n">power_type</span>
+    <span class="n">lscs</span><span class="o">.</span><span class="n">fullspec</span> <span class="o">=</span> <span class="n">fullspec</span>
+    <span class="n">lscs</span><span class="o">.</span><span class="n">min_freq</span> <span class="o">=</span> <span class="n">min_freq</span>
+    <span class="n">lscs</span><span class="o">.</span><span class="n">max_freq</span> <span class="o">=</span> <span class="n">max_freq</span>
+    <span class="n">lscs</span><span class="o">.</span><span class="n">oversampling</span> <span class="o">=</span> <span class="n">oversampling</span>
+    <span class="n">lscs</span><span class="o">.</span><span class="n">nphots1</span> <span class="o">=</span> <span class="n">lc1</span><span class="o">.</span><span class="n">counts</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">lscs</span><span class="o">.</span><span class="n">nphots2</span> <span class="o">=</span> <span class="n">lc2</span><span class="o">.</span><span class="n">counts</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">lscs</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="n">lc1</span><span class="o">.</span><span class="n">dt</span>
+    <span class="n">lscs</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="n">lc1</span><span class="o">.</span><span class="n">n</span>
+    <span class="n">lscs</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="n">method</span>
+    <span class="n">lscs</span><span class="o">.</span><span class="n">err_dist</span> <span class="o">=</span> <span class="s2">"poisson"</span>
+
+    <span class="k">if</span> <span class="n">lc1</span><span class="o">.</span><span class="n">err_dist</span> <span class="o">==</span> <span class="s2">"poisson"</span><span class="p">:</span>
+        <span class="n">lscs</span><span class="o">.</span><span class="n">variance1</span> <span class="o">=</span> <span class="n">lc1</span><span class="o">.</span><span class="n">meancounts</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">lscs</span><span class="o">.</span><span class="n">variance1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">lc1</span><span class="o">.</span><span class="n">counts_err</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="n">lscs</span><span class="o">.</span><span class="n">err_dist</span> <span class="o">=</span> <span class="s2">"gauss"</span>
+    <span class="k">if</span> <span class="n">lc2</span><span class="o">.</span><span class="n">err_dist</span> <span class="o">==</span> <span class="s2">"poisson"</span><span class="p">:</span>
+        <span class="n">lscs</span><span class="o">.</span><span class="n">variance2</span> <span class="o">=</span> <span class="n">lc2</span><span class="o">.</span><span class="n">meancounts</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">lscs</span><span class="o">.</span><span class="n">variance2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">lc2</span><span class="o">.</span><span class="n">counts_err</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="n">lscs</span><span class="o">.</span><span class="n">err_dist</span> <span class="o">=</span> <span class="s2">"gauss"</span>
+
+    <span class="n">lscs</span><span class="o">.</span><span class="n">power</span> <span class="o">=</span> <span class="n">lscs</span><span class="o">.</span><span class="n">_normalize_crossspectrum</span><span class="p">(</span><span class="n">lscs</span><span class="o">.</span><span class="n">unnorm_power</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">power_type</span> <span class="o">==</span> <span class="s2">"real"</span><span class="p">:</span>
+        <span class="n">lscs</span><span class="o">.</span><span class="n">power</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">lscs</span><span class="o">.</span><span class="n">power</span><span class="p">)</span>
+        <span class="n">lscs</span><span class="o">.</span><span class="n">unnorm_power</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">lscs</span><span class="o">.</span><span class="n">power</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">power_type</span> <span class="o">==</span> <span class="s2">"absolute"</span><span class="p">:</span>
+        <span class="n">lscs</span><span class="o">.</span><span class="n">power</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">lscs</span><span class="o">.</span><span class="n">power</span><span class="p">)</span>
+        <span class="n">lscs</span><span class="o">.</span><span class="n">unnorm_power</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">lscs</span><span class="o">.</span><span class="n">power</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">lscs</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_ls_cross</span><span class="p">(</span>
+    <span class="n">lc1</span><span class="p">,</span>
+    <span class="n">lc2</span><span class="p">,</span>
+    <span class="n">freq</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">fullspec</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">method</span><span class="o">=</span><span class="s2">"fast"</span><span class="p">,</span>
+    <span class="n">oversampling</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Lomb-Scargle Fourier transform the two light curves, then compute the cross spectrum.</span>
+<span class="sd">    Computed as CS = lc1 x lc2* (where lc2 is the one that gets</span>
+<span class="sd">    complex-conjugated). The user has the option to either get just the</span>
+<span class="sd">    positive frequencies or the full spectrum.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    lc1: :class:`stingray.lightcurve.Lightcurve` object</span>
+<span class="sd">        One light curve to be Lomb-Scargle Fourier transformed. This is the band of</span>
+<span class="sd">        interest or channel of interest.</span>
+
+<span class="sd">    lc2: :class:`stingray.lightcurve.Lightcurve` object</span>
+<span class="sd">        Another light curve to be Fourier transformed.</span>
+<span class="sd">        This is the reference band.</span>
+
+<span class="sd">    fullspec: boolean. Default is False.</span>
+<span class="sd">        If True, return the whole array of frequencies, or only positive frequencies (False).</span>
+
+<span class="sd">    method : str</span>
+<span class="sd">        The method to be used by the Lomb-Scargle Fourier Transformation function. ``fast``</span>
+<span class="sd">        and ``slow`` are the allowed values. Default is ``fast``. fast uses the optimized Press</span>
+<span class="sd">        and Rybicki O(n*log(n))</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    freq: numpy.ndarray</span>
+<span class="sd">        The frequency grid at which the LSFT was evaluated</span>
+
+<span class="sd">    cross: numpy.ndarray</span>
+<span class="sd">        The cross spectrum value at each frequency.</span>
+
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">"slow"</span><span class="p">:</span>
+        <span class="n">lsft1</span> <span class="o">=</span> <span class="n">lsft_slow</span><span class="p">(</span><span class="n">lc1</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">lc1</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">freq</span><span class="p">)</span>
+        <span class="n">lsft2</span> <span class="o">=</span> <span class="n">lsft_slow</span><span class="p">(</span><span class="n">lc2</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">lc2</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">freq</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">"fast"</span><span class="p">:</span>
+        <span class="n">lsft1</span> <span class="o">=</span> <span class="n">lsft_fast</span><span class="p">(</span><span class="n">lc1</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">lc1</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">freq</span><span class="p">,</span> <span class="n">oversampling</span><span class="o">=</span><span class="n">oversampling</span><span class="p">)</span>
+        <span class="n">lsft2</span> <span class="o">=</span> <span class="n">lsft_fast</span><span class="p">(</span><span class="n">lc2</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">lc2</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">freq</span><span class="p">,</span> <span class="n">oversampling</span><span class="o">=</span><span class="n">oversampling</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">fullspec</span><span class="p">:</span>
+        <span class="n">lsft1</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">impose_symmetry_lsft</span><span class="p">(</span><span class="n">lsft1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">lc1</span><span class="o">.</span><span class="n">counts</span><span class="p">)),</span> <span class="n">lc1</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="n">freq</span><span class="p">)</span>
+        <span class="n">lsft2</span><span class="p">,</span> <span class="n">freq</span> <span class="o">=</span> <span class="n">impose_symmetry_lsft</span><span class="p">(</span><span class="n">lsft2</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">lc2</span><span class="o">.</span><span class="n">counts</span><span class="p">),</span> <span class="n">lc2</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="n">freq</span><span class="p">)</span>
+    <span class="n">cross</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">lsft1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">conjugate</span><span class="p">(</span><span class="n">lsft2</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">freq</span><span class="p">,</span> <span class="n">cross</span>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 9.0.4. &nbsp;
+    Last built 13 Nov 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>

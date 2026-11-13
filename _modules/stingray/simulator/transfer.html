@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>stingray.simulator.transfer &#8212; stingray v2.3.3.dev214+g1195de7f1</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/bootstrap-astropy.css?v=f8405dd2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=17ab1725" />
+    
+    <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+    <script src="../../../_static/documentation_options.js?v=0c99ad66"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script type="text/javascript" src="../../../_static/sidebar.js"></script>
+    <script type="text/javascript" src="../../../_static/copybutton.js"></script>
+    <link rel="icon" href="../../../_static/stingray_logo.ico"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+
+  </head><body>
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../../index.html"><span id="logotext1">Sting</span><span id="logotext2">ray</span><span id="logotext3">:docs</span></a>
+  <ul>
+    
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../../index.html">stingray v2.3.3.dev214+g1195de7f1</a>
+	 &#187;
+      </li>
+      <li><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for stingray.simulator.transfer</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pickle</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="sd">"""</span>
+<span class="sd">Implementation of time and energy averaged responses from 2-d</span>
+<span class="sd">transfer functions.</span>
+<span class="sd">"""</span>
+
+
+<div class="viewcode-block" id="TransferFunction">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.transfer.TransferFunction">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TransferFunction</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Create or retrieve a transfer function, and form</span>
+<span class="sd">    time and energy averaged responses.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data : numpy 2-d array / 2-d list</span>
+<span class="sd">        inner/first dimension (or column counts) represents time</span>
+<span class="sd">        and outer/second dimension (or rows counts) represents energy.</span>
+
+<span class="sd">        As an example, if you have you 2-d model defined by 'arr', then</span>
+<span class="sd">        arr[1][5] defines a time of 5(s) and energy of 1(keV) [assuming</span>
+<span class="sd">        'dt' and 'de' are 1 and 'tstart' and 'estart' are 0.]</span>
+
+<span class="sd">        Note that each row is a different energy channel starting from</span>
+<span class="sd">        the lowest to the highest.</span>
+
+<span class="sd">    dt : float, default 1</span>
+<span class="sd">        time interval</span>
+
+<span class="sd">    de : float, default 1</span>
+<span class="sd">        energy interval</span>
+
+<span class="sd">    tstart : float, default 0</span>
+<span class="sd">        initial time value across time axis</span>
+
+<span class="sd">    estart : float, default 0</span>
+<span class="sd">        initial energy value across energy axis</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time : numpy.ndarray</span>
+<span class="sd">        energy-averaged/time-resolved response of 2-d transfer</span>
+<span class="sd">        function</span>
+
+<span class="sd">    energy : numpy.ndarray</span>
+<span class="sd">        time-averaged/energy-resolved response of 2-d transfer</span>
+<span class="sd">        function</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">de</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">tstart</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">estart</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">energy</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asanyarray</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="n">dt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">de</span> <span class="o">=</span> <span class="n">de</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tstart</span> <span class="o">=</span> <span class="n">tstart</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">estart</span> <span class="o">=</span> <span class="n">estart</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">energy</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Number of columns should be greater than 1."</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[:])</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Number of rows should be greater than 1."</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TransferFunction.time_response">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.transfer.TransferFunction.time_response">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">time_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e0</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">e1</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Form an energy-averaged/time-resolved response of 2-d transfer</span>
+<span class="sd">        function.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        energy : numpy.ndarray</span>
+<span class="sd">            energy-averaged/time-resolved response of 2-d transfer function</span>
+
+<span class="sd">        e0: int</span>
+<span class="sd">            start value of energy interval to be averaged</span>
+
+<span class="sd">        e1: int</span>
+<span class="sd">            end value of energy interval to be averaged</span>
+<span class="sd">        """</span>
+
+        <span class="c1"># Set start and stop values</span>
+        <span class="k">if</span> <span class="n">e0</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">estart</span> <span class="o">+</span> <span class="n">e0</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">de</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">e1</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">stop</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[:][</span><span class="mi">0</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">stop</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">estart</span> <span class="o">+</span> <span class="n">e1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">de</span><span class="p">)</span>
+
+        <span class="c1"># Ensure start and stop values are legal</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">start</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">stop</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"e0 and e1 must be positive."</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">start</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[:][</span><span class="mi">0</span><span class="p">]))</span> <span class="ow">or</span> <span class="p">(</span><span class="n">stop</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[:][</span><span class="mi">0</span><span class="p">])):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"One or both energy values are out of range."</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">start</span> <span class="o">==</span> <span class="n">stop</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"e0 and e1 must be separated by at least de."</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="p">,</span> <span class="p">:],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TransferFunction.energy_response">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.transfer.TransferFunction.energy_response">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">energy_response</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Form a time-averaged/energy-resolved response of 2-d transfer function.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        time : numpy.ndarray</span>
+<span class="sd">            time-averaged/energy-resolved response of 2-d transfer function</span>
+<span class="sd">        """</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">energy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TransferFunction.plot">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.transfer.TransferFunction.plot">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="o">=</span><span class="s2">"2d"</span><span class="p">,</span> <span class="n">save</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Plot 'time', 'energy' or 2-d response using matplotlib.</span>
+
+<span class="sd">        In case of 1-d response, 'time' and 'energy' would appear</span>
+<span class="sd">        along x-axis and corresponding flux across y-axis. In case</span>
+<span class="sd">        of 2-d response, a spectrograph would be formed with 'time'</span>
+<span class="sd">        along x-axis and 'energy' along y-axis.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        response : str</span>
+<span class="sd">            type of response - accepts 'time', 'energy', '2d'</span>
+
+<span class="sd">        filename : str</span>
+<span class="sd">            the name of file to save plot to. If a default of 'None' is</span>
+<span class="sd">            picked, plot is not saved.</span>
+<span class="sd">        """</span>
+
+        <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">response</span> <span class="o">==</span> <span class="s2">"time"</span><span class="p">:</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tstart</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+            <span class="n">figure</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">"Time"</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">"Flux"</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">"Time-resolved Response"</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">response</span> <span class="o">==</span> <span class="s2">"energy"</span><span class="p">:</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">estart</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[:])</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">de</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[:]))</span>
+            <span class="n">figure</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">"Energy"</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">"Flux"</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">"Energy-resolved Response"</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">response</span> <span class="o">==</span> <span class="s2">"2d"</span><span class="p">:</span>
+            <span class="n">figure</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s2">"nearest"</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">"Oranges"</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s2">"lower"</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">"Time"</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">"Energy"</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">"2-d Transfer Function"</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">"Response value is not recognized. Available"</span>
+                <span class="s2">"response types are 'time', 'energy', and '2d'."</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">save</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">"out.png"</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">show</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TransferFunction.read">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.transfer.TransferFunction.read">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">"pickle"</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Reads transfer function from a 'pickle' file.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        fmt : str</span>
+<span class="sd">            the format of the file to be retrieved - accepts 'pickle'.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        data : class instance</span>
+<span class="sd">            :class:`~stingray.simulator.transfer.TransferFunction` object</span>
+<span class="sd">        """</span>
+
+        <span class="k">if</span> <span class="n">fmt</span> <span class="o">==</span> <span class="s2">"pickle"</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">fobj</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fobj</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">"Format not understood."</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TransferFunction.write">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.transfer.TransferFunction.write">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">"pickle"</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Writes a transfer function to 'pickle' file.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        fmt : str</span>
+<span class="sd">            the format of the file to be saved - accepts 'pickle'</span>
+<span class="sd">        """</span>
+
+        <span class="k">if</span> <span class="n">fmt</span> <span class="o">==</span> <span class="s2">"pickle"</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">"wb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">fobj</span><span class="p">:</span>
+                <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fobj</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">"Format not understood."</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="sd">"""</span>
+<span class="sd">Implementation of artificial methods to create energy-averaged</span>
+<span class="sd">responses for quick testing.</span>
+<span class="sd">"""</span>
+
+
+<div class="viewcode-block" id="simple_ir">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.transfer.simple_ir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">simple_ir</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="mf">0.125</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">intensity</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Construct a simple impulse response using start time,</span>
+<span class="sd">    width and scaling intensity.</span>
+<span class="sd">    To create a delta impulse response, set width to 1.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dt : float</span>
+<span class="sd">        Time resolution</span>
+
+<span class="sd">    start : int</span>
+<span class="sd">        start time of impulse response</span>
+
+<span class="sd">    width : int</span>
+<span class="sd">        width of impulse response</span>
+
+<span class="sd">    intensity : float</span>
+<span class="sd">        scaling parameter to set the intensity of delayed emission</span>
+<span class="sd">        corresponding to direct emission.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    h : numpy.ndarray</span>
+<span class="sd">        Constructed impulse response</span>
+<span class="sd">    """</span>
+
+    <span class="c1"># Fill in 0 entries until the start time</span>
+    <span class="n">h_zeros</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">start</span> <span class="o">/</span> <span class="n">dt</span><span class="p">))</span>
+
+    <span class="c1"># Define constant impulse response</span>
+    <span class="n">h_ones</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">width</span> <span class="o">/</span> <span class="n">dt</span><span class="p">))</span> <span class="o">*</span> <span class="n">intensity</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">h_zeros</span><span class="p">,</span> <span class="n">h_ones</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="relativistic_ir">
+<a class="viewcode-back" href="../../../api.html#stingray.simulator.transfer.relativistic_ir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">relativistic_ir</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="mf">0.125</span><span class="p">,</span> <span class="n">t1</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">t2</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">t3</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">p1</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">p2</span><span class="o">=</span><span class="mf">1.4</span><span class="p">,</span> <span class="n">rise</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">decay</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Construct a realistic impulse response considering the relativistic</span>
+<span class="sd">    effects.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dt : float</span>
+<span class="sd">        Time resolution</span>
+
+<span class="sd">    t1 : int</span>
+<span class="sd">        primary peak time</span>
+
+<span class="sd">    t2 : int</span>
+<span class="sd">        secondary peak time</span>
+
+<span class="sd">    t3 : int</span>
+<span class="sd">        end time</span>
+
+<span class="sd">    p1 : float</span>
+<span class="sd">        value of primary peak</span>
+
+<span class="sd">    p2 : float</span>
+<span class="sd">        value of secondary peak</span>
+
+<span class="sd">    rise : float</span>
+<span class="sd">        slope of rising exponential from primary peak to secondary peak</span>
+
+<span class="sd">    decay : float</span>
+<span class="sd">        slope of decaying exponential from secondary peak to end time</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    h: numpy.ndarray</span>
+<span class="sd">        Constructed impulse response</span>
+<span class="sd">    """</span>
+
+    <span class="k">assert</span> <span class="n">t2</span> <span class="o">&gt;</span> <span class="n">t1</span><span class="p">,</span> <span class="s2">"Secondary peak must be after primary peak."</span>
+    <span class="k">assert</span> <span class="n">t3</span> <span class="o">&gt;</span> <span class="n">t2</span><span class="p">,</span> <span class="s2">"End time must be after secondary peak."</span>
+    <span class="k">assert</span> <span class="n">p2</span> <span class="o">&gt;</span> <span class="n">p1</span><span class="p">,</span> <span class="s2">"Secondary peak must be greater than primary peak."</span>
+
+    <span class="c1"># Append zeros before start time</span>
+    <span class="n">h_primary</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">t1</span> <span class="o">/</span> <span class="n">dt</span><span class="p">)),</span> <span class="n">p1</span><span class="p">)</span>
+
+    <span class="c1"># Create a rising exponential of user-provided slope</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">t1</span> <span class="o">/</span> <span class="n">dt</span><span class="p">,</span> <span class="n">t2</span> <span class="o">/</span> <span class="n">dt</span><span class="p">,</span> <span class="nb">int</span><span class="p">((</span><span class="n">t2</span> <span class="o">-</span> <span class="n">t1</span><span class="p">)</span> <span class="o">/</span> <span class="n">dt</span><span class="p">))</span>
+    <span class="n">h_rise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">rise</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span>
+
+    <span class="c1"># Evaluate a factor for scaling exponential</span>
+    <span class="n">factor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">h_rise</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">p2</span> <span class="o">-</span> <span class="n">p1</span><span class="p">)</span>
+    <span class="n">h_secondary</span> <span class="o">=</span> <span class="p">(</span><span class="n">h_rise</span> <span class="o">/</span> <span class="n">factor</span><span class="p">)</span> <span class="o">+</span> <span class="n">p1</span>
+
+    <span class="c1"># Create a decaying exponential until the end time</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">t2</span> <span class="o">/</span> <span class="n">dt</span><span class="p">,</span> <span class="n">t3</span> <span class="o">/</span> <span class="n">dt</span><span class="p">,</span> <span class="nb">int</span><span class="p">((</span><span class="n">t3</span> <span class="o">-</span> <span class="n">t2</span><span class="p">)</span> <span class="o">/</span> <span class="n">dt</span><span class="p">))</span>
+    <span class="n">h_decay</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">((</span><span class="o">-</span><span class="n">decay</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="mi">4</span> <span class="o">/</span> <span class="n">dt</span><span class="p">))</span>
+
+    <span class="c1"># Add the three responses</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">h_primary</span><span class="p">,</span> <span class="n">h_secondary</span><span class="p">)</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">h_decay</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">h</span></div>
+
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2026, [{&#39;name&#39;: &#39;Stingray Developers&#39;, &#39;email&#39;: &#39;spectraltiming-stingray@googlegroups.com&#39;}].<br/>
+    Created using <a href="http://www.sphinx-doc.org/en/stable/">Sphinx</a> 9.0.4. &nbsp;
+    Last built 13 Nov 2026. <br/>
+  </p>
+</footer>
+  </body>
+</html>
