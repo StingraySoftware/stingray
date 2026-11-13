@@ -2243,22 +2243,23 @@ class AveragedCrossspectrum(Crossspectrum):
 
         return raw_coherence(c, p1, p2, P1noise, P2noise, self.m, return_uncertainty=True)
 
-    def intrinsic_coherence(self, adjust_bias=False):
-        r"""Averaged Coherence function.
+    def intrinsic_coherence(self, adjust_bias=None, return_interval=False):
+        r"""Averaged intrinsic coherence, with its uncertainty.
 
-        Intrinsic Coherence is defined in Vaughan and Nowak, 1997 [#]_, as
+        The intrinsic coherence (Vaughan and Nowak, 1997 [#]_) is the fraction of the
+        variability in the two bands that is linearly related, after removing the effect of
+        Poisson noise:
 
         .. math::
 
             \tilde{\gamma}^2(f) = \frac{|\langle \tilde{C}(f) \rangle|^2 - \tilde{b}^2}
-            {(\langle \tilde{P}_1(f) \rangle - \tilde{P}_{1, \rm noise})
-            (\langle \tilde{P}_2(f) \rangle - \tilde{P}_{2, \rm noise})}
+            {S_1 S_2 - \tilde{c}^2}
 
-        where :math:`\tilde{b}^2` is the bias term that accounts for the contribution of Poisson
-        noise to the cross spectrum (see :func:`stingray.fourier.bias_term`), and tilde generally indicates noisy
-        measurements of the cross spectrum :math:`C` and the power spectra :math:`P_n`. The terms
-        :math:`\tilde{P}_{n, \rm noise}` are the estimates of the contribution of Poisson noise to
-        the power spectra.
+        where :math:`S_n` are the noise-subtracted powers and :math:`\tilde{b}^2`,
+        :math:`\tilde{c}^2` correct the biases of the numerator and the denominator. See
+        :func:`~stingray.fourier.intrinsic_coherence` for the definitions, and for how the
+        1-sigma interval is calculated. The coherence and its interval are not clipped to
+        [0, 1].
 
         .. note::
 
@@ -2266,18 +2267,27 @@ class AveragedCrossspectrum(Crossspectrum):
             cross spectrum and the power spectra estimates have been obtained by averaging over
             at least 50 intervals. A warning will be raised if this is not the case
 
+        .. note::
+
+            The two bands must not share photons: ``channels_overlap`` is not taken into
+            account here. For a reference band containing the subject band, use
+            :func:`~stingray.fourier.intrinsic_coherence` as described on the coherence page
+            of the docs.
+
         Parameters
         ----------
-        adjust_bias: bool, default False
-            If True, the bias term is adjusted to account for the fact that the bias term depends
-            on the intrinsic coherence itself. This is done iteratively.
-            See Ingram 2019, cited, for details on the bias term and its dependence on the intrinsic
-            coherence, and the documentation of :func:`~stingray.fourier.intrinsic_coherence`.
+        adjust_bias: bool
+            Deprecated and ignored: the bias term is now exact.
+        return_interval: bool, default False
+            If True, return the ends of the 1-sigma interval instead of a symmetric
+            uncertainty.
 
         Returns
         -------
         (coh, uncertainty) : tuple of np.ndarray
-            Tuple comprising the coherence function and uncertainty.
+            The coherence and half the width of its 1-sigma interval, or
+        (coh, lower, upper) : tuple of np.ndarray
+            if ``return_interval`` is True.
 
         References
         ----------
@@ -2299,8 +2309,17 @@ class AveragedCrossspectrum(Crossspectrum):
         P1noise = poisson_level(norm="none", meanrate=meanrate1, n_ph=self.nphots1)
         P2noise = poisson_level(norm="none", meanrate=meanrate2, n_ph=self.nphots2)
 
+        kwargs = {} if adjust_bias is None else {"adjust_bias": adjust_bias}
         return intrinsic_coherence(
-            c, p1, p2, P1noise, P2noise, self.m, return_uncertainty=True, adjust_bias=adjust_bias
+            c,
+            p1,
+            p2,
+            P1noise,
+            P2noise,
+            self.m,
+            return_uncertainty=not return_interval,
+            return_interval=return_interval,
+            **kwargs,
         )
 
     def phase_lag(self):
