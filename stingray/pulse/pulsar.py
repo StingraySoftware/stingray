@@ -645,7 +645,7 @@ def z_n_events(phase, n):
     return all_zs[-1]
 
 
-def z_n(data, n, datatype="events", err=None, norm=None):
+def z_n(data, n, datatype="events", err=None):
     """Z^2_n statistics, a` la Buccheri+83, A&A, 128, 245, eq. 2.
 
     If datatype is "binned" or "gauss", uses the formulation from
@@ -667,10 +667,6 @@ def z_n(data, n, datatype="events", err=None, norm=None):
     err : float
         The uncertainty on the pulse profile fluxes (required for
         datatype="gauss", ignored otherwise)
-    norm : float
-        For backwards compatibility; if norm is not None, it is
-        substituted to ``data``, and data is ignored. This raises
-        a DeprecationWarning
 
     Returns
     -------
@@ -678,18 +674,6 @@ def z_n(data, n, datatype="events", err=None, norm=None):
         The Z^2_n statistics of the events.
     """
     data = np.asanyarray(data)
-
-    if norm is not None:
-        warnings.warn(
-            "The use of ``z_n(phase, norm=profile)`` is deprecated. Use "
-            "``z_n(profile, datatype='binned')`` instead",
-            DeprecationWarning,
-        )
-        if isinstance(norm, Iterable):
-            data = norm
-            datatype = "binned"
-        else:
-            datatype = "events"
 
     if data.size == 0:
         return 0

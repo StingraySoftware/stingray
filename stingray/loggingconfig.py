@@ -1,5 +1,9 @@
 import logging
 
+__all__ = [
+    "setup_logger",
+]
+
 logger = None
 
 

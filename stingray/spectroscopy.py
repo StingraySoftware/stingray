@@ -9,6 +9,20 @@ from stingray import Lightcurve, Crossspectrum
 from stingray.utils import standard_error, find_nearest, fft, ifft
 from stingray.filters import Optimal1D, Window1D
 
+__all__ = [
+    "load_lc_fits",
+    "get_new_df",
+    "ccf",
+    "ccf_error",
+    "get_parameters",
+    "waveform",
+    "psi_distance",
+    "x_2_function",
+    "get_mean_phase_difference",
+    "get_phase_lag",
+    "compute_rms",
+]
+
 
 def load_lc_fits(file, counts_type=True):
     """

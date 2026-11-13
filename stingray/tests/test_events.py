@@ -33,10 +33,6 @@ class TestEvents(object):
             _ = EventList(self.time, self.counts, gti=self.gti, bubu="settete")
         assert np.any(["Unrecognized keywords:" in r.message.args[0] for r in record])
 
-    def test_warn_wrong_keywords_ncounts(self):
-        with pytest.warns(DeprecationWarning, match="The ncounts keyword does nothing"):
-            _ = EventList(self.time, self.counts, gti=self.gti, ncounts=10)
-
     def test_initiate_from_ndarray(self):
         times = np.sort(np.random.uniform(1e8, 1e8 + 1000, 101).astype(np.longdouble))
         ev = EventList(times, mjdref=54600)
@@ -117,18 +113,6 @@ class TestEvents(object):
         ev = EventList.from_lc(lc)
 
         assert np.array_equal(ev.time, np.array([0.5, 0.5, 2.5, 2.5]))
-
-    def test_simulate_times_warns_bin_time(self):
-        """Simulate photon arrival times for an event list
-        from light curve.
-        """
-        lc = Lightcurve(self.time, self.counts_flat, gti=self.gti)
-        ev = EventList()
-        with pytest.warns(DeprecationWarning) as record:
-            ev.simulate_times(lc, bin_time=lc.dt)
-        assert np.any(["Bin time will be ignored" in r.message.args[0] for r in record])
-        lc_sim = ev.to_lc(dt=lc.dt, tstart=lc.tstart, tseg=lc.tseg)
-        assert np.all((lc - lc_sim).counts < 3 * np.sqrt(lc.counts))
 
     @pytest.mark.parametrize("use_spline", [True, False])
     def test_simulate_times(self, use_spline):

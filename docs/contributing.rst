@@ -152,6 +152,15 @@ Compatibility and Dependencies
       ``scipy.optimize``, ``astropy.table``, ``h5py``) are imported
       inside the functions that use them, not at the top of the module.
       ``stingray/tests/test_import.py`` checks this.
+   -  **Public names:** every module lists its public functions and
+      classes in ``__all__``; only those are documented. Only the main
+      classes (``EventList``, ``Lightcurve``, the spectra, ...) are
+      available directly as ``stingray.<name>``: they are imported one by
+      one in ``stingray/__init__.py``. Functions are imported from their
+      modules, e.g. ``from stingray.fourier import avg_pds_from_timeseries``.
+      ``stingray/tests/test_import.py``
+      checks that every module has an ``__all__`` and that every name in
+      it exists.
 
 Coding Style and Conventions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

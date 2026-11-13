@@ -1,0 +1,12 @@
+Removed everything deprecated in Stingray 2.0 or earlier:
+
+- the ``lc`` keyword of ``Powerspectrum``, ``AveragedPowerspectrum`` and ``Multitaper``, and the ``lc1``/``lc2`` keywords of ``Crossspectrum`` and ``AveragedCrossspectrum`` (use ``data``, ``data1``, ``data2``);
+- the standalone functions ``stingray.coherence``, ``stingray.time_lag``, ``normalize_crossspectrum`` and ``normalize_crossspectrum_gauss`` in ``stingray.crossspectrum`` (use the methods of ``AveragedCrossspectrum`` and the functions in ``stingray.fourier``);
+- ``stingray.stats.classical_pvalue`` (use ``pds_probability``), ``stingray.gti.gti_len`` (use ``get_total_gti_length``), and ``rms_calculation``, ``avg_pds_from_events`` and ``avg_cs_from_events`` in ``stingray.fourier`` (use ``get_rms_from_unnorm_periodogram`` and ``avg_cs_from_timeseries``/``avg_pds_from_timeseries``);
+- ``Lightcurve.estimate_chunk_length`` and ``Lightcurve.analyze_lc_chunks`` (use ``estimate_segment_size`` and ``analyze_segments``), and the ``axis`` keyword of ``Lightcurve.plot`` (use ``axis_limits``);
+- the ``ncounts`` keyword of ``EventList`` and the ``bin_time`` keyword of ``EventList.simulate_times``;
+- the ``norm`` keyword of ``stingray.pulse.z_n`` (use ``datatype="binned"``) and the ``threads`` keyword of the ``sample`` methods in ``stingray.modeling`` (use ``pool``).
+
+Where a removed keyword sat in the middle of a signature, the keywords after it can now only be passed by name, so that old positional calls fail with an error instead of silently filling the wrong argument.
+
+Every module now declares its public names in ``__all__``. ``import stingray`` now gives direct access only to the main classes (``EventList``, ``Lightcurve``, ``Powerspectrum``, ``AveragedCrossspectrum``, ``Bispectrum``, ``RmsSpectrum``, ...), imported one by one instead of with ``from ... import *``. Functions must be imported from their modules: for example, ``stingray.pds_probability`` is now ``stingray.stats.pds_probability``, and ``stingray.rebin_data`` is now ``stingray.utils.rebin_data``. The documentation of ``stingray.io`` only lists the functions meant for users.
