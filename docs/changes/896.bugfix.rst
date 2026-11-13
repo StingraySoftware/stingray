@@ -1,0 +1,1 @@
+``Simulator.simple_ir`` now produces one impulse bin when the requested width is shorter than the time resolution.
