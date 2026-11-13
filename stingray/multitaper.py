@@ -16,11 +16,7 @@ from .events import EventList
 from .lightcurve import Lightcurve
 from .utils import rebin_data, simon, fft, rfft, rfftfreq
 
-try:
-    integration_func = np.trapezoid
-except AttributeError:
-    # < Numpy 2.0.0
-    integration_func = np.trapz
+integration_func = np.trapezoid
 
 __all__ = ["Multitaper"]
 

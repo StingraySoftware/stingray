@@ -99,11 +99,11 @@ Dependencies
 ------------
 A **minimal installation** of Stingray requires the following dependencies:
 
-+ python>=3.11
-+ astropy>=5.3
-+ numpy>=1.24
-+ scipy>=1.10
-+ matplotlib>=3.7
++ python>=3.12
++ astropy>=6.1
++ numpy>=2.0
++ scipy>=1.13
++ matplotlib>=3.8.4
 
 In **typical** uses, requiring input/output, caching of results, and faster processing, we **recommend the following dependencies**:
 

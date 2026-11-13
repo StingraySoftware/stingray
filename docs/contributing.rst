@@ -360,7 +360,7 @@ Test Coverage
 ~~~~~~~~~~~~~
 
 Test coverage is measured by the test environments whose name ends in ``-cov``
-(for example ``py311-test-alldeps-cov``) and is reported to
+(for example ``py312-test-alldeps-cov``) and is reported to
 `Codecov <https://codecov.io/gh/StingraySoftware/stingray>`__.
 
 Sending a report to Codecov needs a repository upload token, and GitHub does not
