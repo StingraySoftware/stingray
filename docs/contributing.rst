@@ -329,8 +329,8 @@ Releases reach PyPI automatically. Once the changelog is compiled with
 release on GitHub with a new tag (e.g. ``v2.4``). The ``release.yml`` workflow
 then builds the package, takes its version from the tag, and uploads it to PyPI
 through `trusted publishing <https://docs.pypi.org/trusted-publishers/>`__:
-PyPI accepts uploads only from that workflow, so no password or API token is
-needed. Do not upload releases by hand.
+the workflow authenticates without a stored PyPI password or API token.
+Revoke any old publishing tokens separately. Do not upload releases by hand.
 
 Testing Guidelines
 ------------------
