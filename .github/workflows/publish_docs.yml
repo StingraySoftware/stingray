@@ -25,6 +25,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[docs]"
+      - name: Compile the changelog
+        # On releases, show the new version's changelog right away, before
+        # the release workflow's changelog pull request reaches main.
+        if: github.event_name == 'release' && !github.event.release.prerelease
+        run: towncrier build --yes --version "${TAG#v}"
+        env:
+          TAG: ${{ github.event.release.tag_name }}
       - name: Build documentation
         run: sphinx-build -b html -d _build/doctrees . _build/html
         working-directory: docs

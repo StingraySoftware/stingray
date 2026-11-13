@@ -192,7 +192,7 @@ Coding Style and Conventions
      This will run the pre-commit tools on all files in the Stingray git repository. The tools may automatically modify some files, while in other cases, they will report issues that require manual correction. If pre-commit makes changes to any files, those changes will appear as new modifications, which need to be staged before committing.
 
 
-   
+
 
 -  **Linter/Style Guide Checker:** Our testing infrastructure currently
    enforces a subset of the PEP8 style guide. You can check locally
@@ -320,6 +320,25 @@ go through the entire git log.
 The towncrier tool will automatically reflow your text. You can install
 towncrier and then run ``towncrier --draft`` if you want to get a
 preview of how your change will look in the final release notes.
+
+Making a Release
+~~~~~~~~~~~~~~~~
+
+Releases reach PyPI automatically. A maintainer creates a release on GitHub
+with a new tag (e.g. ``v3.0.0``). The ``release.yml`` workflow
+then builds the package, takes its version from the tag, and uploads it to PyPI
+through `trusted publishing <https://docs.pypi.org/trusted-publishers/>`__:
+the workflow authenticates without a stored PyPI password or API token.
+Revoke any old publishing tokens separately. Do not upload releases by hand.
+
+Nobody needs to run ``towncrier`` by hand. After the upload, the workflow
+opens a pull request named "Changelog for <tag>", which adds the compiled
+changelog to ``CHANGELOG.rst`` and deletes the fragments it used. Merge it
+promptly: until then, those fragments are still on ``main``. GitHub does not
+run the tests on pull requests opened by a workflow, so if a required check
+stays pending, close and reopen the pull request to start it. Pre-releases
+(e.g. ``v3.0.0rc1``) get the compiled changelog in their package but open no
+pull request, so the final release still finds its fragments.
 
 Testing Guidelines
 ------------------

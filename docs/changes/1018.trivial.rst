@@ -1,0 +1,2 @@
+Releases are uploaded to PyPI by a GitHub workflow using trusted publishing, instead of by hand from a maintainer's computer.
+The same workflow compiles the changelog with ``towncrier``, so every release carries it, and then opens a pull request that brings it to ``main``.
