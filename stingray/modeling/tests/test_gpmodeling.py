@@ -35,7 +35,7 @@ except ImportError:
 
 try:
     import jaxns
-    from jaxns import ExactNestedSampler, TerminationCondition, Prior, Model
+    from jaxns import NestedSampler, TerminationCondition, Prior, Model
 except ImportError:
     _HAS_JAXNS = False
 
@@ -46,7 +46,6 @@ def clear_all_figs():
         plt.close(fig)
 
 
-@pytest.mark.xfail
 @pytest.mark.skipif(not _HAS_TINYGP, reason="tinygp not installed")
 class Testget_kernel(object):
     def setup_class(self):
@@ -236,7 +235,6 @@ class Testget_gp_params(object):
         ]
 
 
-@pytest.mark.xfail
 @pytest.mark.skipif(
     not (_HAS_TINYGP and _HAS_TFP and _HAS_JAXNS), reason="tinygp, tfp or jaxns not installed"
 )
@@ -285,15 +283,18 @@ class TestGPResult(object):
         NSmodel = Model(prior_model=prior_model, log_likelihood=likelihood_model)
         NSmodel.sanity_check(random.PRNGKey(10), S=100)
 
-        Exact_ns = ExactNestedSampler(NSmodel, num_live_points=500, max_samples=5e3)
+        Exact_ns = NestedSampler(NSmodel, num_live_points=50, max_samples=1e3)
         Termination_reason, State = Exact_ns(
-            random.PRNGKey(42), term_cond=TerminationCondition(live_evidence_frac=1e-4)
+            random.PRNGKey(42), term_cond=TerminationCondition(dlogZ=1e-4)
         )
-        self.Results = Exact_ns.to_results(State, Termination_reason)
+        self.Results = Exact_ns.to_results(termination_reason=Termination_reason, state=State)
 
         self.gpresult = GPResult(lc)
         self.gpresult.sample(
-            prior_model=prior_model, likelihood_model=likelihood_model, max_samples=5e3
+            prior_model=prior_model,
+            likelihood_model=likelihood_model,
+            max_samples=1e3,
+            num_live_points=50,
         )
 
     def test_sample(self):

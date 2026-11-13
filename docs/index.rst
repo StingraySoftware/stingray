@@ -125,15 +125,13 @@ To install all required and recommended dependencies in a recent installation, y
 
     $ pip install astropy scipy matplotlib numpy h5py tqdm numba pint-pulsar emcee corner statsmodels pyfftw tbb
 
-For the Gaussian Process modeling in ``stingray.modeling.gpmodeling``, you'll need the following extra packages
+For the Gaussian Process modeling in ``stingray.modeling.gpmodeling``, you'll need
+jax, tinygp, jaxns (version 2.6 or later, but not 3) and tfp-nightly. Install them with::
 
-+ jax
-+ jaxns
-+ tensorflow
-+ tensorflow-probability
-+ tinygp
-+ etils
-+ typing_extensions
+    $ pip install "stingray[gp]"
+
+These are not part of ``stingray[all]``: jaxns requires ``tfp-nightly``, a daily development
+build of TensorFlow Probability, because the stable release does not work with current jax.
 
 For the Bexvar calculations in ``stingray.bexvar`` and ``stingray.lightcurve``, you'll need `UltraNest <https://johannesbuchner.github.io/UltraNest/index.html>`_.
 
