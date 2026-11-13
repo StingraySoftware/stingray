@@ -332,11 +332,17 @@ the workflow authenticates without a stored PyPI password or API token.
 Revoke any old publishing tokens separately. Do not upload releases by hand.
 
 Nobody needs to run ``towncrier`` by hand. After the upload, the workflow
-opens a pull request named "Changelog for <tag>", which adds the compiled
-changelog to ``CHANGELOG.rst`` and deletes the fragments it used. Merge it
-promptly: until then, those fragments are still on ``main``. GitHub does not
-run the tests on pull requests opened by a workflow, so if a required check
-stays pending, close and reopen the pull request to start it. Pre-releases
+opens a pull request named "Changelog for <tag> (main)", which adds the
+compiled changelog to ``CHANGELOG.rst`` and deletes the fragments it used.
+Merge it promptly: until then, those fragments are still on ``main``. GitHub
+does not run the tests on pull requests opened by a workflow, so if a required
+check stays pending, close and reopen the pull request to start it.
+
+A release made from a maintenance branch (e.g. ``v2.4.x``) gets a second pull
+request, against that branch. Each pull request removes only the fragments
+that were part of the release, so a fix backported to ``v2.4.x`` with the same
+fragment file is listed under the 2.4 release on both branches and does not
+appear again in the next release from ``main``. Pre-releases
 (e.g. ``v3.0.0rc1``) get the compiled changelog in their package but open no
 pull request, so the final release still finds its fragments.
 
