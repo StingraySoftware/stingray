@@ -44,6 +44,49 @@ def _default_value_if_no_key(dictionary, key, default):
         return default
 
 
+def _per_event_array(values, size, name):
+    """Return ``values`` as a float array with one finite element per event.
+
+    A scalar is broadcast to all events.
+
+    Parameters
+    ----------
+    values : float or array-like
+        The per-event values (e.g. weights or variances)
+    size : int
+        The number of events
+    name : str
+        The name of the quantity, used in error messages
+
+    Returns
+    -------
+    values : ``numpy.ndarray``
+        Array of ``size`` floats
+
+    Examples
+    --------
+    >>> assert np.allclose(_per_event_array(2, 3, "weights"), [2, 2, 2])
+    >>> _per_event_array([1, 2], 3, "weights")
+    Traceback (most recent call last):
+    ...
+    ValueError: weights must be a scalar or have one element per event (3), got 2
+    >>> _per_event_array([1, np.nan], 2, "weights")
+    Traceback (most recent call last):
+    ...
+    ValueError: weights must be finite
+    """
+    values = np.asarray(values, dtype=float)
+    if values.ndim == 0:
+        values = np.full(size, values)
+    elif values.shape != (size,):
+        raise ValueError(
+            f"{name} must be a scalar or have one element per event ({size}), got {values.size}"
+        )
+    if not np.all(np.isfinite(values)):
+        raise ValueError(f"{name} must be finite")
+    return values
+
+
 def p_to_f(*period_derivatives):
     """Convert periods into frequencies, and vice versa.
 
@@ -263,6 +306,16 @@ def fold_events(
         sum of the data points in each phase bin, for "pdm", the variance
         in each phase bin
 
+    variances : float or array of floats, optional, default None
+        The variance of each data point. In ``"ef"`` mode, the variances of
+        the points falling in each phase bin are summed to give the
+        uncertainty on the profile. If None, the data are treated as Poisson
+        counts, so that the variance of each point equals its weight: this is
+        correct for unweighted photon events and for light curves in counts.
+        For photon events carrying probability weights (Kerr 2011, ApJ 732,
+        38), the correct choice is ``variances=weights**2``. In ``"pdm"``
+        mode, the inverse variances are used to weight each data point.
+
     Returns
     -------
     phase_bins : array of floats
@@ -273,6 +326,19 @@ def fold_events(
 
     profile_err : array of floats
         The uncertainties on the pulse profile
+
+    Examples
+    --------
+    Photons with probability weights: the profile errors follow the
+    weights, rather than the (incorrect) square root of the weighted counts.
+
+    >>> times = np.array([0.1, 0.35, 0.6, 0.85, 1.1, 1.35])
+    >>> weights = np.array([0.5, 0.2, 1.0, 0.1, 0.5, 0.3])
+    >>> _, prof, err = fold_events(
+    ...     times, 1, nbin=4, weights=weights, variances=weights**2
+    ... )
+    >>> assert np.allclose(prof, [1.0, 0.5, 1.0, 0.1])
+    >>> assert np.allclose(err, np.sqrt([0.5, 0.13, 1.0, 0.01]))
     """
 
     # If no key is passed, *or gti is None*, defaults to the
@@ -301,9 +367,18 @@ def fold_events(
     )
 
     if mode == "ef":
-        raw_profile, bins = np.histogram(phases, bins=np.linspace(0, 1, nbin + 1), weights=weights)
-        # TODO: this is wrong. Need to extend this to non-1 weights
-        raw_profile_err = np.sqrt(raw_profile)
+        bin_edges = np.linspace(0, 1, nbin + 1)
+        raw_profile, bins = np.histogram(phases, bins=bin_edges, weights=weights)
+
+        # Each phase bin is a sum of independent data points, so its variance is
+        # the sum of their variances. When these are not given, the data points
+        # are Poisson counts, whose variance is the value itself.
+        if variances is None:
+            raw_profile_var = raw_profile
+        else:
+            point_variances = _per_event_array(variances, np.size(times), "variances")
+            raw_profile_var, _ = np.histogram(phases, bins=bin_edges, weights=point_variances)
+        raw_profile_err = np.sqrt(raw_profile_var)
 
         if expocorr:
             expo_norm = phase_exposure(start_phase, stop_phase, 1, nbin, gti=gti_phases)

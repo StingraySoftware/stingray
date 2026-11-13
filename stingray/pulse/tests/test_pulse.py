@@ -263,6 +263,64 @@ class TestAll(object):
         expected_err[-1] = 2  # Because of the change of exposure
         np.testing.assert_array_almost_equal(pe, expected_err)
 
+    def test_pulse_profile_err_default_is_poisson(self):
+        # Light curve in counts: without variances, each bin is Poisson
+        nbin = 8
+        times = np.arange(0, 4, 1 / nbin) + 0.5 / nbin
+        counts = np.random.poisson(50, times.size)
+        _, prof, err = fold_events(times, 1, nbin=nbin, weights=counts)
+        _, prof_v, err_v = fold_events(times, 1, nbin=nbin, weights=counts, variances=counts)
+        np.testing.assert_allclose(err, np.sqrt(prof))
+        np.testing.assert_allclose(prof_v, prof)
+        np.testing.assert_allclose(err_v, err)
+
+    def test_pulse_profile_err_photon_weights(self):
+        rng = np.random.default_rng(1)
+        nbin = 16
+        times = np.sort(rng.uniform(0, 100, 5000))
+        weights = rng.uniform(0, 1, times.size)
+        phases = times - np.floor(times)
+        bin_idx = np.floor(phases * nbin).astype(int)
+
+        _, prof, err = fold_events(times, 1, nbin=nbin, weights=weights, variances=weights**2)
+
+        np.testing.assert_allclose(prof, np.bincount(bin_idx, weights, minlength=nbin))
+        np.testing.assert_allclose(err, np.sqrt(np.bincount(bin_idx, weights**2, minlength=nbin)))
+        # The old estimate, sqrt(sum(w)), overestimates the error for w < 1
+        assert np.all(err < np.sqrt(prof))
+
+    def test_pulse_profile_err_scalar_variance(self):
+        nbin = 4
+        times = np.arange(0, 2, 1 / nbin) + 0.5 / nbin
+        flux = np.ones(times.size) * 3.0
+        _, prof, err = fold_events(times, 1, nbin=nbin, weights=flux, variances=0.25)
+        # Two points per bin, each with variance 0.25
+        np.testing.assert_allclose(prof, 6)
+        np.testing.assert_allclose(err, np.sqrt(0.5))
+
+    def test_pulse_profile_err_expocorr_with_variances(self):
+        nbin = 16
+        dt = 1 / nbin
+        times = np.arange(0, 2, dt)
+        gti = np.array([[-0.5 * dt, 2 + 0.5 * dt]])
+        weights = np.full(times.size, 0.5)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            _, p, pe = fold_events(
+                times, 1, nbin=nbin, expocorr=True, gti=gti, weights=weights, variances=weights**2
+            )
+        np.testing.assert_array_almost_equal(p, np.ones(nbin))
+        np.testing.assert_array_almost_equal(pe, np.sqrt(0.5) * np.ones(nbin))
+
+    @pytest.mark.parametrize(
+        "variances,match",
+        [([1.0, 2.0], "one element per event"), (np.nan, "must be finite")],
+    )
+    def test_pulse_profile_bad_variances(self, variances, match):
+        times = np.arange(0, 2, 0.125)
+        with pytest.raises(ValueError, match=match):
+            fold_events(times, 1, nbin=4, variances=variances)
+
     def test_pulse_profile_pdm(self):
         period = 0.237
         nbin = 10
