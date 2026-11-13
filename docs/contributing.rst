@@ -192,7 +192,7 @@ Coding Style and Conventions
      This will run the pre-commit tools on all files in the Stingray git repository. The tools may automatically modify some files, while in other cases, they will report issues that require manual correction. If pre-commit makes changes to any files, those changes will appear as new modifications, which need to be staged before committing.
 
 
-   
+
 
 -  **Linter/Style Guide Checker:** Our testing infrastructure currently
    enforces a subset of the PEP8 style guide. You can check locally
@@ -325,12 +325,11 @@ Making a Release
 ~~~~~~~~~~~~~~~~
 
 Releases reach PyPI automatically. A maintainer creates a release on GitHub
-with a new tag (e.g. ``v3.0.0``). The ``release.yml`` workflow then compiles
-the changelog from the fragments in ``docs/changes/``, builds the package,
-takes its version from the tag, and uploads it to PyPI through
-`trusted publishing <https://docs.pypi.org/trusted-publishers/>`__:
-PyPI accepts uploads only from that workflow, so no password or API token is
-needed. Do not upload releases by hand.
+with a new tag (e.g. ``v3.0.0``). The ``release.yml`` workflow
+then builds the package, takes its version from the tag, and uploads it to PyPI
+through `trusted publishing <https://docs.pypi.org/trusted-publishers/>`__:
+the workflow authenticates without a stored PyPI password or API token.
+Revoke any old publishing tokens separately. Do not upload releases by hand.
 
 Nobody needs to run ``towncrier`` by hand. After the upload, the workflow
 opens a pull request named "Changelog for <tag>", which adds the compiled
