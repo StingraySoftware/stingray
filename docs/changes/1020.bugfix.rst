@@ -1,0 +1,1 @@
+``stingray.modeling.gpmodeling`` works again with current releases of jax and jaxns 2.6, and its tests run instead of being marked as expected failures.

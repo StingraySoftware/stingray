@@ -21,7 +21,8 @@ except ImportError:
     can_make_gp = False
 
 try:
-    from jaxns import ExactNestedSampler, TerminationCondition, Prior, Model
+    from jaxns import NestedSampler, TerminationCondition, Prior, Model
+    from jaxns import summary, plot_diagnostics, plot_cornerplot
     from jaxns.utils import resample
 
     can_sample = True
@@ -626,14 +627,14 @@ class GPResult:
         nsmodel = Model(prior_model=self.prior_model, log_likelihood=self.log_likelihood_model)
         nsmodel.sanity_check(random.PRNGKey(10), S=100)
 
-        self.exact_ns = ExactNestedSampler(
+        self.exact_ns = NestedSampler(
             nsmodel, num_live_points=num_live_points, max_samples=max_samples
         )
 
         termination_reason, state = self.exact_ns(
-            random.PRNGKey(42), term_cond=TerminationCondition(live_evidence_frac=1e-4)
+            random.PRNGKey(42), term_cond=TerminationCondition(dlogZ=1e-4)
         )
-        self.results = self.exact_ns.to_results(state, termination_reason)
+        self.results = self.exact_ns.to_results(termination_reason=termination_reason, state=state)
         print("Simulation Complete")
 
     def get_evidence(self):
@@ -646,19 +647,19 @@ class GPResult:
         """
         Prints a summary table for the model parameters
         """
-        self.exact_ns.summary(self.results)
+        summary(self.results)
 
     def plot_diagnostics(self):
         """
         Plots the diagnostic plots for the sampling process
         """
-        self.exact_ns.plot_diagnostics(self.results)
+        plot_diagnostics(self.results)
 
     def plot_cornerplot(self):
         """
         Plots the corner plot for the sampled hyperparameters
         """
-        self.exact_ns.plot_cornerplot(self.results)
+        plot_cornerplot(self.results)
 
     def get_parameters_names(self):
         """
@@ -671,7 +672,7 @@ class GPResult:
         Returns the optimal parameters for the model based on the NUTS sampling
         """
         max_post_idx = jnp.argmax(self.results.log_posterior_density)
-        map_points = jax.tree_map(lambda x: x[max_post_idx], self.results.samples)
+        map_points = jax.tree.map(lambda x: x[max_post_idx], self.results.samples)
 
         return map_points
 
@@ -680,7 +681,7 @@ class GPResult:
         Returns the maximum likelihood parameters
         """
         max_like_idx = jnp.argmax(self.results.log_L_samples)
-        max_like_points = jax.tree_map(lambda x: x[max_like_idx], self.results.samples)
+        max_like_points = jax.tree.map(lambda x: x[max_like_idx], self.results.samples)
 
         return max_like_points
 
@@ -791,9 +792,7 @@ class GPResult:
         )
 
         nbins = max(10, int(jnp.sqrt(self.results.ESS)) + 1)
-        binsx = jnp.linspace(
-            *jnp.percentile(samples_resampled, jnp.asanyarray([0, 100])), 2 * nbins
-        )
+        binsx = jnp.linspace(*jnp.percentile(samples_resampled, jnp.asarray([0, 100])), 2 * nbins)
 
         plt.hist(
             np.asanyarray(samples_resampled),
