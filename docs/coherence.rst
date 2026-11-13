@@ -214,3 +214,132 @@ with older results:
   The bias :math:`b^2` above includes it.
 * Eq. 9, meant for low coherence, contains a term that grows without limit as the
   coherence goes to zero.
+
+Two detectors: no noise level to subtract
+=========================================
+
+The intrinsic coherence above needs the Poisson noise levels :math:`N_n`. They are not
+always well known: dead time, for example, distorts the noise level of NuSTAR and other
+instruments in a way that depends on frequency and count rate. When the same source is
+observed by two independent detectors at the same time, such as the two NuSTAR modules,
+the noise level is not needed at all. The Poisson noise of the two detectors is
+independent, so it averages out when one detector's light curve is multiplied by the
+other's (this is the *cospectrum* of Bachetti et al. 2015).
+
+:func:`~stingray.crossspectrum.cross_detector_spectral_matrix` builds this crossing for
+two energy bands. With :math:`A` and :math:`B` the Fourier amplitudes of the two
+detectors, it returns the averaged cospectra of each band and the cross spectrum between
+the bands,
+
+.. math::
+
+    S_{11} = {\rm Re}\langle A_1^* B_1\rangle, \qquad
+    S_{22} = {\rm Re}\langle A_2^* B_2\rangle, \qquad
+    S_{12} = \langle A_1^* B_2 + B_1^* A_2\rangle / 2,
+
+none of which contains Poisson noise on average. It also returns the power spectrum of
+each detector in each band, :math:`p_{A1}, p_{B1}, p_{A2}, p_{B2}`, which are needed for
+the bias and the error bars. :func:`~stingray.fourier.cross_detector_coherence`
+calculates
+
+.. math::
+
+    \gamma^2 = \frac{|S_{12}|^2 - b^2}{S_{11} S_{22} - c^2}, \qquad
+    b^2 = \frac{p_{A1} p_{B2} + p_{B1} p_{A2} + 2 S_{11} S_{22}}{4m}, \qquad
+    c^2 = \frac{\max(|S_{12}|^2 - b^2, 0)}{m}.
+
+As before, :math:`b^2` is the average excess of :math:`|S_{12}|^2` over its true value,
+due to the scatter of the averaged cross spectrum, and :math:`c^2` corrects the
+correlation between the two cospectra. For Gaussian Fourier amplitudes, :math:`b^2` is
+exact and :math:`c^2` is correct to first order. The result is not clipped, and it
+is NaN where a cospectrum is not positive: there, no signal is detected in that band.
+
+>>> from stingray.fourier import cross_detector_coherence
+>>> auto = [np.full(3, p) for p in (5.0, 6.0, 2.0, 3.0)]  # pA1, pB1, pA2, pB2
+>>> s11, s22 = np.full(3, 4.0), np.full(3, 1.0)
+>>> s12 = np.array([0.5, 1 + 1j, 1.8])
+>>> coh, lower, upper = cross_detector_coherence(
+...     s11, s22, s12, auto, 50, return_interval=True
+... )
+>>> print(np.round(coh, 3))
+[0.019 0.46  0.778]
+>>> print(np.round(lower, 3))
+[-0.018  0.318  0.613]
+>>> print(np.round(upper, 3))
+[0.121 0.626 0.954]
+
+With light curves (or event lists) of two bands from two detectors, averaging the
+matrix over a frequency range before calculating the coherence:
+
+.. code-block:: python
+
+    from stingray.crossspectrum import cross_detector_spectral_matrix
+
+    mat = cross_detector_spectral_matrix(
+        soft_a, hard_a, soft_b, hard_b, segment_size=8.0
+    )
+    band = (mat.freq > 0.5) & (mat.freq < 10)
+    coh, lower, upper = cross_detector_coherence(
+        mat.power1[band].mean(),
+        mat.power2[band].mean(),
+        mat.cross_power[band].mean(),
+        [p[band].mean() for p in mat.auto_powers],
+        mat.m * band.sum(),  # segments times frequencies averaged
+        return_interval=True,
+        # only needed with dead time, see below
+        same_detector_cross=[c[band].mean() for c in mat.same_detector_cross],
+    )
+
+The 1-sigma interval is built in the same way as for the intrinsic coherence. The
+variance under each candidate value :math:`x` has the same two parts. With
+:math:`r_{Xn} = (p_{Xn} - S_{nn}) / S_{nn}` the noise-to-signal ratio of detector
+:math:`X` in band :math:`n`,
+
+.. math::
+
+    m\,\sigma^2_1(x) = 2x(1-x)^2 + \frac{x(1-x)}{2}(r_{A1} + r_{B1} + r_{A2} + r_{B2})
+    + \frac{x^2}{2}(r_{A1} r_{B1} + r_{A2} r_{B2}) + \frac{x}{2}(r_{A1} r_{B2} + r_{A2} r_{B1}),
+
+plus the low-coherence term :math:`(\kappa\,(m b^2 - x S_{11} S_{22}) / (m S_{11} S_{22}))^2`.
+In simulations with equal and unequal detectors and at least 30 averaged segments, the
+interval contained the true value 63-76% of the time wherever the coherence could be
+measured, both with simulated Fourier amplitudes and with simulated light curves. With
+only 10 segments, it is too narrow at high coherence, and covers as little as 56% of
+the time.
+
+Dead time: correlated noise within each detector
+------------------------------------------------
+
+Dead time does not only change the noise level: it also correlates the noise of the two
+bands *in the same detector*. After a photon of either band, the detector is blind to
+both, so a band that receives more photons than average leaves fewer for the other. The
+cross spectrum of the two bands in one detector, :math:`C_A = \langle A_1^* A_2\rangle`,
+then contains a noise term that depends on frequency and count rate (in the simulation
+described below, it is negative up to about 200 Hz and positive near 300 Hz). This term
+cancels in all the entries of the matrix, so the coherence is not biased. However, it correlates the fluctuations of
+:math:`S_{11}` and :math:`S_{22}` with those of :math:`S_{12}`, and this changes the
+scatter of the coherence: the formula above, which ignores it, gives intervals too wide or
+too narrow.
+
+The more general calculation uses all the averaged products of the four amplitudes, which
+fix the scatter of any quantity built from them, for Gaussian amplitudes (Isserlis'
+theorem). Besides those in the formula above, these products include :math:`C_A` and
+:math:`C_B = \langle B_1^* B_2\rangle`. ``cross_detector_spectral_matrix`` returns both, as
+``same_detector_cross``; passing them to ``cross_detector_coherence`` gives the general
+variance. Without dead time, the result is the same as the formula above. In a simulation
+of two detectors with 2.5 ms of dead time, recording about half of 400 photons/s each, the
+interval contained the true coherence 64-72% of the time with :math:`C_A` and
+:math:`C_B`, in ten frequency windows from 0.1 to 400 Hz. Without them, it was too narrow
+below 150 Hz, where the crosstalk is negative (coverage down to 49%), and slightly too wide
+near 300 Hz, where it is positive (up to 78%).
+
+Tutorial
+========
+
+The notebook below explains these methods step by step and checks them with simulations,
+including two detectors affected by dead time.
+
+.. toctree::
+   :maxdepth: 2
+
+   notebooks/Coherence/Coherence and its uncertainty.ipynb

@@ -1,6 +1,7 @@
 import copy
 import warnings
 from collections.abc import Iterable, Iterator, Generator
+from typing import NamedTuple
 
 import numpy as np
 import scipy
@@ -33,6 +34,8 @@ __all__ = [
     "normalize_crossspectrum",
     "time_lag",
     "coherence",
+    "cross_detector_spectral_matrix",
+    "CrossDetectorSpectralMatrix",
     "get_flux_generator",
     "normalize_crossspectrum_gauss",
     "crossspectrum_from_time_array",
@@ -215,6 +218,109 @@ def time_lag(lc1, lc2):
     lag = cs.time_lag()
 
     return lag
+
+
+class CrossDetectorSpectralMatrix(NamedTuple):
+    """Cross-spectral matrix of two energy bands, built by crossing two detectors.
+
+    Output of :func:`cross_detector_spectral_matrix`.
+
+    Attributes
+    ----------
+    freq : `np.ndarray`
+        Frequencies, Hz.
+    power1, power2 : `np.ndarray`
+        Cospectra between the detectors in band 1 and band 2, :math:`S_{11}` and
+        :math:`S_{22}`.
+    cross_power : `np.ndarray`
+        Cross spectrum between the bands, averaged over the two ways of pairing the
+        detectors, :math:`S_{12}`.
+    auto_powers : tuple of `np.ndarray`
+        Power spectra of band 1 in detector 1 and 2, then of band 2 in detector 1 and 2.
+        They contain the Poisson level; the uncertainties need them.
+    m : int
+        Number of averaged segments.
+    norm : str
+        Normalisation of all the entries.
+    same_detector_cross : tuple of `np.ndarray`
+        Cross spectra of band 1 and band 2 within detector 1 and within detector 2. Dead
+        time makes the noise of the two bands correlated in the same detector; the
+        uncertainties need them in that case.
+    """
+
+    freq: np.ndarray
+    power1: np.ndarray
+    power2: np.ndarray
+    cross_power: np.ndarray
+    auto_powers: tuple
+    m: int
+    norm: str
+    same_detector_cross: tuple
+
+
+def cross_detector_spectral_matrix(
+    band1_det1, band2_det1, band1_det2, band2_det2, segment_size, norm="frac", **kwargs
+):
+    r"""Cross-spectral matrix of two energy bands, built by crossing two detectors.
+
+    Two detectors observing the same source see the same variability, but their Poisson
+    noise is independent. Crossing them gives every entry of the matrix without a noise
+    level:
+
+    .. math::
+
+        S_{11} = {\rm Re}\langle A_1^* B_1\rangle, \qquad
+        S_{22} = {\rm Re}\langle A_2^* B_2\rangle, \qquad
+        S_{12} = \langle A_1^* B_2 + B_1^* A_2\rangle / 2,
+
+    where :math:`A` and :math:`B` are the Fourier amplitudes of the two detectors and the
+    subscript is the energy band. This extends the cospectrum of Bachetti et al. 2015 to
+    the whole matrix. Pass ``power1``, ``power2``, ``cross_power``, ``auto_powers`` and
+    ``m`` of the result (averaged over frequency, if needed, multiplying ``m`` by the
+    number of frequencies) to :func:`stingray.fourier.cross_detector_coherence`, and
+    ``same_detector_cross`` (averaged in the same way) if the detectors have dead time.
+
+    Parameters
+    ----------
+    band1_det1, band2_det1 : `stingray.EventList` or `stingray.Lightcurve`
+        The two energy bands seen by the first detector.
+    band1_det2, band2_det2 : `stingray.EventList` or `stingray.Lightcurve`
+        The same two bands seen by the second detector.
+    segment_size : float
+        Length of each Fourier segment, s.
+
+    Other Parameters
+    ----------------
+    norm : str, default 'frac'
+        Normalisation of the entries. Keep ``'frac'`` unless the two detectors have the
+        same count rate in each band: in the other normalisations the two terms of
+        :math:`S_{12}` are scaled differently when the detectors have different spectral
+        responses.
+    **kwargs : dict
+        Passed to :class:`AveragedCrossspectrum`; ``dt`` is required for event lists.
+
+    Returns
+    -------
+    matrix : `CrossDetectorSpectralMatrix`
+    """
+    options = dict(segment_size=segment_size, norm=norm, silent=True, **kwargs)
+    diag1 = AveragedCrossspectrum(band1_det1, band1_det2, **options)
+    diag2 = AveragedCrossspectrum(band2_det1, band2_det2, **options)
+    off_a = AveragedCrossspectrum(band1_det1, band2_det2, **options)
+    off_b = AveragedCrossspectrum(band1_det2, band2_det1, **options)
+    same_a = AveragedCrossspectrum(band1_det1, band2_det1, **options)
+    same_b = AveragedCrossspectrum(band1_det2, band2_det2, **options)
+
+    return CrossDetectorSpectralMatrix(
+        freq=diag1.freq,
+        power1=diag1.power.real,
+        power2=diag2.power.real,
+        cross_power=0.5 * (off_a.power + off_b.power),
+        auto_powers=(diag1.pds1.power, diag1.pds2.power, diag2.pds1.power, diag2.pds2.power),
+        m=diag1.m,
+        norm=norm,
+        same_detector_cross=(same_a.power, same_b.power),
+    )
 
 
 def normalize_crossspectrum(

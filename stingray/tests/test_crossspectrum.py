@@ -12,11 +12,11 @@ from stingray import Crossspectrum, AveragedCrossspectrum, DynamicalCrossspectru
 from stingray import AveragedPowerspectrum
 from stingray.crossspectrum import cospectra_pvalue, crossspectrum_from_time_array
 from stingray.crossspectrum import normalize_crossspectrum, normalize_crossspectrum_gauss
-from stingray.crossspectrum import coherence, time_lag
+from stingray.crossspectrum import coherence, time_lag, cross_detector_spectral_matrix
 from stingray import StingrayError
 from stingray.utils import HAS_NUMBA
 from stingray.simulator import Simulator
-from stingray.fourier import poisson_level
+from stingray.fourier import poisson_level, cross_detector_coherence
 from stingray.filters import filter_for_deadtime
 
 from stingray.events import EventList
@@ -2080,3 +2080,84 @@ class TestAveragedCrossspectrumOverlap(object):
         new_cs = self.cs.rebin_log(f=0.1)
         assert np.iscomplexobj(new_cs.power[0])
         assert np.iscomplexobj(new_cs.power_err[0])
+
+
+def _two_bands_two_detectors(rng, length, dt, rate, coherence, phase, rms, hwhm):
+    """Light curves of two bands seen by two detectors, with a known intrinsic coherence.
+
+    The hard band is ``sqrt(coherence) x exp(-i phase) + sqrt(1 - coherence) y``, with x the
+    soft signal and y an independent one of the same Lorentzian shape.
+    """
+    n = int(round(length / dt))
+    freq = np.fft.rfftfreq(n, dt)[1:]
+    shape = 1 / (1 + (freq / hwhm) ** 2)
+
+    def amplitudes():
+        return (rng.normal(size=freq.size) + 1j * rng.normal(size=freq.size)) * np.sqrt(shape / 2)
+
+    soft, other = amplitudes(), amplitudes()
+    hard = np.sqrt(coherence) * soft * np.exp(-1j * phase) + np.sqrt(1 - coherence) * other
+    t = np.arange(n) * dt
+    rates = []
+    for amp in (soft, hard):
+        lc = np.fft.irfft(np.r_[0, amp], n=n)
+        rates.append(np.clip(1 + lc / lc.std() * rms, 0, None) * rate)
+    return [
+        [Lightcurve(t, rng.poisson(r * dt), dt=dt, skip_checks=True) for r in rates]
+        for _ in range(2)
+    ]
+
+
+class TestCrossDetectorSpectralMatrix:
+    @classmethod
+    def setup_class(cls):
+        rng = np.random.default_rng(0)
+        (cls.s_a, cls.h_a), (cls.s_b, cls.h_b) = _two_bands_two_detectors(
+            rng, 1024.0, 1 / 64, 30.0, coherence=0.5, phase=0.3, rms=0.6, hwhm=5.0
+        )
+        cls.matrix = cross_detector_spectral_matrix(
+            cls.s_a, cls.h_a, cls.s_b, cls.h_b, segment_size=8.0
+        )
+
+    def test_recovers_injected_coherence(self):
+        """Averaged over a band, the matrix gives the injected coherence of 0.5, within
+        its 1-sigma interval."""
+        m = self.matrix
+        band = (m.freq > 0.5) & (m.freq < 10)
+        res, lo, hi = cross_detector_coherence(
+            m.power1[band].mean(),
+            m.power2[band].mean(),
+            m.cross_power[band].mean(),
+            [a[band].mean() for a in m.auto_powers],
+            m.m * band.sum(),
+            return_interval=True,
+        )
+        assert res == pytest.approx(0.5, abs=0.05)
+        assert lo < res < hi
+
+    def test_diagonal_has_no_poisson_level(self):
+        """Far above the signal, the cospectra average to zero while each detector's power
+        spectrum sits at its Poisson level."""
+        m = self.matrix
+        high = m.freq > 25
+        noise = poisson_level("frac", meanrate=self.s_a.meanrate)
+        assert np.mean(m.auto_powers[0][high]) == pytest.approx(noise, rel=0.05)
+        assert abs(np.mean(m.power1[high])) < 0.02 * noise
+
+    def test_matches_averaged_crossspectrum(self):
+        """Each entry is the average of the corresponding cross spectra between detectors."""
+        m = self.matrix
+        cs = AveragedCrossspectrum(self.s_a, self.h_b, segment_size=8.0, norm="frac", silent=True)
+        cs2 = AveragedCrossspectrum(self.s_b, self.h_a, segment_size=8.0, norm="frac", silent=True)
+        assert np.allclose(m.cross_power, (cs.power + cs2.power) / 2)
+        assert m.m == cs.m and m.norm == "frac"
+
+    def test_same_detector_cross_spectra(self):
+        """The matrix also gives the cross spectra of the two bands within each detector,
+        which the interval needs when dead time correlates the bands."""
+        m = self.matrix
+        opts = dict(segment_size=8.0, norm="frac", silent=True)
+        ca = AveragedCrossspectrum(self.s_a, self.h_a, **opts)
+        cb = AveragedCrossspectrum(self.s_b, self.h_b, **opts)
+        assert np.allclose(m.same_detector_cross[0], ca.power)
+        assert np.allclose(m.same_detector_cross[1], cb.power)
