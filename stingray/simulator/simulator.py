@@ -282,8 +282,16 @@ class Simulator(object):
         h_zeros = np.zeros(int(start / self.dt))
 
         # Define constant impulse response
-        num_bins = max(int(width / self.dt), 1)
-        h_ones = np.ones(num_bins) * intensity
+        # Width in (possibly fractional) bins. A response shorter than one bin
+        # is a delta, that is, one full bin.
+        num_bins = max(width / self.dt, 1)
+        n_full = int(num_bins + 1e-9)
+        h_ones = np.ones(n_full)
+        # A non-integer width ends with a partial bin, weighted by its fraction
+        frac = num_bins - n_full
+        if frac > 1e-9:
+            h_ones = np.append(h_ones, frac)
+        h_ones = h_ones * intensity
 
         return np.append(h_zeros, h_ones)
 
@@ -532,10 +540,10 @@ class Simulator(object):
         lc = signal.fftconvolve(s, h)
 
         if mode == "same":
-            lc = lc[: -(len(h) - 1)]
+            lc = lc[: len(s)]
 
         elif mode == "filtered":
-            lc = lc[(len(h) - 1) : -(len(h) - 1)]
+            lc = lc[len(h) - 1 : len(s)]
 
         time = self.dt * np.arange(0.5, len(lc)) + self.tstart
         err = np.zeros_like(time)
