@@ -429,6 +429,18 @@ class TestGtiCorrPowerspectrum(object):
         ]:
             assert np.array_equal(getattr(gcps, attr), getattr(ps, attr))
 
+    def test_gti_corr_does_not_modify_input_lightcurve(self):
+        """GtiCorrPowerspectrum must not mutate the input Lightcurve (see #1013)."""
+        time = np.arange(0.5, 1000.5)
+        counts = np.ones(time.size) * 100.0
+        counts[(time > 400) & (time < 500)] = 0
+        lc = Lightcurve(time, counts, dt=1, gti=[[0, 400], [500, 1000]])
+        before = lc.counts.copy()
+
+        GtiCorrPowerspectrum(lc, norm="leahy")
+
+        assert np.array_equal(lc.counts, before)
+
     @pytest.mark.parametrize("norm", ["leahy", "frac", "abs", "none"])
     def test_gti_corr_ps_events(self, norm):
         """GtiCorrPowerspectrum results match Powerspectrum for event lists."""
@@ -451,9 +463,10 @@ class TestGtiCorrPowerspectrum(object):
     def test_gti_corr_ps_fill_different(self, norm):
         """Filling BTIs or not changes the power spectrum."""
         lc = copy.deepcopy(self.lc)
+        lc.counts[(lc.time > 30) & (lc.time < 35)] = 0  # distinct counts in the gap
         lc.gti = [[0, 30], [35, 100]]  # Two GTIs, one gap
-        gcps_fill = GtiCorrPowerspectrum(lc, norm=norm, fill_lc=True)
-        gcps_nofill = GtiCorrPowerspectrum(lc, norm=norm, fill_lc=False)
+        gcps_fill = GtiCorrPowerspectrum(copy.deepcopy(lc), norm=norm, fill_lc=True)
+        gcps_nofill = GtiCorrPowerspectrum(copy.deepcopy(lc), norm=norm, fill_lc=False)
         gcps_fill = gcps_fill.clean_gti_features()
         gcps_nofill = gcps_nofill.clean_gti_features()
         mean_gcps_fill = np.mean(gcps_fill.power)
