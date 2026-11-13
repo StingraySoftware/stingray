@@ -1,0 +1,1 @@
+The packages for Gaussian-process modelling (``jax``, ``tinygp``, ``jaxns``, ``tfp-nightly``) moved from ``stingray[all]`` to a new ``stingray[gp]`` extra, so ``pip install stingray[all]`` no longer installs a nightly build of TensorFlow Probability. Install them with ``pip install "stingray[gp]"``.
