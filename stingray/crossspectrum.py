@@ -2267,6 +2267,13 @@ class AveragedCrossspectrum(Crossspectrum):
             cross spectrum and the power spectra estimates have been obtained by averaging over
             at least 50 intervals. A warning will be raised if this is not the case
 
+        .. note::
+
+            The two bands must not share photons: ``channels_overlap`` is not taken into
+            account here. For a reference band containing the subject band, use
+            :func:`~stingray.fourier.intrinsic_coherence` as described on the coherence page
+            of the docs.
+
         Parameters
         ----------
         adjust_bias: bool

@@ -1153,6 +1153,11 @@ def intrinsic_coherence(
     the time when the signal is significant, and somewhat more often (up to 78%) when it
     is not.
 
+    If the reference band contains the subject band, subtract the subject band's noise
+    level from ``cross_power`` first (Ingram 2019, MNRAS 489, 3927, eq. 6). If the subject
+    band is a large part of the reference band, the estimate is then biased low by up to
+    about :math:`2/m`, and the interval is too wide; see the coherence page of the docs.
+
     Parameters
     ----------
     cross_power : complex ``np.array``

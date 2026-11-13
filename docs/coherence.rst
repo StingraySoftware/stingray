@@ -165,6 +165,36 @@ signal is too weak to measure the coherence well. For comparison, the formula us
 previous versions of Stingray (VN97, eq. 8) covered anywhere between 0% and 100% of the time on the same
 kind of grid, and gave no error bar at all for about 30% of the spectra.
 
+When the subject band is part of the reference band
+---------------------------------------------------
+
+Everything above assumes that the two bands contain different photons. A common choice
+is instead a broad reference band that also contains the subject band. The two bands
+then share the Poisson noise of the subject band, and the averaged cross spectrum
+contains a noise term that does not vanish on average. Following Ingram (2019, MNRAS 489,
+3927, eqs. 6 and 11), subtract it from the cross spectrum before calling
+``intrinsic_coherence``: it is the noise level of the subject band, :math:`N_1`, in
+absolute (or no) normalisation, and :math:`N_1 \mu_1 / \mu_2` in fractional
+normalisation, where :math:`\mu_n` are the mean count rates. The noise level to pass for
+the reference band is that of the whole reference band.
+:meth:`~stingray.AveragedCrossspectrum.intrinsic_coherence` does not do this
+subtraction, even with ``channels_overlap=True``; call
+:func:`~stingray.fourier.intrinsic_coherence` directly.
+
+Even after the subtraction, the shared noise makes the two powers and the cross spectrum
+scatter together more than the formulas above assume. We checked with simulated Fourier
+amplitudes, for a subject band that is half of the reference band:
+
+* :math:`b^2` is still exact, but the estimate is biased low, by 0.03–0.07 for
+  :math:`m = 30`, 0.008–0.02 for :math:`m = 100` and 0.002–0.007 for :math:`m = 300`.
+  The formula used in previous versions of Stingray was biased low too, by 60–90% as
+  much;
+* the interval is too wide: it covers 87–100% of the time instead of 68%.
+
+Both effects are negligible when the subject band is a small part of the reference band
+(we checked one fiftieth). When it is a large part, use a reference band that excludes
+the subject band.
+
 About VN97, eq. 8
 -----------------
 
