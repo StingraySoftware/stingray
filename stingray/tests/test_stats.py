@@ -394,3 +394,42 @@ def test_stats_functions_preserve_the_shape_of_their_input(func, value, args):
     assert np.ndim(func(value, *args)) == 0
     assert np.shape(func(np.array([value]), *args)) == (1,)
     assert np.shape(func(np.array([value, value * 1.2]), *args)) == (2,)
+
+
+@pytest.mark.parametrize(
+    "dof,reduced_chi2",
+    [(8, 3.0), (8, 40.0), (200, 10.0), (200, 3.0)],
+)
+def test_chi2_logp_array_matches_elementwise(dof, reduced_chi2):
+    """``chi2_logp`` evaluates whole arrays, picking a different formula per element, so every
+    element has to come out exactly as it would from a scalar call.
+
+    The four cases cover the ``scipy`` branch, the asymptotic branch, the ``dof > 150`` branch and
+    an array that straddles two of them. This test fails if the per-element results are
+    misplaced.
+    """
+    chi2 = np.linspace(0.3, 1.7, 25) * reduced_chi2 * dof
+    assert np.array_equal(chi2_logp(chi2, dof), [chi2_logp(c, dof) for c in chi2])
+
+
+def test_chi2_logp_shape_follows_its_input():
+    """``chi2_logp`` returns a scalar for scalar arguments, as a ufunc does, or, otherwise, the
+    shape its arguments broadcast to.
+
+    This test fails if ``chi2_logp`` is wrapped in ``np.vectorize`` again, which returns a
+    zero-dimensional array for scalar arguments.
+    """
+    res = chi2_logp(100.0, 2)
+    assert np.ndim(res) == 0
+    assert not isinstance(res, np.ndarray)
+    assert np.shape(chi2_logp(np.array([100.0]), 2)) == (1,)
+    assert np.shape(chi2_logp(np.array([100.0, 3.0]), np.array([2, 200]))) == (2,)
+
+
+def test_chi2_logp_rejects_dof_below_two_in_an_array():
+    """The check on the degrees of freedom applies to array arguments too.
+
+    This test fails if the check only looks at the first element.
+    """
+    with pytest.raises(ValueError, match="degrees of freedom cannot be < 2"):
+        chi2_logp(np.array([10.0, 10.0]), np.array([4, 1]))

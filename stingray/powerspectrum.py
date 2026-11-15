@@ -1342,7 +1342,7 @@ class GtiCorrPowerspectrum(Powerspectrum):
         elif isinstance(args[0], EventList):
             self.lc = args[0].to_lc(dt)
         else:
-            self.lc = args[0]
+            self.lc = copy.deepcopy(args[0])
             if dt is None:
                 dt = self.lc.dt
 

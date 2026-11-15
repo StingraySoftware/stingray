@@ -261,6 +261,19 @@ Building the Documentation
 The documentation including tutorials is hosted `here <https://docs.stingray.science/>`_.
 The documentation uses `sphinx <https://www.sphinx-doc.org/en/stable/>`_ to build and requires the extensions `sphinx-astropy <https://pypi.org/project/sphinx-astropy/>`_ and `nbsphinx <https://pypi.org/project/nbsphinx/>`_.
 
+Building the notebook tutorials also requires the standalone
+`Pandoc executable <https://pandoc.org/installing.html>`_. The ``docs`` extra
+installs the ``pandoc`` Python wrapper. If you use Conda, install the executable
+in the environment you use to build the docs.
+
+.. code-block:: console
+
+    $ conda install -c conda-forge pandoc
+
+If you encounter ``nbsphinx.NotebookError: PandocMissing``, check that the
+directory containing the Pandoc executable is on your ``PATH``. Run
+``pandoc --version`` in the same terminal you use to build the docs.
+
 To build the documentation, you will need to clone the development version of Stingray from GitHub.
 Once you have the source code, you can go to the root directory and make the build in one of the following ways.
 The quickest is probably using our tox environment::

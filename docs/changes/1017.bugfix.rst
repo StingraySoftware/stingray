@@ -1,0 +1,1 @@
+``GtiCorrPowerspectrum`` no longer modifies the input ``Lightcurve`` in place when filling bad time intervals; it works on a copy, so the caller's light curve is left unchanged.

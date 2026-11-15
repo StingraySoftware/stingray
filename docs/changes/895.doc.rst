@@ -1,0 +1,1 @@
+Document how to install and verify the Pandoc executable required to build the notebook tutorials.
