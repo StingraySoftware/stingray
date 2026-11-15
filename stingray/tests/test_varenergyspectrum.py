@@ -94,6 +94,18 @@ class TestVarEnergySpectrum(object):
         )
         cls.vespeclog = DummyVarEnergy(cls.events, [0.0, 10000], (0.5, 5, 10, "log"), [0.3, 10])
 
+    def test_good_frequency_bins_rounding(self):
+        vespec = DummyVarEnergy(
+            self.events,
+            [0.0, 10000],
+            (0.5, 5, 10, "lin"),
+            [0.3, 10],
+            bin_time=0.03,
+        )
+        vespec.segment_size = 5
+        freq_mask = vespec._get_good_frequency_bins()
+        assert len(freq_mask) == 82
+
     def test_no_spectrum_func_raises(self):
         with pytest.raises(TypeError):
             ref_int = VarEnergySpectrum(self.events, [0.0, 10000], (0.5, 5, 10, "log"), [0.3, 10])
