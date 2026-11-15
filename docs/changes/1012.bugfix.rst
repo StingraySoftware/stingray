@@ -1,1 +1,1 @@
-``integrate_power_in_frequency_range`` gives the right power when the frequency range falls inside a single bin.
+``integrate_power_in_frequency_range`` weights each bin by the fraction of it inside the frequency range, so ranges that fall inside a single bin or extend past the first or last bin give the right power.
