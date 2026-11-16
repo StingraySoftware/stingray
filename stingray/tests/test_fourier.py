@@ -417,7 +417,9 @@ class TestFourier(object):
         # Binning the unbinned segments gives the binned segments
         N = np.rint(self.segment_size / self.dt).astype(int)
         evts = list(get_event_iterable_from_segments(self.times, self.gti, self.segment_size))
-        cts = list(get_flux_iterable_from_segments(self.times, self.gti, self.segment_size, n_bin=N))
+        cts = list(
+            get_flux_iterable_from_segments(self.times, self.gti, self.segment_size, n_bin=N)
+        )
         assert len(evts) == len(cts)
         for ev, ct in zip(evts, cts):
             binned, _ = np.histogram(ev, bins=N, range=[0, self.segment_size])
@@ -639,20 +641,23 @@ class TestAvgPdsNufft(object):
     metadata, but they compare powers only. For real data
     :math:`|F(-k)|^2 = |F(k)|^2`, so a wrong sign convention in the NUFFT
     (``isign``) leaves every power unchanged and would not be detected here.
-    The sign and phase of the amplitudes are checked by
+    The sign and phase of the amplitudes are checked by ``TestAvgCsNufft`` and
     ``test_ft_iterable_from_events_matches_fluxes`` below, and by the
     ``test_nufft_matches_*`` tests in ``test_utils.py``.
     """
 
     @classmethod
     def setup_class(cls):
+        # A generator of its own, so as not to change the random numbers drawn
+        # by the other tests in this module from the shared rng
+        cls.rng = np.random.default_rng(20261116)
         cls.dt = 0.01
         cls.gti = np.asanyarray([[0.0, 30.0], [40.0, 62.0]])
         # Events at the bin centres of a grid of step dt inside the GTIs. Binning
         # them involves no rounding, and their NUFFT amplitudes differ from the FFT
         # amplitudes of the binned counts only by a phase, so the powers are equal
         grid = np.concatenate([np.arange(g0, g1, cls.dt) for g0, g1 in cls.gti]) + cls.dt / 2
-        cls.grid_times = np.repeat(grid, rng.poisson(3, grid.size))
+        cls.grid_times = np.repeat(grid, cls.rng.poisson(3, grid.size))
 
     @pytest.mark.parametrize("segment_size", [5.0, 4.999, None])
     @pytest.mark.parametrize("use_common_mean", [True, False])
@@ -691,7 +696,7 @@ class TestAvgPdsNufft(object):
 
     def test_avg_pds_nufft_poisson_level(self):
         # Poisson events at random times: the Leahy-normalized white noise is 2
-        times = np.sort(rng.uniform(0, 200, 400000))
+        times = np.sort(self.rng.uniform(0, 200, 400000))
         out = avg_pds_from_timeseries(
             times,
             np.asanyarray([[0, 200.0]]),
@@ -719,6 +724,156 @@ class TestAvgPdsNufft(object):
     def test_avg_pds_unknown_ft_method_fails(self):
         with pytest.raises(ValueError, match="Unknown ft_method"):
             avg_pds_from_timeseries(self.grid_times, self.gti, 5.0, self.dt, ft_method="nfft")
+
+
+@pytest.mark.skipif("not HAS_FINUFFT")
+class TestAvgCsNufft(object):
+    """Test ``ft_method="nufft"`` through the public ``avg_cs_from_timeseries``.
+
+    Unlike the power-spectrum tests in ``TestAvgPdsNufft``, these compare complex
+    cross spectra. Both channels have events at bin centres, so the half-bin
+    phase offset of the NUFFT amplitudes cancels in ``ft1.conj() * ft2``, and the
+    channels share a signal with a lag of a whole number of bins, so the
+    imaginary part is large. A wrong sign convention in the NUFFT (``isign``)
+    conjugates the NUFFT cross spectrum, flipping its imaginary part, and fails
+    the equality tests.
+
+    Both methods share the averaging code, so these tests cannot detect errors
+    there, e.g. a swapped conjugation (``ft1 * ft2.conj()``). In the full
+    averaging path, that is caught by ``TestAveragedCrossspectrum.test_timelag``
+    in ``test_crossspectrum.py``, which checks the sign of a known lag. No test
+    checks the lag sign through the quick path (``avg_cs_from_iterables_quick``).
+    """
+
+    @classmethod
+    def setup_class(cls):
+        # A generator of its own, so as not to change the random numbers drawn
+        # by the other tests in this module from the shared rng
+        cls.rng = np.random.default_rng(20261117)
+        cls.dt = 0.01
+        cls.segment_size = 5.0
+        cls.gti = np.asanyarray([[0.0, 30.0], [40.0, 62.0]])
+        # Bin centres of a grid of step dt inside the GTIs
+        grid = np.concatenate([np.arange(g0, g1, cls.dt) for g0, g1 in cls.gti]) + cls.dt / 2
+        # A shared signal, seen by channel 2 with a lag of 3 bins, plus
+        # independent noise in each channel. All events stay at bin centres
+        shared = np.repeat(grid, cls.rng.poisson(3, grid.size))
+        noise1 = np.repeat(grid, cls.rng.poisson(1, grid.size))
+        noise2 = np.repeat(grid, cls.rng.poisson(1, grid.size))
+        times1 = np.concatenate([shared, noise1])
+        times2 = np.concatenate([shared + 3 * cls.dt, noise2])
+        # Channel 2 has no events in the segment from 10 to 15 s, so that pair of
+        # segments must be skipped by both methods
+        times2 = times2[(times2 < 10) | (times2 >= 15)]
+        cls.times1 = np.sort(times1)
+        cls.times2 = np.sort(times2)
+
+    def _both_methods(self, segment_size, gti=None, **kwargs):
+        gti = self.gti if gti is None else gti
+        times1 = self.times1[self.times1 < gti[-1, 1]]
+        times2 = self.times2[self.times2 < gti[-1, 1]]
+        out_fft = avg_cs_from_timeseries(
+            times1, times2, gti, segment_size, self.dt, ft_method="fft", **kwargs
+        )
+        out_nufft = avg_cs_from_timeseries(
+            times1, times2, gti, segment_size, self.dt, ft_method="nufft", **kwargs
+        )
+        return out_fft, out_nufft
+
+    @pytest.mark.parametrize("segment_size", [5.0, 4.999, None])
+    @pytest.mark.parametrize("use_common_mean", [True, False])
+    @pytest.mark.parametrize("norm", ["frac", "abs", "none", "leahy"])
+    def test_avg_cs_nufft_and_fft_are_equal(self, norm, use_common_mean, segment_size):
+        # A single cross spectrum from the first GTI if segment_size is None
+        gti = self.gti[:1] if segment_size is None else self.gti
+        out_fft, out_nufft = self._both_methods(
+            segment_size,
+            gti=gti,
+            norm=norm,
+            use_common_mean=use_common_mean,
+            silent=True,
+            return_auxil=True,
+            return_subcs=True,
+        )
+        compare_tables(out_fft, out_nufft, rtol=1e-6)
+
+    @pytest.mark.parametrize("segment_size", [5.0, 4.999])
+    @pytest.mark.parametrize("norm", ["frac", "abs", "none", "leahy"])
+    def test_avg_cs_nufft_and_fft_are_equal_quick(self, norm, segment_size):
+        # These options select avg_cs_from_iterables_quick
+        out_fft, out_nufft = self._both_methods(
+            segment_size, norm=norm, silent=True, use_common_mean=True
+        )
+        assert "variance1" not in out_fft.meta
+        compare_tables(out_fft, out_nufft, rtol=1e-6)
+
+    @pytest.mark.parametrize("power_type", ["all", "real", "abs"])
+    @pytest.mark.parametrize("segment_size", [5.0, 5.01])
+    def test_avg_cs_nufft_and_fft_are_equal_fullspec(self, segment_size, power_type):
+        # Segments of 500 (even) and 501 (odd) bins, with negative frequencies
+        out_fft, out_nufft = self._both_methods(
+            segment_size, norm="leahy", silent=True, fullspec=True, power_type=power_type
+        )
+        assert out_nufft.meta["n"] == np.rint(segment_size / self.dt)
+        assert np.any(out_nufft["freq"] < 0)
+        compare_tables(out_fft, out_nufft, rtol=1e-6)
+
+    def test_avg_cs_nufft_skips_same_segments(self):
+        # 6 segments in the first GTI and 4 in the second; the one where channel
+        # 2 has no events is skipped by both methods
+        out_fft, out_nufft = self._both_methods(self.segment_size, silent=True)
+        assert out_fft.meta["m"] == out_nufft.meta["m"] == 9
+
+    def test_avg_cs_nufft_poisson_level(self):
+        # Independent Poisson channels: the Leahy-normalized auxiliary PDSs have a
+        # white-noise level of 2, and the cospectrum averages to zero
+        times1 = np.sort(self.rng.uniform(0, 200, 400000))
+        times2 = np.sort(self.rng.uniform(0, 200, 400000))
+        out = avg_cs_from_timeseries(
+            times1,
+            times2,
+            np.asanyarray([[0, 200.0]]),
+            1.0,
+            0.001,
+            norm="leahy",
+            silent=True,
+            return_auxil=True,
+            ft_method="nufft",
+        )
+        n_powers = out.meta["m"] * len(out)
+        err_pds = 2 / np.sqrt(n_powers)
+        err_cos = np.sqrt(2 / n_powers)
+        assert np.isclose(out["pds1"].mean(), 2, atol=5 * err_pds)
+        assert np.isclose(out["pds2"].mean(), 2, atol=5 * err_pds)
+        assert np.isclose(out["power"].real.mean(), 0, atol=5 * err_cos)
+
+    @pytest.mark.parametrize("which", ["both", "fluxes1", "fluxes2"])
+    def test_avg_cs_nufft_light_curve_fails(self, which):
+        # A light curve in either channel rules out the NUFFT
+        bin_times = np.arange(0, 10, self.dt) + self.dt / 2
+        fluxes = {
+            "both": dict(fluxes1=np.ones(bin_times.size), fluxes2=np.ones(bin_times.size)),
+            "fluxes1": dict(fluxes1=np.ones(bin_times.size)),
+            "fluxes2": dict(fluxes2=np.ones(bin_times.size)),
+        }[which]
+        with pytest.raises(ValueError, match="only available for event data"):
+            avg_cs_from_timeseries(
+                bin_times,
+                bin_times,
+                np.asanyarray([[0, 10.0]]),
+                1.0,
+                self.dt,
+                ft_method="nufft",
+                **fluxes,
+            )
+
+    @pytest.mark.parametrize("silent", [True, False])
+    def test_avg_cs_unknown_ft_method_fails(self, silent):
+        # Both the quick and the full path reject unknown methods
+        with pytest.raises(ValueError, match="Unknown ft_method"):
+            avg_cs_from_timeseries(
+                self.times1, self.times2, self.gti, 5.0, self.dt, silent=silent, ft_method="nfft"
+            )
 
 
 class TestNorms(object):
