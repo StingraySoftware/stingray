@@ -1,0 +1,2 @@
+In ``fold_events(..., mode="ef")``, the ``variances`` keyword is now used to compute the uncertainty of each phase bin as the square root of the sum of the variances of the events in that bin, instead of always assuming Poisson counts (``sqrt(profile)``). When ``variances`` is not given, the default Poisson errors are unchanged.
+
