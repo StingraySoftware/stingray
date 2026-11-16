@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 import stingray.utils as utils
-from stingray.utils import HAS_NUMBA
+from stingray.utils import HAS_NUMBA, HAS_FINUFFT
 from stingray.exceptions import StingrayWarning
 from scipy.stats import sem
 
@@ -612,6 +612,59 @@ def test_numba_compiled_or_mocked():
     bla_1()
     bla_2()
     bla_3(1.0)
+
+
+@pytest.mark.skipif("not HAS_FINUFFT")
+@pytest.mark.parametrize("n_bin", [63, 64])
+def test_nufft_matches_fft_of_binned_events(n_bin):
+    """Events at the left bin edges give exactly the FFT of the binned counts.
+
+    Compares complex amplitudes, so it checks the sign convention (``isign``)
+    and the frequency order (``modeord``) that ``nufft`` sets: a wrong sign
+    would not change any power, and so would not be detected by the
+    power-spectrum tests.
+    """
+    segment_size = 8.0
+    dt = segment_size / n_bin
+    counts = np.random.poisson(3, n_bin)
+    times = np.repeat(np.arange(n_bin) * dt, counts)
+
+    # Establish baseline
+    gold = np.fft.fft(counts)
+
+    # Verify nufft, with the conventions of numpy's fft
+    ft = utils.nufft(
+        2 * np.pi * times / segment_size,
+        np.ones(times.size, dtype=complex),
+        n_bin,
+        eps=1e-12,
+    )
+    assert np.allclose(ft, gold)
+
+
+@pytest.mark.skipif("not HAS_FINUFFT")
+@pytest.mark.parametrize("n_bin", [63, 64])
+def test_nufft_matches_direct_dft_of_events(n_bin):
+    """Arbitrary event times give the direct Fourier sum at f_k = k / T.
+
+    Like the test above, compares complex amplitudes, so it checks the sign
+    convention and frequency order that ``nufft`` sets, for unbinned times.
+    """
+    segment_size = 8.0
+    times = np.sort(np.random.uniform(0, segment_size, 200))
+
+    # Establish baseline: integer modes k, in the same order as numpy's fft
+    k = np.fft.fftfreq(n_bin, 1 / n_bin)
+    gold = np.exp(-2j * np.pi * np.outer(k, times) / segment_size).sum(axis=1)
+
+    # Verify nufft
+    ft = utils.nufft(
+        2 * np.pi * times / segment_size,
+        np.ones(times.size, dtype=complex),
+        n_bin,
+        eps=1e-12,
+    )
+    assert np.allclose(ft, gold)
 
 
 def test_numba_import_warning_quotes_the_error():
