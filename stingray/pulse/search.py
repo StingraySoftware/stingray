@@ -281,6 +281,7 @@ def z_n_search(
     weights=1,
     gti=None,
     fdots=0,
+    variances=None,
 ):
     """Calculates the Z^2_n statistics at trial frequencies in photon data.
 
@@ -324,7 +325,15 @@ def z_n_search(
 
     weights : array-like
         weight for each time. This might be, for example, the number of counts
-        if the times array contains the time bins of a light curve
+        if the times array contains the time bins of a light curve, or photon
+        probability weights (Kerr 2011, ApJ 732, 38) if ``variances=weights**2``
+        is also passed.
+
+    variances : float or array-like, optional, default None
+        variance of each data point passed to :func:`~stingray.pulse.fold_events`. When given,
+        the folded :math:`Z^2_n` statistic is normalized by the sum of the
+        bin variances rather than ``sum(profile)``. For photon probability
+        weights ``w``, pass ``variances=w**2``.
 
     Returns
     -------
@@ -338,12 +347,14 @@ def z_n_search(
         the Z^2_n statistics corresponding to each frequency bin.
     """
     phase = np.arange(0, 1, 1 / nbin)
-    if expocorr or not HAS_NUMBA or isinstance(weights, Iterable):
+    if expocorr or not HAS_NUMBA or isinstance(weights, Iterable) or variances is not None:
         if expocorr and gti is None:
             raise ValueError("To calculate exposure correction, you need to specify the GTIs")
 
         def stat_fun(t, f, fd=0, **kwargs):
-            return z_n(fold_events(t, f, fd, nbin=nbin, **kwargs)[1], n=nharm, datatype="binned")
+            _, profile, err = fold_events(t, f, fd, nbin=nbin, **kwargs)
+            total_var = None if kwargs.get("variances") is None else np.sum(err**2)
+            return z_n(profile, n=nharm, datatype="binned", total_variance=total_var)
 
         return _folding_search(
             stat_fun,
@@ -355,6 +366,7 @@ def z_n_search(
             weights=weights,
             gti=gti,
             fdots=fdots,
+            variances=variances,
         )
 
     return _folding_search(
