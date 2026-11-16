@@ -1,0 +1,4 @@
+``z_n_events_all``, ``z_n_events``, ``z_n`` and ``htest`` in ``stingray.pulse`` now accept per-event probability ``weights``, implementing the weighted :math:`Z^2_n` and H-test statistics of Kerr (2011, ApJ, 732, 38). For folded profiles of weighted events, ``z_n_binned_events_all``, ``z_n_binned_events``, ``z_n`` and ``htest`` accept ``total_variance``, and ``z_n_search`` accepts ``variances`` (e.g. ``variances=weights**2``).
+
+``stingray.stats`` now provides ``htest_probability``, ``htest_logprobability`` and ``htest_detection_level``, using the calibrated exponential distribution of de Jager & Büsching (2010, A&A, 517, L9).
+
