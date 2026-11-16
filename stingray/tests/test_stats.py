@@ -16,6 +16,9 @@ from stingray.stats import (
     fold_profile_logprobability,
     phase_dispersion_logprobability,
     z2_n_logprobability,
+    htest_detection_level,
+    htest_probability,
+    htest_logprobability,
     power_upper_limit,
     amplitude_upper_limit,
     power_confidence_limits,
@@ -72,6 +75,14 @@ def test_zn_detection_level():
     )
 
 
+def test_htest_detection_level():
+    np.testing.assert_almost_equal(htest_detection_level(0.01), -np.log(0.01) / 0.4)
+    epsilon_corr = p_single_trial_from_p_multitrial(0.01, 2)
+    np.testing.assert_almost_equal(
+        htest_detection_level(0.01, ntrial=2), htest_detection_level(epsilon_corr)
+    )
+
+
 @pytest.mark.parametrize("ntrial", [1, 10, 100, 1000, 100000])
 def test_fold_probability(ntrial):
     detlev = fold_detection_level(16, 0.1, ntrial=ntrial)
@@ -93,6 +104,13 @@ def test_pdm_probability(ntrial):
 def test_zn_probability(ntrial):
     detlev = z2_n_detection_level(2, 0.1, ntrial=ntrial)
     np.testing.assert_almost_equal(z2_n_probability(detlev, 2, ntrial=ntrial), 0.1)
+
+
+@pytest.mark.parametrize("ntrial", [1, 10, 100, 1000, 100000])
+def test_htest_probability(ntrial):
+    detlev = htest_detection_level(0.1, ntrial=ntrial)
+    np.testing.assert_almost_equal(htest_probability(detlev, ntrial=ntrial), 0.1)
+    np.testing.assert_almost_equal(htest_logprobability(detlev, ntrial=ntrial), np.log(0.1))
 
 
 def ncx2_ppf(xs, n=1, c=0.99, summed_flag=True):
@@ -159,6 +177,12 @@ class TestClassicalSignificances(object):
         stat = np.random.uniform(5, 200, 5)
         logp = z2_n_logprobability(stat, n=n)
         p = z2_n_probability(stat, n=n)
+        assert np.allclose(logp, np.log(p))
+
+    def test_compare_htest_logprob_with_prob(self):
+        stat = np.random.uniform(5, 200, 5)
+        logp = htest_logprobability(stat)
+        p = htest_probability(stat)
         assert np.allclose(logp, np.log(p))
 
     def test_power_upper_limit(self):
@@ -268,6 +292,9 @@ def test_z2_n_logprobability_many_trials():
     "func,value,args",
     [
         (z2_n_logprobability, 100.0, (2,)),
+        (htest_logprobability, 100.0, ()),
+        (htest_probability, 100.0, ()),
+        (htest_detection_level, 0.01, ()),
         (p_multitrial_from_single_trial, 0.01, (10,)),
     ],
 )
