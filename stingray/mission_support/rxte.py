@@ -1,8 +1,6 @@
 import re
 import numpy as np
-from scipy.interpolate import interp1d
 from astropy.time import Time
-from astropy.table import Table
 
 from astropy.io import fits
 from stingray.utils import fits_open_including_remote
@@ -135,6 +133,8 @@ def pca_calibration_func(epoch):
     >>> assert np.array_equal(conversion_function(10, [0, 3]), [4.53, 4.49])
     >>> assert np.array_equal(conversion_function([10, 11], [0, 3]), [4.53, 4.90])
     """
+    from astropy.table import Table
+
     caltable = Table.read(
         """
     Abs   STD2  E1   E2    E3   E4   E5_0   E5_1234

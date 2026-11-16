@@ -10,7 +10,6 @@ import warnings
 import copy
 
 import numpy as np
-from astropy.table import Table
 from astropy.time import Time, TimeDelta
 from astropy.units import Quantity
 from stingray.loggingconfig import setup_logger
@@ -42,6 +41,7 @@ from .gti import (
 from typing import TYPE_CHECKING, Type, TypeVar, Union
 
 if TYPE_CHECKING:
+    from astropy.table import Table
     from xarray import Dataset
     from pandas import DataFrame
     from astropy.timeseries import TimeSeries
@@ -65,6 +65,8 @@ logger = setup_logger()
 
 def convert_table_attrs_to_lowercase(table: Table) -> Table:
     """Convert the column names of an Astropy Table to lowercase."""
+    from astropy.table import Table
+
     new_table = Table()
     for col in table.colnames:
         new_table[col.lower()] = table[col]
@@ -387,6 +389,8 @@ class StingrayObject(object):
             in an architecture not supporting extended precision (e.g. ARM), but can
             also be useful when an extended precision is not needed.
         """
+        from astropy.table import Table
+
         data = {}
         array_attrs = self.array_attrs() + [self.main_array_attr] + self.internal_array_attrs()
 
@@ -652,6 +656,8 @@ class StingrayObject(object):
                 return pickle.load(fobj)
         elif fmt.lower() == "ascii":
             fmt = "ascii.ecsv"
+
+        from astropy.table import Table
 
         ts = convert_table_attrs_to_lowercase(Table.read(filename, format=fmt))
 

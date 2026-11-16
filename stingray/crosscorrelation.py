@@ -1,7 +1,5 @@
 import warnings
 import numpy as np
-from scipy import signal
-import matplotlib.pyplot as plt
 from stingray.utils import ifft, fftfreq
 
 from stingray.lightcurve import Lightcurve
@@ -162,6 +160,7 @@ class CrossCorrelation(object):
             The second light curve data.
 
         """
+        from scipy import signal
 
         if not isinstance(lc1, Lightcurve):
             raise TypeError("lc1 must be a lightcurve.Lightcurve object")
@@ -226,6 +225,8 @@ class CrossCorrelation(object):
         self.time_lags: numpy.ndarray
              An array of ``time_lags`` calculated from correlation data
         """
+        from scipy import signal
+
         if self.dt is None:
             self.dt = dt
         if self.corr is None:
@@ -305,6 +306,8 @@ class CrossCorrelation(object):
         ax : ``matplotlib.Axes`` object
             An axes object to fill with the cross correlation plot.
         """
+        import matplotlib.pyplot as plt
+
         if ax is None:
             fig, ax = plt.subplots(1, 1, figsize=(6, 4))
 

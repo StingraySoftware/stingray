@@ -11,7 +11,6 @@ from collections.abc import Iterable
 
 import numpy as np
 import scipy
-from scipy.stats import median_abs_deviation
 from numpy import histogram as histogram_np
 from numpy import histogram2d as histogram2d_np
 from numpy import histogramdd as histogramdd_np
@@ -274,6 +273,8 @@ def mad(data, c=0.6744897501960817, axis=0):
     it reduced float128 to float64 and so threw away the very precision the caller
     had gone to the trouble of providing.
     """
+    from scipy.stats import median_abs_deviation
+
     data = np.asanyarray(data)
     data = data.astype(np.promote_types(data.dtype, np.float64), copy=False)
     return median_abs_deviation(data, axis=axis, scale=c)

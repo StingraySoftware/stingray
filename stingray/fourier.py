@@ -5,8 +5,6 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-from astropy.table import Table
-from astropy.timeseries.periodograms.lombscargle.implementations.utils import trig_sum
 
 from .gti import (
     generate_indices_of_segment_boundaries_binned,
@@ -2301,6 +2299,8 @@ def avg_pds_from_iterable(
         mean : float
             the mean flux
     """
+    from astropy.table import Table
+
     local_show_progress = show_progress
     if silent:
 
@@ -2489,6 +2489,8 @@ def avg_cs_from_iterables_quick(flux_iterable1, flux_iterable2, dt, norm="frac")
             channels)
 
     """
+    from astropy.table import Table
+
     # Initialize stuff
     unnorm_cross = None
     n_ave = 0
@@ -2670,6 +2672,7 @@ def avg_cs_from_iterables(
             The mean flux (geometrical average of the mean fluxes in the two
             channels).
     """
+    from astropy.table import Table
 
     local_show_progress = show_progress
     if silent:
@@ -3311,6 +3314,8 @@ def avg_bispectrum_from_iterable(
     For a single segment (``m = 1``) it is identically 1 and the biphase error
     is 0, by construction.
     """
+    from astropy.table import Table
+
     local_show_progress = show_progress
     if silent:
 
@@ -3612,6 +3617,8 @@ def avg_cross_bispectrum_from_iterables(
         mean of the three channels' photon counts. ``None`` if no usable
         segment triple was found.
     """
+    from astropy.table import Table
+
     local_show_progress = show_progress
     if silent:
 
@@ -4010,6 +4017,8 @@ def lsft_fast(
     ft_res : numpy.ndarray
         An array of Fourier transformed data.
     """
+    from astropy.timeseries.periodograms.lombscargle.implementations.utils import trig_sum
+
     y_ = copy.deepcopy(y) - np.mean(y)
     freqs = freqs[freqs >= 0]
     # Constants initialization

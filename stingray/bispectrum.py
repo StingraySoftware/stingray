@@ -2,9 +2,6 @@ import warnings
 from collections.abc import Generator, Iterable
 
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
-from scipy.linalg import toeplitz
 
 from stingray.base import StingrayObject
 
@@ -542,6 +539,8 @@ class CrossBispectrum(StingrayObject):
 
     def _plot_matrix(self, matrix, title, ax, save, filename, default_filename, log=False):
         """Shared helper for the 2D bispectrum plots."""
+        import matplotlib.pyplot as plt
+
         if matrix is None:
             raise ValueError("This bispectrum has no data to plot.")
 
@@ -624,6 +623,8 @@ class CrossBispectrum(StingrayObject):
         ax : ``matplotlib.axes.Axes``
             The axes with the plot.
         """
+        import matplotlib.pyplot as plt
+
         # The jellyfish only needs the per-segment diagonal. Prefer the light
         # ``bispec_diagonal`` store (save_diagonal=True); fall back to the full
         # ``bispec_all`` cube (save_all=True).
@@ -1251,6 +1252,8 @@ class Bispectrum(CrossBispectrum):
         cum3 : ndarray
             The raw 3rd-order cumulant, shape (2*maxlag+1, 2*maxlag+1).
         """
+        from scipy.linalg import toeplitz
+
         # Initializes cumulant matrix
         cum3 = np.zeros((2 * maxlag + 1, 2 * maxlag + 1))
         # Define indices for the Toeplitz matrix
@@ -1291,6 +1294,7 @@ class Bispectrum(CrossBispectrum):
         cum3 : ndarray
             The normalized 3rd-order cumulant, shape (2*maxlag+1, 2*maxlag+1).
         """
+        from scipy.linalg import toeplitz
 
         # Biased normalization is just the raw cumulant divided by n.
         if scale == "biased":
@@ -1344,6 +1348,8 @@ class Bispectrum(CrossBispectrum):
             The 2-D lag window, shape (2*maxlag+1, 2*maxlag+1), or ``None`` if
             no window is applied.
         """
+        from scipy.linalg import toeplitz
+
         if window_name is None:
             return None
         N = 2 * maxlag + 1
@@ -1445,6 +1451,8 @@ class Bispectrum(CrossBispectrum):
             The filename to save the figure to. If ``None``, defaults to
             "bispec_cum3.png".
         """
+        import matplotlib.pyplot as plt
+
         if getattr(self, "cum3", None) is None:
             raise ValueError("plot_cum3 is only available for method='cumulant'.")
         if ax is None:
@@ -2085,6 +2093,8 @@ class DynamicalCrossBispectrum(AveragedCrossBispectrum):
         unresolved (``NaN``) bins are masked out (``LogNorm`` cannot show them). A
         non-positive ``vmin`` is treated as "autoscale" for the log case.
         """
+        from matplotlib.colors import LogNorm
+
         if log:
             data = np.ma.masked_less_equal(np.ma.masked_invalid(matrix), 0.0)
             lo = vmin if (vmin is not None and vmin > 0) else None
@@ -2099,6 +2109,8 @@ class DynamicalCrossBispectrum(AveragedCrossBispectrum):
         its harmonic ``2 nu``. Works from either store. Set ``log=True`` for a
         logarithmic (``LogNorm``) colour scale.
         """
+        import matplotlib.pyplot as plt
+
         if self.dyn_bicoherence is None:
             raise ValueError("This dynamical bispectrum has no data to plot.")
         diag = self._diagonal(self.dyn_bicoherence)
@@ -2121,6 +2133,8 @@ class DynamicalCrossBispectrum(AveragedCrossBispectrum):
         Requires ``store="full"``. Set ``log=True`` for a logarithmic
         (``LogNorm``) colour scale.
         """
+        import matplotlib.pyplot as plt
+
         if self.store != "full":
             raise ValueError("plot_slice needs store='full'.")
         i1 = self._freq_index(f1)
@@ -2144,6 +2158,8 @@ class DynamicalCrossBispectrum(AveragedCrossBispectrum):
         Requires ``store="full"``. Set ``log=True`` for a logarithmic
         (``LogNorm``) colour scale.
         """
+        import matplotlib.pyplot as plt
+
         if self.store != "full":
             raise ValueError("plot_frame needs store='full'.")
         k = int(np.argmin(np.abs(self.time - t)))
@@ -2165,6 +2181,8 @@ class DynamicalCrossBispectrum(AveragedCrossBispectrum):
 
         Set ``log=True`` for a logarithmic (``LogNorm``) colour scale.
         """
+        import matplotlib.pyplot as plt
+
         if self.store != "full":
             raise ValueError("plot_montage needs store='full'.")
         if times is None:
@@ -2216,6 +2234,8 @@ class DynamicalCrossBispectrum(AveragedCrossBispectrum):
 
     def plot_trace(self, f1, f2, axes=None):
         """Plot the bicoherence and biphase at a fixed ``(f1, f2)`` versus time."""
+        import matplotlib.pyplot as plt
+
         time, bic, bip = self.trace(f1, f2)
         if axes is None:
             _, axes = plt.subplots(2, 1, sharex=True, figsize=(7, 5))

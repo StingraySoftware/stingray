@@ -146,6 +146,12 @@ Compatibility and Dependencies
       methods, the optional dependency should use a normal ``import``
       statement, which will raise an ``ImportError`` if the dependency
       is not available.
+   -  **Import speed:** ``import stingray`` should stay fast. Packages
+      that take long to load and that only some functions need
+      (e.g. ``matplotlib``, ``scipy.stats``, ``scipy.signal``,
+      ``scipy.optimize``, ``astropy.table``, ``h5py``) are imported
+      inside the functions that use them, not at the top of the module.
+      ``stingray/tests/test_import.py`` checks this.
 
 Coding Style and Conventions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
