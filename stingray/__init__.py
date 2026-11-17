@@ -7,20 +7,102 @@ except ImportError:
     # has never been installed.
     __version__ = ""
 
-from stingray.base import *
-from stingray.events import *
-from stingray.lightcurve import *
-from stingray.utils import *
-from stingray.lombscargle import *
-from stingray.powerspectrum import *
-from stingray.crossspectrum import *
-from stingray.multitaper import *
-from stingray import *
-from stingray.exceptions import *
-from stingray.covariancespectrum import *
-from stingray.crosscorrelation import *
-from stingray.stats import *
-from stingray.bispectrum import *
-from stingray.varenergyspectrum import *
-from stingray.lombscargle import *
-from stingray.loggingconfig import *
+# Only the main classes are available directly as ``stingray.<name>``. Functions
+# are imported from their modules, e.g. ``from stingray.fourier import ...``.
+from stingray.base import (
+    StingrayObject,
+    StingrayTimeseries,
+)
+from stingray.events import (
+    EventList,
+)
+from stingray.lightcurve import (
+    Lightcurve,
+)
+from stingray.powerspectrum import (
+    Powerspectrum,
+    AveragedPowerspectrum,
+    DynamicalPowerspectrum,
+    GtiCorrPowerspectrum,
+)
+from stingray.crossspectrum import (
+    Crossspectrum,
+    AveragedCrossspectrum,
+    DynamicalCrossspectrum,
+)
+from stingray.lombscargle import (
+    LombScarglePowerspectrum,
+    LombScargleCrossspectrum,
+)
+from stingray.multitaper import (
+    Multitaper,
+)
+from stingray.covariancespectrum import (
+    Covariancespectrum,
+    AveragedCovariancespectrum,
+)
+from stingray.crosscorrelation import (
+    CrossCorrelation,
+    AutoCorrelation,
+)
+from stingray.bispectrum import (
+    CrossBispectrum,
+    AveragedCrossBispectrum,
+    Bispectrum,
+    AveragedBispectrum,
+    DynamicalCrossBispectrum,
+    DynamicalBispectrum,
+)
+from stingray.varenergyspectrum import (
+    VarEnergySpectrum,
+    RmsEnergySpectrum,
+    RmsSpectrum,
+    LagEnergySpectrum,
+    LagSpectrum,
+    ExcessVarianceSpectrum,
+    CovarianceSpectrum,
+    ComplexCovarianceSpectrum,
+    CountSpectrum,
+)
+from stingray.exceptions import (
+    StingrayError,
+    StingrayWarning,
+)
+
+__all__ = [
+    "StingrayObject",
+    "StingrayTimeseries",
+    "EventList",
+    "Lightcurve",
+    "Powerspectrum",
+    "AveragedPowerspectrum",
+    "DynamicalPowerspectrum",
+    "GtiCorrPowerspectrum",
+    "Crossspectrum",
+    "AveragedCrossspectrum",
+    "DynamicalCrossspectrum",
+    "LombScarglePowerspectrum",
+    "LombScargleCrossspectrum",
+    "Multitaper",
+    "Covariancespectrum",
+    "AveragedCovariancespectrum",
+    "CrossCorrelation",
+    "AutoCorrelation",
+    "CrossBispectrum",
+    "AveragedCrossBispectrum",
+    "Bispectrum",
+    "AveragedBispectrum",
+    "DynamicalCrossBispectrum",
+    "DynamicalBispectrum",
+    "VarEnergySpectrum",
+    "RmsEnergySpectrum",
+    "RmsSpectrum",
+    "LagEnergySpectrum",
+    "LagSpectrum",
+    "ExcessVarianceSpectrum",
+    "CovarianceSpectrum",
+    "ComplexCovarianceSpectrum",
+    "CountSpectrum",
+    "StingrayError",
+    "StingrayWarning",
+]

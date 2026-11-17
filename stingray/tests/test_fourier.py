@@ -10,13 +10,11 @@ from stingray.fourier import (
     get_flux_iterable_from_segments,
     avg_pds_from_timeseries,
     avg_cs_from_timeseries,
-    avg_pds_from_events,
-    avg_cs_from_events,
 )
 from stingray.fourier import normalize_periodograms, estimate_intrinsic_coherence
 from stingray.fourier import raw_coherence, intrinsic_coherence
 from stingray.fourier import bias_term, error_on_averaged_cross_spectrum, unnormalize_periodograms
-from stingray.fourier import impose_symmetry_lsft, lsft_slow, lsft_fast, rms_calculation
+from stingray.fourier import impose_symmetry_lsft, lsft_slow, lsft_fast
 from stingray.fourier import get_average_ctrate, normalize_leahy_from_variance
 from stingray.fourier import integrate_power_in_frequency_range
 from stingray.fourier import get_rms_from_rms_norm_periodogram, get_rms_from_unnorm_periodogram
@@ -100,18 +98,6 @@ def test_avg_pds_imperfect_lc_size():
     assert res.meta["dt"] == 1
 
 
-def test_avg_pds_from_events_warns():
-    times = np.arange(100)
-    fluxes = np.ones(100).astype(float)
-    gti = np.asanyarray([[-0.5, 99.5]])
-    segment_size = 5.99
-    dt = 1
-    with pytest.warns(DeprecationWarning, match="avg_pds_from_events is deprecated"):
-        res = avg_pds_from_events(times, gti, segment_size, dt, fluxes=fluxes)
-    assert res.meta["segment_size"] == 6
-    assert res.meta["dt"] == 1
-
-
 def test_avg_cs_imperfect_lc_size():
     times1 = times2 = np.arange(100)
     fluxes1 = np.ones(100).astype(float)
@@ -122,21 +108,6 @@ def test_avg_cs_imperfect_lc_size():
     res = avg_cs_from_timeseries(
         times1, times2, gti, segment_size, dt, fluxes1=fluxes1, fluxes2=fluxes2
     )
-    assert res.meta["segment_size"] == 6
-    assert res.meta["dt"] == 1
-
-
-def test_avg_cs_from_events_warns():
-    times1 = times2 = np.arange(100)
-    fluxes1 = np.ones(100).astype(float)
-    fluxes2 = np.ones(100).astype(float)
-    gti = np.asanyarray([[-0.5, 99.5]])
-    segment_size = 5.99
-    dt = 1
-    with pytest.warns(DeprecationWarning, match="avg_cs_from_events is deprecated"):
-        res = avg_cs_from_events(
-            times1, times2, gti, segment_size, dt, fluxes1=fluxes1, fluxes2=fluxes2
-        )
     assert res.meta["segment_size"] == 6
     assert res.meta["dt"] == 1
 
@@ -1092,31 +1063,6 @@ class TestRMS(object):
 
         with pytest.raises(ValueError, match="Only 'frac' or 'abs' rms are supported."):
             get_rms_from_unnorm_periodogram(self.pds_shape_raw, 2, 0.1, M=100, kind="asdfkhf")
-
-    def test_deprecation_rms_calculation(self):
-        nphots = 1_000_000
-        rms = 0.5
-        M = 1000
-        _, pds_unnorm = self._prepare_pds_for_rms_tests(rms, nphots, M)
-        with pytest.warns(DeprecationWarning, match="The rms_calculation function is deprecated"):
-            rms, _ = rms_calculation(
-                pds_unnorm,
-                self.freqs.min(),
-                self.freqs.max(),
-                nphots,
-                self.segment_size,
-                M,
-                1,
-                len(self.freqs),
-                poisson_noise_unnorm=nphots,
-            )
-        rms_from_unnorm, rmse_from_unnorm = get_rms_from_unnorm_periodogram(
-            pds_unnorm,
-            nphots,
-            self.df,
-            M=M,
-        )
-        assert np.isclose(rms, rms_from_unnorm, atol=3 * rmse_from_unnorm)
 
 
 @pytest.mark.parametrize("ntimes", [100, 1000])
