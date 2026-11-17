@@ -43,6 +43,51 @@ except ImportError:
 
     HAS_PYFFTW = False
 
+# finufft is optional; it is needed for the unbinned NUFFT of event data.
+# If it is not installed, define a dummy nufft with the same name, which only warns.
+try:
+    from finufft import nufft1d1
+
+    HAS_FINUFFT = True
+
+    def nufft(x, c, n_modes, eps=1e-9):
+        """Type-1 NUFFT, with the same conventions as numpy's ``fft``.
+
+        Calculates :math:`F_k = \\sum_j c_j \\exp(-i k x_j)` with ``finufft``.
+        ``isign=-1`` gives the same sign convention as ``fft``, and
+        ``modeord=1`` the same order of the output frequencies
+        (``0, 1, ..., -2, -1``).
+
+        Parameters
+        ----------
+        x : float `np.array`
+            Non-uniform points, in radians (e.g. :math:`2\\pi t_j / T`)
+        c : complex `np.array`
+            Strengths (weights) of the points
+        n_modes : int
+            Number of Fourier modes to calculate
+
+        Other Parameters
+        ----------------
+        eps : float, default 1e-9
+            Requested relative precision
+
+        Returns
+        -------
+        ft : complex `np.array`
+            The Fourier amplitudes, in the same order as the output of ``fft``
+        """
+        return nufft1d1(x, c, n_modes, eps=eps, isign=-1, modeord=1)
+
+except ImportError:
+    HAS_FINUFFT = False
+
+    def nufft(*args, **kwargs):
+        warnings.warn(
+            "The NUFFT requires the optional finufft package, which is not installed. "
+            "Install it with `pip install finufft`."
+        )
+
 
 # If numba is installed, import jit. Otherwise, define an empty decorator with
 # the same name.

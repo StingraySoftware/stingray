@@ -20,8 +20,13 @@ from .utils import (
     fix_segment_size_to_integer_samples,
     rebin_data,
     njit,
+    nufft,
+    HAS_FINUFFT,
     lazy_vectorize,
 )
+
+# either the nufft is available through finufft, checked with HAS_FINUFFT flag
+FT_METHODS = ("fft", "nufft")
 
 __all__ = [
     "integrate_power_in_frequency_range",
@@ -41,6 +46,7 @@ __all__ = [
     "cross_to_covariance",
     "get_average_ctrate",
     "get_flux_iterable_from_segments",
+    "get_event_iterable_from_segments",
     "shift_and_add",
     "avg_pds_from_iterable",
     "avg_pds_from_timeseries",
@@ -2024,6 +2030,46 @@ def get_flux_iterable_from_segments(
         yield cts
 
 
+def get_event_iterable_from_segments(times, gti, segment_size):
+    """Get the event times in each segment of the observation, without binning.
+
+    The unbinned counterpart of `get_flux_iterable_from_segments` for events,
+    for use with ``ft_method="nufft"``.
+
+    Parameters
+    ----------
+    times : float `np.array`
+        Array of event times
+    gti : [[gti00, gti01], [gti10, gti11], ...]
+        Good time intervals
+    segment_size : float
+        Length of segments. If ``None``, the full observation is used.
+
+    Yields
+    ------
+    times : float `np.array` or None
+        The event times in each segment, relative to the start of the segment.
+        As in `get_flux_iterable_from_segments`, ``None`` is yielded for
+        segments with fewer than two events.
+    """
+    if segment_size is None:
+
+        def fun(times, gti, segment_size):
+            return [[gti[0, 0], gti[-1, 1], 0, times.size]]
+
+    else:
+        fun = _which_segment_idx_fun(binned=False)
+
+    for s, _, idx0, idx1 in fun(times, gti, segment_size):
+        if idx1 - idx0 < 2:
+            yield None
+            continue
+
+        # astype here serves to avoid integer rounding issues in Windows,
+        # where long is a 32-bit integer.
+        yield (times[idx0:idx1] - s).astype(float)
+
+
 @njit()
 def _safe_array_slice_indices(input_size, input_center_idx, nbins):
     """Calculate the indices needed to extract a n-bin slice of an array, centered at an index.
@@ -2244,7 +2290,14 @@ def shift_and_add(freqs, power_list, f0_list, nbins=100, rebin=None, df=None, M=
 
 
 def avg_pds_from_iterable(
-    flux_iterable, dt, norm="frac", use_common_mean=True, silent=False, return_subcs=False
+    flux_iterable,
+    dt,
+    norm="frac",
+    use_common_mean=True,
+    silent=False,
+    return_subcs=False,
+    ft_method="fft",
+    n_bin=None,
 ):
     """
     Calculate the average periodogram from an iterable of light curves
@@ -2254,11 +2307,23 @@ def avg_pds_from_iterable(
     flux_iterable : ``iterable`` of ``np.array``s or of tuples (``np.array``, ``np.array``)
         Iterable providing either equal-length series of count measurements,
         or of tuples (fluxes, errors). They must all be of the same length.
+        If ``ft_method`` is ``"nufft"``, iterable providing instead arrays of
+        event times, relative to the start of each segment.
     dt : float
-        Time resolution of the light curves used to produce periodograms
+        Time resolution of the light curves used to produce periodograms. If
+        ``ft_method`` is ``"nufft"``, the events are not binned, and ``dt`` only
+        sets the Nyquist frequency.
 
     Other Parameters
     ----------------
+    ft_method : str, default "fft"
+        How to Fourier-transform each segment. "fft" for the FFT of binned light
+        curves; "nufft" for the non-uniform FFT of unbinned events, which
+        requires the optional ``finufft`` package.
+    n_bin : int, default None
+        The number of Fourier frequencies (equivalently, of bins of width ``dt``)
+        per segment. Required if ``ft_method`` is ``"nufft"``, where it fixes
+        the segment length to ``n_bin * dt``. Ignored otherwise.
     norm : str, default "frac"
         The normalization of the periodogram. "abs" is absolute rms, "frac" is
         fractional rms, "leahy" is Leahy+83 normalization, and "none" is the
@@ -2299,6 +2364,200 @@ def avg_pds_from_iterable(
         mean : float
             the mean flux
     """
+    ft_iterable = _get_ft_iterable(flux_iterable, dt, ft_method=ft_method, n_bin=n_bin)
+
+    return _avg_pds_from_ft_iterable(
+        ft_iterable,
+        dt,
+        norm=norm,
+        use_common_mean=use_common_mean,
+        silent=silent,
+        return_subcs=return_subcs,
+    )
+
+
+def _get_ft_iterable(segment_iterable, dt, ft_method="fft", n_bin=None):
+    """Choose how to Fourier-transform each segment, depending on ``ft_method``.
+
+    Parameters
+    ----------
+    segment_iterable : `iterable`
+        Iterable providing the segments: binned light curves (or tuples of
+        fluxes and errors) if ``ft_method`` is ``"fft"``, arrays of event times
+        relative to the start of each segment if ``ft_method`` is ``"nufft"``
+    dt : float
+        Time resolution of the light curves. For unbinned events, this only
+        sets the Nyquist frequency.
+
+    Other Parameters
+    ----------------
+    ft_method : str, default "fft"
+        One of ``FT_METHODS``
+    n_bin : int, default None
+        The number of Fourier frequencies per segment. Required if
+        ``ft_method`` is ``"nufft"``. Ignored otherwise.
+
+    Returns
+    -------
+    ft_iterable : `iterable` of tuples ``(ft, n_ph, n_bin, variance)``, or None
+        See `_ft_iterable_from_fluxes` and `_ft_iterable_from_events`
+
+    Raises
+    ------
+    ValueError
+        If ``ft_method`` is unknown, or if ``n_bin`` is missing for the NUFFT
+    ImportError
+        If ``ft_method`` is ``"nufft"`` and ``finufft`` is not installed
+    """
+    if ft_method not in FT_METHODS:
+        raise ValueError(f"Unknown ft_method: {ft_method}. Use one of {FT_METHODS}")
+
+    if ft_method == "nufft":
+        if not HAS_FINUFFT:
+            raise ImportError(
+                "ft_method='nufft' requires finufft. Install it with `pip install finufft`"
+            )
+        if n_bin is None:
+            raise ValueError("ft_method='nufft' requires n_bin, the number of bins per segment")
+        return _ft_iterable_from_events(segment_iterable, n_bin, n_bin * dt)
+
+    return _ft_iterable_from_fluxes(segment_iterable)
+
+
+def _ft_iterable_from_fluxes(flux_iterable):
+    """Fourier-transform an iterable of binned light curve segments.
+
+    Parameters
+    ----------
+    flux_iterable : `iterable` of `np.array`s or of tuples (`np.array`, `np.array`)
+        Iterable providing either equal-length series of count measurements,
+        or of tuples (fluxes, errors). They must all be of the same length.
+
+    Yields
+    ------
+    ft_segment : tuple ``(ft, n_ph, n_bin, variance)``, or None
+        ft : complex `np.array`
+            The Fourier amplitudes of the segment, in the order given by ``fft``
+        n_ph : float
+            The sum of the fluxes in the segment
+        n_bin : int
+            The number of bins in the segment
+        variance : float or None
+            The square of the mean error bar, if errors are given
+
+        ``None`` is yielded for missing or empty segments, so that iterables
+        from two channels stay aligned when zipped together.
+    """
+    for flux in flux_iterable:
+        if flux is None or np.all(flux == 0):
+            yield None
+            continue
+
+        # If the iterable returns the uncertainty, use it to calculate the
+        # variance.
+        variance = None
+        if isinstance(flux, tuple):
+            flux, err = flux
+            variance = np.mean(err) ** 2
+
+        yield fft(flux), flux.sum(), flux.size, variance
+
+
+def _ft_iterable_from_events(events_iterable, n_bin, segment_size, eps=1e-9):
+    r"""Fourier-transform an iterable of unbinned event segments with a NUFFT.
+
+    For the event times :math:`t_j` of each segment, uses the type-1 non-uniform
+    FFT from ``finufft`` to calculate
+
+    .. math::
+        F_k = \sum_j \exp\left(-2\pi i k t_j / T\right)
+
+    at the same frequencies, and in the same order, as ``fft`` would on a light
+    curve with ``n_bin`` bins spanning a segment of length :math:`T`. The result
+    differs from the FFT of the binned light curve only because the event times
+    are not rounded to the bin edges: the signal power is not suppressed by
+    :math:`{\rm sinc}^2(\pi \nu\,dt)`, and power above the Nyquist frequency is
+    not aliased.
+
+    Parameters
+    ----------
+    events_iterable : `iterable` of `np.array`s
+        Iterable providing arrays of event times, relative to the start of
+        each segment
+    n_bin : int
+        The number of Fourier frequencies to calculate
+    segment_size : float
+        The length of each segment (:math:`T` above)
+
+    Other Parameters
+    ----------------
+    eps : float, default 1e-9
+        Requested relative precision of the NUFFT. The error on each Fourier
+        amplitude is of order ``eps`` times the number of events, and it should
+        be much smaller than the Poisson noise amplitude, the square root of the
+        number of events.
+
+    Yields
+    ------
+    ft_segment : tuple ``(ft, n_ph, n_bin, variance)``, or None
+        ft : complex `np.array`
+            The Fourier amplitudes of the segment, in the order given by ``fft``
+        n_ph : float
+            The number of events in the segment
+        n_bin : int
+            The number of Fourier frequencies
+        variance : None
+            Events have no error bars
+
+        ``None`` is yielded for missing or empty segments, so that iterables
+        from two channels stay aligned when zipped together.
+    """
+    for times in events_iterable:
+        if times is None or len(times) == 0:
+            yield None
+            continue
+
+        times = np.asarray(times, dtype=float)
+
+        # nufft expects phase in radians
+        ft = nufft(
+            2 * np.pi * times / segment_size,
+            np.ones(times.size, dtype=complex),
+            n_bin,
+            eps=eps,
+        )
+
+        yield ft, float(times.size), n_bin, None
+
+
+def _avg_pds_from_ft_iterable(
+    ft_iterable, dt, norm="frac", use_common_mean=True, silent=False, return_subcs=False
+):
+    """Calculate the average periodogram from an iterable of Fourier amplitudes.
+
+    This is the core of `avg_pds_from_iterable`. It does not depend on how the
+    Fourier amplitudes were calculated (e.g. FFT of a binned light curve, or
+    NUFFT of unbinned events), as long as they all sample the same frequencies,
+    in the order given by ``fft``.
+
+    Parameters
+    ----------
+    ft_iterable : `iterable` of tuples ``(ft, n_ph, n_bin, variance)``, or None
+        See the output of `_ft_iterable_from_fluxes`. ``None`` entries are skipped.
+    dt : float
+        Time resolution of the light curves used to produce periodograms. For
+        unbinned events, this only sets the Nyquist frequency.
+
+    Other Parameters
+    ----------------
+    norm, use_common_mean, silent, return_subcs
+        See `avg_pds_from_iterable`.
+
+    Returns
+    -------
+    results : :class:`astropy.table.Table`
+        See `avg_pds_from_iterable`.
+    """
     from astropy.table import Table
 
     local_show_progress = show_progress
@@ -2318,24 +2577,13 @@ def avg_pds_from_iterable(
         unnorm_subcs = []
         nphots_subcs = []
 
-    for flux in local_show_progress(flux_iterable):
-        if flux is None or np.all(flux == 0):
+    for ft_segment in local_show_progress(ft_iterable):
+        if ft_segment is None:
             continue
 
-        # If the iterable returns the uncertainty, use it to calculate the
-        # variance.
-        variance = None
-        if isinstance(flux, tuple):
-            flux, err = flux
-            variance = np.mean(err) ** 2
-
-        # Calculate the FFT
-        n_bin = flux.size
-        ft = fft(flux)
-
-        # This will only be used by the Leahy normalization, so only if
+        # n_ph will only be used by the Leahy normalization, so only if
         # the input light curve is in units of counts/bin
-        n_ph = flux.sum()
+        ft, n_ph, n_bin, variance = ft_segment
         unnorm_power = (ft * ft.conj()).real
 
         # Accumulate the sum of means and variances, to get the final mean and
@@ -2433,7 +2681,9 @@ def avg_pds_from_iterable(
     return results
 
 
-def avg_cs_from_iterables_quick(flux_iterable1, flux_iterable2, dt, norm="frac"):
+def avg_cs_from_iterables_quick(
+    flux_iterable1, flux_iterable2, dt, norm="frac", ft_method="fft", n_bin=None
+):
     """Like `avg_cs_from_iterables`, with default options that make it quick.
 
     Assumes that:
@@ -2451,10 +2701,14 @@ def avg_cs_from_iterables_quick(flux_iterable1, flux_iterable2, dt, norm="frac")
     flux_iterable1 : ``iterable`` of ``np.array``s or of tuples (``np.array``, ``np.array``)
         Iterable providing either equal-length series of count measurements, or
         of tuples (fluxes, errors). They must all be of the same length.
+        If ``ft_method`` is ``"nufft"``, iterable providing instead arrays of
+        event times, relative to the start of each segment.
     flux_iterable2 : ``iterable`` of ``np.array``s or of tuples (``np.array``, ``np.array``)
         Same as ``flux_iterable1``, for the reference channel
     dt : float
-        Time resolution of the light curves used to produce periodograms
+        Time resolution of the light curves used to produce periodograms. If
+        ``ft_method`` is ``"nufft"``, the events are not binned, and ``dt`` only
+        sets the Nyquist frequency.
 
     Other Parameters
     ----------------
@@ -2462,6 +2716,14 @@ def avg_cs_from_iterables_quick(flux_iterable1, flux_iterable2, dt, norm="frac")
         The normalization of the periodogram. "abs" is absolute rms, "frac" is
         fractional rms, "leahy" is Leahy+83 normalization, and "none" is the
         unnormalized periodogram
+    ft_method : str, default "fft"
+        How to Fourier-transform each segment. "fft" for the FFT of binned light
+        curves; "nufft" for the non-uniform FFT of unbinned events, which
+        requires the optional ``finufft`` package.
+    n_bin : int, default None
+        The number of Fourier frequencies (equivalently, of bins of width ``dt``)
+        per segment. Required if ``ft_method`` is ``"nufft"``, where it fixes
+        the segment length to ``n_bin * dt``. Ignored otherwise.
 
     Returns
     -------
@@ -2489,6 +2751,41 @@ def avg_cs_from_iterables_quick(flux_iterable1, flux_iterable2, dt, norm="frac")
             channels)
 
     """
+    ft_iterable1 = _get_ft_iterable(flux_iterable1, dt, ft_method=ft_method, n_bin=n_bin)
+    ft_iterable2 = _get_ft_iterable(flux_iterable2, dt, ft_method=ft_method, n_bin=n_bin)
+
+    return _avg_cs_from_ft_iterables_quick(ft_iterable1, ft_iterable2, dt, norm=norm)
+
+
+def _avg_cs_from_ft_iterables_quick(ft_iterable1, ft_iterable2, dt, norm="frac"):
+    """Calculate the average cross spectrum from two iterables of Fourier amplitudes.
+
+    This is the core of `avg_cs_from_iterables_quick`. It does not depend on
+    how the Fourier amplitudes were calculated (e.g. FFT of binned light curves,
+    or NUFFT of unbinned events), as long as they all sample the same
+    frequencies, in the order given by ``fft``.
+
+    Parameters
+    ----------
+    ft_iterable1 : `iterable` of tuples ``(ft, n_ph, n_bin, variance)``, or None
+        See the output of `_ft_iterable_from_fluxes`. Pairs where either
+        entry is ``None`` are skipped.
+    ft_iterable2 : `iterable` of tuples ``(ft, n_ph, n_bin, variance)``, or None
+        Same as ``ft_iterable1``, for the reference channel
+    dt : float
+        Time resolution of the light curves used to produce periodograms. For
+        unbinned events, this only sets the Nyquist frequency.
+
+    Other Parameters
+    ----------------
+    norm
+        See `avg_cs_from_iterables_quick`.
+
+    Returns
+    -------
+    results : :class:`astropy.table.Table`
+        See `avg_cs_from_iterables_quick`.
+    """
     from astropy.table import Table
 
     # Initialize stuff
@@ -2497,15 +2794,14 @@ def avg_cs_from_iterables_quick(flux_iterable1, flux_iterable2, dt, norm="frac")
 
     sum_of_photons1 = sum_of_photons2 = 0
 
-    for flux1, flux2 in zip(flux_iterable1, flux_iterable2):
-        if flux1 is None or flux2 is None or np.all(flux1 == 0) or np.all(flux2 == 0):
+    for ft_segment1, ft_segment2 in zip(ft_iterable1, ft_iterable2):
+        if ft_segment1 is None or ft_segment2 is None:
             continue
 
-        n_bin = flux1.size
-
-        # Calculate the sum of each light curve, to calculate the mean
-        n_ph1 = flux1.sum()
-        n_ph2 = flux2.sum()
+        # The Fourier amplitudes, and the sum of each light curve, to calculate
+        # the mean
+        ft1, n_ph1, n_bin, _ = ft_segment1
+        ft2, n_ph2, _, _ = ft_segment2
 
         # At the first loop, we define the frequency array and the range of
         # positive frequency bins (after the first loop, cross will not be
@@ -2513,10 +2809,6 @@ def avg_cs_from_iterables_quick(flux_iterable1, flux_iterable2, dt, norm="frac")
         if unnorm_cross is None:
             freq = fftfreq(n_bin, dt)
             fgt0 = positive_fft_bins(n_bin)
-
-        # Calculate the FFTs
-        ft1 = fft(flux1)
-        ft2 = fft(flux2)
 
         # Calculate the unnormalized cross spectrum
         unnorm_power = ft1.conj() * ft2
@@ -2603,6 +2895,8 @@ def avg_cs_from_iterables(
     power_type="all",
     return_auxil=False,
     return_subcs=False,
+    ft_method="fft",
+    n_bin=None,
 ):
     """Calculate the average cross spectrum from an iterable of light curves
 
@@ -2611,13 +2905,25 @@ def avg_cs_from_iterables(
     flux_iterable1 : ``iterable`` of ``np.array``s or of tuples (``np.array``, ``np.array``)
         Iterable providing either equal-length series of count measurements, or
         of tuples (fluxes, errors). They must all be of the same length.
+        If ``ft_method`` is ``"nufft"``, iterable providing instead arrays of
+        event times, relative to the start of each segment.
     flux_iterable2 : ``iterable`` of ``np.array``s or of tuples (``np.array``, ``np.array``)
         Same as ``flux_iterable1``, for the reference channel
     dt : float
-        Time resolution of the light curves used to produce periodograms
+        Time resolution of the light curves used to produce periodograms. If
+        ``ft_method`` is ``"nufft"``, the events are not binned, and ``dt`` only
+        sets the Nyquist frequency.
 
     Other Parameters
     ----------------
+    ft_method : str, default "fft"
+        How to Fourier-transform each segment. "fft" for the FFT of binned light
+        curves; "nufft" for the non-uniform FFT of unbinned events, which
+        requires the optional ``finufft`` package.
+    n_bin : int, default None
+        The number of Fourier frequencies (equivalently, of bins of width ``dt``)
+        per segment. Required if ``ft_method`` is ``"nufft"``, where it fixes
+        the segment length to ``n_bin * dt``. Ignored otherwise.
     norm : str, default "frac"
         The normalization of the periodogram. "abs" is absolute rms, "frac" is
         fractional rms, "leahy" is Leahy+83 normalization, and "none" is the
@@ -2672,6 +2978,63 @@ def avg_cs_from_iterables(
             The mean flux (geometrical average of the mean fluxes in the two
             channels).
     """
+    ft_iterable1 = _get_ft_iterable(flux_iterable1, dt, ft_method=ft_method, n_bin=n_bin)
+    ft_iterable2 = _get_ft_iterable(flux_iterable2, dt, ft_method=ft_method, n_bin=n_bin)
+
+    return _avg_cs_from_ft_iterables(
+        ft_iterable1,
+        ft_iterable2,
+        dt,
+        norm=norm,
+        use_common_mean=use_common_mean,
+        silent=silent,
+        fullspec=fullspec,
+        power_type=power_type,
+        return_auxil=return_auxil,
+        return_subcs=return_subcs,
+    )
+
+
+def _avg_cs_from_ft_iterables(
+    ft_iterable1,
+    ft_iterable2,
+    dt,
+    norm="frac",
+    use_common_mean=True,
+    silent=False,
+    fullspec=False,
+    power_type="all",
+    return_auxil=False,
+    return_subcs=False,
+):
+    """Calculate the average cross spectrum from two iterables of Fourier amplitudes.
+
+    This is the core of `avg_cs_from_iterables`. It does not depend on how the
+    Fourier amplitudes were calculated (e.g. FFT of binned light curves, or
+    NUFFT of unbinned events), as long as they all sample the same frequencies,
+    in the order given by ``fft``.
+
+    Parameters
+    ----------
+    ft_iterable1 : `iterable` of tuples ``(ft, n_ph, n_bin, variance)``, or None
+        See the output of `_ft_iterable_from_fluxes`. Pairs where either
+        entry is ``None`` are skipped.
+    ft_iterable2 : `iterable` of tuples ``(ft, n_ph, n_bin, variance)``, or None
+        Same as ``ft_iterable1``, for the reference channel
+    dt : float
+        Time resolution of the light curves used to produce periodograms. For
+        unbinned events, this only sets the Nyquist frequency.
+
+    Other Parameters
+    ----------------
+    norm, use_common_mean, silent, fullspec, power_type, return_auxil, return_subcs
+        See `avg_cs_from_iterables`.
+
+    Returns
+    -------
+    results : :class:`astropy.table.Table`
+        See `avg_cs_from_iterables`.
+    """
     from astropy.table import Table
 
     local_show_progress = show_progress
@@ -2692,19 +3055,16 @@ def avg_cs_from_iterables(
         unnorm_subcs = []
         nphots_subcs = []
 
-    for flux1, flux2 in local_show_progress(zip(flux_iterable1, flux_iterable2)):
-        if flux1 is None or flux2 is None or np.all(flux1 == 0) or np.all(flux2 == 0):
+    for ft_segment1, ft_segment2 in local_show_progress(zip(ft_iterable1, ft_iterable2)):
+        if ft_segment1 is None or ft_segment2 is None:
             continue
 
-        # Does the flux iterable return the uncertainty?
-        # If so, define the variances
-        variance1 = variance2 = None
-        if isinstance(flux1, tuple):
-            flux1, err1 = flux1
-            variance1 = np.mean(err1) ** 2
-        if isinstance(flux2, tuple):
-            flux2, err2 = flux2
-            variance2 = np.mean(err2) ** 2
+        # The Fourier amplitudes, the sum of each light curve chunk (to
+        # calculate the mean), and the variances, if the flux iterables
+        # returned the uncertainties
+        ft1, n_ph1, n_bin, variance1 = ft_segment1
+        ft2, n_ph2, _, variance2 = ft_segment2
+        n_ph = np.sqrt(n_ph1 * n_ph2)
 
         # Only use the variance if both flux iterables define it.
         if variance1 is None or variance2 is None:
@@ -2713,23 +3073,12 @@ def avg_cs_from_iterables(
             common_variance1 = sum_if_not_none_or_initialize(common_variance1, variance1)
             common_variance2 = sum_if_not_none_or_initialize(common_variance2, variance2)
 
-        n_bin = flux1.size
-
         # At the first loop, we define the frequency array and the range of
         # positive frequency bins (after the first loop, cross will not be
         # None anymore)
         if cross is None:
             freq = fftfreq(n_bin, dt)
             fgt0 = positive_fft_bins(n_bin)
-
-        # Calculate the FFTs
-        ft1 = fft(flux1)
-        ft2 = fft(flux2)
-
-        # Calculate the sum of each light curve chunk, to calculate the mean
-        n_ph1 = flux1.sum()
-        n_ph2 = flux2.sum()
-        n_ph = np.sqrt(n_ph1 * n_ph2)
 
         # Calculate the unnormalized cross spectrum
         unnorm_power = ft1.conj() * ft2
@@ -2955,6 +3304,7 @@ def avg_pds_from_timeseries(
     fluxes=None,
     errors=None,
     return_subcs=False,
+    ft_method="fft",
 ):
     """
     Calculate the average periodogram from a list of event times or a light
@@ -2974,7 +3324,9 @@ def avg_pds_from_timeseries(
     segment_size : float
         Length of segments. If ``None``, the full light curve is used.
     dt : float
-        Time resolution of the light curves used to produce periodograms.
+        Time resolution of the light curves used to produce periodograms. If
+        ``ft_method`` is ``"nufft"``, the events are not binned, and ``dt`` only
+        sets the Nyquist frequency.
 
     Other Parameters
     ----------------
@@ -2996,6 +3348,11 @@ def avg_pds_from_timeseries(
         Array of errors on the fluxes above
     return_subcs : bool, default False
         Return all sub spectra from each light curve chunk
+    ft_method : str, default "fft"
+        How to Fourier-transform each segment. "fft" bins the events (or uses
+        the light curve as it is) and uses the FFT; "nufft" uses the non-uniform
+        FFT of the unbinned events, which requires the optional ``finufft``
+        package. Only "fft" is available for light curves.
 
     Returns
     -------
@@ -3010,24 +3367,37 @@ def avg_pds_from_timeseries(
     mean : float
         the mean flux
     """
-    binned = fluxes is not None
+    if ft_method == "nufft" and fluxes is not None:
+        raise ValueError("ft_method='nufft' is only available for event data")
+
     if segment_size is not None:
         segment_size, n_bin = fix_segment_size_to_integer_samples(segment_size, dt)
-    elif binned and segment_size is None:
-        n_bin = fluxes.size
+    elif fluxes is not None:
+        n_bin = fluxes.size     # this is the already binned case
     else:
         _, n_bin = fix_segment_size_to_integer_samples(gti.max() - gti.min(), dt)
 
-    flux_iterable = get_flux_iterable_from_segments(
-        times, gti, segment_size, n_bin, dt=dt, fluxes=fluxes, errors=errors
-    )
+    if ft_method == "nufft":
+        if segment_size is None:
+            # The NUFFT is periodic in the segment length n_bin * dt, which can be
+            # up to one bin shorter than the GTIs. Drop the events after its end,
+            # which would otherwise wrap round to the start of the segment
+            times = times[times < gti[0, 0] + n_bin * dt]
+        segment_iterable = get_event_iterable_from_segments(times, gti, segment_size)
+    else:
+        segment_iterable = get_flux_iterable_from_segments(
+            times, gti, segment_size, n_bin, dt=dt, fluxes=fluxes, errors=errors
+        )
+
     cross = avg_pds_from_iterable(
-        flux_iterable,
+        segment_iterable,
         dt,
         norm=norm,
         use_common_mean=use_common_mean,
         silent=silent,
         return_subcs=return_subcs,
+        ft_method=ft_method,
+        n_bin=n_bin,
     )
     if cross is not None:
         cross.meta["gti"] = gti
@@ -3865,6 +4235,7 @@ def avg_cs_from_timeseries(
     errors2=None,
     return_auxil=False,
     return_subcs=False,
+    ft_method="fft",
 ):
     """
     Calculate the average cross spectrum from a list of event times or a light
@@ -3886,7 +4257,9 @@ def avg_cs_from_timeseries(
     segment_size : float
         length of segments. If ``None``, the full light curve is used.
     dt : float
-        Time resolution of the light curves used to produce periodograms
+        Time resolution of the light curves used to produce periodograms. If
+        ``ft_method`` is ``"nufft"``, the events are not binned, and ``dt`` only
+        sets the Nyquist frequency.
 
     Other Parameters
     ----------------
@@ -3917,6 +4290,11 @@ def avg_cs_from_timeseries(
         Array of errors on the fluxes on channel 2
     return_subcs : bool, default False
         Return all sub spectra from each light curve chunk
+    ft_method : str, default "fft"
+        How to Fourier-transform each segment. "fft" bins the events (or uses
+        the light curves as they are) and uses the FFT; "nufft" uses the
+        non-uniform FFT of the unbinned events, which requires the optional
+        ``finufft`` package. Only "fft" is available for light curves.
 
     Returns
     -------
@@ -3930,6 +4308,12 @@ def avg_cs_from_timeseries(
         the number of averaged periodograms
     """
 
+    is_events = np.all([val is None for val in (fluxes1, fluxes2, errors1, errors2)])
+
+    # Not only `binned` below: a light curve in either channel rules out the NUFFT
+    if ft_method == "nufft" and not is_events:
+        raise ValueError("ft_method='nufft' is only available for event data")
+
     binned = fluxes1 is not None and fluxes2 is not None
 
     if segment_size is not None:
@@ -3939,14 +4323,22 @@ def avg_cs_from_timeseries(
     else:
         _, n_bin = fix_segment_size_to_integer_samples(gti.max() - gti.min(), dt)
 
-    flux_iterable1 = get_flux_iterable_from_segments(
-        times1, gti, segment_size, n_bin=n_bin, dt=dt, fluxes=fluxes1, errors=errors1
-    )
-    flux_iterable2 = get_flux_iterable_from_segments(
-        times2, gti, segment_size, n_bin=n_bin, dt=dt, fluxes=fluxes2, errors=errors2
-    )
-
-    is_events = np.all([val is None for val in (fluxes1, fluxes2, errors1, errors2)])
+    if ft_method == "nufft":
+        if segment_size is None:
+            # The NUFFT is periodic in the segment length n_bin * dt, which can be
+            # up to one bin shorter than the GTIs. Drop the events after its end,
+            # which would otherwise wrap round to the start of the segment
+            end = gti[0, 0] + n_bin * dt
+            times1, times2 = times1[times1 < end], times2[times2 < end]
+        segment_iterable1 = get_event_iterable_from_segments(times1, gti, segment_size)
+        segment_iterable2 = get_event_iterable_from_segments(times2, gti, segment_size)
+    else:
+        segment_iterable1 = get_flux_iterable_from_segments(
+            times1, gti, segment_size, n_bin=n_bin, dt=dt, fluxes=fluxes1, errors=errors1
+        )
+        segment_iterable2 = get_flux_iterable_from_segments(
+            times2, gti, segment_size, n_bin=n_bin, dt=dt, fluxes=fluxes2, errors=errors2
+        )
 
     if (
         is_events
@@ -3957,12 +4349,19 @@ def avg_cs_from_timeseries(
         and not return_auxil
         and not return_subcs
     ):
-        results = avg_cs_from_iterables_quick(flux_iterable1, flux_iterable2, dt, norm=norm)
+        results = avg_cs_from_iterables_quick(
+            segment_iterable1,
+            segment_iterable2,
+            dt,
+            norm=norm,
+            ft_method=ft_method,
+            n_bin=n_bin,
+        )
 
     else:
         results = avg_cs_from_iterables(
-            flux_iterable1,
-            flux_iterable2,
+            segment_iterable1,
+            segment_iterable2,
             dt,
             norm=norm,
             use_common_mean=use_common_mean,
@@ -3971,6 +4370,8 @@ def avg_cs_from_timeseries(
             power_type=power_type,
             return_auxil=return_auxil,
             return_subcs=return_subcs,
+            ft_method=ft_method,
+            n_bin=n_bin,
         )
 
     if results is not None:
