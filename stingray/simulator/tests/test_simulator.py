@@ -623,18 +623,21 @@ class TestSimulator(object):
         Construct simple impulse response.
         """
         t0, w = 100, 500
-        assert len(self.simulator.simple_ir(t0, w)) == (t0 + w) / self.simulator.dt
+        assert len(self.simulator.simple_ir(t0, w, normalize=False)) == (t0 + w) / self.simulator.dt
 
     def test_construct_simple_ir_odd(self):
         """
         Construct simple impulse response.
         """
         t0, w = 100, 500
-        assert len(self.simulator_odd.simple_ir(t0, w)) == (t0 + w) / self.simulator.dt
+        assert (
+            len(self.simulator_odd.simple_ir(t0, w, normalize=False))
+            == (t0 + w) / self.simulator.dt
+        )
 
     def test_construct_simple_ir_width_shorter_than_dt(self):
         dt = self.simulator.dt
-        response = self.simulator.simple_ir(start=3 * dt, width=0.1 * dt)
+        response = self.simulator.simple_ir(start=3 * dt, width=0.1 * dt, normalize=False)
         np.testing.assert_array_equal(response, [0, 0, 0, 1])
 
     def test_construct_relativistic_ir(self):
@@ -642,7 +645,7 @@ class TestSimulator(object):
         Construct relativistic impulse response.
         """
         t1, t3 = 3, 10
-        ir = self.simulator.relativistic_ir(t1=t1, t3=t3)
+        ir = self.simulator.relativistic_ir(t1=t1, t3=t3, normalize=False)
         assert np.allclose(ir[: int(t1 / self.simulator.dt)], 0)
         assert ir[int(t1 / self.simulator.dt)] == 1
 
@@ -651,7 +654,7 @@ class TestSimulator(object):
         Construct relativistic impulse response.
         """
         t1, t3 = 3, 10
-        ir = self.simulator_odd.relativistic_ir(t1=t1, t3=t3)
+        ir = self.simulator_odd.relativistic_ir(t1=t1, t3=t3, normalize=False)
         assert np.allclose(ir[: int(t1 / self.simulator_odd.dt)], 0)
         assert ir[int(t1 / self.simulator_odd.dt)] == 1
 
@@ -659,7 +662,7 @@ class TestSimulator(object):
     def test_relativistic_ir_decay_starts_at_secondary_peak_time(self, t2):
         """The decay starts at 1 at ``t2``, whatever ``t2`` is."""
         t3 = 9
-        ir = self.simulator.relativistic_ir(t1=2, t2=t2, t3=t3)
+        ir = self.simulator.relativistic_ir(t1=2, t2=t2, t3=t3, normalize=False)
         decay = ir[-int((t3 - t2) / self.dt) :]
         assert decay[0] == 1
         assert np.all(np.diff(decay) < 0)
@@ -670,7 +673,7 @@ class TestSimulator(object):
         """
         lc = sampledata.sample_data()
         s = lc.counts
-        h = self.simulator.simple_ir(10, 1, 1)
+        h = self.simulator.simple_ir(10, 1, 1, normalize=False)
         with pytest.warns(
             UserWarning,
             match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more.",
@@ -683,7 +686,7 @@ class TestSimulator(object):
         """
         lc = sampledata.sample_data()
         s = lc.counts
-        h = self.simulator_odd.simple_ir(10, 1, 1)
+        h = self.simulator_odd.simple_ir(10, 1, 1, normalize=False)
         with pytest.warns(
             UserWarning,
             match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more.",
@@ -719,7 +722,7 @@ class TestSimulator(object):
         lc = sampledata.sample_data()
         s = lc.counts
 
-        h = self.simulator.relativistic_ir()
+        h = self.simulator.relativistic_ir(normalize=False)
         with pytest.warns(
             UserWarning,
             match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more.",
@@ -733,7 +736,7 @@ class TestSimulator(object):
         lc = sampledata.sample_data()
         s = lc.counts
 
-        h = self.simulator.simple_ir()
+        h = self.simulator.simple_ir(normalize=False)
         with pytest.warns(
             UserWarning,
             match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more.",
@@ -747,7 +750,7 @@ class TestSimulator(object):
         lc = sampledata.sample_data()
         s = lc.counts
 
-        h = self.simulator_odd.simple_ir()
+        h = self.simulator_odd.simple_ir(normalize=False)
         with pytest.warns(
             UserWarning,
             match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more.",
@@ -759,7 +762,7 @@ class TestSimulator(object):
         """A one-bin (delta) impulse response, e.g. from ``simple_ir`` with a
         width shorter than ``dt``, returns the input signal unchanged."""
         s = np.arange(1.0, 11.0)
-        h = self.simulator.simple_ir(width=0.1 * self.dt)
+        h = self.simulator.simple_ir(width=0.1 * self.dt, normalize=False)
         assert len(h) == 1
         with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson"):
             output = self.simulator.simulate(s, h, mode)
@@ -769,11 +772,104 @@ class TestSimulator(object):
         """A non-integer width in bins ends with a partial bin, so that the total
         weight is width / dt (times the intensity)."""
         dt = self.simulator.dt
-        response = self.simulator.simple_ir(start=2 * dt, width=2.5 * dt, intensity=2)
+        response = self.simulator.simple_ir(
+            start=2 * dt, width=2.5 * dt, intensity=2, normalize=False
+        )
         np.testing.assert_allclose(response, [0, 0, 2, 2, 1])
         # No spurious partial bin from floating-point error in width / dt
-        response = Simulator(N=16, dt=0.1, mean=1, rms=1).simple_ir(width=0.3)
+        response = Simulator(N=16, dt=0.1, mean=1, rms=1).simple_ir(width=0.3, normalize=False)
         np.testing.assert_allclose(response, [1, 1, 1])
+
+    @pytest.mark.parametrize("method", ["simple_ir", "relativistic_ir"])
+    def test_impulse_response_default_warns_and_keeps_old_weights(self, method):
+        build = getattr(self.simulator, method)
+        with pytest.warns(DeprecationWarning, match="default of normalize"):
+            response = build()
+        np.testing.assert_array_equal(response, build(normalize=False))
+
+    @pytest.mark.parametrize("dt", [0.05, 0.125, 0.3, 1.0])
+    def test_simple_ir_normalized_gain_is_intensity(self, dt):
+        sim = Simulator(N=16, dt=dt, mean=1, rms=1)
+        response = sim.simple_ir(start=0.7, width=2.0, intensity=3, normalize=True)
+        assert np.isclose(response.sum(), 3)
+        assert np.isclose(sim.relativistic_ir(normalize=True).sum(), 1)
+
+    def test_simple_ir_normalized_partial_bins(self):
+        """Bins the box only partly covers get the covered fraction, so the
+        coverage sums to width / dt and the mean delay is kept."""
+        dt = self.dt
+        width = 2.25 * dt
+        response = self.simulator.simple_ir(start=2.5 * dt, width=width, normalize=True)
+        coverage = response * width / dt
+        np.testing.assert_allclose(coverage, [0, 0, 0.5, 1, 0.75])
+        assert np.isclose(coverage.sum(), width / dt)
+
+        # A one-bin box with a sub-bin delay is spread over two bins
+        start = 3.3 * dt
+        response = self.simulator.simple_ir(start=start, width=dt, normalize=True)
+        np.testing.assert_allclose(response, [0, 0, 0, 0.7, 0.3])
+        bin_centers = (np.arange(response.size) + 0.5) * dt
+        assert np.isclose(np.sum(bin_centers * response), start + dt / 2)
+
+        # A box inside one bin is a delta, with no spurious bins from rounding
+        sim = Simulator(N=16, dt=0.1, mean=1, rms=1)
+        np.testing.assert_allclose(
+            sim.simple_ir(start=0.3, width=0.05, normalize=True), [0, 0, 0, 1]
+        )
+        np.testing.assert_allclose(
+            sim.simple_ir(start=0.3, width=0.3, normalize=True), [0, 0, 0] + [1 / 3] * 3
+        )
+
+    @pytest.mark.parametrize("width, start", [(0, 1), (-1, 1), (1, -0.5)])
+    def test_simple_ir_normalized_needs_positive_width_and_start(self, width, start):
+        with pytest.raises(ValueError, match="start >= 0 and width > 0"):
+            self.simulator.simple_ir(start=start, width=width, normalize=True)
+
+    @pytest.mark.parametrize(
+        "method, kwargs",
+        [
+            ("simple_ir", dict(start=0.7, width=2.0, intensity=3)),
+            ("relativistic_ir", dict()),
+            ("relativistic_ir", dict(t1=1.3, t2=2.1, t3=4.7, rise=3, decay=0.5)),
+        ],
+    )
+    def test_normalized_impulse_response_is_the_same_at_any_dt(self, method, kwargs):
+        """Halving dt splits each bin in two: summing pairs of bins gives back
+        the coarse response."""
+        coarse = getattr(Simulator(N=16, dt=0.125, mean=1, rms=1), method)(**kwargs, normalize=True)
+        fine = getattr(Simulator(N=16, dt=0.0625, mean=1, rms=1), method)(**kwargs, normalize=True)
+        if fine.size % 2:
+            fine = np.append(fine, 0)
+        np.testing.assert_allclose(fine.reshape(-1, 2).sum(axis=1), coarse, atol=1e-15)
+
+    @pytest.mark.parametrize("rise, decay", [(0.6, 0.1), (0, 0), (5, 2)])
+    def test_relativistic_ir_normalized_matches_its_formula(self, rise, decay):
+        """Each bin holds the integral of the response, here compared with a
+        midpoint sum over 1000 points per bin."""
+        t1, t2, t3, p1, p2 = 1.1, 2.6, 5.3, 1, 1.4
+        response = self.simulator.relativistic_ir(
+            t1=t1, t2=t2, t3=t3, p1=p1, p2=p2, rise=rise, decay=decay, normalize=True
+        )
+        n_sub = 1000
+        t = (np.arange(response.size * n_sub) + 0.5) * self.dt / n_sub
+        curve = np.where(
+            t < t2, p1 + (p2 - p1) * np.exp(rise * (t - t2)), p2 * np.exp(-decay * (t - t2))
+        )
+        curve[(t < t1) | (t > t3)] = 0
+        expected = curve.reshape(-1, n_sub).sum(axis=1)
+        np.testing.assert_allclose(response, expected / expected.sum(), rtol=1e-4, atol=1e-9)
+
+    @pytest.mark.parametrize("dt", [0.1, 0.125, 0.5])
+    def test_unit_gain_response_keeps_the_mean_rate(self, dt):
+        sim = Simulator(N=16, dt=dt, mean=1, rms=1)
+        signal = np.full(200, 5.0)
+        for response in [
+            sim.simple_ir(start=0.7, width=2.0, normalize=True),
+            sim.relativistic_ir(normalize=True),
+        ]:
+            with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson"):
+                output = sim.simulate(signal, response, "filtered")
+            np.testing.assert_allclose(output.counts, 5.0)
 
     def test_simple_lag_spectrum(self):
         """
@@ -781,7 +877,7 @@ class TestSimulator(object):
         compute lag spectrum.
         """
         lc = sampledata.sample_data()
-        h = self.simulator.simple_ir(start=14, width=1)
+        h = self.simulator.simple_ir(start=14, width=1, normalize=False)
         delay = int(15 / lc.dt)
 
         lag = self.calculate_lag(lc, h, delay)
@@ -799,7 +895,7 @@ class TestSimulator(object):
         compute lag spectrum.
         """
         lc = sampledata.sample_data()
-        h = self.simulator.relativistic_ir(t1=3, t2=4, t3=10)
+        h = self.simulator.relativistic_ir(t1=3, t2=4, t3=10, normalize=False)
         delay = int(4 / lc.dt)
 
         lag = self.calculate_lag(lc, h, delay)
@@ -816,8 +912,8 @@ class TestSimulator(object):
         lc = sampledata.sample_data()
         s = lc.counts
         h = []
-        h.append(self.simulator.simple_ir(start=4, width=1))
-        h.append(self.simulator.simple_ir(start=9, width=1))
+        h.append(self.simulator.simple_ir(start=4, width=1, normalize=False))
+        h.append(self.simulator.simple_ir(start=9, width=1, normalize=False))
 
         delays = [int(5 / lc.dt), int(10 / lc.dt)]
 
@@ -849,8 +945,8 @@ class TestSimulator(object):
         lc = sampledata.sample_data()
         s = lc.counts
         h = []
-        h.append(self.simulator.simple_ir(start=4, width=1, intensity=10))
-        h.append(self.simulator.simple_ir(start=4, width=1, intensity=20))
+        h.append(self.simulator.simple_ir(start=4, width=1, intensity=10, normalize=False))
+        h.append(self.simulator.simple_ir(start=4, width=1, intensity=20, normalize=False))
 
         delay = int(5 / lc.dt)
 
