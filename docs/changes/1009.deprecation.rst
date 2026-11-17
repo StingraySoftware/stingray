@@ -1,0 +1,1 @@
+The ``adjust_bias`` and ``atol`` arguments of ``intrinsic_coherence`` and ``AveragedCrossspectrum.intrinsic_coherence`` are deprecated and ignored: the bias term is now exact.

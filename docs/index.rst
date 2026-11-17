@@ -325,6 +325,7 @@ Stingray fundamentals
    modeling
    simulator
    deadtime
+   coherence
 
 Advanced
 --------
