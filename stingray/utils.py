@@ -11,7 +11,6 @@ from collections.abc import Iterable
 
 import numpy as np
 import scipy
-from scipy.stats import median_abs_deviation
 from numpy import histogram as histogram_np
 from numpy import histogram2d as histogram2d_np
 from numpy import histogramdd as histogramdd_np
@@ -274,6 +273,8 @@ def mad(data, c=0.6744897501960817, axis=0):
     it reduced float128 to float64 and so threw away the very precision the caller
     had gone to the trouble of providing.
     """
+    from scipy.stats import median_abs_deviation
+
     data = np.asanyarray(data)
     data = data.astype(np.promote_types(data.dtype, np.float64), copy=False)
     return median_abs_deviation(data, axis=axis, scale=c)
@@ -681,10 +682,10 @@ def rebin_data(x, y, dx_new, yerr=None, method="sum", dx=None):
     xbin: numpy.ndarray
         The midpoints of the new bins in ``x``
 
-    ybin: numpy.ndarray
+    ybin: float numpy.ndarray
         The binned quantity ``y``
 
-    ybin_err: numpy.ndarray
+    ybin_err: float numpy.ndarray
         The uncertainties of the binned values of ``y``.
 
     step_size: float
@@ -729,8 +730,9 @@ def rebin_data(x, y, dx_new, yerr=None, method="sum", dx=None):
     # new regularly binned resolution
     xbin = np.arange(xedges[0], xedges[-1] + dx_new, dx_new)
 
-    output = np.zeros(xbin.shape[0] - 1, dtype=type(y[0]))
-    outputvar = np.zeros(xbin.shape[0] - 1, dtype=type(yerr[0]))
+    # Partial bins add fractions of y, so integer input must not stay integer
+    output = np.zeros(xbin.shape[0] - 1, dtype=np.result_type(y.dtype, float))
+    outputvar = np.zeros(xbin.shape[0] - 1, dtype=np.result_type(yerr.dtype, float))
     step_size = np.zeros(xbin.shape[0] - 1)
 
     all_x = np.searchsorted(xedges, xbin)

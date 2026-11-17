@@ -10,18 +10,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 """
 
+import importlib.util
 import warnings
 import numpy as np
-import scipy.stats
-import scipy.optimize
 
-# check whether ultranest is installed for sampling
-try:
-    from ultranest import ReactiveNestedSampler
-
-    can_sample = True
-except ImportError:
-    can_sample = False
+# Check whether ultranest is installed for sampling, without importing it:
+# ultranest loads scipy.stats and scipy.optimize, which would slow down
+# ``import stingray``. It is imported in ``_calculate_bexvar``.
+can_sample = importlib.util.find_spec("ultranest") is not None
 
 
 __all__ = ["bexvar"]
@@ -58,6 +54,8 @@ def _lscg_gen(src_counts, bkg_counts, bkg_area, rate_conversion, density_gp):
     log_src_crs_grid : iterable, ``numpy.array`` of floats
         An array of log(source count rates).
     """
+    import scipy.special
+
     src_counts = np.asanyarray(src_counts, dtype=float)
     bkg_counts = np.asanyarray(bkg_counts, dtype=float)
     # lowest count rate
@@ -111,6 +109,9 @@ def _estimate_source_cr_marginalised(
     -------
     weights: iterable, ``numpy.array`` of floats
     """
+    import scipy.special
+    import scipy.stats
+
     # background counts give background count rates deterministically
     N = 1000
     u = np.linspace(0, 1, N)[1:-1]
@@ -158,9 +159,11 @@ def _calculate_bexvar(log_src_crs_grid, pdfs):
         An array of posterior samples of Bayesian excess variance (bexvar).
 
     """
+    import scipy.stats
 
     if not can_sample:
         raise ImportError("ultranest not installed! Can't sample!")
+    from ultranest import ReactiveNestedSampler
 
     def transform(cube):
         params = cube.copy()

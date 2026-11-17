@@ -4,9 +4,6 @@ from collections.abc import Iterable, Iterator, Generator
 
 import numpy as np
 import scipy
-import scipy.optimize
-import scipy.stats
-import matplotlib.pyplot as plt
 
 from stingray.exceptions import StingrayError
 from stingray.utils import rebin_data, rebin_data_log, simon
@@ -23,7 +20,6 @@ from .fourier import get_rms_from_unnorm_periodogram
 from .fourier import intrinsic_coherence, raw_coherence
 from .power_colors import power_color
 
-from scipy.special import factorial
 
 __all__ = [
     "Crossspectrum",
@@ -349,6 +345,9 @@ def _averaged_cospectra_cdf(xcoord, n):
     cdf : float
         The value of the CDF at `xcoord` for `n` averaged cospectra
     """
+    import scipy.special
+    from scipy.special import factorial
+
     if np.size(xcoord) == 1:
         xcoord = [xcoord]
 
@@ -427,6 +426,8 @@ def cospectra_pvalue(power, nspec):
     * .. [Huppenkothen 2017] https://scixplorer.org/abs/2018ApJS..236...13H
 
     """
+    import scipy.stats
+
     if not np.all(np.isfinite(power)):
         raise ValueError("power must be a finite floating point number!")
 
@@ -1160,6 +1161,7 @@ class Crossspectrum(StingrayObject):
         ax : ``matplotlib.Axes`` object
             An axes object to fill with the cross correlation plot.
         """
+        import matplotlib.pyplot as plt
 
         if ax is None:
             fig = plt.figure("crossspectrum")

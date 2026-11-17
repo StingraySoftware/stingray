@@ -632,6 +632,11 @@ class TestSimulator(object):
         t0, w = 100, 500
         assert len(self.simulator_odd.simple_ir(t0, w)) == (t0 + w) / self.simulator.dt
 
+    def test_construct_simple_ir_width_shorter_than_dt(self):
+        dt = self.simulator.dt
+        response = self.simulator.simple_ir(start=3 * dt, width=0.1 * dt)
+        np.testing.assert_array_equal(response, [0, 0, 0, 1])
+
     def test_construct_relativistic_ir(self):
         """
         Construct relativistic impulse response.
@@ -739,6 +744,27 @@ class TestSimulator(object):
             match="Beware! Stingray only supports poisson err_dist at the moment in many methods, and 'gauss' in a few more.",
         ):
             output = self.simulator_odd.simulate(s, h, "filtered")
+
+    @pytest.mark.parametrize("mode", ["same", "filtered", "full"])
+    def test_simulate_single_bin_impulse_response(self, mode):
+        """A one-bin (delta) impulse response, e.g. from ``simple_ir`` with a
+        width shorter than ``dt``, returns the input signal unchanged."""
+        s = np.arange(1.0, 11.0)
+        h = self.simulator.simple_ir(width=0.1 * self.dt)
+        assert len(h) == 1
+        with pytest.warns(UserWarning, match="Beware! Stingray only supports poisson"):
+            output = self.simulator.simulate(s, h, mode)
+        np.testing.assert_allclose(output.counts, s)
+
+    def test_simple_ir_fractional_width(self):
+        """A non-integer width in bins ends with a partial bin, so that the total
+        weight is width / dt (times the intensity)."""
+        dt = self.simulator.dt
+        response = self.simulator.simple_ir(start=2 * dt, width=2.5 * dt, intensity=2)
+        np.testing.assert_allclose(response, [0, 0, 2, 2, 1])
+        # No spurious partial bin from floating-point error in width / dt
+        response = Simulator(N=16, dt=0.1, mean=1, rms=1).simple_ir(width=0.3)
+        np.testing.assert_allclose(response, [1, 1, 1])
 
     def test_simple_lag_spectrum(self):
         """

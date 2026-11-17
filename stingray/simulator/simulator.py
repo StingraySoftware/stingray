@@ -263,14 +263,15 @@ class Simulator(object):
         """
         Construct a simple impulse response using start time,
         width and scaling intensity.
-        To create a delta impulse response, set width to 1.
+        To create a delta impulse response, set width to the time resolution ``dt``.
 
         Parameters
         ----------
         start : int
             start time of impulse response
-        width : int
-            width of impulse response
+        width : float
+            Width of the impulse response. Widths shorter than ``dt`` produce
+            a one-bin response.
         intensity : float
             scaling parameter to set the intensity of delayed emission
             corresponding to direct emission.
@@ -285,7 +286,16 @@ class Simulator(object):
         h_zeros = np.zeros(int(start / self.dt))
 
         # Define constant impulse response
-        h_ones = np.ones(int(width / self.dt)) * intensity
+        # Width in (possibly fractional) bins. A response shorter than one bin
+        # is a delta, that is, one full bin.
+        num_bins = max(width / self.dt, 1)
+        n_full = int(num_bins + 1e-9)
+        h_ones = np.ones(n_full)
+        # A non-integer width ends with a partial bin, weighted by its fraction
+        frac = num_bins - n_full
+        if frac > 1e-9:
+            h_ones = np.append(h_ones, frac)
+        h_ones = h_ones * intensity
 
         return np.append(h_zeros, h_ones)
 
@@ -581,10 +591,10 @@ class Simulator(object):
         lc = signal.fftconvolve(s, h)
 
         if mode == "same":
-            lc = lc[: -(len(h) - 1)]
+            lc = lc[: len(s)]
 
         elif mode == "filtered":
-            lc = lc[(len(h) - 1) : -(len(h) - 1)]
+            lc = lc[len(h) - 1 : len(s)]
 
         time = self.dt * np.arange(0.5, len(lc)) + self.tstart
         err = np.zeros_like(time)
