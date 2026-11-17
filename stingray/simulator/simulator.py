@@ -134,6 +134,11 @@ class Simulator(object):
 
         * x = simulate(s, h):
            For generating a light curve using impulse response.
+            **Note**: ``h[k]`` is the response integrated over the time bin
+            ``k``, so ``h.sum()`` is the gain: a constant signal ``s`` comes
+            out as ``s * h.sum()``. ``simple_ir`` and ``relativistic_ir``
+            with ``normalize=True`` build ``h`` this way. The ``dt`` of ``s``
+            and ``h`` must be the same.
 
               Parameters:
                 * s : array-like
@@ -674,6 +679,10 @@ class Simulator(object):
         Generate LightCurve from impulse response. To get
         accurate results, binning intervals (dt) of variability
         signal 's' and impulse response 'h' must be equal.
+
+        Each ``h[k]`` is the response integrated over the time bin ``k``, so
+        the light curve is ``s`` convolved with ``h`` with no other scaling,
+        and its gain is ``h.sum()``.
 
         Parameters
         ----------
