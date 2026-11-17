@@ -655,6 +655,15 @@ class TestSimulator(object):
         assert np.allclose(ir[: int(t1 / self.simulator_odd.dt)], 0)
         assert ir[int(t1 / self.simulator_odd.dt)] == 1
 
+    @pytest.mark.parametrize("t2", [3.5, 4, 6])
+    def test_relativistic_ir_decay_starts_at_secondary_peak_time(self, t2):
+        """The decay starts at 1 at ``t2``, whatever ``t2`` is."""
+        t3 = 9
+        ir = self.simulator.relativistic_ir(t1=2, t2=t2, t3=t3)
+        decay = ir[-int((t3 - t2) / self.dt) :]
+        assert decay[0] == 1
+        assert np.all(np.diff(decay) < 0)
+
     def test_simulate_simple_impulse(self):
         """
         Simulate light curve from simple impulse response.

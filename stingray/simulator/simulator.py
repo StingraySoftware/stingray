@@ -346,7 +346,7 @@ class Simulator(object):
 
         # Create a decaying exponential until the end time
         x = np.linspace(t2 / dt, t3 / dt, int((t3 - t2) / dt))
-        h_decay = np.exp((-decay) * (x - 4 / dt))
+        h_decay = np.exp((-decay) * (x - t2 / dt))
 
         # Add the three responses
         h = np.append(h_primary, h_secondary)
