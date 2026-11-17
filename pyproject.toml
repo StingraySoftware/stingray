@@ -66,6 +66,7 @@ recommended = [
     "pyyaml",
     "statsmodels",
     "pyfftw",
+    "finufft",
 ]
 all = [
     "stingray[recommended]",  # installs the [recommended] dependencies
