@@ -3378,6 +3378,11 @@ def avg_pds_from_timeseries(
         _, n_bin = fix_segment_size_to_integer_samples(gti.max() - gti.min(), dt)
 
     if ft_method == "nufft":
+        if segment_size is None:
+            # The NUFFT is periodic in the segment length n_bin * dt, which can be
+            # up to one bin shorter than the GTIs. Drop the events after its end,
+            # which would otherwise wrap round to the start of the segment
+            times = times[times < gti[0, 0] + n_bin * dt]
         segment_iterable = get_event_iterable_from_segments(times, gti, segment_size)
     else:
         segment_iterable = get_flux_iterable_from_segments(
@@ -4319,6 +4324,12 @@ def avg_cs_from_timeseries(
         _, n_bin = fix_segment_size_to_integer_samples(gti.max() - gti.min(), dt)
 
     if ft_method == "nufft":
+        if segment_size is None:
+            # The NUFFT is periodic in the segment length n_bin * dt, which can be
+            # up to one bin shorter than the GTIs. Drop the events after its end,
+            # which would otherwise wrap round to the start of the segment
+            end = gti[0, 0] + n_bin * dt
+            times1, times2 = times1[times1 < end], times2[times2 < end]
         segment_iterable1 = get_event_iterable_from_segments(times1, gti, segment_size)
         segment_iterable2 = get_event_iterable_from_segments(times2, gti, segment_size)
     else:

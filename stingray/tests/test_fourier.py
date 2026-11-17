@@ -694,6 +694,23 @@ class TestAvgPdsNufft(object):
         )
         compare_tables(out_fft, out_nufft, rtol=1e-6)
 
+    def test_avg_pds_nufft_drops_events_after_last_bin(self):
+        """With ``segment_size=None``, the segment is ``n_bin * dt`` long, up to
+        one bin shorter than the GTIs. Events after its end must be dropped: the
+        NUFFT is periodic in the segment length, so they would otherwise wrap
+        round to the start of the segment."""
+        # A generator of its own, so as not to change the draws from self.rng
+        rng = np.random.default_rng(20261120)
+        # 30.004 s is 3000.4 bins of 0.01 s: n_bin is 3000, and the segment ends at 30 s
+        gti = np.asanyarray([[0.0, 30.004]])
+        times = np.sort(np.concatenate([rng.uniform(0, 30, 9000), [30.001, 30.002, 30.003]]))
+        kw = dict(norm="none", silent=True, ft_method="nufft")
+        out = avg_pds_from_timeseries(times, gti, None, self.dt, **kw)
+        out_kept = avg_pds_from_timeseries(times[times < 30], gti, None, self.dt, **kw)
+        assert out.meta["n"] == 3000
+        assert out.meta["nphots"] == out_kept.meta["nphots"] == 9000
+        assert np.allclose(out["power"], out_kept["power"])
+
     def test_avg_pds_nufft_poisson_level(self):
         # Poisson events at random times: the Leahy-normalized white noise is 2
         times = np.sort(self.rng.uniform(0, 200, 400000))
@@ -823,6 +840,28 @@ class TestAvgCsNufft(object):
         # 2 has no events is skipped by both methods
         out_fft, out_nufft = self._both_methods(self.segment_size, silent=True)
         assert out_fft.meta["m"] == out_nufft.meta["m"] == 9
+
+    def test_avg_cs_nufft_drops_events_after_last_bin(self):
+        """With ``segment_size=None``, the segment is ``n_bin * dt`` long, up to
+        one bin shorter than the GTIs. Events after its end must be dropped: the
+        NUFFT is periodic in the segment length, so they would otherwise wrap
+        round to the start of the segment."""
+        # A generator of its own, so as not to change the draws from self.rng
+        rng = np.random.default_rng(20261121)
+        # 30.004 s is 3000.4 bins of 0.01 s: n_bin is 3000, and the segment ends at 30 s
+        gti = np.asanyarray([[0.0, 30.004]])
+        late = [30.001, 30.002, 30.003]
+        times1 = np.sort(np.concatenate([rng.uniform(0, 30, 9000), late]))
+        times2 = np.sort(np.concatenate([rng.uniform(0, 30, 6000), late]))
+        kw = dict(norm="none", silent=True, ft_method="nufft")
+        out = avg_cs_from_timeseries(times1, times2, gti, None, self.dt, **kw)
+        out_kept = avg_cs_from_timeseries(
+            times1[times1 < 30], times2[times2 < 30], gti, None, self.dt, **kw
+        )
+        assert out.meta["n"] == 3000
+        assert out.meta["nphots1"] == out_kept.meta["nphots1"] == 9000
+        assert out.meta["nphots2"] == out_kept.meta["nphots2"] == 6000
+        assert np.allclose(out["power"], out_kept["power"])
 
     def test_avg_cs_nufft_poisson_level(self):
         # Independent Poisson channels: the Leahy-normalized auxiliary PDSs have a
