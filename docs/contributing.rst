@@ -198,7 +198,7 @@ Coding Style and Conventions
      This will run the pre-commit tools on all files in the Stingray git repository. The tools may automatically modify some files, while in other cases, they will report issues that require manual correction. If pre-commit makes changes to any files, those changes will appear as new modifications, which need to be staged before committing.
 
 
-   
+
 
 -  **Linter/Style Guide Checker:** Our testing infrastructure currently
    enforces a subset of the PEP8 style guide. You can check locally
@@ -327,6 +327,31 @@ The towncrier tool will automatically reflow your text. You can install
 towncrier and then run ``towncrier --draft`` if you want to get a
 preview of how your change will look in the final release notes.
 
+Making a Release
+~~~~~~~~~~~~~~~~
+
+Releases reach PyPI automatically. A maintainer creates a release on GitHub
+with a new tag (e.g. ``v3.0.0``). The ``release.yml`` workflow
+then builds the package, takes its version from the tag, and uploads it to PyPI
+through `trusted publishing <https://docs.pypi.org/trusted-publishers/>`__:
+the workflow authenticates without a stored PyPI password or API token.
+Revoke any old publishing tokens separately. Do not upload releases by hand.
+
+Nobody needs to run ``towncrier`` by hand. After the upload, the workflow
+opens a pull request named "Changelog for <tag> (main)", which adds the
+compiled changelog to ``CHANGELOG.rst`` and deletes the fragments it used.
+Merge it promptly: until then, those fragments are still on ``main``. GitHub
+does not run the tests on pull requests opened by a workflow, so if a required
+check stays pending, close and reopen the pull request to start it.
+
+A release made from a maintenance branch (e.g. ``v2.4.x``) gets a second pull
+request, against that branch. Each pull request removes only the fragments
+that were part of the release, so a fix backported to ``v2.4.x`` with the same
+fragment file is listed under the 2.4 release on both branches and does not
+appear again in the next release from ``main``. Pre-releases
+(e.g. ``v3.0.0rc1``) get the compiled changelog in their package but open no
+pull request, so the final release still finds its fragments.
+
 Testing Guidelines
 ------------------
 
@@ -347,7 +372,7 @@ Test Coverage
 ~~~~~~~~~~~~~
 
 Test coverage is measured by the test environments whose name ends in ``-cov``
-(for example ``py311-test-alldeps-cov``) and is reported to
+(for example ``py312-test-alldeps-cov``) and is reported to
 `Codecov <https://codecov.io/gh/StingraySoftware/stingray>`__.
 
 Sending a report to Codecov needs a repository upload token, and GitHub does not

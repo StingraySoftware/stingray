@@ -10,12 +10,11 @@ authors = [
 ]
 license = "MIT"
 license-files = ["LICENSE.rst"]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 classifiers = [
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
@@ -36,13 +35,14 @@ keywords = [
     "science",
 ]
 dependencies = [
-    # The oldest release of each that supports Python 3.11, which is the oldest
-    # Python supported here. The py311-test-oldestdeps tox environment installs
-    # exactly these, and CI runs it, so these are tested rather than assumed.
-    "numpy>=1.24",
-    "astropy>=5.3",
-    "scipy>=1.10",
-    "matplotlib>=3.7",
+    # The oldest release of each that supports both Python 3.12, the oldest
+    # Python supported here, and NumPy 2. The py312-test-oldestdeps tox
+    # environment installs exactly these, and CI runs it, so these are tested
+    # rather than assumed.
+    "numpy>=2.0",
+    "astropy>=6.1",
+    "scipy>=1.13",
+    "matplotlib>=3.8.4",
 ]
 
 
@@ -95,7 +95,7 @@ docs = [
     "nbconvert>=7.17.2",
     "pandoc",
     "ipython",
-    "towncrier<22.12.0",
+    "towncrier",
 ]
 
 [project.urls]

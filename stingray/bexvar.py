@@ -10,16 +10,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 """
 
+import importlib.util
 import warnings
 import numpy as np
 
-# check whether ultranest is installed for sampling
-try:
-    from ultranest import ReactiveNestedSampler
-
-    can_sample = True
-except ImportError:
-    can_sample = False
+# Check whether ultranest is installed for sampling, without importing it:
+# ultranest loads scipy.stats and scipy.optimize, which would slow down
+# ``import stingray``. It is imported in ``_calculate_bexvar``.
+can_sample = importlib.util.find_spec("ultranest") is not None
 
 
 __all__ = ["bexvar"]
@@ -165,6 +163,7 @@ def _calculate_bexvar(log_src_crs_grid, pdfs):
 
     if not can_sample:
         raise ImportError("ultranest not installed! Can't sample!")
+    from ultranest import ReactiveNestedSampler
 
     def transform(cube):
         params = cube.copy()

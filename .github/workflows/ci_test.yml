@@ -61,53 +61,46 @@ jobs:
           # why it is useful.
           - name: Code style
             os: ubuntu-latest
-            python: '3.11'
+            python: '3.12'
             tox_env: 'codestyle'
-            experimental: false
-
-          # Basic tests on the oldest supported version of Python.
-          - name: Linux, Py3.11 with coverage
-            os: ubuntu-latest
-            python: '3.11'
-            tox_env: 'py311-test-cov'
             experimental: false
 
           # The floors declared in pyproject.toml are only a claim until
           # something installs them. This job does.
-          - name: Linux, Py3.11 with oldest supported dependencies
+          - name: Linux, Py3.12 with oldest supported dependencies
             os: ubuntu-latest
-            python: '3.11'
-            tox_env: 'py311-test-oldestdeps'
+            python: '3.12'
+            tox_env: 'py312-test-oldestdeps'
             experimental: false
 
           # Basic tests on alternative operating systems.
-          - name: Windows, Py3.11 with coverage
+          - name: Windows, Py3.12 with coverage
             os: windows-latest
-            python: '3.11'
-            tox_env: 'py311-test-cov'
+            python: '3.12'
+            tox_env: 'py312-test-cov'
             experimental: false
 
-          - name: Older Mac OS, Py3.11
+          - name: Older Mac OS, Py3.12
             os: macos-15
-            python: '3.11'
-            tox_env: 'py311-test'
+            python: '3.12'
+            tox_env: 'py312-test'
             experimental: false
 
-          - name: Mac OS, Py3.11
+          - name: Mac OS, Py3.12
             os: macos-latest
-            python: '3.11'
-            tox_env: 'py311-test'
+            python: '3.12'
+            tox_env: 'py312-test'
             experimental: false
 
           # Test with all optional dependencies installed.
-          - name: Linux, Py3.11 all dependencies and coverage
+          - name: Linux, Py3.12 all dependencies and coverage
             os: ubuntu-latest
-            python: '3.11'
-            tox_env: 'py311-test-alldeps-cov'
+            python: '3.12'
+            tox_env: 'py312-test-alldeps-cov'
             use_remote_data: true
             experimental: false
 
-          # Test 3.12 with basic optional dependencies installed.
+          # Basic tests on the oldest supported version of Python.
           - name: Linux, Py3.12 basic dependencies and coverage
             os: ubuntu-latest
             python: '3.12'
@@ -115,8 +108,7 @@ jobs:
             use_remote_data: true
             experimental: false
 
-          # NumPy and SciPy only publish their newest releases for Python 3.12+,
-          # so the newest Python we fully support is tested as well.
+          # The newest Python we fully support.
           - name: Linux, Py3.13 basic dependencies and coverage
             os: ubuntu-latest
             python: '3.13'
@@ -142,19 +134,19 @@ jobs:
             experimental: false
 
           # Test with all optional dependencies installed.
-          - name: Slow tests on Linux, Py3.11, all deps and coverage
+          - name: Slow tests on Linux, Py3.12, all deps and coverage
             os: ubuntu-latest
-            python: '3.11'
-            tox_env: 'py311-test-alldeps-cov'
+            python: '3.12'
+            tox_env: 'py312-test-alldeps-cov'
             use_remote_data: true
             experimental: false
             slow: true
 
           # Test with all optional dependencies installed.
-          - name: Slow tests on Linux, Py3.11, basic deps and coverage
+          - name: Slow tests on Linux, Py3.12, basic deps and coverage
             os: ubuntu-latest
-            python: '3.11'
-            tox_env: 'py311-test-cov'
+            python: '3.12'
+            tox_env: 'py312-test-cov'
             use_remote_data: true
             experimental: false
             slow: true
