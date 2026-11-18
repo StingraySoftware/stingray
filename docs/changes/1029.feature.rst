@@ -1,0 +1,1 @@
+``Lightcurve.rebin()`` can retain partially exposed bins through the optional ``fracexp_limit`` argument.
