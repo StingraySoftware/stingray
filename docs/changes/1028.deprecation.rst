@@ -1,0 +1,1 @@
+Calling ``Simulator.simple_ir`` or ``Simulator.relativistic_ir`` without ``normalize`` warns that its default will change from ``False`` to ``True`` in a future release. Pass ``normalize=False`` to keep the current per-bin weights.
