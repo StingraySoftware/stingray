@@ -1983,7 +1983,7 @@ def _safe_array_slice_indices(input_size, input_center_idx, nbins):
 
     if minbin < 0:
         output_slice = [-minbin, min(nbins, input_size - minbin)]
-        input_slice = [0, minbin + nbins]
+        input_slice = [0, min(input_size, minbin + nbins)]
     elif maxbin > input_size:
         output_slice = [0, nbins - (maxbin - input_size)]
         input_slice = [minbin, input_size]
