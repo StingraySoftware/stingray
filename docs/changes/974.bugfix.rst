@@ -1,0 +1,1 @@
+Fixed a bug where ``Lightcurve.truncate()`` and ``StingrayTimeseries.truncate()`` incorrectly updated the ``tstart`` and ``tseg`` attributes after truncating an object.
