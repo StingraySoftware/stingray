@@ -16,6 +16,14 @@ def _template_fun(phase, ph0, amplitude, baseline=0):
     return baseline + amplitude * np.cos((phase - ph0) * 2 * np.pi)
 
 
+def test_p_to_f_integer_input():
+    # Integer periods must not truncate the frequencies
+    assert np.allclose(p_to_f(2), [0.5])
+    assert np.allclose(p_to_f(2, 1), [0.5, -0.25])
+    # long double inputs keep their precision
+    assert p_to_f(np.longdouble(2), 1).dtype == np.longdouble
+
+
 def test_p_to_f_warns():
     with pytest.warns(UserWarning, match="Derivatives above third are not supported"):
         assert np.allclose(p_to_f(1, 2, 3, 4, 32, 22), [1, -2, 5, -16, 0, 0])
