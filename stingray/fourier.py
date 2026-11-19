@@ -121,17 +121,15 @@ def integrate_power_in_frequency_range(
 
     freqs_to_integrate = frequency[frequency_mask]
     poisson_power = poisson_power[frequency_mask]
-    correction_ratios = np.ones_like(freqs_to_integrate)
     dfs_to_integrate = df[frequency_mask]
 
-    # The first and last bins are only partially included. We need to correct for the
-    # fraction of the bin actually included.
-    correction_ratios[0] = (
-        freqs_to_integrate[0] + 0.5 * dfs_to_integrate[0] - frequency_range[0]
-    ) / dfs_to_integrate[0]
-    correction_ratios[-1] = (
-        frequency_range[-1] - freqs_to_integrate[-1] + 0.5 * dfs_to_integrate[-1]
-    ) / dfs_to_integrate[-1]
+    # The first and last bins may be only partially included, and a range can also fall
+    # inside a single bin or extend past the first or last bin. Weight each bin by the
+    # fraction of it that overlaps with the frequency range.
+    overlap = np.minimum(freqs_to_integrate + 0.5 * dfs_to_integrate, frequency_range[-1]) - (
+        np.maximum(freqs_to_integrate - 0.5 * dfs_to_integrate, frequency_range[0])
+    )
+    correction_ratios = overlap / dfs_to_integrate
     dfs_to_integrate = dfs_to_integrate * correction_ratios
 
     powers_to_integrate = power[frequency_mask]

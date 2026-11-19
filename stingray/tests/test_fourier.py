@@ -887,6 +887,34 @@ class TestIntegration(object):
         assert np.isclose(pow, 2)
         assert np.isclose(powe, np.sqrt(2))
 
+    @pytest.mark.parametrize("freq_range", [[1.1, 1.3], [2.0, 2.2], [1.6, 2.4]])
+    def test_power_integration_within_one_bin(self, freq_range):
+        # A range inside a single bin must use the fraction of that bin it covers
+        pow, powe = integrate_power_in_frequency_range(self.freq, self.power, freq_range, df=1)
+        width = freq_range[1] - freq_range[0]
+        assert np.isclose(pow, 2 * width)
+        assert np.isclose(powe, 2 * width)
+
+    @pytest.mark.parametrize(
+        "freq_range, covered",
+        [
+            # starts and ends mid-bin: 0.8 of bin 1, 0.7 of bin 2
+            ([0.7, 2.2], 1.5),
+            # starts mid-bin, ends on a bin edge
+            ([1.25, 2.5], 1.25),
+            # starts on a bin edge, ends mid-bin
+            ([0.5, 2.1], 1.6),
+            # ranges reaching past the first or last bin only cover the bins
+            # that exist: bin 0 in full plus 0.7 of bin 1, and so on
+            ([-1, 1.2], 1.7),
+            ([2.2, 5], 1.3),
+            ([-1, 5], 4.0),
+        ],
+    )
+    def test_power_integration_partial_edge_bins(self, freq_range, covered):
+        pow, powe = integrate_power_in_frequency_range(self.freq, self.power, freq_range, df=1)
+        assert np.isclose(pow, 2 * covered)
+
     def test_power_integration_precise(self):
         freq_range = [0.5, 2.5]
         df = 1
