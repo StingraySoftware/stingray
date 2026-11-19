@@ -1583,8 +1583,11 @@ def nearest_power_of_two(x):
 
     """
     x = int(x)
-    x_lower = 1 if x == 0 else 2 ** (x - 2).bit_length()
-    x_upper = 1 if x == 0 else 2 ** (x - 1).bit_length()
+    if x < 1:
+        return 1
+    # Largest power of two <= x, and smallest power of two >= x
+    x_lower = 2 ** (x.bit_length() - 1)
+    x_upper = 2 ** (x - 1).bit_length()
     x_nearest = x_lower if (x - x_lower) < (x_upper - x) else x_upper
     return x_nearest
 

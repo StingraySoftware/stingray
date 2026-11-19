@@ -368,6 +368,28 @@ def test_nearest_power_of_two():
     assert utils.nearest_power_of_two(7) == 8
 
 
+@pytest.mark.parametrize(
+    "x, expected",
+    [
+        (0, 1),
+        (1, 1),
+        (2, 2),
+        (3, 4),
+        (9, 8),
+        (10, 8),
+        (11, 8),
+        (13, 16),
+        (17, 16),
+        (18, 16),
+        (19, 16),
+        (100, 128),
+        (1000, 1024),
+    ],
+)
+def test_nearest_power_of_two_is_nearest(x, expected):
+    assert utils.nearest_power_of_two(x) == expected
+
+
 def test_find_nearest():
     x = np.arange(1, 10)
     assert utils.find_nearest(x, 2) == (2, 1)
