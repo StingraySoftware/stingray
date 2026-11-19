@@ -1,0 +1,1 @@
+Fix ``nearest_power_of_two`` returning the geometrically rather than arithmetically nearest power of two (e.g. 10 gave 16 instead of 8).
