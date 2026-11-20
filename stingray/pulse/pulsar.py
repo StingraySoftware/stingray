@@ -67,7 +67,8 @@ def p_to_f(*period_derivatives):
     nder = len(period_derivatives)
     if nder == 0:
         return []
-    fder = np.zeros_like(period_derivatives)
+    # At least float64, so that integer periods do not truncate the frequencies
+    fder = np.zeros_like(period_derivatives, dtype=np.result_type(np.float64, *period_derivatives))
     p = period_derivatives[0]
     fder[0] = 1 / p
 
