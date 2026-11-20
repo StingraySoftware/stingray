@@ -1193,14 +1193,22 @@ class Lightcurve(StingrayTimeseries):
 
         """
 
+        if self.time is None or len(self.time) == 0:
+            return []
+
         # calculate the difference between time bins
         tdiff = np.diff(self.time)
-        # find all distances between time bins that are larger than `min_gap`
-        gap_idx = np.where(tdiff >= min_gap)[0]
+        dt = self.dt if not isinstance(self.dt, Iterable) else self.dt[0]
+        if len(tdiff) == 0:
+            epsilon = dt / 2.0
+            gap_idx = np.array([], dtype=int)
+        else:
+            # find all distances between time bins that are larger than `min_gap`
+            gap_idx = np.where(tdiff >= min_gap)[0]
 
-        # tolerance for the newly created GTIs: Note that this seems to work
-        # with a tolerance of 2, but not if I substitute 10. I don't know why
-        epsilon = np.min(tdiff) / 2.0
+            # tolerance for the newly created GTIs: Note that this seems to work
+            # with a tolerance of 2, but not if I substitute 10. I don't know why
+            epsilon = min(np.min(tdiff) / 2.0, dt / 2.0)
 
         # calculate new GTIs
         gti_start = np.hstack([self.time[0] - epsilon, self.time[gap_idx + 1] - epsilon])

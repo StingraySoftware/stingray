@@ -1443,11 +1443,16 @@ class StingrayTimeseries(StingrayObject):
                 continue
 
             new_gti = np.array([gti[i]])
-            mask = create_gti_mask(self.time, new_gti)
+            dt = self.dt if not isinstance(self.dt, Iterable) else None
+            mask = create_gti_mask(self.time, new_gti, dt=dt)
 
             # Note: GTIs are consistent with default in this case!
             new_ts = self.apply_mask(mask)
             new_ts.gti = new_gti
+            if hasattr(new_ts, "tstart") and new_ts.tstart is not None:
+                new_ts.tstart = new_gti[0, 0]
+            if hasattr(new_ts, "tseg") and new_ts.tseg is not None:
+                new_ts.tseg = new_gti[-1, 1] - new_gti[0, 0]
 
             list_of_tss.append(new_ts)
 
