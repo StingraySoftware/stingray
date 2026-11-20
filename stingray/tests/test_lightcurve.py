@@ -1523,6 +1523,49 @@ class TestLightcurveRebin(object):
 
         assert (lc_rebin.time[39] - lc_rebin.time[38]) > 1.0
 
+    @pytest.mark.parametrize("method, expected", [("sum", [12, 8]), ("mean", [4, 8])])
+    def test_rebin_with_partial_gti_exposure(self, method, expected):
+        lc = Lightcurve(
+            np.arange(0.5, 6),
+            [2, 99, 4, 6, 99, 8],
+            gti=[[0, 1], [2, 4], [5, 6]],
+            dt=1,
+        )
+
+        with pytest.raises(ValueError, match="No valid GTIs"):
+            lc.rebin(4)
+
+        rebinned = lc.rebin(4, method=method, fracexp_limit=0.25)
+        np.testing.assert_allclose(rebinned.time, [2, 6])
+        np.testing.assert_allclose(rebinned.counts, expected)
+        np.testing.assert_allclose(rebinned.gti, lc.gti)
+
+        filtered = lc.rebin(4, method=method, fracexp_limit=0.5)
+        np.testing.assert_allclose(filtered.time, [2])
+        np.testing.assert_allclose(filtered.counts, expected[:1])
+        np.testing.assert_allclose(filtered.gti, [[0, 1], [2, 4]])
+
+    def test_rebin_splits_native_bin_at_output_boundary(self):
+        lc = Lightcurve([0.5, 1.5, 2.5], [2, 4, 6], err=[1, 2, 3], gti=[[0, 3]], dt=1)
+
+        rebinned = lc.rebin(f=2.5, fracexp_limit=0.19)
+        np.testing.assert_allclose(rebinned.time, [1.25, 3.75])
+        np.testing.assert_allclose(rebinned.counts, [9, 3])
+        np.testing.assert_allclose(rebinned.counts_err, [np.sqrt(7.25), 1.5])
+
+    def test_rebin_partial_exposure_across_missing_input_bins(self):
+        lc = Lightcurve(
+            [0.5, 1000000000.5],
+            [8, 4],
+            gti=[[0.25, 0.75], [1000000000, 1000000001]],
+            dt=1,
+            skip_checks=True,
+        )
+
+        rebinned = lc.rebin(2, fracexp_limit=0)
+        np.testing.assert_array_equal(rebinned.time, [1, 1000000001])
+        np.testing.assert_allclose(rebinned.counts, [4, 4])
+
     def test_lc_baseline(self):
         times = np.arange(0, 100, 0.01)
         counts = np.random.normal(100, 0.1, len(times)) + 0.001 * times
