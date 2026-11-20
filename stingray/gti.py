@@ -1725,12 +1725,13 @@ def split_gtis_at_indices(gtis, index_list):
         index_list = [index_list]
     previous_idx = 0
     gti_lists = []
-    if index_list[0] == 0:
+    if len(index_list) > 0 and index_list[0] == 0:
         index_list = index_list[1:]
     for idx in index_list:
         gti_lists.append(gtis[previous_idx:idx, :])
         previous_idx = idx
-    if index_list[-1] != -1 and index_list[-1] <= gtis[:, 0].size - 1:
+    # With no split indices left, the whole list is a single chunk
+    if len(index_list) == 0 or (index_list[-1] != -1 and index_list[-1] <= gtis[:, 0].size - 1):
         gti_lists.append(gtis[previous_idx:, :])
 
     return gti_lists
