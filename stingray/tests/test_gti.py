@@ -207,6 +207,18 @@ class TestGTI(object):
         gti = create_gti_from_condition(t, condition, safe_interval=1)
         assert np.allclose(gti, np.array([[0.5, 2.5]]))
 
+    def test_gti_from_condition_dt(self):
+        # dt is the bin width, as a float or one value per bin
+        t = np.array([0, 1, 2, 3, 4, 5, 6])
+        condition = np.array([1, 1, 0, 0, 1, 0, 0], dtype=bool)
+        gti = create_gti_from_condition(t, condition, dt=1)
+        assert np.allclose(gti, np.array([[-0.5, 1.5], [3.5, 4.5]]))
+
+        t = np.array([0, 1, 2, 4, 6])
+        condition = np.array([1, 1, 0, 1, 0], dtype=bool)
+        gti = create_gti_from_condition(t, condition, dt=np.array([1, 1, 1, 2, 2]))
+        assert np.allclose(gti, np.array([[-0.5, 1.5], [3, 5]]))
+
     def test_gti_from_condition_fail(self):
         t = np.array([0, 1, 2, 3])
         condition = np.array([1, 1, 1], dtype=bool)

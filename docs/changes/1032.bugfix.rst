@@ -1,0 +1,1 @@
+``create_gti_from_condition`` now accepts ``dt`` as a float, and treats it as the bin width as documented, instead of widening each GTI by a full bin on each side.
