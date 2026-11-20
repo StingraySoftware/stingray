@@ -18,6 +18,9 @@ __all__ = [
     "z2_n_detection_level",
     "z2_n_probability",
     "z2_n_logprobability",
+    "htest_detection_level",
+    "htest_probability",
+    "htest_logprobability",
     "chi2_logp",
     "equivalent_gaussian_Nsigma",
     "equivalent_gaussian_Nsigma_from_logp",
@@ -666,6 +669,100 @@ def z2_n_detection_level(n=2, epsilon=0.01, ntrial=1, n_summed_spectra=1):
     )
 
     return retlev
+
+
+def htest_logprobability(h, ntrial=1):
+    r"""Calculate the log-probability of an H-test statistic due to noise.
+
+    Uses the calibrated asymptotic distribution from de Jager & Büsching
+    (2010, A&A, 517, L9):
+
+    .. math::
+
+        P(>H) = \exp(-0.4 H)
+
+    which also holds for the weighted H-test of Kerr (2011, ApJ, 732, 38).
+
+    Parameters
+    ----------
+    h : float or array-like
+        An H-test statistic value
+    ntrial : int, optional, default 1
+        The number of trials executed to find this profile
+
+    Returns
+    -------
+    logp : float or ``numpy.ndarray``
+        The natural log of the probability that the H-test value has been
+        produced by noise
+
+    Examples
+    --------
+    >>> assert np.isclose(htest_logprobability(25.0), -10.0)
+    >>> assert np.allclose(htest_logprobability(np.array([10.0, 25.0])), [-4.0, -10.0])
+    """
+    epsilon_1 = -0.4 * np.asarray(h, dtype=float)
+    return _logp_multitrial_from_single_logp(epsilon_1, ntrial)
+
+
+def htest_probability(h, ntrial=1):
+    r"""Calculate the probability of an H-test statistic due to noise.
+
+    Uses the calibrated asymptotic distribution from de Jager & Büsching
+    (2010, A&A, 517, L9), :math:`P(>H) = \exp(-0.4 H)`, which also holds
+    for the weighted H-test of Kerr (2011, ApJ, 732, 38).
+
+    Parameters
+    ----------
+    h : float or array-like
+        An H-test statistic value
+    ntrial : int, optional, default 1
+        The number of trials executed to find this profile
+
+    Returns
+    -------
+    p : float or ``numpy.ndarray``
+        The probability that the H-test value has been produced by noise
+
+    Examples
+    --------
+    >>> assert np.isclose(htest_probability(0.0), 1.0)
+    >>> assert np.isclose(htest_probability(10.0), np.exp(-4.0))
+    """
+    logpn = htest_logprobability(h, ntrial=ntrial)
+    return np.exp(np.asarray(logpn, dtype=np.longdouble))
+
+
+def htest_detection_level(epsilon=0.01, ntrial=1):
+    r"""Return the detection level for the H-test statistic.
+
+    Inverts the asymptotic distribution :math:`P(>H) = \exp(-0.4 H)` from
+    de Jager & Büsching (2010, A&A, 517, L9), which also applies to the
+    weighted H-test of Kerr (2011, ApJ, 732, 38).
+
+    Parameters
+    ----------
+    epsilon : float, default 0.01
+        The fractional probability that the signal has been produced by noise
+
+    Other Parameters
+    ----------------
+    ntrial : int, optional, default 1
+        The number of trials executed to find this profile
+
+    Returns
+    -------
+    detlev : float or ``numpy.ndarray``
+        The H-test statistic corresponding to a probability
+        epsilon * 100 % that the signal has been produced by noise
+
+    Examples
+    --------
+    >>> detlev = htest_detection_level(0.01)
+    >>> assert np.isclose(htest_probability(detlev), 0.01)
+    """
+    epsilon = p_single_trial_from_p_multitrial(epsilon, ntrial)
+    return -np.log(epsilon) / 0.4
 
 
 def pds_probability(level, ntrial=1, n_summed_spectra=1, n_rebin=1):

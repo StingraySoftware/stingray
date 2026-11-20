@@ -370,3 +370,44 @@ class TestAll(object):
         assert np.allclose(maxstatbin, frequencies[minbin], atol=0.1 / self.tseg)
         maxfdot = fdot.flatten()[np.argmax(stat)]
         assert np.allclose(maxfdot, 0.0, atol=0.1 / self.tseg)
+
+    def test_z_n_search_photon_probability_weights(self):
+        """Test Kerr (2011) photon probability weights in z_n_search."""
+        from stingray.pulse import z_n
+
+        rng = np.random.default_rng(12345)
+        nback = len(self.event_times) * 2
+        bg_times = rng.uniform(self.tstart, self.tend, nback)
+        all_times = np.concatenate([self.event_times, bg_times])
+        all_weights = np.concatenate([np.full(len(self.event_times), 0.9), np.full(nback, 0.05)])
+        order = np.argsort(all_times)
+        all_times = all_times[order]
+        all_weights = all_weights[order]
+
+        frequencies = np.arange(9.8, 9.99, 0.1 / self.tseg)
+        freq, stat_w = z_n_search(
+            all_times,
+            frequencies,
+            nbin=128,
+            nharm=2,
+            weights=all_weights,
+            variances=all_weights**2,
+        )
+        _, stat_unw = z_n_search(all_times, frequencies, nbin=128, nharm=2)
+
+        minbin = np.argmin(np.abs(frequencies - self.pulse_frequency))
+        assert np.isclose(freq[np.argmax(stat_w)], frequencies[minbin], atol=0.1 / self.tseg)
+        assert np.max(stat_w) > np.max(stat_unw)
+
+        # At the pulse frequency, the binned weighted search matches the unbinned weighted Z^2_n
+        phases = ((all_times - all_times[0]) * self.pulse_frequency) % 1
+        _, stat_at_pulse = z_n_search(
+            all_times,
+            [self.pulse_frequency],
+            nbin=256,
+            nharm=2,
+            weights=all_weights,
+            variances=all_weights**2,
+        )
+        z_exact = z_n(phases, n=2, datatype="events", weights=all_weights)
+        assert np.isclose(stat_at_pulse[0], z_exact, rtol=0.02)

@@ -263,6 +263,64 @@ class TestAll(object):
         expected_err[-1] = 2  # Because of the change of exposure
         np.testing.assert_array_almost_equal(pe, expected_err)
 
+    def test_pulse_profile_err_default_is_poisson(self):
+        # Light curve in counts: without variances, each bin is Poisson
+        nbin = 8
+        times = np.arange(0, 4, 1 / nbin) + 0.5 / nbin
+        counts = np.random.poisson(50, times.size)
+        _, prof, err = fold_events(times, 1, nbin=nbin, weights=counts)
+        _, prof_v, err_v = fold_events(times, 1, nbin=nbin, weights=counts, variances=counts)
+        np.testing.assert_allclose(err, np.sqrt(prof))
+        np.testing.assert_allclose(prof_v, prof)
+        np.testing.assert_allclose(err_v, err)
+
+    def test_pulse_profile_err_photon_weights(self):
+        rng = np.random.default_rng(1)
+        nbin = 16
+        times = np.sort(rng.uniform(0, 100, 5000))
+        weights = rng.uniform(0, 1, times.size)
+        phases = times - np.floor(times)
+        bin_idx = np.floor(phases * nbin).astype(int)
+
+        _, prof, err = fold_events(times, 1, nbin=nbin, weights=weights, variances=weights**2)
+
+        np.testing.assert_allclose(prof, np.bincount(bin_idx, weights, minlength=nbin))
+        np.testing.assert_allclose(err, np.sqrt(np.bincount(bin_idx, weights**2, minlength=nbin)))
+        # The old estimate, sqrt(sum(w)), overestimates the error for w < 1
+        assert np.all(err < np.sqrt(prof))
+
+    def test_pulse_profile_err_scalar_variance(self):
+        nbin = 4
+        times = np.arange(0, 2, 1 / nbin) + 0.5 / nbin
+        flux = np.ones(times.size) * 3.0
+        _, prof, err = fold_events(times, 1, nbin=nbin, weights=flux, variances=0.25)
+        # Two points per bin, each with variance 0.25
+        np.testing.assert_allclose(prof, 6)
+        np.testing.assert_allclose(err, np.sqrt(0.5))
+
+    def test_pulse_profile_err_expocorr_with_variances(self):
+        nbin = 16
+        dt = 1 / nbin
+        times = np.arange(0, 2, dt)
+        gti = np.array([[-0.5 * dt, 2 + 0.5 * dt]])
+        weights = np.full(times.size, 0.5)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            _, p, pe = fold_events(
+                times, 1, nbin=nbin, expocorr=True, gti=gti, weights=weights, variances=weights**2
+            )
+        np.testing.assert_array_almost_equal(p, np.ones(nbin))
+        np.testing.assert_array_almost_equal(pe, np.sqrt(0.5) * np.ones(nbin))
+
+    @pytest.mark.parametrize(
+        "variances,match",
+        [([1.0, 2.0], "one element per event"), (np.nan, "must be finite")],
+    )
+    def test_pulse_profile_bad_variances(self, variances, match):
+        times = np.arange(0, 2, 0.125)
+        with pytest.raises(ValueError, match=match):
+            fold_events(times, 1, nbin=4, variances=variances)
+
     def test_pulse_profile_pdm(self):
         period = 0.237
         nbin = 10
@@ -486,3 +544,122 @@ class TestZandH(object):
         with pytest.raises(ValueError) as excinfo:
             z_n([1], 2, datatype="gauss")
         assert "If datatype='gauss', you need to " in str(excinfo.value)
+
+
+def _direct_weighted_z2(phase, weights, nmax):
+    """Brute-force implementation of the weighted Z^2_n (Kerr 2011)."""
+    k = np.arange(1, nmax + 1)[:, np.newaxis]
+    arg = 2 * np.pi * k * phase
+    powers = np.sum(weights * np.cos(arg), axis=1) ** 2 + np.sum(weights * np.sin(arg), axis=1) ** 2
+    return 2 / np.sum(weights**2) * np.cumsum(powers)
+
+
+class TestWeightedZandH:
+    @classmethod
+    def setup_class(cls):
+        rng = np.random.default_rng(20110304)
+        cls.nsrc, cls.nback = 300, 3000
+        source = rng.normal(0.3, 0.04, cls.nsrc) % 1
+        background = rng.uniform(0, 1, cls.nback)
+        cls.phases = np.concatenate([source, background])
+        cls.weights = np.concatenate(
+            [rng.uniform(0.6, 1.0, cls.nsrc), rng.uniform(0.0, 0.2, cls.nback)]
+        )
+
+    @pytest.mark.parametrize("nmax", [1, 2, 20, 50])
+    def test_matches_direct_sum(self, nmax):
+        ks, z = z_n_events_all(self.phases, nmax=nmax, weights=self.weights)
+        np.testing.assert_array_equal(ks, np.arange(1, nmax + 1))
+        np.testing.assert_allclose(z, _direct_weighted_z2(self.phases, self.weights, nmax))
+
+    def test_unweighted_matches_direct_sum(self):
+        _, z = z_n_events_all(self.phases, nmax=20)
+        unit = np.ones(self.phases.size)
+        np.testing.assert_allclose(z, _direct_weighted_z2(self.phases, unit, 20))
+
+    def test_unit_weights_give_standard_statistic(self):
+        _, z = z_n_events_all(self.phases, nmax=10)
+        _, z_w = z_n_events_all(self.phases, nmax=10, weights=1)
+        np.testing.assert_allclose(z_w, z)
+        assert np.isclose(z_n(self.phases, 10, weights=np.ones(self.phases.size)), z[-1])
+
+    def test_scale_invariance(self):
+        _, z = z_n_events_all(self.phases, nmax=5, weights=self.weights)
+        _, z_scaled = z_n_events_all(self.phases, nmax=5, weights=7.5 * self.weights)
+        np.testing.assert_allclose(z_scaled, z)
+
+    def test_zero_weights_drop_events(self):
+        _, z = z_n_events_all(self.phases[: self.nsrc], nmax=4)
+        weights = np.zeros(self.phases.size)
+        weights[: self.nsrc] = 1
+        _, z_w = z_n_events_all(self.phases, nmax=4, weights=weights)
+        np.testing.assert_allclose(z_w, z)
+
+    def test_all_zero_weights(self):
+        _, z = z_n_events_all(self.phases, nmax=4, weights=0)
+        np.testing.assert_array_equal(z, 0)
+
+    def test_weights_improve_detection(self):
+        z_unw = z_n(self.phases, 2)
+        z_w = z_n(self.phases, 2, weights=self.weights)
+        assert z_w > 2 * z_unw
+
+        m_unw, h_unw = htest(self.phases, datatype="events")
+        m_w, h_w = htest(self.phases, datatype="events", weights=self.weights)
+        assert h_w > 2 * h_unw
+
+    def test_weighted_htest_consistent_with_zn(self):
+        m, h = htest(self.phases, nmax=20, datatype="events", weights=self.weights)
+        _, z = z_n_events_all(self.phases, nmax=20, weights=self.weights)
+        assert np.isclose(h, np.max(z - 4 * np.arange(1, 21) + 4))
+        assert np.isclose(h + 4 * m - 4, z_n(self.phases, m, weights=self.weights))
+
+    def test_null_distribution_is_chi2(self):
+        # Under the null hypothesis the weighted Z^2_1 is distributed as chi^2_2,
+        # whose mean is 2 and variance 4, whatever the weights
+        rng = np.random.default_rng(7)
+        zs = np.array(
+            [z_n(rng.uniform(0, 1, 200), 1, weights=rng.uniform(0, 1, 200)) for _ in range(2000)]
+        )
+        assert np.isclose(np.mean(zs), 2, rtol=0.1)
+        assert np.isclose(np.var(zs), 4, rtol=0.2)
+
+    def test_binned_total_variance(self):
+        nbin = 256
+        total_var = np.sum(self.weights**2)
+        profile, _ = np.histogram(self.phases, bins=nbin, range=[0, 1], weights=self.weights)
+        _, z_b = z_n_binned_events_all(profile, 4, total_variance=total_var)
+        _, z_e = z_n_events_all(self.phases, 4, weights=self.weights)
+        np.testing.assert_allclose(z_b, z_e, rtol=0.01)
+
+        assert np.isclose(z_n(profile, 4, datatype="binned", total_variance=total_var), z_b[-1])
+        m_b, h_b = htest(profile, nmax=10, datatype="binned", total_variance=total_var)
+        m_e, h_e = htest(self.phases, nmax=10, datatype="events", weights=self.weights)
+        assert m_b == m_e
+        assert np.isclose(h_b, h_e, rtol=0.01)
+
+    def test_binned_default_total_variance(self):
+        profile, _ = np.histogram(self.phases, bins=64, range=[0, 1])
+        _, z = z_n_binned_events_all(profile, 4)
+        _, z_tv = z_n_binned_events_all(profile, 4, total_variance=profile.sum())
+        np.testing.assert_allclose(z_tv, z)
+
+    @pytest.mark.parametrize("func", [z_n, htest])
+    @pytest.mark.parametrize("datatype", ["binned", "gauss"])
+    def test_weights_rejected_for_profiles(self, func, datatype):
+        with pytest.raises(ValueError, match="weights can only be used with datatype='events'"):
+            func(np.ones(16), 2, datatype=datatype, err=1, weights=np.ones(16))
+
+    @pytest.mark.parametrize("func", [z_n, htest])
+    @pytest.mark.parametrize("datatype", ["events", "gauss"])
+    def test_total_variance_rejected_for_non_binned(self, func, datatype):
+        with pytest.raises(
+            ValueError, match="total_variance can only be used with datatype='binned'"
+        ):
+            func(np.ones(16), 2, datatype=datatype, err=1, total_variance=16.0)
+
+    def test_bad_weights(self):
+        with pytest.raises(ValueError, match="one element per event"):
+            z_n_events_all(self.phases, 2, weights=[1, 2, 3])
+        with pytest.raises(ValueError, match="must be finite"):
+            z_n_events_all(self.phases, 2, weights=np.full(self.phases.size, np.inf))
