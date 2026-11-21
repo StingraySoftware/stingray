@@ -1,0 +1,1 @@
+Fix ``shift_and_add`` reading past the end of the spectra when ``nbins`` is wider than them, which added spurious powers and counts to the output.

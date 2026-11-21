@@ -1983,7 +1983,7 @@ def _safe_array_slice_indices(input_size, input_center_idx, nbins):
 
     if minbin < 0:
         output_slice = [-minbin, min(nbins, input_size - minbin)]
-        input_slice = [0, minbin + nbins]
+        input_slice = [0, min(input_size, minbin + nbins)]
     elif maxbin > input_size:
         output_slice = [0, nbins - (maxbin - input_size)]
         input_slice = [minbin, input_size]
@@ -2114,6 +2114,20 @@ def shift_and_add(freqs, power_list, f0_list, nbins=100, rebin=None, df=None, M=
     n : np.array
         Number of contributing power spectra at each frequency
 
+    Notes
+    -----
+    Each power spectrum contributes only the bins of the ``nbins`` window that
+    fall inside its frequency range. Near the edges of the window, and especially
+    when ``nbins`` is large compared to the spectra, an output bin can be covered
+    by only some of the spectra, or by none:
+
+    * a bin covered by only some spectra is the (``M``-weighted) average of those
+      spectra alone, and ``n`` is lower there (the sum of ``M`` of the
+      contributing spectra, if ``M`` is given);
+    * a bin covered by no spectrum has power ``NaN`` and ``n`` equal to 0.
+
+    With ``rebin``, a rebinned bin that includes any ``NaN`` bin is also ``NaN``.
+
     Examples
     --------
     >>> power_list = [[2, 5, 2, 2, 2], [1, 1, 5, 1, 1], [3, 3, 3, 5, 3]]
@@ -2123,6 +2137,13 @@ def shift_and_add(freqs, power_list, f0_list, nbins=100, rebin=None, df=None, M=
     >>> assert np.array_equal(n, [2, 3, 3, 3, 2])
     >>> assert np.array_equal(p, [2. , 2. , 5. , 2. , 1.5])
     >>> assert np.allclose(f, [0.05, 0.15, 0.25, 0.35, 0.45])
+
+    With a window wider than the spectra, the outermost bins get no contribution:
+
+    >>> f, p, n = shift_and_add(freqs, power_list, [0.1, 0.2, 0.3], nbins=9)
+    >>> assert np.array_equal(n, [0, 1, 2, 3, 3, 3, 2, 1, 0])
+    >>> assert np.isnan(p[0]) and np.isnan(p[-1])
+    >>> assert np.array_equal(p[1:-1], [3, 2, 2, 5, 2, 1.5, 2])
     """
 
     # Check if the input list of power contains numpy arrays

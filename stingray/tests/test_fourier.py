@@ -1119,6 +1119,20 @@ def test_shift_and_add_orbit(ntimes):
     assert np.max(n) == times.size
 
 
+def test_shift_and_add_window_wider_than_spectrum():
+    # nbins larger than the spectrum: the window sticks out on both sides,
+    # and only the bins that overlap the spectrum may receive power
+    from stingray.fourier import shift_and_add
+
+    freqs = np.arange(1.0, 11.0)
+    power_list = np.array([np.ones(10), 2 * np.ones(10)])
+    f, p, n = shift_and_add(freqs, power_list, [5.5, 5.5], nbins=30)
+
+    assert np.array_equal(n, np.r_[np.zeros(10), 2 * np.ones(10), np.zeros(10)])
+    assert np.allclose(p[10:20], 1.5)
+    assert np.all(np.isnan(p[:10])) and np.all(np.isnan(p[20:]))
+
+
 def test_raw_coherence_float32_computed_in_float64():
     """Same check as test_vectorized_float32_computed_in_float64 in test_stats, for the only
     vectorized function with a complex input.
