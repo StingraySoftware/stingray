@@ -8,6 +8,7 @@ import astropy.modeling.models
 from stingray import utils
 from stingray import Lightcurve
 from stingray import AveragedPowerspectrum
+from stingray.simulator import transfer
 
 __all__ = ["Simulator"]
 
@@ -292,10 +293,7 @@ class Simulator(object):
         h : numpy.ndarray
             Constructed impulse response
         """
-        if start < 0 or width <= 0:
-            raise ValueError("The impulse response needs start >= 0 and width > 0.")
-        h = self._integrate_over_bins(lambda t: t, start, start + width)
-        return intensity * h / h.sum()
+        return transfer.simple_ir(self.dt, start=start, width=width, intensity=intensity)
 
     def relativistic_ir(self, t1=3, t2=4, t3=10, p1=1, p2=1.4, rise=4.8, decay=0.8, intensity=1):
         """
@@ -338,52 +336,9 @@ class Simulator(object):
             Constructed impulse response
         """
 
-        assert t2 > t1, "Secondary peak must be after primary peak."
-        assert t3 > t2, "End time must be after secondary peak."
-        assert p2 > p1, "Secondary peak must be greater than primary peak."
-
-        def rise_primitive(t):
-            if rise == 0:
-                return p2 * t
-            return p1 * t + (p2 - p1) / rise * np.exp(rise * (t - t2))
-
-        def decay_primitive(t):
-            if decay == 0:
-                return p2 * t
-            return -p2 / decay * np.exp(-decay * (t - t2))
-
-        h = self._integrate_over_bins(decay_primitive, t2, t3)
-        h_rise = self._integrate_over_bins(rise_primitive, t1, t2)
-        h[: h_rise.size] += h_rise
-        return intensity * h / h.sum()
-
-    def _integrate_over_bins(self, primitive, t_start, t_end):
-        """
-        Integrate a response that is zero outside ``[t_start, t_end]`` over
-        each time bin, from time zero to the bin that contains ``t_end``.
-
-        Parameters
-        ----------
-        primitive : callable
-            An antiderivative of the response, taking times in seconds.
-        t_start, t_end : float
-            Start and end time of the response.
-
-        Returns
-        -------
-        h : numpy.ndarray
-            The integral of the response over each bin.
-        """
-        # Bin units, snapped to a bin edge within rounding error of it, so that
-        # no bin gets a spurious tiny weight
-        x_start, x_end = (
-            np.round(x) if abs(x - np.round(x)) < 1e-9 else x
-            for x in (t_start / self.dt, t_end / self.dt)
+        return transfer.relativistic_ir(
+            self.dt, t1=t1, t2=t2, t3=t3, p1=p1, p2=p2, rise=rise, decay=decay, intensity=intensity
         )
-        edges = np.arange(int(np.ceil(x_end)) + 1)
-        lower = np.clip(edges[:-1], x_start, x_end) * self.dt
-        upper = np.clip(edges[1:], x_start, x_end) * self.dt
-        return primitive(upper) - primitive(lower)
 
     def _find_inverse(self, real, imaginary):
         """
