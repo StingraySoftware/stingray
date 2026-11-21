@@ -464,7 +464,7 @@ def create_gti_mask(
 
     check_gtis(gtis)
 
-    dt = apply_function_if_none(dt, time, lambda x: np.median(np.diff(x)))
+    dt = apply_function_if_none(dt, time, lambda x: np.median(np.diff(x)) if len(x) > 1 else 0.0)
     dt_start = dt_stop = dt
     epsilon_times_dt_start = epsilon_times_dt_stop = epsilon * dt
     if isinstance(dt, Iterable):
@@ -558,7 +558,11 @@ def create_gti_mask_complete(
 
     check_gtis(gtis)
 
-    dt = assign_value_if_none(dt, np.zeros_like(time) + np.median(np.diff(np.sort(time)) / 2))
+    if dt is None:
+        if len(time) > 1:
+            dt = np.zeros_like(time) + np.median(np.diff(np.sort(time)) / 2)
+        else:
+            dt = np.zeros_like(time)
 
     epsilon_times_dt = epsilon * dt
     mask = np.zeros(len(time), dtype=bool)
