@@ -5,8 +5,13 @@ from stingray.base import StingrayObject
 from stingray.gti import check_separate, cross_two_gtis
 
 from stingray.lightcurve import Lightcurve
-from stingray.utils import assign_value_if_none, simon, excess_variance, show_progress
-
+from stingray.utils import (
+    assign_value_if_none,
+    simon,
+    excess_variance,
+    show_progress,
+    fix_segment_size_to_integer_samples,
+)
 from stingray.fourier import (
     avg_cs_from_timeseries,
     avg_pds_from_timeseries,
@@ -346,8 +351,9 @@ class VarEnergySpectrum(StingrayObject, metaclass=ABCMeta):
             The frequency mask.
         """
         if freq is None:
-            n_bin = np.rint(self.segment_size / self.bin_time)
-            freq = fftfreq(int(n_bin), self.bin_time)
+            _, n_bin = fix_segment_size_to_integer_samples(
+            self.segment_size, self.bin_time)
+            freq = fftfreq(n_bin, self.bin_time)
             freq = freq[freq > 0]
         good = (freq >= self.freq_interval[0]) & (freq < self.freq_interval[1])
         return good
