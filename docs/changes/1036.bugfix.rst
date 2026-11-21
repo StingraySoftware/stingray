@@ -1,0 +1,1 @@
+Fix silent data loss in ``StingrayTimeseries.split_by_gti()`` when splitting gappy time series, correctly update segment ``tstart`` and ``tseg`` metadata, and handle single-point and empty light curves without reduction warnings.

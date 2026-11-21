@@ -1328,6 +1328,45 @@ class TestLightcurve(object):
         assert np.allclose(lc1.time, [6, 7, 8])
         assert np.allclose(lc0.counts, [1, 1, 1])
         assert np.allclose(lc1.counts, [3, 3, 2])
+        assert lc0.tstart == 0.5
+        assert lc0.tseg == 3.0
+        assert lc1.tstart == 5.5
+        assert lc1.tseg == 3.0
+
+    def test_split_by_gti_gappy_data_preservation_and_metadata(self):
+        time = np.array([0.5, 100.5])
+        counts = np.array([10.0, 10.0])
+        gti = np.array([[0.0, 1.0], [100.0, 101.0]])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            lc = Lightcurve(time, counts, gti=gti, dt=1.0)
+        splits = lc.split_by_gti(min_points=1)
+
+        assert len(splits) == 2
+        assert np.allclose(splits[0].time, [0.5])
+        assert np.allclose(splits[1].time, [100.5])
+        assert np.allclose(splits[0].counts, [10.0])
+        assert np.allclose(splits[1].counts, [10.0])
+        assert splits[0].tstart == 0.0
+        assert splits[0].tseg == 1.0
+        assert splits[1].tstart == 100.0
+        assert splits[1].tseg == 1.0
+
+    def test_split_single_point_and_empty(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            lc_single = Lightcurve(time=[10.0], counts=[5.0], dt=1.0)
+        splits = lc_single.split(min_gap=1.0, min_points=1)
+        assert len(splits) == 1
+        assert np.allclose(splits[0].time, [10.0])
+        assert np.allclose(splits[0].counts, [5.0])
+        assert splits[0].tstart == 9.5
+        assert splits[0].tseg == 1.0
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            lc_empty = Lightcurve(time=[], counts=[], dt=1.0)
+        assert lc_empty.split(min_gap=1.0) == []
 
     def test_shift(self):
         times = [1, 2, 3, 4, 5, 6, 7, 8]
