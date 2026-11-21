@@ -12,17 +12,6 @@ from stingray import AveragedPowerspectrum
 __all__ = ["Simulator"]
 
 
-def _warn_normalize_default(method):
-    warnings.warn(
-        f"The default of normalize in Simulator.{method} will change from False to True "
-        "in a future release. With normalize=True, the impulse response is integrated "
-        "over each bin, so that its sum, the gain, does not depend on dt. Pass "
-        "normalize=True or normalize=False to choose and silence this warning.",
-        DeprecationWarning,
-        stacklevel=3,
-    )
-
-
 class Simulator(object):
     """
     Framework to simulate light curves with given variability distributions.
@@ -137,8 +126,8 @@ class Simulator(object):
             **Note**: ``h[k]`` is the response integrated over the time bin
             ``k``, so ``h.sum()`` is the gain: a constant signal ``s`` comes
             out as ``s * h.sum()``. ``simple_ir`` and ``relativistic_ir``
-            with ``normalize=True`` build ``h`` this way. The ``dt`` of ``s``
-            and ``h`` must be the same.
+            build ``h`` this way. The ``dt`` of ``s`` and ``h`` must be the
+            same.
 
               Parameters:
                 * s : array-like
@@ -275,113 +264,69 @@ class Simulator(object):
 
         return len(self.channels)
 
-    def simple_ir(self, start=0, width=1000, intensity=1, normalize=None):
+    def simple_ir(self, start=0, width=1000, intensity=1):
         """
         Construct a simple impulse response using start time,
         width and scaling intensity.
         To create a delta impulse response, set width to the time resolution ``dt``.
 
-        The response is a box from ``start`` to ``start + width``.
-
-        With ``normalize=True``, each bin holds the response integrated over the
-        bin, so that ``h.sum()``, the gain, is ``intensity`` at any ``dt``. A bin
-        that the box only partly covers gets the covered fraction, so a ``start``
-        or ``width`` that is not a multiple of ``dt`` is spread over two bins and
-        keeps the mean delay. A box that fits in one bin gives a single bin of
-        ``intensity``.
-
-        With ``normalize=False``, each bin of the box holds ``intensity``, so the
-        gain is ``intensity * max(width / dt, 1)``, and ``start`` is rounded down
-        to a whole bin. This is the current default, which will change to
-        ``normalize=True`` in a future release.
+        The response is a box from ``start`` to ``start + width``. Each bin
+        holds the response integrated over the bin, so that ``h.sum()``, the
+        gain, is ``intensity`` at any ``dt``. A bin that the box only partly
+        covers gets the covered fraction, so a ``start`` or ``width`` that is
+        not a multiple of ``dt`` is spread over two bins and keeps the mean
+        delay. A box that fits in one bin gives a single bin of ``intensity``.
 
         Parameters
         ----------
         start : float
-            start time of impulse response
+            start time of impulse response, in seconds
         width : float
-            Width of the impulse response. With ``normalize=False``, widths
-            shorter than ``dt`` produce a one-bin response.
+            width of impulse response, in seconds
         intensity : float
             scaling parameter to set the intensity of delayed emission
-            corresponding to direct emission. With ``normalize=True``, it is the
-            gain of the response.
-        normalize : bool, optional
-            Whether to integrate the response over each bin, as described above.
-            The default, None, behaves as False and warns that the default will
-            change to True.
+            corresponding to direct emission. It is the gain of the response.
 
         Returns
         -------
         h : numpy.ndarray
             Constructed impulse response
         """
-        if normalize is None:
-            _warn_normalize_default("simple_ir")
-            normalize = False
+        if start < 0 or width <= 0:
+            raise ValueError("The impulse response needs start >= 0 and width > 0.")
+        h = self._integrate_over_bins(lambda t: t, start, start + width)
+        return intensity * h / h.sum()
 
-        if normalize:
-            if start < 0 or width <= 0:
-                raise ValueError("The impulse response needs start >= 0 and width > 0.")
-            h = self._integrate_over_bins(lambda t: t, start, start + width)
-            return intensity * h / h.sum()
-
-        # Fill in 0 entries until the start time
-        h_zeros = np.zeros(int(start / self.dt))
-
-        # Define constant impulse response
-        # Width in (possibly fractional) bins. A response shorter than one bin
-        # is a delta, that is, one full bin.
-        num_bins = max(width / self.dt, 1)
-        n_full = int(num_bins + 1e-9)
-        h_ones = np.ones(n_full)
-        # A non-integer width ends with a partial bin, weighted by its fraction
-        frac = num_bins - n_full
-        if frac > 1e-9:
-            h_ones = np.append(h_ones, frac)
-        h_ones = h_ones * intensity
-
-        return np.append(h_zeros, h_ones)
-
-    def relativistic_ir(self, t1=3, t2=4, t3=10, p1=1, p2=1.4, rise=0.6, decay=0.1, normalize=None):
+    def relativistic_ir(self, t1=3, t2=4, t3=10, p1=1, p2=1.4, rise=4.8, decay=0.8):
         """
         Construct a realistic impulse response considering the relativistic
         effects.
 
-        With ``normalize=True``, the response is a function of time: zero
-        before ``t1``, ``p1 + (p2 - p1) * exp(rise * (t - t2))`` from ``t1`` to
-        ``t2``, and ``p2 * exp(-decay * (t - t2))`` from ``t2`` to ``t3``, with
-        ``rise`` and ``decay`` in units of 1 / s. Each bin holds the response
-        integrated over the bin, scaled so that ``h.sum()``, the gain, is 1. The
-        shape is then the same at any ``dt``, and ``p1`` and ``p2`` only set its
-        proportions.
-
-        With ``normalize=False``, the response is sampled once per bin, with
-        ``rise`` and ``decay`` per bin and ``p1`` and ``p2`` as the values of
-        the bins, so both its shape and its gain change with ``dt``. This is the
-        current default, which will change to ``normalize=True`` in a future
-        release.
+        The response is a function of time: zero before ``t1``,
+        ``p1 + (p2 - p1) * exp(rise * (t - t2))`` from ``t1`` to ``t2``, and
+        ``p2 * exp(-decay * (t - t2))`` from ``t2`` to ``t3``. Each bin holds
+        the response integrated over the bin, scaled so that ``h.sum()``, the
+        gain, is 1. The shape is then the same at any ``dt``, and ``p1`` and
+        ``p2`` only set its proportions.
 
         Parameters
         ----------
         t1 : float
-            primary peak time
+            primary peak time, in seconds
         t2 : float
-            secondary peak time
+            secondary peak time, in seconds
         t3 : float
-            end time
+            end time, in seconds
         p1 : float
             value of primary peak
         p2 : float
             value of secondary peak
         rise : float
-            slope of rising exponential from primary peak to secondary peak
+            rate of the rising exponential from primary peak to secondary peak,
+            in 1 / s
         decay : float
-            slope of decaying exponential from secondary peak to end time
-        normalize : bool, optional
-            Whether to integrate the response over each bin, as described above.
-            The default, None, behaves as False and warns that the default will
-            change to True.
+            rate of the decaying exponential from secondary peak to end time,
+            in 1 / s
 
         Returns
         -------
@@ -389,53 +334,24 @@ class Simulator(object):
             Constructed impulse response
         """
 
-        dt = self.dt
-
         assert t2 > t1, "Secondary peak must be after primary peak."
         assert t3 > t2, "End time must be after secondary peak."
         assert p2 > p1, "Secondary peak must be greater than primary peak."
 
-        if normalize is None:
-            _warn_normalize_default("relativistic_ir")
-            normalize = False
+        def rise_primitive(t):
+            if rise == 0:
+                return p2 * t
+            return p1 * t + (p2 - p1) / rise * np.exp(rise * (t - t2))
 
-        if normalize:
+        def decay_primitive(t):
+            if decay == 0:
+                return p2 * t
+            return -p2 / decay * np.exp(-decay * (t - t2))
 
-            def rise_primitive(t):
-                if rise == 0:
-                    return p2 * t
-                return p1 * t + (p2 - p1) / rise * np.exp(rise * (t - t2))
-
-            def decay_primitive(t):
-                if decay == 0:
-                    return p2 * t
-                return -p2 / decay * np.exp(-decay * (t - t2))
-
-            h = self._integrate_over_bins(decay_primitive, t2, t3)
-            h_rise = self._integrate_over_bins(rise_primitive, t1, t2)
-            h[: h_rise.size] += h_rise
-            return h / h.sum()
-
-        # Append zeros before start time
-        h_primary = np.append(np.zeros(int(t1 / dt)), p1)
-
-        # Create a rising exponential of user-provided slope
-        x = np.linspace(t1 / dt, t2 / dt, int((t2 - t1) / dt))
-        h_rise = np.exp(rise * x)
-
-        # Evaluate a factor for scaling exponential
-        factor = np.max(h_rise) / (p2 - p1)
-        h_secondary = (h_rise / factor) + p1
-
-        # Create a decaying exponential until the end time
-        x = np.linspace(t2 / dt, t3 / dt, int((t3 - t2) / dt))
-        h_decay = np.exp((-decay) * (x - t2 / dt))
-
-        # Add the three responses
-        h = np.append(h_primary, h_secondary)
-        h = np.append(h, h_decay)
-
-        return h
+        h = self._integrate_over_bins(decay_primitive, t2, t3)
+        h_rise = self._integrate_over_bins(rise_primitive, t1, t2)
+        h[: h_rise.size] += h_rise
+        return h / h.sum()
 
     def _integrate_over_bins(self, primitive, t_start, t_end):
         """

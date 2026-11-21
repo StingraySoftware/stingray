@@ -147,7 +147,7 @@ Here, for the sake of simplicity, we use a simulated impulse response.
    # Instantiate simulator object
    sim = simulator.Simulator(N=1024, mean=0.5, dt=0.125, rms=1.0)
    # Obtain an artificial impulse response, with a total gain of 1
-   ir = sim.relativistic_ir(normalize=True)
+   ir = sim.relativistic_ir()
    # Simulate
    lc_new = sim.simulate(lc, ir)
 
