@@ -232,56 +232,66 @@ def simple_ir(dt=0.125, start=0, width=1000, intensity=1):
     """
     Construct a simple impulse response using start time,
     width and scaling intensity.
-    To create a delta impulse response, set width to 1.
+    To create a delta impulse response, set width to ``dt``.
+
+    The response is a box from ``start`` to ``start + width``. Each bin
+    holds the response integrated over the bin, so that ``h.sum()``, the
+    gain, is ``intensity`` at any ``dt``. A bin that the box only partly
+    covers gets the covered fraction, so a ``start`` or ``width`` that is
+    not a multiple of ``dt`` is spread over two bins and keeps the mean
+    delay. A box that fits in one bin gives a single bin of ``intensity``.
 
     Parameters
     ----------
     dt : float
-        Time resolution
+        Time resolution, in seconds
 
-    start : int
-        start time of impulse response
+    start : float
+        start time of impulse response, in seconds
 
-    width : int
-        width of impulse response
+    width : float
+        width of impulse response, in seconds
 
     intensity : float
         scaling parameter to set the intensity of delayed emission
-        corresponding to direct emission.
+        corresponding to direct emission. It is the gain of the response.
 
     Returns
     -------
     h : numpy.ndarray
         Constructed impulse response
     """
-
-    # Fill in 0 entries until the start time
-    h_zeros = np.zeros(int(start / dt))
-
-    # Define constant impulse response
-    h_ones = np.ones(int(width / dt)) * intensity
-
-    return np.append(h_zeros, h_ones)
+    if start < 0 or width <= 0:
+        raise ValueError("The impulse response needs start >= 0 and width > 0.")
+    h = _integrate_over_bins(lambda t: t, dt, start, start + width)
+    return intensity * h / h.sum()
 
 
-def relativistic_ir(dt=0.125, t1=3, t2=4, t3=10, p1=1, p2=1.4, rise=0.6, decay=0.1):
+def relativistic_ir(dt=0.125, t1=3, t2=4, t3=10, p1=1, p2=1.4, rise=4.8, decay=0.8, intensity=1):
     """
     Construct a realistic impulse response considering the relativistic
     effects.
 
+    The response is a function of time: zero before ``t1``,
+    ``p1 + (p2 - p1) * exp(rise * (t - t2))`` from ``t1`` to ``t2``, and
+    ``p2 * exp(-decay * (t - t2))`` from ``t2`` to ``t3``. Each bin holds
+    the response integrated over the bin, scaled so that ``h.sum()``, the
+    gain, is ``intensity``. The shape is then the same at any ``dt``, and
+    ``p1`` and ``p2`` only set its proportions.
+
     Parameters
     ----------
     dt : float
-        Time resolution
+        Time resolution, in seconds
 
-    t1 : int
-        primary peak time
+    t1 : float
+        primary peak time, in seconds
 
-    t2 : int
-        secondary peak time
+    t2 : float
+        secondary peak time, in seconds
 
-    t3 : int
-        end time
+    t3 : float
+        end time, in seconds
 
     p1 : float
         value of primary peak
@@ -290,10 +300,17 @@ def relativistic_ir(dt=0.125, t1=3, t2=4, t3=10, p1=1, p2=1.4, rise=0.6, decay=0
         value of secondary peak
 
     rise : float
-        slope of rising exponential from primary peak to secondary peak
+        rate of the rising exponential from primary peak to secondary peak,
+        in 1 / s
 
     decay : float
-        slope of decaying exponential from secondary peak to end time
+        rate of the decaying exponential from secondary peak to end time,
+        in 1 / s
+
+    intensity : float
+        the gain of the response, that is, the area under it. In line
+        reverberation it is the responsivity, and in X-ray reverberation
+        roughly the reflection fraction.
 
     Returns
     -------
@@ -305,23 +322,47 @@ def relativistic_ir(dt=0.125, t1=3, t2=4, t3=10, p1=1, p2=1.4, rise=0.6, decay=0
     assert t3 > t2, "End time must be after secondary peak."
     assert p2 > p1, "Secondary peak must be greater than primary peak."
 
-    # Append zeros before start time
-    h_primary = np.append(np.zeros(int(t1 / dt)), p1)
+    def rise_primitive(t):
+        if rise == 0:
+            return p2 * t
+        return p1 * t + (p2 - p1) / rise * np.exp(rise * (t - t2))
 
-    # Create a rising exponential of user-provided slope
-    x = np.linspace(t1 / dt, t2 / dt, int((t2 - t1) / dt))
-    h_rise = np.exp(rise * x)
+    def decay_primitive(t):
+        if decay == 0:
+            return p2 * t
+        return -p2 / decay * np.exp(-decay * (t - t2))
 
-    # Evaluate a factor for scaling exponential
-    factor = np.max(h_rise) / (p2 - p1)
-    h_secondary = (h_rise / factor) + p1
+    h = _integrate_over_bins(decay_primitive, dt, t2, t3)
+    h_rise = _integrate_over_bins(rise_primitive, dt, t1, t2)
+    h[: h_rise.size] += h_rise
+    return intensity * h / h.sum()
 
-    # Create a decaying exponential until the end time
-    x = np.linspace(t2 / dt, t3 / dt, int((t3 - t2) / dt))
-    h_decay = np.exp((-decay) * (x - 4 / dt))
 
-    # Add the three responses
-    h = np.append(h_primary, h_secondary)
-    h = np.append(h, h_decay)
+def _integrate_over_bins(primitive, dt, t_start, t_end):
+    """
+    Integrate a response that is zero outside ``[t_start, t_end]`` over
+    each time bin, from time zero to the bin that contains ``t_end``.
 
-    return h
+    Parameters
+    ----------
+    primitive : callable
+        An antiderivative of the response, taking times in seconds.
+    dt : float
+        Time resolution, in seconds.
+    t_start, t_end : float
+        Start and end time of the response.
+
+    Returns
+    -------
+    h : numpy.ndarray
+        The integral of the response over each bin.
+    """
+    # Bin units, snapped to a bin edge within rounding error of it, so that
+    # no bin gets a spurious tiny weight
+    x_start, x_end = (
+        np.round(x) if abs(x - np.round(x)) < 1e-9 else x for x in (t_start / dt, t_end / dt)
+    )
+    edges = np.arange(int(np.ceil(x_end)) + 1)
+    lower = np.clip(edges[:-1], x_start, x_end) * dt
+    upper = np.clip(edges[1:], x_start, x_end) * dt
+    return primitive(upper) - primitive(lower)

@@ -1,0 +1,1 @@
+``relativistic_ir`` starts the decay at ``t2`` instead of a hard-coded 4 seconds.
