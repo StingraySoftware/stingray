@@ -1,1 +1,1 @@
-``Simulator.relativistic_ir`` starts the decay at ``t2`` instead of a hard-coded 4 seconds, so the decay starts at 1 for any ``t2``.
+``relativistic_ir`` starts the decay at ``t2`` instead of a hard-coded 4 seconds.
