@@ -297,7 +297,7 @@ class Simulator(object):
         h = self._integrate_over_bins(lambda t: t, start, start + width)
         return intensity * h / h.sum()
 
-    def relativistic_ir(self, t1=3, t2=4, t3=10, p1=1, p2=1.4, rise=4.8, decay=0.8):
+    def relativistic_ir(self, t1=3, t2=4, t3=10, p1=1, p2=1.4, rise=4.8, decay=0.8, intensity=1):
         """
         Construct a realistic impulse response considering the relativistic
         effects.
@@ -306,8 +306,8 @@ class Simulator(object):
         ``p1 + (p2 - p1) * exp(rise * (t - t2))`` from ``t1`` to ``t2``, and
         ``p2 * exp(-decay * (t - t2))`` from ``t2`` to ``t3``. Each bin holds
         the response integrated over the bin, scaled so that ``h.sum()``, the
-        gain, is 1. The shape is then the same at any ``dt``, and ``p1`` and
-        ``p2`` only set its proportions.
+        gain, is ``intensity``. The shape is then the same at any ``dt``, and
+        ``p1`` and ``p2`` only set its proportions.
 
         Parameters
         ----------
@@ -327,6 +327,10 @@ class Simulator(object):
         decay : float
             rate of the decaying exponential from secondary peak to end time,
             in 1 / s
+        intensity : float
+            the gain of the response, that is, the area under it. In line
+            reverberation it is the responsivity, and in X-ray reverberation
+            roughly the reflection fraction.
 
         Returns
         -------
@@ -351,7 +355,7 @@ class Simulator(object):
         h = self._integrate_over_bins(decay_primitive, t2, t3)
         h_rise = self._integrate_over_bins(rise_primitive, t1, t2)
         h[: h_rise.size] += h_rise
-        return h / h.sum()
+        return intensity * h / h.sum()
 
     def _integrate_over_bins(self, primitive, t_start, t_end):
         """

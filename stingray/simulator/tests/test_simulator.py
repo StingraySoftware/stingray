@@ -783,6 +783,7 @@ class TestSimulator(object):
         response = sim.simple_ir(start=0.7, width=2.0, intensity=3)
         assert np.isclose(response.sum(), 3)
         assert np.isclose(sim.relativistic_ir().sum(), 1)
+        assert np.isclose(sim.relativistic_ir(intensity=0.3).sum(), 0.3)
 
     def test_simple_ir_partial_bins(self):
         """Bins the box only partly covers get the covered fraction, so the
@@ -816,7 +817,7 @@ class TestSimulator(object):
         [
             ("simple_ir", dict(start=0.7, width=2.0, intensity=3)),
             ("relativistic_ir", dict()),
-            ("relativistic_ir", dict(t1=1.3, t2=2.1, t3=4.7, rise=3, decay=0.5)),
+            ("relativistic_ir", dict(t1=1.3, t2=2.1, t3=4.7, rise=3, decay=0.5, intensity=0.3)),
         ],
     )
     def test_impulse_response_is_the_same_at_any_dt(self, method, kwargs):
