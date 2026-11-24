@@ -40,7 +40,6 @@ __all__ = [
     "split_gtis_by_exposure",
     "split_gtis_at_indices",
     "find_large_bad_time_intervals",
-    "gti_len",
     "hdu_contains_gti",
     "join_equal_gti_boundaries",
     "merge_gtis",
@@ -50,14 +49,6 @@ __all__ = [
 ]
 
 logger = setup_logger()
-
-
-def gti_len(gti):
-    """Deprecated, will be removed in version 2.0. Use get_total_gti_length."""
-    warnings.warn(
-        "This function is deprecated. Use get_total_gti_length instead", DeprecationWarning
-    )
-    return get_total_gti_length(gti, minlen=0)
 
 
 def get_gti_lengths(gti):
@@ -623,8 +614,9 @@ def create_gti_from_condition(time, condition, safe_interval=0, dt=None):
     safe_interval : float or ``[float, float]``
         A safe interval to exclude at both ends (if single float) or the start
         and the end (if pair of values) of GTIs.
-    dt : float
-        The width (in sec) of each bin of the time array. Can be irregular.
+    dt : float or array-like
+        The width (in sec) of each bin of the time array. Can be irregular,
+        with one value per bin. Defaults to the spacing of the first two bins.
     """
 
     if len(time) != len(condition):
@@ -635,7 +627,10 @@ def create_gti_from_condition(time, condition, safe_interval=0, dt=None):
     if not isinstance(safe_interval, Iterable):
         safe_interval = [safe_interval, safe_interval]
 
-    dt = assign_value_if_none(dt, np.zeros_like(time) + (time[1] - time[0]) / 2)
+    if dt is None:
+        dt = time[1] - time[0]
+    # Each bin extends half its width on either side of its time stamp
+    half_dt = np.zeros(len(time)) + np.asanyarray(dt) / 2
 
     gtis = []
     for idx in idxs:
@@ -643,8 +638,8 @@ def create_gti_from_condition(time, condition, safe_interval=0, dt=None):
         startidx = idx[0]
         stopidx = idx[1] - 1
 
-        t0 = time[startidx] - dt[startidx] + safe_interval[0]
-        t1 = time[stopidx] + dt[stopidx] - safe_interval[1]
+        t0 = time[startidx] - half_dt[startidx] + safe_interval[0]
+        t1 = time[stopidx] + half_dt[stopidx] - safe_interval[1]
         if t1 - t0 < 0:
             continue
         gtis.append([t0, t1])
@@ -1730,12 +1725,13 @@ def split_gtis_at_indices(gtis, index_list):
         index_list = [index_list]
     previous_idx = 0
     gti_lists = []
-    if index_list[0] == 0:
+    if len(index_list) > 0 and index_list[0] == 0:
         index_list = index_list[1:]
     for idx in index_list:
         gti_lists.append(gtis[previous_idx:idx, :])
         previous_idx = idx
-    if index_list[-1] != -1 and index_list[-1] <= gtis[:, 0].size - 1:
+    # With no split indices left, the whole list is a single chunk
+    if len(index_list) == 0 or (index_list[-1] != -1 and index_list[-1] <= gtis[:, 0].size - 1):
         gti_lists.append(gtis[previous_idx:, :])
 
     return gti_lists

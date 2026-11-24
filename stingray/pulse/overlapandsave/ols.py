@@ -56,6 +56,13 @@ from numpy import flip
 from itertools import product
 from typing import List, Iterable, Tuple
 
+__all__ = [
+    "ols",
+    "olsStep",
+    "prepareh",
+    "nextprod",
+]
+
 
 def nextpow(a: float, x: float) -> float:
     """The smallest `a^n` not less than ``x``, where `n` is a non-negative integer.

@@ -2,10 +2,8 @@ import pytest
 import os
 import numpy as np
 from astropy.io import fits
-from stingray.mission_support import (
-    rxte_pca_event_file_interpretation,
-    get_rough_conversion_function,
-)
+from stingray.mission_support.rxte import rxte_pca_event_file_interpretation
+from stingray.mission_support import get_rough_conversion_function
 
 curdir = os.path.abspath(os.path.dirname(__file__))
 datadir = os.path.join(curdir, "..", "..", "tests", "data")

@@ -4,7 +4,7 @@ import os
 
 from stingray.gti import cross_gtis, append_gtis, load_gtis, get_btis, join_gtis
 from stingray.gti import check_separate, create_gti_mask, check_gtis, merge_gtis
-from stingray.gti import create_gti_from_condition, gti_len, gti_border_bins
+from stingray.gti import create_gti_from_condition, gti_border_bins
 from stingray.gti import time_intervals_from_gtis, bin_intervals_from_gtis
 from stingray.gti import create_gti_mask_complete, join_equal_gti_boundaries
 from stingray.gti import split_gtis_at_indices, split_gtis_by_exposure
@@ -207,6 +207,18 @@ class TestGTI(object):
         gti = create_gti_from_condition(t, condition, safe_interval=1)
         assert np.allclose(gti, np.array([[0.5, 2.5]]))
 
+    def test_gti_from_condition_dt(self):
+        # dt is the bin width, as a float or one value per bin
+        t = np.array([0, 1, 2, 3, 4, 5, 6])
+        condition = np.array([1, 1, 0, 0, 1, 0, 0], dtype=bool)
+        gti = create_gti_from_condition(t, condition, dt=1)
+        assert np.allclose(gti, np.array([[-0.5, 1.5], [3.5, 4.5]]))
+
+        t = np.array([0, 1, 2, 4, 6])
+        condition = np.array([1, 1, 0, 1, 0], dtype=bool)
+        gti = create_gti_from_condition(t, condition, dt=np.array([1, 1, 1, 2, 2]))
+        assert np.allclose(gti, np.array([[-0.5, 1.5], [3, 5]]))
+
     def test_gti_from_condition_fail(self):
         t = np.array([0, 1, 2, 3])
         condition = np.array([1, 1, 1], dtype=bool)
@@ -334,10 +346,6 @@ class TestGTI(object):
         with pytest.raises(ValueError):
             a, b = bin_intervals_from_gtis([[1000, 1400]], 128, [500, 501])
 
-    def test_gti_length(self):
-        with pytest.warns(DeprecationWarning, match="This function is deprecated"):
-            assert gti_len([[0, 5], [6, 7]]) == 6
-
     def test_check_gtis_shape(self):
         with pytest.raises(TypeError):
             check_gtis([0, 1])
@@ -388,6 +396,15 @@ class TestGTI(object):
         assert np.allclose(new_gtis[0], [[0, 30], [86440, 86470]])
         assert np.allclose(new_gtis[1], [[86490, 86520], [86530, 86560]])
 
+    def test_split_gtis_by_exposure_min_gti_sep_no_large_gap(self):
+        # No gap is larger than new_interval_if_gti_sep: same as not passing it
+        gtis = [[0, 100], [110, 200], [210, 300]]
+        new_gtis = split_gtis_by_exposure(gtis, 100, new_interval_if_gti_sep=1000)
+        expected = split_gtis_by_exposure(gtis, 100)
+        assert len(new_gtis) == len(expected) == 3
+        for g, e in zip(new_gtis, expected):
+            assert np.allclose(g, e)
+
     def test_split_gtis_by_exposure_small_exp(self):
         gtis = [[0, 30], [86440, 86470], [86490, 86495], [86500, 86505]]
         new_gtis = split_gtis_by_exposure(gtis, 15, new_interval_if_gti_sep=None)
@@ -401,6 +418,13 @@ class TestGTI(object):
             ],
         )
         assert np.allclose(new_gtis[4], [[86490, 86495], [86500, 86505]])
+
+    @pytest.mark.parametrize("index_list", [[], [0], 0])
+    def test_split_gtis_at_indices_no_split(self, index_list):
+        gtis = [[0, 30], [50, 60], [80, 90]]
+        new_gtis = split_gtis_at_indices(gtis, index_list)
+        assert len(new_gtis) == 1
+        assert np.allclose(new_gtis[0], gtis)
 
     def test_split_gtis_at_indices(self):
         gtis = [[0, 30], [50, 60], [80, 90]]

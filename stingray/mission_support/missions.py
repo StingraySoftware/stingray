@@ -18,6 +18,13 @@ import os
 import warnings
 from .rxte import rxte_calibration_func, rxte_pca_event_file_interpretation
 
+__all__ = [
+    "rough_calibration",
+    "read_mission_info",
+    "get_rough_conversion_function",
+    "mission_specific_event_interpretation",
+]
+
 
 def rough_calibration(pis, mission):
     """Make a rough conversion between PI channel and energy.

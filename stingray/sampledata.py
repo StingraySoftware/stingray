@@ -3,6 +3,10 @@ import numpy as np
 
 import stingray.lightcurve as lightcurve
 
+__all__ = [
+    "sample_data",
+]
+
 
 def sample_data():
     """

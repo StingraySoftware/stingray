@@ -110,19 +110,6 @@ class TestProperties(object):
             _ = Lightcurve(lc.time, lc.counts, gti=lc.gti, bubu="settete")
         assert np.any(["Unrecognized keywords:" in r.message.args[0] for r in record])
 
-    def test_warn_estimate_chunk_length(self):
-        times = np.arange(0, 1000, 1)
-        lc = Lightcurve(times, counts=np.ones(times.size) + 200, dt=1, skip_checks=True)
-        with pytest.warns(DeprecationWarning) as record:
-            lc.estimate_chunk_length()
-
-        assert np.any(
-            [
-                "This function was renamed to estimate_segment_size" in r.message.args[0]
-                for r in record
-            ]
-        )
-
     def test_time(self):
         lc = copy.deepcopy(self.lc)
         assert lc._bin_lo is None
@@ -309,42 +296,6 @@ class TestChunks(object):
         counts = np.random.poisson(10000 + 2000 * np.sin(2 * np.pi * times))
 
         cls.lc = Lightcurve(times, counts, gti=cls.gti)
-
-    def test_analyze_lc_chunks_fvar_fracstep(self):
-        with pytest.warns(DeprecationWarning, match="The analyze_lc_chunks method was superseded"):
-            start, stop, res = self.lc.analyze_lc_chunks(20, fvar_fun, fraction_step=0.5)
-        # excess_variance returns fvar and fvar_err
-        fvar, fvar_err = res
-
-        assert np.allclose(start[0], self.gti[0, 0])
-        assert np.all(fvar > 0)
-        # This must be a clear measurement of fvar
-        assert np.all(fvar > fvar_err)
-
-    def test_analyze_lc_chunks_nvar_fracstep(self):
-        with pytest.warns(DeprecationWarning, match="The analyze_lc_chunks method was superseded"):
-            start, stop, res = self.lc.analyze_lc_chunks(20, fvar_fun, fraction_step=0.5)
-        # excess_variance returns fvar and fvar_err
-        fvar, fvar_err = res
-        with pytest.warns(DeprecationWarning, match="The analyze_lc_chunks method was superseded"):
-            start, stop, res = self.lc.analyze_lc_chunks(20, nvar_fun, fraction_step=0.5)
-        # excess_variance returns fvar and fvar_err
-        nevar, nevar_err = res
-        assert np.allclose(nevar, fvar**2, rtol=0.01)
-
-    def test_analyze_lc_chunks_nvar_fracstep_mean(self):
-        with pytest.warns(DeprecationWarning, match="The analyze_lc_chunks method was superseded"):
-            start, stop, mean = self.lc.analyze_lc_chunks(20, np.mean, fraction_step=0.5)
-        with pytest.warns(DeprecationWarning, match="The analyze_lc_chunks method was superseded"):
-            start, stop, res = self.lc.analyze_lc_chunks(20, evar_fun, fraction_step=0.5)
-        # excess_variance returns fvar and fvar_err
-        evar, evar_err = res
-        with pytest.warns(DeprecationWarning, match="The analyze_lc_chunks method was superseded"):
-            start, stop, res = self.lc.analyze_lc_chunks(20, nvar_fun, fraction_step=0.5)
-        # excess_variance returns fvar and fvar_err
-        nevar, nevar_err = res
-        assert np.allclose(nevar * mean**2, evar, rtol=0.01)
-        assert np.allclose(nevar_err * mean**2, evar_err, rtol=0.01)
 
     def test_analyze_segments_fvar_fracstep(self):
         start, stop, res = self.lc.analyze_segments(fvar_fun, 20, fraction_step=0.5)
@@ -1257,13 +1208,6 @@ class TestLightcurve(object):
         lc.plot(save=True, filename="lc.png")
         assert os.path.isfile("lc.png")
         os.unlink("lc.png")
-        plt.close("all")
-
-    def test_plot_axis_arg(self):
-        lc = Lightcurve(self.times, self.counts)
-        with pytest.warns(DeprecationWarning, match="argument is deprecated in favor"):
-            lc.plot(axis=[0, 1, 0, 100])
-        assert plt.fignum_exists(1)
         plt.close("all")
 
     def test_plot_axis_limits_arg(self):

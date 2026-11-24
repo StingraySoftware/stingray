@@ -1,0 +1,1 @@
+Stingray now requires Python 3.12 or later and NumPy 2. The other minimum versions rise with them, to the oldest releases that support both: SciPy 1.13, Astropy 6.1 and Matplotlib 3.8.4. The ``py312-test-oldestdeps`` CI job installs exactly these versions.

@@ -119,21 +119,14 @@ class Powerspectrum(Crossspectrum):
         norm="frac",
         gti=None,
         dt=None,
-        lc=None,
+        *,
         skip_checks=False,
         ft_method="fft",
     ):
         self._type = None
-        if lc is not None:
-            warnings.warn("The lc keyword is now deprecated. Use data instead", DeprecationWarning)
-        if data is None:
-            data = lc
-
         good_input = data is not None
         if good_input and not skip_checks:
-            good_input = self.initial_checks(
-                data1=data, data2=data, norm=norm, gti=gti, lc1=lc, lc2=lc, dt=dt
-            )
+            good_input = self.initial_checks(data1=data, data2=data, norm=norm, gti=gti, dt=dt)
 
         norm = norm.lower()
         self.norm = norm
@@ -943,7 +936,7 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
         gti=None,
         silent=False,
         dt=None,
-        lc=None,
+        *,
         large_data=False,
         save_all=False,
         skip_checks=False,
@@ -951,12 +944,6 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
         ft_method="fft",
     ):
         self._type = None
-        if lc is not None:
-            warnings.warn("The lc keyword is now deprecated. Use data instead", DeprecationWarning)
-        # Backwards compatibility: user might have supplied lc instead
-        if data is None:
-            data = lc
-
         good_input = data is not None
         if good_input and not skip_checks:
             good_input = self.initial_checks(
@@ -964,8 +951,6 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
                 data2=data,
                 norm=norm,
                 gti=gti,
-                lc1=lc,
-                lc2=lc,
                 dt=dt,
                 segment_size=segment_size,
             )

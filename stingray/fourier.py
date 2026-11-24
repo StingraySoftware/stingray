@@ -64,11 +64,8 @@ __all__ = [
     "check_powers_for_intrinsic_coherence",
     "estimate_intrinsic_coherence",
     "get_rms_from_rms_norm_periodogram",
-    "rms_calculation",
     "extract_pds_slice_around_freq",
     "avg_cs_from_iterables_quick",
-    "avg_pds_from_events",
-    "avg_cs_from_events",
 ]
 
 
@@ -130,17 +127,15 @@ def integrate_power_in_frequency_range(
 
     freqs_to_integrate = frequency[frequency_mask]
     poisson_power = poisson_power[frequency_mask]
-    correction_ratios = np.ones_like(freqs_to_integrate)
     dfs_to_integrate = df[frequency_mask]
 
-    # The first and last bins are only partially included. We need to correct for the
-    # fraction of the bin actually included.
-    correction_ratios[0] = (
-        freqs_to_integrate[0] + 0.5 * dfs_to_integrate[0] - frequency_range[0]
-    ) / dfs_to_integrate[0]
-    correction_ratios[-1] = (
-        frequency_range[-1] - freqs_to_integrate[-1] + 0.5 * dfs_to_integrate[-1]
-    ) / dfs_to_integrate[-1]
+    # The first and last bins may be only partially included, and a range can also fall
+    # inside a single bin or extend past the first or last bin. Weight each bin by the
+    # fraction of it that overlaps with the frequency range.
+    overlap = np.minimum(freqs_to_integrate + 0.5 * dfs_to_integrate, frequency_range[-1]) - (
+        np.maximum(freqs_to_integrate - 0.5 * dfs_to_integrate, frequency_range[0])
+    )
+    correction_ratios = overlap / dfs_to_integrate
     dfs_to_integrate = dfs_to_integrate * correction_ratios
 
     powers_to_integrate = power[frequency_mask]
@@ -1655,89 +1650,6 @@ def get_rms_from_unnorm_periodogram(
     return get_rms_from_rms_norm_periodogram(powers, poisson, df, M)
 
 
-def rms_calculation(
-    unnorm_powers,
-    min_freq,
-    max_freq,
-    nphots,
-    T,
-    M_freqs,
-    K_freqs,
-    freq_bins,
-    poisson_noise_unnorm,
-    deadtime=0.0,
-):
-    """
-    Compute the fractional rms amplitude in the given power or cross spectrum
-
-    NOTE: all array quantities are already in the correct energy range
-
-    Parameters
-    ----------
-    unnorm_powers : array of float
-        unnormalised power or cross spectrum, the array has already been
-        filtered for the given frequency range
-
-    min_freq : float
-        The lower frequency bound for the calculation (from the freq grid).
-
-    max_freq : float
-        The upper frequency bound for the calculation (from the freq grid).
-
-    nphots : float
-        Number of photons for the full power or cross spectrum
-
-    T : float
-        Time length of the light curve
-
-    M_freq : scalar or array of float
-        If scalar, it is the number of segments in the AveragedCrossspectrum
-        If array, it is the number of segments times the rebinning sample
-        in the given frequency range.
-
-    K_freq : scalar or array of float
-        If scalar, the power or cross spectrum is not rebinned (K_freq = 1)
-        If array,  the power or cross spectrum is rebinned and it is the
-        rebinned sample in the given frequency range.
-
-    freq_bins : integer
-        if the cross or power spectrum is rebinned freq_bins = 1,
-        if it NOT rebinned freq_bins is the number of frequency bins
-        in the given frequency range.
-
-    poisson_noise_unnorm : float
-        This is the Poisson noise level unnormalised.
-
-    Other parameters
-    ----------------
-    deadtime : float
-        Deadtime of the instrument
-
-    Returns
-    -------
-    rms : float
-        The fractional rms amplitude contained between ``min_freq`` and
-        ``max_freq``.
-
-    rms_err : float
-        The error on the fractional rms amplitude.
-
-    """
-    warnings.warn(
-        "The rms_calculation function is deprecated. Use get_rms_from_unnorm_periodogram instead.",
-        DeprecationWarning,
-    )
-    rms_norm_powers = unnorm_powers * 2 * T / nphots**2
-    rms_poisson_noise = poisson_noise_unnorm * 2 * T / nphots**2
-
-    df = 1 / T * K_freqs
-
-    rms, rms_err = get_rms_from_rms_norm_periodogram(
-        rms_norm_powers, rms_poisson_noise, df, M_freqs
-    )
-    return rms, rms_err
-
-
 def error_on_averaged_cross_spectrum(
     cross_power, seg_power, ref_power, n_ave, seg_power_noise, ref_power_noise, common_ref=False
 ):
@@ -2117,7 +2029,7 @@ def _safe_array_slice_indices(input_size, input_center_idx, nbins):
 
     if minbin < 0:
         output_slice = [-minbin, min(nbins, input_size - minbin)]
-        input_slice = [0, minbin + nbins]
+        input_slice = [0, min(input_size, minbin + nbins)]
     elif maxbin > input_size:
         output_slice = [0, nbins - (maxbin - input_size)]
         input_slice = [minbin, input_size]
@@ -2248,6 +2160,20 @@ def shift_and_add(freqs, power_list, f0_list, nbins=100, rebin=None, df=None, M=
     n : np.array
         Number of contributing power spectra at each frequency
 
+    Notes
+    -----
+    Each power spectrum contributes only the bins of the ``nbins`` window that
+    fall inside its frequency range. Near the edges of the window, and especially
+    when ``nbins`` is large compared to the spectra, an output bin can be covered
+    by only some of the spectra, or by none:
+
+    * a bin covered by only some spectra is the (``M``-weighted) average of those
+      spectra alone, and ``n`` is lower there (the sum of ``M`` of the
+      contributing spectra, if ``M`` is given);
+    * a bin covered by no spectrum has power ``NaN`` and ``n`` equal to 0.
+
+    With ``rebin``, a rebinned bin that includes any ``NaN`` bin is also ``NaN``.
+
     Examples
     --------
     >>> power_list = [[2, 5, 2, 2, 2], [1, 1, 5, 1, 1], [3, 3, 3, 5, 3]]
@@ -2257,6 +2183,13 @@ def shift_and_add(freqs, power_list, f0_list, nbins=100, rebin=None, df=None, M=
     >>> assert np.array_equal(n, [2, 3, 3, 3, 2])
     >>> assert np.array_equal(p, [2. , 2. , 5. , 2. , 1.5])
     >>> assert np.allclose(f, [0.05, 0.15, 0.25, 0.35, 0.45])
+
+    With a window wider than the spectra, the outermost bins get no contribution:
+
+    >>> f, p, n = shift_and_add(freqs, power_list, [0.1, 0.2, 0.3], nbins=9)
+    >>> assert np.array_equal(n, [0, 1, 2, 3, 3, 3, 2, 1, 0])
+    >>> assert np.isnan(p[0]) and np.isnan(p[-1])
+    >>> assert np.array_equal(p[1:-1], [3, 2, 2, 5, 2, 1.5, 2])
     """
 
     # Check if the input list of power contains numpy arrays
@@ -3285,14 +3218,6 @@ def _avg_cs_from_ft_iterables(
     return results
 
 
-def avg_pds_from_events(*args, **kwargs):
-    warnings.warn(
-        "avg_pds_from_events is deprecated, use avg_cs_from_timeseries instead", DeprecationWarning
-    )
-
-    return avg_pds_from_timeseries(*args, **kwargs)
-
-
 def avg_pds_from_timeseries(
     times,
     gti,
@@ -4209,13 +4134,6 @@ def avg_cross_bispectrum_from_timeseries(
     if bs is not None:
         bs.meta["gti"] = gti
     return bs
-
-
-def avg_cs_from_events(*args, **kwargs):
-    warnings.warn(
-        "avg_cs_from_events is deprecated, use avg_cs_from_timeseries instead", DeprecationWarning
-    )
-    return avg_cs_from_timeseries(*args, **kwargs)
 
 
 def avg_cs_from_timeseries(

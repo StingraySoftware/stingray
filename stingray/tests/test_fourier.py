@@ -11,13 +11,11 @@ from stingray.fourier import (
     get_event_iterable_from_segments,
     avg_pds_from_timeseries,
     avg_cs_from_timeseries,
-    avg_pds_from_events,
-    avg_cs_from_events,
 )
 from stingray.fourier import normalize_periodograms, estimate_intrinsic_coherence
 from stingray.fourier import raw_coherence, intrinsic_coherence
 from stingray.fourier import bias_term, error_on_averaged_cross_spectrum, unnormalize_periodograms
-from stingray.fourier import impose_symmetry_lsft, lsft_slow, lsft_fast, rms_calculation
+from stingray.fourier import impose_symmetry_lsft, lsft_slow, lsft_fast
 from stingray.fourier import get_average_ctrate, normalize_leahy_from_variance
 from stingray.fourier import integrate_power_in_frequency_range
 from stingray.fourier import get_rms_from_rms_norm_periodogram, get_rms_from_unnorm_periodogram
@@ -140,18 +138,6 @@ def test_avg_pds_imperfect_lc_size():
     assert res.meta["dt"] == 1
 
 
-def test_avg_pds_from_events_warns():
-    times = np.arange(100)
-    fluxes = np.ones(100).astype(float)
-    gti = np.asanyarray([[-0.5, 99.5]])
-    segment_size = 5.99
-    dt = 1
-    with pytest.warns(DeprecationWarning, match="avg_pds_from_events is deprecated"):
-        res = avg_pds_from_events(times, gti, segment_size, dt, fluxes=fluxes)
-    assert res.meta["segment_size"] == 6
-    assert res.meta["dt"] == 1
-
-
 def test_avg_cs_imperfect_lc_size():
     times1 = times2 = np.arange(100)
     fluxes1 = np.ones(100).astype(float)
@@ -162,21 +148,6 @@ def test_avg_cs_imperfect_lc_size():
     res = avg_cs_from_timeseries(
         times1, times2, gti, segment_size, dt, fluxes1=fluxes1, fluxes2=fluxes2
     )
-    assert res.meta["segment_size"] == 6
-    assert res.meta["dt"] == 1
-
-
-def test_avg_cs_from_events_warns():
-    times1 = times2 = np.arange(100)
-    fluxes1 = np.ones(100).astype(float)
-    fluxes2 = np.ones(100).astype(float)
-    gti = np.asanyarray([[-0.5, 99.5]])
-    segment_size = 5.99
-    dt = 1
-    with pytest.warns(DeprecationWarning, match="avg_cs_from_events is deprecated"):
-        res = avg_cs_from_events(
-            times1, times2, gti, segment_size, dt, fluxes1=fluxes1, fluxes2=fluxes2
-        )
     assert res.meta["segment_size"] == 6
     assert res.meta["dt"] == 1
 
@@ -1250,6 +1221,34 @@ class TestIntegration(object):
         assert np.isclose(pow, 2)
         assert np.isclose(powe, np.sqrt(2))
 
+    @pytest.mark.parametrize("freq_range", [[1.1, 1.3], [2.0, 2.2], [1.6, 2.4]])
+    def test_power_integration_within_one_bin(self, freq_range):
+        # A range inside a single bin must use the fraction of that bin it covers
+        pow, powe = integrate_power_in_frequency_range(self.freq, self.power, freq_range, df=1)
+        width = freq_range[1] - freq_range[0]
+        assert np.isclose(pow, 2 * width)
+        assert np.isclose(powe, 2 * width)
+
+    @pytest.mark.parametrize(
+        "freq_range, covered",
+        [
+            # starts and ends mid-bin: 0.8 of bin 1, 0.7 of bin 2
+            ([0.7, 2.2], 1.5),
+            # starts mid-bin, ends on a bin edge
+            ([1.25, 2.5], 1.25),
+            # starts on a bin edge, ends mid-bin
+            ([0.5, 2.1], 1.6),
+            # ranges reaching past the first or last bin only cover the bins
+            # that exist: bin 0 in full plus 0.7 of bin 1, and so on
+            ([-1, 1.2], 1.7),
+            ([2.2, 5], 1.3),
+            ([-1, 5], 4.0),
+        ],
+    )
+    def test_power_integration_partial_edge_bins(self, freq_range, covered):
+        pow, powe = integrate_power_in_frequency_range(self.freq, self.power, freq_range, df=1)
+        assert np.isclose(pow, 2 * covered)
+
     def test_power_integration_precise(self):
         freq_range = [0.5, 2.5]
         df = 1
@@ -1427,31 +1426,6 @@ class TestRMS(object):
         with pytest.raises(ValueError, match="Only 'frac' or 'abs' rms are supported."):
             get_rms_from_unnorm_periodogram(self.pds_shape_raw, 2, 0.1, M=100, kind="asdfkhf")
 
-    def test_deprecation_rms_calculation(self):
-        nphots = 1_000_000
-        rms = 0.5
-        M = 1000
-        _, pds_unnorm = self._prepare_pds_for_rms_tests(rms, nphots, M)
-        with pytest.warns(DeprecationWarning, match="The rms_calculation function is deprecated"):
-            rms, _ = rms_calculation(
-                pds_unnorm,
-                self.freqs.min(),
-                self.freqs.max(),
-                nphots,
-                self.segment_size,
-                M,
-                1,
-                len(self.freqs),
-                poisson_noise_unnorm=nphots,
-            )
-        rms_from_unnorm, rmse_from_unnorm = get_rms_from_unnorm_periodogram(
-            pds_unnorm,
-            nphots,
-            self.df,
-            M=M,
-        )
-        assert np.isclose(rms, rms_from_unnorm, atol=3 * rmse_from_unnorm)
-
 
 @pytest.mark.parametrize("ntimes", [100, 1000])
 def test_shift_and_add_orbit(ntimes):
@@ -1529,6 +1503,20 @@ def test_ft_iterable_from_events_matches_fluxes(n_bin, eps):
         # the output, not a strict bound: allow a margin of 10
         rel_err = np.linalg.norm(ft_ev - ft_fl) / np.linalg.norm(ft_fl)
         assert rel_err < 10 * eps
+
+
+def test_shift_and_add_window_wider_than_spectrum():
+    # nbins larger than the spectrum: the window sticks out on both sides,
+    # and only the bins that overlap the spectrum may receive power
+    from stingray.fourier import shift_and_add
+
+    freqs = np.arange(1.0, 11.0)
+    power_list = np.array([np.ones(10), 2 * np.ones(10)])
+    f, p, n = shift_and_add(freqs, power_list, [5.5, 5.5], nbins=30)
+
+    assert np.array_equal(n, np.r_[np.zeros(10), 2 * np.ones(10), np.zeros(10)])
+    assert np.allclose(p[10:20], 1.5)
+    assert np.all(np.isnan(p[:10])) and np.all(np.isnan(p[20:]))
 
 
 def test_raw_coherence_float32_computed_in_float64():

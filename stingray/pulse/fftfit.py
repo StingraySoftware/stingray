@@ -1,6 +1,10 @@
 import numpy as np
 from scipy.optimize import minimize, brentq
 
+__all__ = [
+    "fftfit",
+]
+
 
 def _find_delay_with_ccf(amp, pha):
     """Measure a phase shift between pulsed profile and template.

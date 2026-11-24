@@ -1,0 +1,1 @@
+``p_to_f`` no longer truncates the frequencies to integers when the periods are given as integers.

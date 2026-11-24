@@ -3060,9 +3060,6 @@ def reduce_precision_if_extended(
 
     def obj2sctype(x):
         """Convert an object to a numpy scalar type."""
-        if hasattr(np, "obj2sctype"):
-            return np.obj2sctype(x)
-
         if isinstance(x, str):
             return "str"
 

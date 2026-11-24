@@ -2,7 +2,6 @@ import warnings
 from collections.abc import Iterable
 
 import numpy as np
-from stingray.utils import simon
 from stingray.utils import lazy_vectorize, float64, int64
 
 __all__ = [
@@ -19,7 +18,6 @@ __all__ = [
     "z2_n_detection_level",
     "z2_n_probability",
     "z2_n_logprobability",
-    "classical_pvalue",
     "chi2_logp",
     "equivalent_gaussian_Nsigma",
     "equivalent_gaussian_Nsigma_from_logp",
@@ -799,96 +797,6 @@ def pds_detection_level(epsilon=0.01, ntrial=1, n_summed_spectra=1, n_rebin=1):
         r = n_rebin
         retlev = stats.chi2.isf(epsilon, 2 * n_summed_spectra * r) / (n_summed_spectra * r)
     return retlev
-
-
-def classical_pvalue(power, nspec):
-    """
-    Note:
-    This is stingray's original implementation of the probability
-    distribution for the power spectrum. It is superseded by the
-    implementation in pds_probability for practical purposes, but
-    remains here for backwards compatibility and for its educational
-    value as a clear, explicit implementation of the correct
-    probability distribution.
-
-    Compute the probability of detecting the current power under
-    the assumption that there is no periodic oscillation in the data.
-
-    This computes the single-trial p-value that the power was
-    observed under the null hypothesis that there is no signal in
-    the data.
-
-    Important: the underlying assumptions that make this calculation valid
-    are:
-
-    1. the powers in the power spectrum follow a chi-square distribution
-    2. the power spectrum is normalized according to [Leahy 1983]_, such
-       that the powers have a mean of 2 and a variance of 4
-    3. there is only white noise in the light curve. That is, there is no
-       aperiodic variability that would change the overall shape of the power
-       spectrum.
-
-    Also note that the p-value is for a *single trial*, i.e. the power
-    currently being tested. If more than one power or more than one power
-    spectrum are being tested, the resulting p-value must be corrected for the
-    number of trials (Bonferroni correction).
-
-    Mathematical formulation in [Groth 1975]_.
-    Original implementation in IDL by Anna L. Watts.
-
-    Parameters
-    ----------
-    power :  float
-        The squared Fourier amplitude of a spectrum to be evaluated
-
-    nspec : int
-        The number of spectra or frequency bins averaged in ``power``.
-        This matters because averaging spectra or frequency bins increases
-        the signal-to-noise ratio, i.e. makes the statistical distributions
-        of the noise narrower, such that a smaller power might be very
-        significant in averaged spectra even though it would not be in a single
-        power spectrum.
-
-    Returns
-    -------
-    pval : float
-        The classical p-value of the observed power being consistent with
-        the null hypothesis of white noise
-
-    References
-    ----------
-
-    * .. [Leahy 1983] https://scixplorer.org/abs/1983ApJ...266..160L/abstract
-    * .. [Groth 1975] https://scixplorer.org/abs/1975ApJS...29..285G/abstract
-
-    """
-
-    warnings.warn("This function was substituted by pds_probability.", DeprecationWarning)
-
-    if not np.isfinite(power):
-        raise ValueError("power must be a finite floating point number!")
-
-    if power < 0:
-        raise ValueError("power must be a positive real number!")
-
-    if not np.isfinite(nspec):
-        raise ValueError("nspec must be a finite integer number")
-
-    if nspec < 1:
-        raise ValueError("nspec must be larger or equal to 1")
-
-    if not np.isclose(nspec % 1, 0):
-        raise ValueError("nspec must be an integer number!")
-
-    # If the power is really big, it's safe to say it's significant,
-    # and the p-value will be nearly zero
-    if (power * nspec) > 30000:
-        simon("Probability of no signal too minuscule to calculate.")
-        return 0.0
-
-    else:
-        pval = _pavnosigfun(power, nspec)
-        return pval
 
 
 def _pavnosigfun(power, nspec):

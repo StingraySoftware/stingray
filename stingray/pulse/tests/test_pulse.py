@@ -16,6 +16,14 @@ def _template_fun(phase, ph0, amplitude, baseline=0):
     return baseline + amplitude * np.cos((phase - ph0) * 2 * np.pi)
 
 
+def test_p_to_f_integer_input():
+    # Integer periods must not truncate the frequencies
+    assert np.allclose(p_to_f(2), [0.5])
+    assert np.allclose(p_to_f(2, 1), [0.5, -0.25])
+    # long double inputs keep their precision
+    assert p_to_f(np.longdouble(2), 1).dtype == np.longdouble
+
+
 def test_p_to_f_warns():
     with pytest.warns(UserWarning, match="Derivatives above third are not supported"):
         assert np.allclose(p_to_f(1, 2, 3, 4, 32, 22), [1, -2, 5, -16, 0, 0])
@@ -294,15 +302,10 @@ class TestAll(object):
             fold_events(times, 1, nbin=nbin, mode="pdm")
 
     def test_zn_2(self):
-        with pytest.warns(DeprecationWarning) as record:
-            np.testing.assert_almost_equal(z_n(np.arange(1), n=1, norm=1), 2)
-            np.testing.assert_almost_equal(z_n(np.arange(1), n=2, norm=1), 4)
-            np.testing.assert_almost_equal(z_n(np.arange(2), n=2, norm=1), 8)
-            np.testing.assert_almost_equal(z_n(np.arange(2) + 0.5, n=2, norm=1), 8)
-
-        assert np.any(
-            ["The use of ``z_n(phase, norm=profile)``" in r.message.args[0] for r in record]
-        )
+        np.testing.assert_almost_equal(z_n(np.arange(1), n=1), 2)
+        np.testing.assert_almost_equal(z_n(np.arange(1), n=2), 4)
+        np.testing.assert_almost_equal(z_n(np.arange(2), n=2), 8)
+        np.testing.assert_almost_equal(z_n(np.arange(2) + 0.5, n=2), 8)
 
     def test_get_TOA1(self):
         np.random.seed(1234)
@@ -443,17 +446,6 @@ class TestZandH(object):
         prof512 = np.zeros(512)
         ksp, zp = z_n_binned_events_all(prof512, nmax=10)
         assert np.allclose(zp, 0)
-
-    def test_deprecated_norm_use(self):
-        prof512, bins = self.prof512, self.bins
-        with pytest.warns(DeprecationWarning) as record:
-            z = z_n(prof512, n=3, datatype="binned")
-            z_dep = z_n(np.zeros(prof512.size), norm=prof512, n=3, datatype="binned")
-            np.testing.assert_almost_equal(z, z_dep)
-
-        assert np.any(
-            ["The use of ``z_n(phase, norm=profile)``" in r.message.args[0] for r in record]
-        )
 
     def test_zn_gauss(self):
         nbin = 512
