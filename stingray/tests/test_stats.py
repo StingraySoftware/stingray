@@ -76,6 +76,7 @@ def test_zn_detection_level():
 
 
 def test_htest_detection_level():
+    """H-test detection level matches -ln(epsilon)/0.4 and multi-trial correction."""
     np.testing.assert_almost_equal(htest_detection_level(0.01), -np.log(0.01) / 0.4)
     epsilon_corr = p_single_trial_from_p_multitrial(0.01, 2)
     np.testing.assert_almost_equal(
@@ -108,6 +109,7 @@ def test_zn_probability(ntrial):
 
 @pytest.mark.parametrize("ntrial", [1, 10, 100, 1000, 100000])
 def test_htest_probability(ntrial):
+    """H-test probability and log-probability invert htest_detection_level across ntrial."""
     detlev = htest_detection_level(0.1, ntrial=ntrial)
     np.testing.assert_almost_equal(htest_probability(detlev, ntrial=ntrial), 0.1)
     np.testing.assert_almost_equal(htest_logprobability(detlev, ntrial=ntrial), np.log(0.1))
@@ -180,7 +182,9 @@ class TestClassicalSignificances(object):
         assert np.allclose(logp, np.log(p))
 
     def test_compare_htest_logprob_with_prob(self):
-        stat = np.random.uniform(5, 200, 5)
+        """htest_logprobability equals the natural log of htest_probability."""
+        rng = np.random.default_rng(0)
+        stat = rng.uniform(5, 200, 5)
         logp = htest_logprobability(stat)
         p = htest_probability(stat)
         assert np.allclose(logp, np.log(p))

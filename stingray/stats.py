@@ -675,18 +675,21 @@ def htest_logprobability(h, ntrial=1):
     r"""Calculate the log-probability of an H-test statistic due to noise.
 
     Uses the calibrated asymptotic distribution from de Jager & Büsching
-    (2010, A&A, 517, L9):
+    (2010, A&A, 517, L9) for the standard H-test with ``nmax=20``:
 
     .. math::
 
         P(>H) = \exp(-0.4 H)
 
-    which also holds for the weighted H-test of Kerr (2011, ApJ, 732, 38).
+    Because this calibration depends only on the asymptotic :math:`\chi^2_{2m}`
+    null distribution of :math:`Z^2_m`, it also holds for the weighted H-test
+    of Kerr (2011, ApJ, 732, 38, Section 2.2), and remains a close
+    approximation for any ``nmax >= 10`` (Kerr 2011, Appendix).
 
     Parameters
     ----------
     h : float or array-like
-        An H-test statistic value
+        An H-test statistic value (computed with ``nmax=20``)
     ntrial : int, optional, default 1
         The number of trials executed to find this profile
 
@@ -709,13 +712,14 @@ def htest_probability(h, ntrial=1):
     r"""Calculate the probability of an H-test statistic due to noise.
 
     Uses the calibrated asymptotic distribution from de Jager & Büsching
-    (2010, A&A, 517, L9), :math:`P(>H) = \exp(-0.4 H)`, which also holds
-    for the weighted H-test of Kerr (2011, ApJ, 732, 38).
+    (2010, A&A, 517, L9), :math:`P(>H) = \exp(-0.4 H)`, which holds for the
+    standard H-test with ``nmax=20`` and carries over to the weighted H-test
+    (Kerr 2011, ApJ, 732, 38, Section 2.2; see also Appendix for ``nmax >= 10``).
 
     Parameters
     ----------
     h : float or array-like
-        An H-test statistic value
+        An H-test statistic value (computed with ``nmax=20``)
     ntrial : int, optional, default 1
         The number of trials executed to find this profile
 
@@ -737,8 +741,8 @@ def htest_detection_level(epsilon=0.01, ntrial=1):
     r"""Return the detection level for the H-test statistic.
 
     Inverts the asymptotic distribution :math:`P(>H) = \exp(-0.4 H)` from
-    de Jager & Büsching (2010, A&A, 517, L9), which also applies to the
-    weighted H-test of Kerr (2011, ApJ, 732, 38).
+    de Jager & Büsching (2010, A&A, 517, L9) for ``nmax=20``, which also
+    applies to the weighted H-test (Kerr 2011, ApJ, 732, 38, Section 2.2).
 
     Parameters
     ----------

@@ -44,7 +44,7 @@ def _default_value_if_no_key(dictionary, key, default):
         return default
 
 
-def _per_event_array(values, size, name):
+def _per_event_array(values, size, name, non_negative=False):
     """Return ``values`` as a float array with one finite element per event.
 
     A scalar is broadcast to all events.
@@ -57,6 +57,8 @@ def _per_event_array(values, size, name):
         The number of events
     name : str
         The name of the quantity, used in error messages
+    non_negative : bool, optional, default False
+        If True, require all values to be >= 0
 
     Returns
     -------
@@ -74,6 +76,10 @@ def _per_event_array(values, size, name):
     Traceback (most recent call last):
     ...
     ValueError: weights must be finite
+    >>> _per_event_array([-1, 2], 2, "variances", non_negative=True)
+    Traceback (most recent call last):
+    ...
+    ValueError: variances must be non-negative
     """
     values = np.asarray(values, dtype=float)
     if values.ndim == 0:
@@ -84,6 +90,8 @@ def _per_event_array(values, size, name):
         )
     if not np.all(np.isfinite(values)):
         raise ValueError(f"{name} must be finite")
+    if non_negative and np.any(values < 0):
+        raise ValueError(f"{name} must be non-negative")
     return values
 
 
@@ -376,7 +384,9 @@ def fold_events(
         if variances is None:
             raw_profile_var = raw_profile
         else:
-            point_variances = _per_event_array(variances, np.size(times), "variances")
+            point_variances = _per_event_array(
+                variances, np.size(times), "variances", non_negative=True
+            )
             raw_profile_var, _ = np.histogram(phases, bins=bin_edges, weights=point_variances)
         raw_profile_err = np.sqrt(raw_profile_var)
 
@@ -596,7 +606,17 @@ def z_n_binned_events_all(profile, nmax=20, total_variance=None):
     cached_cos = _cached_cos_harmonics(profile.size, nmax)
     ks = np.arange(1, nmax + 1, dtype=int)
 
-    total = np.sum(profile) if total_variance is None else total_variance
+    if total_variance is None:
+        total = np.sum(profile)
+    else:
+        tv = np.asarray(total_variance, dtype=float)
+        if tv.ndim != 0:
+            raise ValueError("total_variance must be a scalar")
+        total = float(tv)
+        if not np.isfinite(total):
+            raise ValueError("total_variance must be finite")
+        if total < 0:
+            raise ValueError("total_variance must be non-negative")
     if total == 0:
         return ks, np.zeros(nmax)
     all_zs = _z_n_fast_cached_sums_unnorm(profile, ks, cached_sin, cached_cos)

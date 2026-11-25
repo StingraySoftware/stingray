@@ -1,2 +1,3 @@
 In ``fold_events(..., mode="ef")``, the ``variances`` keyword is now used to compute the uncertainty of each phase bin as the square root of the sum of the variances of the events in that bin, instead of always assuming Poisson counts (``sqrt(profile)``). When ``variances`` is not given, the default Poisson errors are unchanged.
 
+``z_n_search`` and ``epoch_folding_search`` now normalize folded profiles using the folded bin variances (``err**2``) from ``fold_events`` rather than assuming Poisson counts from ``sum(profile)`` or ``mean(profile)``, which keeps weighted searches and ``expocorr=True`` searches consistent with the null :math:`\chi^2` distribution.
