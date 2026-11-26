@@ -44,6 +44,57 @@ def _default_value_if_no_key(dictionary, key, default):
         return default
 
 
+def _per_event_array(values, size, name, non_negative=False):
+    """Return ``values`` as a float array with one finite element per event.
+
+    A scalar is broadcast to all events.
+
+    Parameters
+    ----------
+    values : float or array-like
+        The per-event values (e.g. weights or variances)
+    size : int
+        The number of events
+    name : str
+        The name of the quantity, used in error messages
+    non_negative : bool, optional, default False
+        If True, require all values to be >= 0
+
+    Returns
+    -------
+    values : ``numpy.ndarray``
+        Array of ``size`` floats
+
+    Examples
+    --------
+    >>> assert np.allclose(_per_event_array(2, 3, "weights"), [2, 2, 2])
+    >>> _per_event_array([1, 2], 3, "weights")
+    Traceback (most recent call last):
+    ...
+    ValueError: weights must be a scalar or have one element per event (3), got 2
+    >>> _per_event_array([1, np.nan], 2, "weights")
+    Traceback (most recent call last):
+    ...
+    ValueError: weights must be finite
+    >>> _per_event_array([-1, 2], 2, "variances", non_negative=True)
+    Traceback (most recent call last):
+    ...
+    ValueError: variances must be non-negative
+    """
+    values = np.asarray(values, dtype=float)
+    if values.ndim == 0:
+        values = np.full(size, values)
+    elif values.shape != (size,):
+        raise ValueError(
+            f"{name} must be a scalar or have one element per event ({size}), got {values.size}"
+        )
+    if not np.all(np.isfinite(values)):
+        raise ValueError(f"{name} must be finite")
+    if non_negative and np.any(values < 0):
+        raise ValueError(f"{name} must be non-negative")
+    return values
+
+
 def p_to_f(*period_derivatives):
     """Convert periods into frequencies, and vice versa.
 
@@ -263,6 +314,16 @@ def fold_events(
         sum of the data points in each phase bin, for "pdm", the variance
         in each phase bin
 
+    variances : float or array of floats, optional, default None
+        The variance of each data point. In ``"ef"`` mode, the variances of
+        the points falling in each phase bin are summed to give the
+        uncertainty on the profile. If None, the data are treated as Poisson
+        counts, so that the variance of each point equals its weight: this is
+        correct for unweighted photon events and for light curves in counts.
+        For photon events carrying probability weights (Kerr 2011, ApJ 732,
+        38), the correct choice is ``variances=weights**2``. In ``"pdm"``
+        mode, the inverse variances are used to weight each data point.
+
     Returns
     -------
     phase_bins : array of floats
@@ -273,6 +334,19 @@ def fold_events(
 
     profile_err : array of floats
         The uncertainties on the pulse profile
+
+    Examples
+    --------
+    Photons with probability weights: the profile errors follow the
+    weights, rather than the (incorrect) square root of the weighted counts.
+
+    >>> times = np.array([0.1, 0.35, 0.6, 0.85, 1.1, 1.35])
+    >>> weights = np.array([0.5, 0.2, 1.0, 0.1, 0.5, 0.3])
+    >>> _, prof, err = fold_events(
+    ...     times, 1, nbin=4, weights=weights, variances=weights**2
+    ... )
+    >>> assert np.allclose(prof, [1.0, 0.5, 1.0, 0.1])
+    >>> assert np.allclose(err, np.sqrt([0.5, 0.13, 1.0, 0.01]))
     """
 
     # If no key is passed, *or gti is None*, defaults to the
@@ -301,9 +375,20 @@ def fold_events(
     )
 
     if mode == "ef":
-        raw_profile, bins = np.histogram(phases, bins=np.linspace(0, 1, nbin + 1), weights=weights)
-        # TODO: this is wrong. Need to extend this to non-1 weights
-        raw_profile_err = np.sqrt(raw_profile)
+        bin_edges = np.linspace(0, 1, nbin + 1)
+        raw_profile, bins = np.histogram(phases, bins=bin_edges, weights=weights)
+
+        # Each phase bin is a sum of independent data points, so its variance is
+        # the sum of their variances. When these are not given, the data points
+        # are Poisson counts, whose variance is the value itself.
+        if variances is None:
+            raw_profile_var = raw_profile
+        else:
+            point_variances = _per_event_array(
+                variances, np.size(times), "variances", non_negative=True
+            )
+            raw_profile_var, _ = np.histogram(phases, bins=bin_edges, weights=point_variances)
+        raw_profile_err = np.sqrt(raw_profile_var)
 
         if expocorr:
             expo_norm = phase_exposure(start_phase, stop_phase, 1, nbin, gti=gti_phases)
@@ -487,7 +572,7 @@ def _z_n_fast_cached_sums_unnorm(prof, ks, cached_sin, cached_cos):
     return all_zs
 
 
-def z_n_binned_events_all(profile, nmax=20):
+def z_n_binned_events_all(profile, nmax=20, total_variance=None):
     """Z^2_n statistic for multiple harmonics and binned events
 
     See Bachetti+2021, arXiv:2012.11397
@@ -497,8 +582,17 @@ def z_n_binned_events_all(profile, nmax=20):
     profile : array of floats
         The folded pulse profile (containing the number of
         photons falling in each pulse bin)
-    n : int
-        Number of harmonics, including the fundamental
+    nmax : int
+        Maximum number of harmonics, including the fundamental
+
+    Other Parameters
+    ----------------
+    total_variance : float, optional, default None
+        The sum of the variances of all the events that were folded into
+        ``profile``, which sets the normalization of the statistic. If None,
+        the events are unweighted photons and this is the total number of
+        counts, ``sum(profile)``. For a profile folded from photons with
+        probability weights ``w``, use ``sum(w**2)`` (Kerr 2011, ApJ 732, 38).
 
     Returns
     -------
@@ -507,11 +601,22 @@ def z_n_binned_events_all(profile, nmax=20):
     z2_n : float
         The value of the statistic for all ks
     """
+    profile = np.asanyarray(profile, dtype=float)
     cached_sin = _cached_sin_harmonics(profile.size, nmax)
     cached_cos = _cached_cos_harmonics(profile.size, nmax)
     ks = np.arange(1, nmax + 1, dtype=int)
 
-    total = np.sum(profile)
+    if total_variance is None:
+        total = np.sum(profile)
+    else:
+        tv = np.asarray(total_variance, dtype=float)
+        if tv.ndim != 0:
+            raise ValueError("total_variance must be a scalar")
+        total = float(tv)
+        if not np.isfinite(total):
+            raise ValueError("total_variance must be finite")
+        if total < 0:
+            raise ValueError("total_variance must be non-negative")
     if total == 0:
         return ks, np.zeros(nmax)
     all_zs = _z_n_fast_cached_sums_unnorm(profile, ks, cached_sin, cached_cos)
@@ -550,15 +655,76 @@ def z_n_gauss_all(profile, err, nmax=20):
 
 
 @jit(nopython=True)
-def z_n_events_all(phase, nmax=20):
-    """Z^2_n statistics, a` la Buccheri+83, A&A, 128, 245, eq. 2.
+def _z_n_events_all_unnorm(phase, weights, nmax):
+    r"""Cumulative, unnormalized power of the first ``nmax`` harmonics of events.
+
+    Computes, for k = 1, ..., nmax,
+
+    .. math::
+
+        \sum_{j=1}^{k} \left[\left(\sum_i w_i \cos 2\pi j\phi_i\right)^2 +
+                              \left(\sum_i w_i \sin 2\pi j\phi_i\right)^2\right]
+
+    The harmonics of each event are generated from the fundamental through the
+    angle-addition formulas, so that only one sine and one cosine are evaluated
+    per event, independent of ``nmax``.
+
+    Parameters
+    ----------
+    phase : ``numpy.array`` of floats
+        The phases of the events
+    weights : ``numpy.array`` of floats
+        The weight of each event
+    nmax : int
+        Maximum number of harmonics, including the fundamental
+    """
+    all_zs = np.zeros(nmax)
+    twopiphase = 2 * np.pi * phase
+    cos_1 = np.cos(twopiphase)
+    sin_1 = np.sin(twopiphase)
+    cos_k = cos_1.copy()
+    sin_k = sin_1.copy()
+
+    total_sum = 0.0
+    for k in range(nmax):
+        total_sum += np.sum(weights * cos_k) ** 2 + np.sum(weights * sin_k) ** 2
+        all_zs[k] = total_sum
+        # cos and sin of the (k+1)-th harmonic, from the k-th and the fundamental
+        cos_k, sin_k = cos_k * cos_1 - sin_k * sin_1, sin_k * cos_1 + cos_k * sin_1
+
+    return all_zs
+
+
+def z_n_events_all(phase, nmax=20, weights=None):
+    r"""Z^2_n statistics, a` la Buccheri+83, A&A, 128, 245, eq. 2.
+
+    If ``weights`` are given, it calculates the weighted version of the
+    statistic from Kerr 2011, ApJ 732, 38:
+
+    .. math::
+
+        Z^2_n = \frac{2}{\sum_i w_i^2} \sum_{k=1}^{n}
+        \left[\left(\sum_i w_i \cos 2\pi k\phi_i\right)^2 +
+               \left(\sum_i w_i \sin 2\pi k\phi_i\right)^2\right]
+
+    which, in the absence of a signal, has the same :math:`\chi^2_{2n}`
+    distribution as the unweighted statistic. Weighting each photon by the
+    probability that it comes from the source, instead of applying hard cuts
+    in energy or position, can substantially increase the sensitivity to faint
+    pulsations.
 
     Parameters
     ----------
     phase : array of floats
         The phases of the events
-    n : int, default 2
-        Number of harmonics, including the fundamental
+    nmax : int, default 20
+        Maximum number of harmonics, including the fundamental
+
+    Other Parameters
+    ----------------
+    weights : float or array of floats, optional, default None
+        The weight of each event, e.g. the probability that it comes from the
+        source. If None, all events have unit weight.
 
     Returns
     -------
@@ -566,23 +732,37 @@ def z_n_events_all(phase, nmax=20):
         Harmonic numbers, from 1 to nmax (included)
     z2_n : float
         The Z^2_n statistic for all ks
+
+    Examples
+    --------
+    With unit weights, the weighted statistic is the standard one.
+
+    >>> rng = np.random.default_rng(42)
+    >>> phase = rng.normal(0.5, 0.1, 1000) % 1
+    >>> ks, z = z_n_events_all(phase, nmax=4)
+    >>> ks_w, z_w = z_n_events_all(phase, nmax=4, weights=np.ones(phase.size))
+    >>> assert np.allclose(z, z_w)
+
+    Weights rescale the statistic only through their relative values.
+
+    >>> _, z_w2 = z_n_events_all(phase, nmax=4, weights=2 * np.ones(phase.size))
+    >>> assert np.allclose(z, z_w2)
     """
-    all_zs = np.zeros(nmax)
+    phase = np.asanyarray(phase, dtype=float).ravel()
     ks = np.arange(1, nmax + 1)
-    nphot = phase.size
+    if weights is None:
+        weights = np.ones(phase.size)
+    else:
+        weights = _per_event_array(weights, phase.size, "weights")
 
-    total_sum = 0
-    phase = phase * 2 * np.pi
+    norm = np.sum(weights**2)
+    if norm == 0:
+        return ks, np.zeros(nmax)
 
-    for k in ks:
-        local_z = np.sum(np.cos(k * phase)) ** 2 + np.sum(np.sin(k * phase)) ** 2
-        total_sum += local_z
-        all_zs[k - 1] = total_sum
-
-    return ks, 2 / nphot * all_zs
+    return ks, 2 / norm * _z_n_events_all_unnorm(phase, weights, nmax)
 
 
-def z_n_binned_events(profile, n):
+def z_n_binned_events(profile, n, total_variance=None):
     """Z^2_n statistic for pulse profiles from binned events
 
     See Bachetti+2021, arXiv:2012.11397
@@ -595,12 +775,18 @@ def z_n_binned_events(profile, n):
     n : int
         Number of harmonics, including the fundamental
 
+    Other Parameters
+    ----------------
+    total_variance : float, optional, default None
+        The sum of the variances of all the events folded into ``profile``.
+        See :func:`~stingray.pulse.z_n_binned_events_all`.
+
     Returns
     -------
     z2_n : float
         The value of the statistic
     """
-    _, all_zs = z_n_binned_events_all(profile, nmax=n)
+    _, all_zs = z_n_binned_events_all(profile, nmax=n, total_variance=total_variance)
     return all_zs[-1]
 
 
@@ -627,8 +813,11 @@ def z_n_gauss(profile, err, n):
     return all_zs[-1]
 
 
-def z_n_events(phase, n):
+def z_n_events(phase, n, weights=None):
     """Z^2_n statistics, a` la Buccheri+83, A&A, 128, 245, eq. 2.
+
+    If ``weights`` are given, uses the weighted formulation of
+    Kerr 2011, ApJ 732, 38 (see :func:`~stingray.pulse.z_n_events_all`).
 
     Parameters
     ----------
@@ -637,20 +826,28 @@ def z_n_events(phase, n):
     n : int, default 2
         Number of harmonics, including the fundamental
 
+    Other Parameters
+    ----------------
+    weights : float or array of floats, optional, default None
+        The weight of each event, e.g. the probability that it comes from the
+        source. If None, all events have unit weight.
+
     Returns
     -------
     z2_n : float
         The Z^2_n statistic
     """
-    ks, all_zs = z_n_events_all(phase, nmax=n)
+    ks, all_zs = z_n_events_all(phase, nmax=n, weights=weights)
     return all_zs[-1]
 
 
-def z_n(data, n, datatype="events", err=None):
+def z_n(data, n, datatype="events", err=None, weights=None, total_variance=None):
     """Z^2_n statistics, a` la Buccheri+83, A&A, 128, 245, eq. 2.
 
     If datatype is "binned" or "gauss", uses the formulation from
-    Bachetti+2021, ApJ, arxiv:2012.11397
+    Bachetti+2021, ApJ, arxiv:2012.11397. If datatype is "events" and
+    ``weights`` are given, uses the weighted formulation from
+    Kerr 2011, ApJ 732, 38.
 
     Parameters
     ----------
@@ -668,21 +865,40 @@ def z_n(data, n, datatype="events", err=None):
     err : float
         The uncertainty on the pulse profile fluxes (required for
         datatype="gauss", ignored otherwise)
+    weights : float or array of floats, optional, default None
+        The weight of each event, e.g. the probability that it comes from the
+        source (only for datatype="events")
+    total_variance : float, optional, default None
+        The sum of the variances of all the events folded into ``data``
+        (only for datatype="binned"). See :func:`~stingray.pulse.z_n_binned_events_all`.
 
     Returns
     -------
     z2_n : float
         The Z^2_n statistics of the events.
+
+    Examples
+    --------
+    Down-weighting events which are likely background increases the
+    significance of a faint pulsation.
+
+    >>> rng = np.random.default_rng(1)
+    >>> source = rng.normal(0.5, 0.05, 200) % 1
+    >>> background = rng.uniform(0, 1, 2000)
+    >>> phase = np.concatenate([source, background])
+    >>> weights = np.concatenate([np.full(200, 0.9), np.full(2000, 0.1)])
+    >>> assert z_n(phase, n=2, weights=weights) > z_n(phase, n=2)
     """
     data = np.asanyarray(data)
 
+    _check_weights_only_with_events(weights, datatype, total_variance=total_variance)
     if data.size == 0:
         return 0
 
     if datatype == "binned":
-        return z_n_binned_events(data, n)
+        return z_n_binned_events(data, n, total_variance=total_variance)
     elif datatype == "events":
-        return z_n_events(data, n)
+        return z_n_events(data, n, weights=weights)
     elif datatype == "gauss":
         if err is None:
             raise ValueError("If datatype='gauss', you need to specify an uncertainty (err)")
@@ -691,11 +907,43 @@ def z_n(data, n, datatype="events", err=None):
     raise ValueError(f"Unknown datatype requested for Z_n ({datatype})")
 
 
-def htest(data, nmax=20, datatype="binned", err=None):
+def _check_weights_only_with_events(weights, datatype, total_variance=None):
+    """Raise if event weights or binned total_variance do not match ``datatype``.
+
+    Examples
+    --------
+    >>> _check_weights_only_with_events(None, "binned")
+    >>> _check_weights_only_with_events([1, 2], "events")
+    >>> _check_weights_only_with_events([1, 2], "binned")
+    Traceback (most recent call last):
+    ...
+    ValueError: weights can only be used with datatype='events' ...
+    >>> _check_weights_only_with_events(None, "events", total_variance=10.0)
+    Traceback (most recent call last):
+    ...
+    ValueError: total_variance can only be used with datatype='binned' ...
+    """
+    if weights is not None and datatype != "events":
+        raise ValueError(
+            "weights can only be used with datatype='events' (got "
+            f"datatype='{datatype}'). For a profile folded from weighted events, "
+            "pass total_variance=np.sum(weights**2) with datatype='binned'"
+        )
+    if total_variance is not None and datatype != "binned":
+        raise ValueError(
+            f"total_variance can only be used with datatype='binned' (got datatype='{datatype}')"
+        )
+
+
+def htest(data, nmax=20, datatype="binned", err=None, weights=None, total_variance=None):
     """htest-test statistic, a` la De Jager+89, A&A, 221, 180D, eq. 2.
 
     If datatype is "binned" or "gauss", uses the formulation from
-    Bachetti+2021, ApJ, arxiv:2012.11397
+    Bachetti+2021, ApJ, arxiv:2012.11397. If datatype is "events" and
+    ``weights`` are given, it is the weighted H-test of Kerr 2011, ApJ 732,
+    38, built on the weighted :math:`Z^2_n` (see
+    :func:`~stingray.pulse.z_n_events_all`), with false-alarm probability given
+    by :func:`~stingray.stats.htest_probability`.
 
     Parameters
     ----------
@@ -713,6 +961,12 @@ def htest(data, nmax=20, datatype="binned", err=None):
     err : float
         The uncertainty on the pulse profile fluxes (required for
         datatype="gauss", ignored otherwise)
+    weights : float or array of floats, optional, default None
+        The weight of each event, e.g. the probability that it comes from the
+        source (only for datatype="events")
+    total_variance : float, optional, default None
+        The sum of the variances of all the events folded into ``data``
+        (only for datatype="binned"). See :func:`~stingray.pulse.z_n_binned_events_all`.
 
     Returns
     -------
@@ -720,11 +974,22 @@ def htest(data, nmax=20, datatype="binned", err=None):
         The best number of harmonics that describe the signal.
     htest : float
         The htest statistics of the events.
+
+    Examples
+    --------
+    >>> rng = np.random.default_rng(3)
+    >>> phase = np.concatenate([rng.normal(0.2, 0.02, 100) % 1, rng.uniform(0, 1, 1000)])
+    >>> weights = np.concatenate([np.full(100, 0.8), np.full(1000, 0.2)])
+    >>> m, h = htest(phase, nmax=20, datatype="events", weights=weights)
+    >>> m_unw, h_unw = htest(phase, nmax=20, datatype="events")
+    >>> assert h > h_unw
     """
+    _check_weights_only_with_events(weights, datatype, total_variance=total_variance)
+
     if datatype == "binned":
-        ks, zs = z_n_binned_events_all(data, nmax)
+        ks, zs = z_n_binned_events_all(data, nmax, total_variance=total_variance)
     elif datatype == "events":
-        ks, zs = z_n_events_all(data, nmax)
+        ks, zs = z_n_events_all(data, nmax, weights=weights)
     elif datatype == "gauss":
         if err is None:
             raise ValueError("If datatype='gauss', you need to specify an uncertainty (err)")

@@ -370,3 +370,130 @@ class TestAll(object):
         assert np.allclose(maxstatbin, frequencies[minbin], atol=0.1 / self.tseg)
         maxfdot = fdot.flatten()[np.argmax(stat)]
         assert np.allclose(maxfdot, 0.0, atol=0.1 / self.tseg)
+
+    def test_z_n_search_photon_probability_weights(self):
+        """Test Kerr (2011) photon probability weights in z_n_search."""
+        from stingray.pulse import z_n
+
+        rng = np.random.default_rng(12345)
+        nback = len(self.event_times) * 2
+        bg_times = rng.uniform(self.tstart, self.tend, nback)
+        all_times = np.concatenate([self.event_times, bg_times])
+        all_weights = np.concatenate([np.full(len(self.event_times), 0.9), np.full(nback, 0.05)])
+        order = np.argsort(all_times)
+        all_times = all_times[order]
+        all_weights = all_weights[order]
+
+        frequencies = np.arange(9.8, 9.99, 0.1 / self.tseg)
+        freq, stat_w = z_n_search(
+            all_times,
+            frequencies,
+            nbin=128,
+            nharm=2,
+            weights=all_weights,
+            variances=all_weights**2,
+        )
+        _, stat_unw = z_n_search(all_times, frequencies, nbin=128, nharm=2)
+
+        minbin = np.argmin(np.abs(frequencies - self.pulse_frequency))
+        assert np.isclose(freq[np.argmax(stat_w)], frequencies[minbin], atol=0.1 / self.tseg)
+        assert np.max(stat_w) > np.max(stat_unw)
+
+        # At the pulse frequency, the binned weighted search matches the unbinned weighted Z^2_n
+        phases = ((all_times - all_times[0]) * self.pulse_frequency) % 1
+        _, stat_at_pulse = z_n_search(
+            all_times,
+            [self.pulse_frequency],
+            nbin=256,
+            nharm=2,
+            weights=all_weights,
+            variances=all_weights**2,
+        )
+        z_exact = z_n(phases, n=2, datatype="events", weights=all_weights)
+        assert np.isclose(stat_at_pulse[0], z_exact, rtol=0.02)
+
+    def test_z_n_search_expocorr_variances(self):
+        """With expocorr=True, variances=weights matches default and stays chi^2-calibrated."""
+        import warnings
+
+        rng = np.random.default_rng(0)
+        gti = np.array([[0.0, 3.3], [4.1, 7.6], [8.0, 10.0]])
+        t = np.sort(rng.uniform(0, 10, 5000))
+        t = t[((t > 0) & (t < 3.3)) | ((t > 4.1) & (t < 7.6)) | ((t > 8) & (t < 10))]
+        w = np.ones(t.size)
+        kw = dict(nbin=16, nharm=2, expocorr=True, gti=gti, weights=w)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            _, z_default = z_n_search(t, [0.21], **kw)
+            _, z_var = z_n_search(t, [0.21], variances=w, **kw)
+        np.testing.assert_allclose(z_var, z_default)
+
+        # Verify null distribution under expocorr=True has mean ~ 2 * nharm = 4
+        rng_mc = np.random.default_rng(42)
+        zs = []
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            for _ in range(300):
+                ts = np.sort(rng_mc.uniform(0, 10, 2000))
+                ts = ts[
+                    ((ts > 0) & (ts < 3.3)) | ((ts > 4.1) & (ts < 7.6)) | ((ts > 8) & (ts < 10))
+                ]
+                ws = rng_mc.uniform(0, 1, ts.size)
+                _, z_mc = z_n_search(
+                    ts,
+                    [0.21],
+                    nbin=16,
+                    nharm=2,
+                    expocorr=True,
+                    gti=gti,
+                    weights=ws,
+                    variances=ws**2,
+                )
+                zs.append(z_mc[0])
+        assert np.isclose(np.mean(zs), 4.0, rtol=0.15)
+
+    def test_epoch_folding_search_photon_probability_weights(self):
+        """Epoch folding with photon probability weights and variances=w**2 boosts detection."""
+        rng = np.random.default_rng(12345)
+        nback = len(self.event_times) * 2
+        bg_times = rng.uniform(self.tstart, self.tend, nback)
+        all_times = np.concatenate([self.event_times, bg_times])
+        all_weights = np.concatenate([np.full(len(self.event_times), 0.9), np.full(nback, 0.05)])
+        order = np.argsort(all_times)
+        all_times = all_times[order]
+        all_weights = all_weights[order]
+
+        frequencies = np.arange(9.8, 9.99, 0.1 / self.tseg)
+        freq, stat_w = epoch_folding_search(
+            all_times, frequencies, nbin=16, weights=all_weights, variances=all_weights**2
+        )
+        _, stat_unw = epoch_folding_search(all_times, frequencies, nbin=16)
+
+        minbin = np.argmin(np.abs(frequencies - self.pulse_frequency))
+        assert np.isclose(freq[np.argmax(stat_w)], frequencies[minbin], atol=0.1 / self.tseg)
+        assert np.max(stat_w) > np.max(stat_unw)
+
+        # Plain Poisson weights with variances=weights match the default Poisson path
+        _, stat_def = epoch_folding_search(self.times, frequencies, nbin=16, weights=self.counts)
+        _, stat_var = epoch_folding_search(
+            self.times, frequencies, nbin=16, weights=self.counts, variances=self.counts
+        )
+        np.testing.assert_allclose(stat_var, stat_def)
+
+    def test_epoch_folding_search_expocorr_variances(self):
+        """With expocorr=True, epoch_folding_search with variances=weights matches default."""
+        import warnings
+
+        rng = np.random.default_rng(0)
+        gti = np.array([[0.0, 3.3], [4.1, 7.6], [8.0, 10.0]])
+        t = np.sort(rng.uniform(0, 10, 5000))
+        t = t[((t > 0) & (t < 3.3)) | ((t > 4.1) & (t < 7.6)) | ((t > 8) & (t < 10))]
+        w = np.ones(t.size)
+        kw = dict(nbin=16, expocorr=True, gti=gti, weights=w)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            _, ef_default = epoch_folding_search(t, [0.21], **kw)
+            _, ef_var = epoch_folding_search(t, [0.21], variances=w, **kw)
+        np.testing.assert_allclose(ef_var, ef_default)

@@ -94,7 +94,15 @@ def _profile_fast(phase, nbin=128):
 
 
 def epoch_folding_search(
-    times, frequencies, nbin=128, segment_size=np.inf, expocorr=False, gti=None, weights=1, fdots=0
+    times,
+    frequencies,
+    nbin=128,
+    segment_size=np.inf,
+    expocorr=False,
+    gti=None,
+    weights=1,
+    fdots=0,
+    variances=None,
 ):
     """Performs epoch folding at trial frequencies in photon data.
 
@@ -133,7 +141,15 @@ def epoch_folding_search(
 
     weights : array-like
         weight for each time. This might be, for example, the number of counts
-        if the times array contains the time bins of a light curve
+        if the times array contains the time bins of a light curve, or photon
+        probability weights (Kerr 2011, ApJ 732, 38) if ``variances=weights**2``
+        is also passed.
+
+    variances : float or array-like, optional, default None
+        variance of each data point passed to :func:`~stingray.pulse.fold_events`.
+        When given, the epoch-folding statistic uses the folded bin errors
+        (``sqrt(mean(err**2))``) rather than assuming Poisson counts. For
+        photon probability weights ``w``, pass ``variances=w**2``.
 
     Returns
     -------
@@ -147,12 +163,16 @@ def epoch_folding_search(
         the epoch folding statistics corresponding to each frequency bin.
     """
 
-    if expocorr or not HAS_NUMBA or isinstance(weights, Iterable):
+    if expocorr or not HAS_NUMBA or isinstance(weights, Iterable) or variances is not None:
         if expocorr and gti is None:
             raise ValueError("To calculate exposure correction, you need to specify the GTIs")
 
         def stat_fun(t, f, fd=0, **kwargs):
-            return ef_profile_stat(fold_events(t, f, fd, **kwargs)[1])
+            _, profile, err = fold_events(t, f, fd, **kwargs)
+            mean_var = np.mean(err**2)
+            if mean_var == 0:
+                return 0.0
+            return ef_profile_stat(profile, err=np.sqrt(mean_var))
 
         return _folding_search(
             stat_fun,
@@ -165,6 +185,7 @@ def epoch_folding_search(
             gti=gti,
             nbin=nbin,
             fdots=fdots,
+            variances=variances,
         )
 
     return _folding_search(
@@ -281,6 +302,7 @@ def z_n_search(
     weights=1,
     gti=None,
     fdots=0,
+    variances=None,
 ):
     """Calculates the Z^2_n statistics at trial frequencies in photon data.
 
@@ -324,7 +346,15 @@ def z_n_search(
 
     weights : array-like
         weight for each time. This might be, for example, the number of counts
-        if the times array contains the time bins of a light curve
+        if the times array contains the time bins of a light curve, or photon
+        probability weights (Kerr 2011, ApJ 732, 38) if ``variances=weights**2``
+        is also passed.
+
+    variances : float or array-like, optional, default None
+        variance of each data point passed to :func:`~stingray.pulse.fold_events`. When given,
+        the folded :math:`Z^2_n` statistic is normalized by the sum of the
+        bin variances rather than ``sum(profile)``. For photon probability
+        weights ``w``, pass ``variances=w**2``.
 
     Returns
     -------
@@ -338,12 +368,13 @@ def z_n_search(
         the Z^2_n statistics corresponding to each frequency bin.
     """
     phase = np.arange(0, 1, 1 / nbin)
-    if expocorr or not HAS_NUMBA or isinstance(weights, Iterable):
+    if expocorr or not HAS_NUMBA or isinstance(weights, Iterable) or variances is not None:
         if expocorr and gti is None:
             raise ValueError("To calculate exposure correction, you need to specify the GTIs")
 
         def stat_fun(t, f, fd=0, **kwargs):
-            return z_n(fold_events(t, f, fd, nbin=nbin, **kwargs)[1], n=nharm, datatype="binned")
+            _, profile, err = fold_events(t, f, fd, nbin=nbin, **kwargs)
+            return z_n(profile, n=nharm, datatype="binned", total_variance=np.sum(err**2))
 
         return _folding_search(
             stat_fun,
@@ -355,6 +386,7 @@ def z_n_search(
             weights=weights,
             gti=gti,
             fdots=fdots,
+            variances=variances,
         )
 
     return _folding_search(
