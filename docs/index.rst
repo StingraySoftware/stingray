@@ -125,7 +125,7 @@ To install all required and recommended dependencies in a recent installation, y
 
     $ pip install astropy scipy matplotlib numpy h5py tqdm numba pint-pulsar emcee corner statsmodels pyfftw tbb
 
-For the Gaussian Process modeling in ``stingray.modeling.gpmodeling``, you'll need
+For the Gaussian Process modeling in ``stingray.modeling.gpmodeling``, you will need
 jax, tinygp, jaxns (version 2.6 or later, but not 3) and tfp-nightly. Install them with::
 
     $ pip install "stingray[gp]"
