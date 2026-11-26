@@ -815,12 +815,8 @@ def rebin_data_log(x, y, f, y_err=None, dx=None):
 
     Other Parameters
     ----------------
-    yerr: iterable, optional
+    y_err: iterable, optional
         The uncertainties of ``y`` to be propagated during binning.
-
-    method: {``sum`` | ``average`` | ``mean``}, optional, default ``sum``
-        The method to be used in binning. Either sum the samples ``y`` in
-        each new bin of ``x`` or take the arithmetic mean.
 
     dx: float, optional
         The binning step of the initial ``x``
@@ -1111,7 +1107,7 @@ def get_random_state(random_state=None):
 
     Parameters
     ----------
-    seed : integer or ``numpy.random.RandomState``, optional, default ``None``
+    random_state : integer or ``numpy.random.RandomState``, optional, default ``None``
 
     Returns
     -------
@@ -1864,7 +1860,7 @@ def hist2d_numba_seq(x, y, bins, range, use_memmap=False, tmp=None):
         Input array, to be histogrammed
     y : array-like
         Input array (equal length to x), to be histogrammed
-    shape : (int, int)
+    bins : (int, int)
         shape of the final histogram
     range : [min, max]
         Minimum and maximum value of the histogram
