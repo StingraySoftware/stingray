@@ -61,7 +61,7 @@ class TestMultitaper(object):
         assert mtp.err_dist == getattr(self, lightcurve).err_dist
         assert mtp.dt == getattr(self, lightcurve).dt
         assert mtp.n == getattr(self, lightcurve).time.shape[0]
-        assert mtp.df == 1.0 / getattr(self, lightcurve).tseg
+        assert np.isclose(mtp.df, mtp.freq[1] - mtp.freq[0])
         assert mtp.m == 1
         assert mtp.freq is not None
         assert mtp.multitaper_norm_power is not None
@@ -285,7 +285,7 @@ class TestMultitaper(object):
         assert mtls_white.err_dist == lc_nonuni.err_dist
         assert mtls_white.dt == lc_nonuni.dt
         assert mtls_white.n == lc_nonuni.time.shape[0]
-        assert mtls_white.df == 1.0 / lc_nonuni.tseg
+        assert np.isclose(mtls_white.df, mtls_white.freq[1] - mtls_white.freq[0])
         assert mtls_white.m == 1
         assert mtls_white.freq is not None
         assert mtls_white.multitaper_norm_power is not None
