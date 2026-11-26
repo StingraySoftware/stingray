@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import pytest
 
 from stingray.simulator import transfer
@@ -88,10 +89,16 @@ class TestSimulator(object):
     def test_simple_ir(self):
         """Test constructing a simple impulse response."""
         t0, w = 100, 500
-        assert len(transfer.simple_ir(1, t0, w)), t0 + w
+        h = transfer.simple_ir(1, t0, w, intensity=2)
+        assert len(h) == t0 + w
+        assert np.allclose(h[:t0], 0)
+        assert np.isclose(h.sum(), 2)
 
     def test_relativistic_ir(self):
         """
         Test constructing a relativistic impulse response."""
         t1, t3 = 3, 10
-        assert len(transfer.relativistic_ir(1, t1=t1, t3=t3)), t1 + t3
+        h = transfer.relativistic_ir(1, t1=t1, t3=t3, intensity=0.5)
+        assert len(h) == t3
+        assert np.allclose(h[:t1], 0)
+        assert np.isclose(h.sum(), 0.5)
