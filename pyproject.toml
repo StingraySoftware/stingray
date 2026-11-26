@@ -79,13 +79,17 @@ all = [
     "pyarrow",
     "pandas",
     "ultranest",
+    "fsspec",
+]
+# Gaussian-process modelling (stingray.modeling.gpmodeling). Kept out of [all]
+# because jaxns requires tfp-nightly, a daily development build of
+# TensorFlow Probability: the stable release does not work with current jax.
+# jaxns 3 is a rewrite with a different interface; the code uses jaxns 2.6.
+gp = [
     "jax",
     "tinygp",
-    "jaxns",
-    "etils",
+    "jaxns>=2.6,<3",
     "tfp-nightly",
-    "typing_extensions",
-    "fsspec",
 ]
 docs = [
     "jinja2>=3.1.6",
