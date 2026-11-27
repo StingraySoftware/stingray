@@ -11,10 +11,10 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 from stingray import Lightcurve
 from stingray.events import EventList
-from stingray.utils import HAS_NUMBA
+from stingray.utils import HAS_NUMBA, HAS_FINUFFT
 from stingray import Powerspectrum, AveragedPowerspectrum, DynamicalPowerspectrum
 from stingray.powerspectrum import GtiCorrPowerspectrum
-from stingray.powerspectrum import powerspectrum_from_time_array
+from stingray.powerspectrum import powerspectrum_from_time_array, powerspectrum_from_events
 from stingray.fourier import poisson_level
 from astropy.modeling.models import Lorentz1D
 from stingray.filters import filter_for_deadtime
@@ -1581,3 +1581,124 @@ class TestRMS(object):
         rms_from_ps, rmse_from_ps = pds.compute_rms(self.freqs.min(), self.freqs.max())
 
         assert np.isclose(rms_from_ps, self.rms, atol=3 * rmse_from_ps)
+
+
+class TestPowerspectrumNufft(object):
+    """Test ``ft_method`` in the power spectrum classes, static methods and
+    module functions.
+
+    The NUFFT itself (segmentation, normalizations, Poisson level, sign
+    convention) is tested in ``test_fourier.py``. Here we test that every entry
+    point that accepts event data passes ``ft_method`` on, and that the classes
+    refuse the NUFFT for light curves instead of ignoring it.
+    """
+
+    entry_points = [
+        "Powerspectrum",
+        "AveragedPowerspectrum",
+        "Powerspectrum.from_events",
+        "Powerspectrum.from_time_array",
+        "powerspectrum_from_events",
+        "powerspectrum_from_time_array",
+    ]
+
+    @classmethod
+    def setup_class(cls):
+        # A generator of its own, so as not to change the random numbers drawn
+        # by the other tests in this module from the shared rng
+        rng = np.random.default_rng(20261118)
+        cls.dt = 0.01
+        cls.segment_size = 5.0
+        cls.gti = np.asanyarray([[0.0, 30.0], [40.0, 62.0]])
+        # Events at the bin centres of a grid of step dt inside the GTIs, for
+        # which the NUFFT and FFT powers are equal (see TestAvgPdsNufft)
+        grid = np.concatenate([np.arange(g0, g1, cls.dt) for g0, g1 in cls.gti]) + cls.dt / 2
+        counts = rng.poisson(3, grid.size)
+        cls.grid_times = np.repeat(grid, counts)
+        # Events at random times. Binning moves each event to its bin centre,
+        # so here the NUFFT and FFT powers differ
+        cls.random_times = np.sort(rng.uniform(cls.gti[0, 0], cls.gti[-1, 1], cls.grid_times.size))
+        # The binned counts of the first GTI, as a light curve and as a list of
+        # light curves
+        first = grid < cls.gti[0, 1]
+        cls.lc = Lightcurve(
+            grid[first], counts[first], dt=cls.dt, gti=cls.gti[:1], skip_checks=True
+        )
+        cls.lc_list = [cls.lc[:1000], cls.lc[1000:2000]]
+
+    def _spectrum(self, entry_point, ft_method, times):
+        dt, size, gti = self.dt, self.segment_size, self.gti
+        events = EventList(times, gti=gti)
+        # A single periodogram, from the first GTI only
+        events_single = EventList(times[times < gti[0, 1]], gti=gti[:1])
+        kw = dict(silent=True, ft_method=ft_method)
+        make = {
+            "Powerspectrum": lambda: Powerspectrum(events_single, dt=dt, ft_method=ft_method),
+            "AveragedPowerspectrum": lambda: AveragedPowerspectrum(events, size, dt=dt, **kw),
+            "Powerspectrum.from_events": lambda: Powerspectrum.from_events(events, dt, size, **kw),
+            "Powerspectrum.from_time_array": lambda: Powerspectrum.from_time_array(
+                times, dt, size, gti=gti, **kw
+            ),
+            "powerspectrum_from_events": lambda: powerspectrum_from_events(events, dt, size, **kw),
+            "powerspectrum_from_time_array": lambda: powerspectrum_from_time_array(
+                times, dt, size, gti, **kw
+            ),
+        }
+        return make[entry_point]()
+
+    @pytest.mark.skipif("not HAS_FINUFFT")
+    @pytest.mark.parametrize("entry_point", entry_points)
+    def test_nufft_and_fft_are_equal_on_grid(self, entry_point):
+        """The NUFFT gives the same spectrum as the FFT, of the same class
+        (single or averaged), through every entry point."""
+        spec_fft = self._spectrum(entry_point, "fft", self.grid_times)
+        spec_nufft = self._spectrum(entry_point, "nufft", self.grid_times)
+        assert type(spec_nufft) is type(spec_fft)
+        assert spec_nufft.m == spec_fft.m
+        assert spec_nufft.n == spec_fft.n
+        assert np.allclose(spec_nufft.freq, spec_fft.freq)
+        assert np.allclose(spec_nufft.power, spec_fft.power, rtol=1e-6)
+
+    @pytest.mark.skipif("not HAS_FINUFFT")
+    @pytest.mark.parametrize("entry_point", entry_points)
+    def test_nufft_and_fft_differ_off_grid(self, entry_point):
+        """The equality test above would also pass if ``ft_method`` were dropped
+        on the way, because both spectra would then use the FFT. For events at
+        random times the two methods give different powers, so the spectrum
+        only changes if ``ft_method`` reaches ``fourier.py``."""
+        spec_fft = self._spectrum(entry_point, "fft", self.random_times)
+        spec_nufft = self._spectrum(entry_point, "nufft", self.random_times)
+        assert spec_nufft.m == spec_fft.m
+        assert np.allclose(spec_nufft.freq, spec_fft.freq)
+        assert not np.allclose(spec_nufft.power, spec_fft.power)
+
+    @pytest.mark.parametrize("entry_point", entry_points)
+    def test_unknown_ft_method_fails(self, entry_point):
+        """A misspelt ``ft_method`` raises, instead of falling back to the FFT."""
+        with pytest.raises(ValueError, match="Unknown ft_method"):
+            self._spectrum(entry_point, "nfft", self.grid_times)
+
+    @pytest.mark.parametrize(
+        "ft_method, match",
+        [("nufft", "only available for event data"), ("nfft", "Unknown ft_method")],
+    )
+    @pytest.mark.parametrize(
+        "kind",
+        ["Powerspectrum", "AveragedPowerspectrum", "AveragedPowerspectrum, list", "GtiCorr"],
+    )
+    def test_light_curve_fails(self, kind, ft_method, match):
+        """The light curve routes do not pass ``ft_method`` on, so the classes
+        refuse the NUFFT (and a misspelt method) for light curves, instead of
+        silently computing the FFT."""
+        make = {
+            "Powerspectrum": lambda: Powerspectrum(self.lc, ft_method=ft_method),
+            "AveragedPowerspectrum": lambda: AveragedPowerspectrum(
+                self.lc, self.segment_size, silent=True, ft_method=ft_method
+            ),
+            "AveragedPowerspectrum, list": lambda: AveragedPowerspectrum(
+                self.lc_list, self.segment_size, silent=True, ft_method=ft_method
+            ),
+            "GtiCorr": lambda: GtiCorrPowerspectrum(self.lc, ft_method=ft_method),
+        }
+        with pytest.raises(ValueError, match=match):
+            make[kind]()

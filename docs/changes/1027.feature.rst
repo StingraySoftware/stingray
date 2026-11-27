@@ -1,0 +1,2 @@
+The non-uniform FFT method has been added for calculating the powerspectrum and crossspectrum,
+as well as the averaged powerspectrum and averaged crossspectrum.

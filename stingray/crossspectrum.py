@@ -13,7 +13,7 @@ from .events import EventList
 from .gti import cross_two_gtis, time_intervals_from_gtis
 from .lightcurve import Lightcurve
 from .fourier import avg_cs_from_iterables, error_on_averaged_cross_spectrum
-from .fourier import avg_cs_from_timeseries, poisson_level
+from .fourier import avg_cs_from_timeseries, poisson_level, FT_METHODS
 from .fourier import normalize_periodograms
 from .fourier import get_flux_iterable_from_segments
 from .fourier import get_rms_from_unnorm_periodogram
@@ -304,6 +304,12 @@ class Crossspectrum(StingrayObject):
         the docs for ``CovarianceSpectrum``). This will generally be false in a
         single cross spectrum.
 
+    ft_method : str, default "fft"
+        How to Fourier-transform each segment. "fft" bins the events (or uses
+        the light curve as it is) and uses the FFT; "nufft" uses the non-uniform
+        FFT of the unbinned events, which requires the optional ``finufft``
+        package. Only available for :class:`EventList` inputs.
+
     Attributes
     ----------
     freq: numpy.ndarray
@@ -356,6 +362,7 @@ class Crossspectrum(StingrayObject):
         skip_checks=False,
         save_all=False,
         channels_overlap=False,
+        ft_method="fft",
     ):
         self._type = None
         self.channels_overlap = channels_overlap
@@ -390,6 +397,7 @@ class Crossspectrum(StingrayObject):
             fullspec=fullspec,
             gti=gti,
             save_all=save_all,
+            ft_method=ft_method,
         )
 
     def initial_checks(
@@ -1085,6 +1093,7 @@ class Crossspectrum(StingrayObject):
         fullspec=False,
         use_common_mean=True,
         channels_overlap=False,
+        ft_method="fft",
     ):
         """Calculate AveragedCrossspectrum from two arrays of event times.
 
@@ -1131,6 +1140,10 @@ class Crossspectrum(StingrayObject):
             This happens, for example, when calculating covariance spectra (see, e.g.,
             the docs for ``CovarianceSpectrum``). This will generally be false in a
             single cross spectrum.
+        ft_method : str, default "fft"
+            How to Fourier-transform each segment. "fft" bins the events and uses
+            the FFT; "nufft" uses the non-uniform FFT of the unbinned events, which
+            requires the optional ``finufft`` package.
         """
 
         return crossspectrum_from_time_array(
@@ -1145,6 +1158,7 @@ class Crossspectrum(StingrayObject):
             fullspec=fullspec,
             use_common_mean=use_common_mean,
             channels_overlap=channels_overlap,
+            ft_method=ft_method,
         )
 
     @staticmethod
@@ -1160,6 +1174,7 @@ class Crossspectrum(StingrayObject):
         use_common_mean=True,
         gti=None,
         channels_overlap=False,
+        ft_method="fft",
     ):
         """Calculate AveragedCrossspectrum from two event lists
 
@@ -1206,6 +1221,10 @@ class Crossspectrum(StingrayObject):
             This happens, for example, when calculating covariance spectra (see, e.g.,
             the docs for ``CovarianceSpectrum``). This will generally be false in a
             single cross spectrum.
+        ft_method : str, default "fft"
+            How to Fourier-transform each segment. "fft" bins the events and uses
+            the FFT; "nufft" uses the non-uniform FFT of the unbinned events, which
+            requires the optional ``finufft`` package.
         """
 
         return crossspectrum_from_events(
@@ -1220,6 +1239,7 @@ class Crossspectrum(StingrayObject):
             use_common_mean=use_common_mean,
             gti=gti,
             channels_overlap=channels_overlap,
+            ft_method=ft_method,
         )
 
     @staticmethod
@@ -1459,6 +1479,7 @@ class Crossspectrum(StingrayObject):
         gti=None,
         use_common_mean=True,
         save_all=False,
+        ft_method="fft",
     ):
         """Initialize the class, trying to understand the input types.
 
@@ -1467,6 +1488,11 @@ class Crossspectrum(StingrayObject):
         ``crossspectrum_from_XXXX`` function, and initialize ``self`` with
         the correct attributes.
         """
+        # ft_method is checked here, because the light curve routes do not pass it on
+        if ft_method not in FT_METHODS:
+            raise ValueError(f"Unknown ft_method: {ft_method}. Use one of {FT_METHODS}")
+        if ft_method == "nufft" and not isinstance(data1, EventList):
+            raise ValueError("ft_method='nufft' is only available for event data")
         if segment_size is None and isinstance(data1, StingrayObject):
             common_gti = cross_two_gtis(data1.gti, data2.gti)
             data1.gti = common_gti
@@ -1502,6 +1528,7 @@ class Crossspectrum(StingrayObject):
                 gti=gti,
                 save_all=save_all,
                 channels_overlap=self.channels_overlap,
+                ft_method=ft_method,
             )
         elif isinstance(data1, Lightcurve):
             spec = crossspectrum_from_lightcurve(
@@ -1783,6 +1810,12 @@ class AveragedCrossspectrum(Crossspectrum):
         the docs for ``CovarianceSpectrum``). This will generally be false in a
         single cross spectrum.
 
+    ft_method : str, default "fft"
+        How to Fourier-transform each segment. "fft" bins the events (or uses
+        the light curve as it is) and uses the FFT; "nufft" uses the non-uniform
+        FFT of the unbinned events, which requires the optional ``finufft``
+        package. Only available for :class:`EventList` inputs.
+
     Attributes
     ----------
     freq: numpy.ndarray
@@ -1836,6 +1869,7 @@ class AveragedCrossspectrum(Crossspectrum):
         use_common_mean=True,
         skip_checks=False,
         channels_overlap=False,
+        ft_method="fft",
     ):
         self._type = None
 
@@ -1888,6 +1922,7 @@ class AveragedCrossspectrum(Crossspectrum):
             fullspec=fullspec,
             use_common_mean=use_common_mean,
             save_all=save_all,
+            ft_method=ft_method,
         )
 
     def initial_checks(self, data1, segment_size=None, **kwargs):
@@ -2696,6 +2731,7 @@ def crossspectrum_from_time_array(
     use_common_mean=True,
     save_all=False,
     channels_overlap=False,
+    ft_method="fft",
 ):
     """Calculate AveragedCrossspectrum from two arrays of event times.
 
@@ -2738,6 +2774,10 @@ def crossspectrum_from_time_array(
         This happens, for example, when calculating covariance spectra (see, e.g.,
         the docs for ``CovarianceSpectrum``). This will generally be false in a
         single cross spectrum.
+    ft_method : str, default "fft"
+        How to Fourier-transform each segment. "fft" bins the events and uses
+        the FFT; "nufft" uses the non-uniform FFT of the unbinned events, which
+        requires the optional ``finufft`` package.
 
     Returns
     -------
@@ -2760,6 +2800,7 @@ def crossspectrum_from_time_array(
         power_type=power_type,
         return_auxil=True,
         return_subcs=save_all,
+        ft_method=ft_method,
     )
 
     return _create_crossspectrum_from_result_table(
@@ -2780,6 +2821,7 @@ def crossspectrum_from_events(
     gti=None,
     save_all=False,
     channels_overlap=False,
+    ft_method="fft",
 ):
     """Calculate AveragedCrossspectrum from two event lists
 
@@ -2822,6 +2864,10 @@ def crossspectrum_from_events(
         This happens, for example, when calculating covariance spectra (see, e.g.,
         the docs for ``CovarianceSpectrum``). This will generally be false in a
         single cross spectrum.
+    ft_method : str, default "fft"
+        How to Fourier-transform each segment. "fft" bins the events and uses
+        the FFT; "nufft" uses the non-uniform FFT of the unbinned events, which
+        requires the optional ``finufft`` package.
 
     Returns
     -------
@@ -2847,6 +2893,7 @@ def crossspectrum_from_events(
         use_common_mean=use_common_mean,
         save_all=save_all,
         channels_overlap=channels_overlap,
+        ft_method=ft_method,
     )
 
 

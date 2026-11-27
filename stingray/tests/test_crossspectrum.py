@@ -11,8 +11,9 @@ from stingray import Lightcurve
 from stingray import Crossspectrum, AveragedCrossspectrum, DynamicalCrossspectrum
 from stingray import AveragedPowerspectrum
 from stingray.crossspectrum import cospectra_pvalue, crossspectrum_from_time_array
+from stingray.crossspectrum import crossspectrum_from_events
 from stingray import StingrayError
-from stingray.utils import HAS_NUMBA
+from stingray.utils import HAS_NUMBA, HAS_FINUFFT
 from stingray.simulator import Simulator
 from stingray.fourier import poisson_level
 from stingray.filters import filter_for_deadtime
@@ -1976,3 +1977,136 @@ class TestAveragedCrossspectrumOverlap(object):
         new_cs = self.cs.rebin_log(f=0.1)
         assert np.iscomplexobj(new_cs.power[0])
         assert np.iscomplexobj(new_cs.power_err[0])
+
+
+class TestCrossspectrumNufft(object):
+    """Test ``ft_method`` in the cross spectrum classes, static methods and
+    module functions.
+
+    The NUFFT itself (segmentation, normalizations, Poisson level, sign
+    convention) is tested in ``test_fourier.py``. Here we test that every entry
+    point that accepts event data passes ``ft_method`` on, and that the classes
+    refuse the NUFFT for light curves instead of ignoring it.
+    """
+
+    entry_points = [
+        "Crossspectrum",
+        "AveragedCrossspectrum",
+        "Crossspectrum.from_events",
+        "Crossspectrum.from_time_array",
+        "crossspectrum_from_events",
+        "crossspectrum_from_time_array",
+    ]
+
+    @classmethod
+    def setup_class(cls):
+        # A generator of its own, so as not to change the random numbers drawn
+        # by the other tests in this module
+        rng = np.random.default_rng(20261119)
+        cls.dt = 0.01
+        cls.segment_size = 5.0
+        cls.gti = np.asanyarray([[0.0, 30.0], [40.0, 62.0]])
+        # Events at the bin centres of a grid of step dt inside the GTIs, for
+        # which the NUFFT and FFT cross spectra are equal: the extra phase of the
+        # NUFFT amplitudes is the same in both channels and cancels
+        grid = np.concatenate([np.arange(g0, g1, cls.dt) for g0, g1 in cls.gti]) + cls.dt / 2
+        counts1 = rng.poisson(3, grid.size)
+        counts2 = rng.poisson(2, grid.size)
+        cls.grid_times = (np.repeat(grid, counts1), np.repeat(grid, counts2))
+        # Events at random times. Binning moves each event to its bin centre,
+        # so here the NUFFT and FFT cross spectra differ
+        t0, t1 = cls.gti[0, 0], cls.gti[-1, 1]
+        cls.random_times = tuple(np.sort(rng.uniform(t0, t1, t.size)) for t in cls.grid_times)
+        # The binned counts of the first GTI, as light curves and as lists of
+        # light curves
+        first = grid < cls.gti[0, 1]
+        cls.lc1, cls.lc2 = (
+            Lightcurve(grid[first], c[first], dt=cls.dt, gti=cls.gti[:1], skip_checks=True)
+            for c in (counts1, counts2)
+        )
+        cls.lc_list1 = [cls.lc1[:1000], cls.lc1[1000:2000]]
+        cls.lc_list2 = [cls.lc2[:1000], cls.lc2[1000:2000]]
+
+    def _spectrum(self, entry_point, ft_method, times):
+        dt, size, gti = self.dt, self.segment_size, self.gti
+        t1, t2 = times
+        ev1, ev2 = EventList(t1, gti=gti), EventList(t2, gti=gti)
+        # A single cross spectrum, from the first GTI only
+        end = gti[0, 1]
+        ev1_single = EventList(t1[t1 < end], gti=gti[:1])
+        ev2_single = EventList(t2[t2 < end], gti=gti[:1])
+        kw = dict(silent=True, ft_method=ft_method)
+        make = {
+            "Crossspectrum": lambda: Crossspectrum(
+                ev1_single, ev2_single, dt=dt, ft_method=ft_method
+            ),
+            "AveragedCrossspectrum": lambda: AveragedCrossspectrum(ev1, ev2, size, dt=dt, **kw),
+            "Crossspectrum.from_events": lambda: Crossspectrum.from_events(
+                ev1, ev2, dt, size, **kw
+            ),
+            "Crossspectrum.from_time_array": lambda: Crossspectrum.from_time_array(
+                t1, t2, dt, size, gti=gti, **kw
+            ),
+            "crossspectrum_from_events": lambda: crossspectrum_from_events(
+                ev1, ev2, dt, size, **kw
+            ),
+            "crossspectrum_from_time_array": lambda: crossspectrum_from_time_array(
+                t1, t2, dt, size, gti, **kw
+            ),
+        }
+        return make[entry_point]()
+
+    @pytest.mark.skipif("not HAS_FINUFFT")
+    @pytest.mark.parametrize("entry_point", entry_points)
+    def test_nufft_and_fft_are_equal_on_grid(self, entry_point):
+        """The NUFFT gives the same cross spectrum as the FFT, of the same class
+        (single or averaged), through every entry point."""
+        spec_fft = self._spectrum(entry_point, "fft", self.grid_times)
+        spec_nufft = self._spectrum(entry_point, "nufft", self.grid_times)
+        assert type(spec_nufft) is type(spec_fft)
+        assert spec_nufft.m == spec_fft.m
+        assert spec_nufft.n == spec_fft.n
+        assert np.allclose(spec_nufft.freq, spec_fft.freq)
+        assert np.allclose(spec_nufft.power, spec_fft.power, rtol=1e-6)
+
+    @pytest.mark.skipif("not HAS_FINUFFT")
+    @pytest.mark.parametrize("entry_point", entry_points)
+    def test_nufft_and_fft_differ_off_grid(self, entry_point):
+        """The equality test above would also pass if ``ft_method`` were dropped
+        on the way, because both spectra would then use the FFT. For events at
+        random times the two methods give different cross spectra, so the
+        spectrum only changes if ``ft_method`` reaches ``fourier.py``."""
+        spec_fft = self._spectrum(entry_point, "fft", self.random_times)
+        spec_nufft = self._spectrum(entry_point, "nufft", self.random_times)
+        assert spec_nufft.m == spec_fft.m
+        assert np.allclose(spec_nufft.freq, spec_fft.freq)
+        assert not np.allclose(spec_nufft.power, spec_fft.power)
+
+    @pytest.mark.parametrize("entry_point", entry_points)
+    def test_unknown_ft_method_fails(self, entry_point):
+        """A misspelt ``ft_method`` raises, instead of falling back to the FFT."""
+        with pytest.raises(ValueError, match="Unknown ft_method"):
+            self._spectrum(entry_point, "nfft", self.grid_times)
+
+    @pytest.mark.parametrize(
+        "ft_method, match",
+        [("nufft", "only available for event data"), ("nfft", "Unknown ft_method")],
+    )
+    @pytest.mark.parametrize(
+        "kind", ["Crossspectrum", "AveragedCrossspectrum", "AveragedCrossspectrum, list"]
+    )
+    def test_light_curve_fails(self, kind, ft_method, match):
+        """The light curve routes do not pass ``ft_method`` on, so the classes
+        refuse the NUFFT (and a misspelt method) for light curves, instead of
+        silently computing the FFT."""
+        make = {
+            "Crossspectrum": lambda: Crossspectrum(self.lc1, self.lc2, ft_method=ft_method),
+            "AveragedCrossspectrum": lambda: AveragedCrossspectrum(
+                self.lc1, self.lc2, self.segment_size, silent=True, ft_method=ft_method
+            ),
+            "AveragedCrossspectrum, list": lambda: AveragedCrossspectrum(
+                self.lc_list1, self.lc_list2, self.segment_size, silent=True, ft_method=ft_method
+            ),
+        }
+        with pytest.raises(ValueError, match=match):
+            make[kind]()

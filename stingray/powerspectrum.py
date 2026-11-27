@@ -13,7 +13,7 @@ from .gti import cross_two_gtis, time_intervals_from_gtis, create_gti_mask
 
 from .lightcurve import Lightcurve
 from .fourier import avg_pds_from_iterable, unnormalize_periodograms
-from .fourier import avg_pds_from_timeseries
+from .fourier import avg_pds_from_timeseries, FT_METHODS
 from .fourier import get_flux_iterable_from_segments
 from .fourier import poisson_level
 from .fourier import get_rms_from_unnorm_periodogram
@@ -65,6 +65,12 @@ class Powerspectrum(Crossspectrum):
         Skip initial checks, for speed or other reasons (you need to trust your
         inputs!).
 
+    ft_method : str, default "fft"
+        How to Fourier-transform each segment. "fft" bins the events (or uses
+        the light curve as it is) and uses the FFT; "nufft" uses the non-uniform
+        FFT of the unbinned events, which requires the optional ``finufft``
+        package. Only available for :class:`EventList` inputs.
+
     Attributes
     ----------
     norm: {"leahy" | "frac" | "abs" | "none" }
@@ -107,7 +113,16 @@ class Powerspectrum(Crossspectrum):
 
     type = "powerspectrum"
 
-    def __init__(self, data=None, norm="frac", gti=None, dt=None, *, skip_checks=False):
+    def __init__(
+        self,
+        data=None,
+        norm="frac",
+        gti=None,
+        dt=None,
+        *,
+        skip_checks=False,
+        ft_method="fft",
+    ):
         self._type = None
         good_input = data is not None
         if good_input and not skip_checks:
@@ -120,7 +135,7 @@ class Powerspectrum(Crossspectrum):
         if not good_input:
             return self._initialize_empty()
 
-        return self._initialize_from_any_input(data, dt=dt, norm=norm)
+        return self._initialize_from_any_input(data, dt=dt, norm=norm, ft_method=ft_method)
 
     def rebin(self, df=None, f=None, method="mean"):
         """
@@ -423,7 +438,14 @@ class Powerspectrum(Crossspectrum):
 
     @staticmethod
     def from_time_array(
-        times, dt, segment_size=None, gti=None, norm="frac", silent=False, use_common_mean=True
+        times,
+        dt,
+        segment_size=None,
+        gti=None,
+        norm="frac",
+        silent=False,
+        use_common_mean=True,
+        ft_method="fft",
     ):
         """
         Calculate an average power spectrum from an array of event times.
@@ -459,6 +481,10 @@ class Powerspectrum(Crossspectrum):
             to calculate it on a per-segment basis.
         silent : bool, default False
             Silence the progress bars.
+        ft_method : str, default "fft"
+            How to Fourier-transform each segment. "fft" bins the events and uses
+            the FFT; "nufft" uses the non-uniform FFT of the unbinned events, which
+            requires the optional ``finufft`` package.
         """
 
         return powerspectrum_from_time_array(
@@ -469,6 +495,7 @@ class Powerspectrum(Crossspectrum):
             norm=norm,
             silent=silent,
             use_common_mean=use_common_mean,
+            ft_method=ft_method,
         )
 
     @staticmethod
@@ -481,6 +508,7 @@ class Powerspectrum(Crossspectrum):
         silent=False,
         use_common_mean=True,
         save_all=False,
+        ft_method="fft",
     ):
         """
         Calculate an average power spectrum from an event list.
@@ -518,6 +546,10 @@ class Powerspectrum(Crossspectrum):
             Silence the progress bars.
         save_all : bool, default False
             Save all intermediate PDSs used for the final average.
+        ft_method : str, default "fft"
+            How to Fourier-transform each segment. "fft" bins the events and uses
+            the FFT; "nufft" uses the non-uniform FFT of the unbinned events, which
+            requires the optional ``finufft`` package.
         """
         if gti is None:
             gti = events.gti
@@ -530,6 +562,7 @@ class Powerspectrum(Crossspectrum):
             silent=silent,
             use_common_mean=use_common_mean,
             save_all=save_all,
+            ft_method=ft_method,
         )
 
     @staticmethod
@@ -723,6 +756,7 @@ class Powerspectrum(Crossspectrum):
         silent=False,
         use_common_mean=True,
         save_all=False,
+        ft_method="fft",
     ):
         """
         Initialize the class, trying to understand the input types.
@@ -732,6 +766,11 @@ class Powerspectrum(Crossspectrum):
         ``powerspectrum_from_XXXX`` function, and initialize ``self`` with
         the correct attributes.
         """
+        # ft_method is checked here, because the light curve routes do not pass it on
+        if ft_method not in FT_METHODS:
+            raise ValueError(f"Unknown ft_method: {ft_method}. Use one of {FT_METHODS}")
+        if ft_method == "nufft" and not isinstance(data, EventList):
+            raise ValueError("ft_method='nufft' is only available for event data")
         if isinstance(data, EventList):
             spec = powerspectrum_from_events(
                 data,
@@ -742,6 +781,7 @@ class Powerspectrum(Crossspectrum):
                 use_common_mean=use_common_mean,
                 gti=gti,
                 save_all=save_all,
+                ft_method=ft_method,
             )
         elif isinstance(data, Lightcurve):
             spec = powerspectrum_from_lightcurve(
@@ -839,6 +879,12 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
         Skip initial checks, for speed or other reasons (you need to trust your
         inputs!).
 
+    ft_method : str, default "fft"
+        How to Fourier-transform each segment. "fft" bins the events (or uses
+        the light curve as it is) and uses the FFT; "nufft" uses the non-uniform
+        FFT of the unbinned events, which requires the optional ``finufft``
+        package. Only available for :class:`EventList` inputs.
+
     Attributes
     ----------
     norm: {``leahy`` | ``frac`` | ``abs`` | ``none`` }
@@ -895,6 +941,7 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
         save_all=False,
         skip_checks=False,
         use_common_mean=True,
+        ft_method="fft",
     ):
         self._type = None
         good_input = data is not None
@@ -938,6 +985,7 @@ class AveragedPowerspectrum(AveragedCrossspectrum, Powerspectrum):
             silent=silent,
             use_common_mean=use_common_mean,
             save_all=save_all,
+            ft_method=ft_method,
         )
 
     def initial_checks(self, *args, **kwargs):
@@ -1456,6 +1504,7 @@ def powerspectrum_from_time_array(
     silent=False,
     use_common_mean=True,
     save_all=False,
+    ft_method="fft",
 ):
     """
     Calculate a power spectrum from an array of event times.
@@ -1494,6 +1543,10 @@ def powerspectrum_from_time_array(
         Save all intermediate PDSs used for the final average. Use with care.
         This is likely to fill up your RAM on medium-sized datasets, and to
         slow down the computation when rebinning.
+    ft_method : str, default "fft"
+        How to Fourier-transform each segment. "fft" bins the events and uses
+        the FFT; "nufft" uses the non-uniform FFT of the unbinned events, which
+        requires the optional ``finufft`` package.
 
     Returns
     -------
@@ -1512,6 +1565,7 @@ def powerspectrum_from_time_array(
         use_common_mean=use_common_mean,
         silent=silent,
         return_subcs=save_all,
+        ft_method=ft_method,
     )
 
     return _create_powerspectrum_from_result_table(table, force_averaged=force_averaged)
@@ -1526,6 +1580,7 @@ def powerspectrum_from_events(
     silent=False,
     use_common_mean=True,
     save_all=False,
+    ft_method="fft",
 ):
     """
     Calculate a power spectrum from an event list.
@@ -1564,6 +1619,10 @@ def powerspectrum_from_events(
         Save all intermediate PDSs used for the final average. Use with care.
         This is likely to fill up your RAM on medium-sized datasets, and to
         slow down the computation when rebinning.
+    ft_method : str, default "fft"
+        How to Fourier-transform each segment. "fft" bins the events and uses
+        the FFT; "nufft" uses the non-uniform FFT of the unbinned events, which
+        requires the optional ``finufft`` package.
 
     Returns
     -------
@@ -1584,6 +1643,7 @@ def powerspectrum_from_events(
         silent=silent,
         use_common_mean=use_common_mean,
         save_all=save_all,
+        ft_method=ft_method,
     )
 
 
