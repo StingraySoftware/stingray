@@ -1,1 +1,3 @@
-``Lightcurve.rebin()`` can retain partially exposed bins through the optional ``fracexp_limit`` argument.
+``Lightcurve.rebin()`` can retain partially exposed bins through the optional
+``fracexp_limit`` argument, using input ``frac_exp`` when supplied and recording
+output exposure fractions with propagated Gaussian errors.

@@ -931,14 +931,23 @@ class Lightcurve(StingrayTimeseries):
             Minimum fraction of a new bin covered by good time intervals and
             available input bins. A value of ``1.0`` preserves the default
             per-GTI rebinning. Smaller values use a single grid starting at
-            the first input bin edge. Counts are prorated by overlap, assuming
-            uniform counts within each input bin. Bins with zero exposure are
-            always omitted.
+            the first input bin edge. Without ``frac_exp``, counts are assumed
+            to cover the full input ``dt`` uniformly and are prorated by GTI
+            overlap. For counts already filtered to good time, supply
+            ``frac_exp``: it sets each input bin's exposure, and counts are
+            distributed in proportion to good-time overlap without reducing
+            them again. This assumes uniform count rate during good time.
+            Bins with zero exposure are always omitted.
 
         Returns
         -------
         lc_new: :class:`Lightcurve` object
             The :class:`Lightcurve` object with the new, binned light curve.
+            When ``fracexp_limit < 1``, ``frac_exp`` records the live exposure
+            divided by ``dt_new``, and ``err_dist`` is ``"gauss"`` because
+            prorated counts are no longer Poisson. For ``method="sum"``, the
+            exposure-corrected rate is ``counts / (frac_exp * dt)``; the
+            ``countrate`` property still divides by the nominal bin width.
         """
 
         if f is None and dt_new is None:
@@ -1022,9 +1031,20 @@ class Lightcurve(StingrayTimeseries):
                 exposure_at(self.bin_hi) - exposure_at_split,
             )
         )
+        fractions = exposure / self.dt
+        if self.frac_exp is not None:
+            # Counts already cover good time; only split them between output bins.
+            input_gti_exposure = np.tile(exposure.reshape(2, -1).sum(axis=0), 2)
+            fractions = np.divide(
+                exposure,
+                input_gti_exposure,
+                out=np.zeros_like(exposure),
+                where=input_gti_exposure > 0,
+            )
+            exposure = fractions * np.tile(self.frac_exp * self.dt, 2)
         has_exposure = exposure > 0
         exposure = exposure[has_exposure]
-        fractions = exposure / self.dt
+        fractions = fractions[has_exposure]
         bins, indices = np.unique(
             np.concatenate((bin_index, bin_index + 1))[has_exposure], return_inverse=True
         )
@@ -1059,6 +1079,8 @@ class Lightcurve(StingrayTimeseries):
             left + dt_new / 2,
             counts,
             err=errors,
+            err_dist="gauss",
+            frac_exp=total_exposure[good] / dt_new,
             mjdref=self.mjdref,
             dt=dt_new,
             gti=cross_two_gtis(gtis, np.column_stack((left, right))),

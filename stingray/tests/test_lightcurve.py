@@ -1525,6 +1525,7 @@ class TestLightcurveRebin(object):
 
     @pytest.mark.parametrize("method, expected", [("sum", [12, 8]), ("mean", [4, 8])])
     def test_rebin_with_partial_gti_exposure(self, method, expected):
+        """Keep bins meeting the exposure threshold across fragmented GTIs."""
         lc = Lightcurve(
             np.arange(0.5, 6),
             [2, 99, 4, 6, 99, 8],
@@ -1539,6 +1540,8 @@ class TestLightcurveRebin(object):
         np.testing.assert_allclose(rebinned.time, [2, 6])
         np.testing.assert_allclose(rebinned.counts, expected)
         np.testing.assert_allclose(rebinned.gti, lc.gti)
+        np.testing.assert_allclose(rebinned.frac_exp, [0.75, 0.25])
+        assert rebinned.err_dist == "gauss"
 
         filtered = lc.rebin(4, method=method, fracexp_limit=0.5)
         np.testing.assert_allclose(filtered.time, [2])
@@ -1546,6 +1549,7 @@ class TestLightcurveRebin(object):
         np.testing.assert_allclose(filtered.gti, [[0, 1], [2, 4]])
 
     def test_rebin_splits_native_bin_at_output_boundary(self):
+        """Split counts and propagate errors at a non-integer output boundary."""
         lc = Lightcurve([0.5, 1.5, 2.5], [2, 4, 6], err=[1, 2, 3], gti=[[0, 3]], dt=1)
 
         rebinned = lc.rebin(f=2.5, fracexp_limit=0.19)
@@ -1554,6 +1558,7 @@ class TestLightcurveRebin(object):
         np.testing.assert_allclose(rebinned.counts_err, [np.sqrt(7.25), 1.5])
 
     def test_rebin_partial_exposure_across_missing_input_bins(self):
+        """Prorate full-bin counts without allocating bins across a large gap."""
         lc = Lightcurve(
             [0.5, 1000000000.5],
             [8, 4],
@@ -1565,6 +1570,58 @@ class TestLightcurveRebin(object):
         rebinned = lc.rebin(2, fracexp_limit=0)
         np.testing.assert_array_equal(rebinned.time, [1, 1000000001])
         np.testing.assert_allclose(rebinned.counts, [4, 4])
+
+    def test_rebin_partial_exposure_preserves_exposed_counts(self):
+        """Preserve counts already collected during a partial input exposure."""
+        lc = Lightcurve(
+            [0.5], [8], err=[2], gti=[[0.25, 0.75]], dt=1, frac_exp=[0.5], skip_checks=True
+        )
+
+        rebinned = lc.rebin(2, fracexp_limit=0)
+        np.testing.assert_allclose(rebinned.counts, [8])
+        np.testing.assert_allclose(rebinned.counts_err, [2])
+        np.testing.assert_allclose(rebinned.frac_exp, [0.25])
+
+    @pytest.mark.parametrize("frac_exp", [None, [1, 0, 1, 1]])
+    def test_rebin_partial_exposure_preserves_rate(self, frac_exp):
+        """Retain the exposure needed to recover a constant source rate."""
+        lc = Lightcurve(
+            [0.5, 1.5, 2.5, 3.5],
+            [10, 0, 10, 10],
+            gti=[[0, 1], [2, 4]],
+            dt=1,
+            frac_exp=frac_exp,
+        )
+
+        rebinned = lc.rebin(4, fracexp_limit=0.5)
+        np.testing.assert_allclose(rebinned.counts, [30])
+        np.testing.assert_allclose(rebinned.frac_exp, [0.75])
+        np.testing.assert_allclose(rebinned.counts / (rebinned.frac_exp * rebinned.dt), [10])
+
+        rebinned_again = rebinned.rebin(8, fracexp_limit=0.25)
+        np.testing.assert_allclose(rebinned_again.counts, [30])
+        np.testing.assert_allclose(rebinned_again.frac_exp, [0.375])
+
+    def test_rebin_splits_fractional_input_exposure(self):
+        """Distribute exposed counts and errors by good-time overlap at a split."""
+        lc = Lightcurve(
+            [0.5, 1.5, 2.5],
+            [8, 12, 0],
+            err=[2, 4, 0],
+            gti=[[0.25, 1], [1.25, 3]],
+            dt=1,
+            frac_exp=[0.5, 0.75, 0],
+        )
+
+        rebinned = lc.rebin(1.5, fracexp_limit=0.3)
+        np.testing.assert_allclose(rebinned.counts, [12, 8])
+        np.testing.assert_allclose(rebinned.counts_err, [np.sqrt(4 + 16 / 9), 8 / 3])
+        np.testing.assert_allclose(rebinned.frac_exp, [0.5, 1 / 3])
+        np.testing.assert_allclose(rebinned.counts / (rebinned.frac_exp * rebinned.dt), [16, 16])
+
+        filtered = lc.rebin(1.5, fracexp_limit=0.4)
+        np.testing.assert_allclose(filtered.time, [0.75])
+        np.testing.assert_allclose(filtered.counts, [12])
 
     def test_lc_baseline(self):
         times = np.arange(0, 100, 0.01)
