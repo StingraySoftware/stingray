@@ -427,6 +427,41 @@ class TestFourier(object):
             out_comm.meta["unnorm_subcs"].std() / out_comm.meta["subcs"].std(),
         )
 
+    @pytest.mark.parametrize("norm", ["frac", "abs", "none", "leahy"])
+    def test_avg_cs_return_auxil_use_common_mean_false(self, norm):
+        out_cs = avg_cs_from_timeseries(
+            self.times,
+            self.times2,
+            self.gti,
+            self.segment_size,
+            self.dt,
+            norm=norm,
+            use_common_mean=False,
+            silent=True,
+            return_auxil=True,
+        )
+        out_pds1 = avg_pds_from_timeseries(
+            self.times,
+            self.gti,
+            self.segment_size,
+            self.dt,
+            norm=norm,
+            use_common_mean=False,
+            silent=True,
+        )
+        out_pds2 = avg_pds_from_timeseries(
+            self.times2,
+            self.gti,
+            self.segment_size,
+            self.dt,
+            norm=norm,
+            use_common_mean=False,
+            silent=True,
+        )
+        assert out_cs.meta["m"] > 1
+        assert np.allclose(out_cs["pds1"], out_pds1["power"])
+        assert np.allclose(out_cs["pds2"], out_pds2["power"])
+
     @pytest.mark.parametrize("use_common_mean", [True, False])
     @pytest.mark.parametrize("norm", ["frac", "abs", "none", "leahy"])
     def test_avg_pds_cts_and_events_are_equal(self, norm, use_common_mean):
