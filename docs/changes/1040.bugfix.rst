@@ -1,0 +1,1 @@
+Average auxiliary PDS arrays pds1 and pds2 by the number of segments in avg_cs_from_iterables when use_common_mean=False.

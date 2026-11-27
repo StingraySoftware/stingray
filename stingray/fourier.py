@@ -2774,6 +2774,9 @@ def avg_cs_from_iterables(
     if return_auxil:
         unnorm_pds1 /= n_ave
         unnorm_pds2 /= n_ave
+        if not use_common_mean:
+            pds1 /= n_ave
+            pds2 /= n_ave
 
     # Finally, normalize the cross spectrum (only if not already done on an
     # interval-to-interval basis)
