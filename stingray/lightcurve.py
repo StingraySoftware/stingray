@@ -904,7 +904,7 @@ class Lightcurve(StingrayTimeseries):
             time, counts, gti=gti, mjdref=mjdref, dt=dt, skip_checks=True, err_dist="poisson"
         )
 
-    def rebin(self, dt_new=None, f=None, method="sum"):
+    def rebin(self, dt_new=None, f=None, method="sum", *, fracexp_limit=1.0):
         """
         Rebin the light curve to a new time resolution. While the new
         resolution need not be an integer multiple of the previous time
@@ -927,10 +927,27 @@ class Lightcurve(StingrayTimeseries):
             the rebin factor. If specified, it substitutes ``dt_new`` with
             ``f*self.dt``
 
+        fracexp_limit: float, optional, default ``1.0``
+            Minimum fraction of a new bin covered by good time intervals and
+            available input bins. A value of ``1.0`` preserves the default
+            per-GTI rebinning. Smaller values use a single grid starting at
+            the first input bin edge. Without ``frac_exp``, counts are assumed
+            to cover the full input ``dt`` uniformly and are prorated by GTI
+            overlap. For counts already filtered to good time, supply
+            ``frac_exp``: it sets each input bin's exposure, and counts are
+            distributed in proportion to good-time overlap without reducing
+            them again. This assumes uniform count rate during good time.
+            Bins with zero exposure are always omitted.
+
         Returns
         -------
         lc_new: :class:`Lightcurve` object
             The :class:`Lightcurve` object with the new, binned light curve.
+            When ``fracexp_limit < 1``, ``frac_exp`` records the live exposure
+            divided by ``dt_new``, and ``err_dist`` is ``"gauss"`` because
+            prorated counts are no longer Poisson. For ``method="sum"``, the
+            exposure-corrected rate is ``counts / (frac_exp * dt)``; the
+            ``countrate`` property still divides by the nominal bin width.
         """
 
         if f is None and dt_new is None:
@@ -940,6 +957,11 @@ class Lightcurve(StingrayTimeseries):
 
         if dt_new < self.dt:
             raise ValueError("New time resolution must be larger than old time resolution!")
+
+        if not 0 <= fracexp_limit <= 1:
+            raise ValueError("fracexp_limit must be between 0 and 1")
+        if fracexp_limit < 1:
+            return self._rebin_with_partial_exposure(dt_new, method, fracexp_limit)
 
         bin_time, bin_counts, bin_err = [], [], []
         gti_new = []
@@ -982,6 +1004,88 @@ class Lightcurve(StingrayTimeseries):
             skip_checks=True,
         )
         return lc_new
+
+    def _rebin_with_partial_exposure(self, dt_new, method, fracexp_limit):
+        gtis = self.gti
+        if self.time is None or not self.time.size or gtis is None or not len(gtis):
+            raise ValueError("No valid GTIs after rebin.")
+        check_gtis(gtis)
+        starts, ends = gtis.T
+        elapsed = np.concatenate(([0], np.cumsum(ends - starts)))
+
+        def exposure_at(time):
+            # Integrate the GTIs up to each time so differences give live exposure.
+            interval = np.searchsorted(ends, time, side="right")
+            start = np.append(starts, np.inf)[interval]
+            return elapsed[interval] + np.maximum(time - start, 0)
+
+        origin = self.bin_lo[0]
+        bin_index = np.floor((self.bin_lo - origin) / dt_new).astype(np.intp)
+        split = np.clip(origin + (bin_index + 1) * dt_new, self.bin_lo, self.bin_hi)
+
+        # Each input bin can contribute to at most two adjacent output bins.
+        exposure_at_split = exposure_at(split)
+        exposure = np.concatenate(
+            (
+                exposure_at_split - exposure_at(self.bin_lo),
+                exposure_at(self.bin_hi) - exposure_at_split,
+            )
+        )
+        fractions = exposure / self.dt
+        if self.frac_exp is not None:
+            # Counts already cover good time; only split them between output bins.
+            input_gti_exposure = np.tile(exposure.reshape(2, -1).sum(axis=0), 2)
+            fractions = np.divide(
+                exposure,
+                input_gti_exposure,
+                out=np.zeros_like(exposure),
+                where=input_gti_exposure > 0,
+            )
+            exposure = fractions * np.tile(self.frac_exp * self.dt, 2)
+        has_exposure = exposure > 0
+        exposure = exposure[has_exposure]
+        fractions = fractions[has_exposure]
+        bins, indices = np.unique(
+            np.concatenate((bin_index, bin_index + 1))[has_exposure], return_inverse=True
+        )
+        input_errors = self.counts_err
+        total_exposure = np.zeros(bins.size, dtype=exposure.dtype)
+        counts = np.zeros(bins.size, dtype=np.result_type(self.counts, exposure))
+        variance = np.zeros(bins.size, dtype=np.result_type(input_errors, exposure))
+        np.add.at(total_exposure, indices, exposure)
+        np.add.at(counts, indices, np.tile(self.counts, 2)[has_exposure] * fractions)
+        np.add.at(variance, indices, (np.tile(input_errors, 2)[has_exposure] * fractions) ** 2)
+
+        minimum = fracexp_limit * dt_new
+        good = (total_exposure >= minimum) | np.isclose(total_exposure, minimum, atol=0)
+        if not np.any(good):
+            raise ValueError("No valid GTIs after rebin.")
+
+        counts = counts[good]
+        errors = np.sqrt(variance[good])
+        if method in ("mean", "avg", "average", "arithmetic mean"):
+            samples = total_exposure[good] / self.dt
+            counts /= samples
+            errors /= samples
+        elif method != "sum":
+            raise ValueError(
+                "Method for summing or averaging not recognized. Please enter either 'sum' or 'mean'."
+            )
+
+        kept_bins = bins[good]
+        left = origin + kept_bins * dt_new
+        right = origin + (kept_bins + 1) * dt_new
+        return Lightcurve(
+            left + dt_new / 2,
+            counts,
+            err=errors,
+            err_dist="gauss",
+            frac_exp=total_exposure[good] / dt_new,
+            mjdref=self.mjdref,
+            dt=dt_new,
+            gti=cross_two_gtis(gtis, np.column_stack((left, right))),
+            skip_checks=True,
+        )
 
     def join(self, other, skip_checks=False):
         """
