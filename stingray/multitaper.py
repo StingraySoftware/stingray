@@ -245,7 +245,7 @@ class Multitaper(Powerspectrum):
         self.n = lc.n
 
         # the frequency resolution
-        self.df = 1.0 / lc.tseg
+        self.df = 1.0 / (lc.n * lc.dt)
 
         # the number of averaged periodograms in the final output
         # This should *always* be 1 here
