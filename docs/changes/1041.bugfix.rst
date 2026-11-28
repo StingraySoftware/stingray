@@ -1,0 +1,1 @@
+The paralyzable dead time filter no longer ends a long dead time early when a later event has a shorter one, which could happen with a variable dead time (``dt_sigma``).
