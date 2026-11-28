@@ -3,7 +3,8 @@ import numpy as np
 
 from astropy.modeling import models
 
-from ..filters import Window1D, Optimal1D, filter_for_deadtime
+from ..filters import Window1D, Optimal1D, filter_for_deadtime, get_deadtime_mask
+from ..filters import _paralyzable_dead_time
 
 from stingray.events import EventList
 
@@ -104,6 +105,27 @@ def test_filter_for_deadtime_par():
     """Test dead time filter, paralyzable case."""
     events = np.array([1, 1.1, 2, 2.2, 3, 3.1, 3.2])
     assert np.all(filter_for_deadtime(events, 0.11, paralyzable=True) == np.array([1, 2, 2.2, 3]))
+
+
+def test_paralyzable_dead_time_variable():
+    """A short dead time does not end a longer one that is still running."""
+    events = np.array([0.0, 1.0, 2.0, 20.0])
+    dead_time = np.array([10.0, 0.5, 0.5, 0.5])
+    filt_events, mask = _paralyzable_dead_time(events, dead_time)
+    assert np.array_equal(mask, [True, False, False, True])
+    assert np.array_equal(filt_events, [0.0, 20.0])
+
+
+def test_filter_for_deadtime_par_sigma():
+    """No event is kept while an earlier event's dead time is still running."""
+    rng = np.random.default_rng(1)
+    events = np.sort(rng.uniform(0, 100, 2000))
+    np.random.seed(2)
+    mask = get_deadtime_mask(events, 0.05, dt_sigma=0.04, paralyzable=True)
+    np.random.seed(2)
+    dead_time = np.clip(np.random.normal(0.05, 0.04, events.size), 0, None)
+    dead_end = np.maximum.accumulate(events + dead_time)
+    assert np.array_equal(mask[1:], events[1:] >= dead_end[:-1])
 
 
 def test_filter_for_deadtime_par_bkg():
