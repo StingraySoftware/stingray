@@ -101,10 +101,12 @@ def _paralyzable_dead_time(event_list, dead_time):
         Final mask, showing all good events in the original event list.
     """
     mask = np.ones(len(event_list), dtype=bool)
-    dead_time_end = event_list + dead_time
+    # Events coming during dead time produce more dead time, so the detector
+    # stays dead until the latest end among all previous events. With a
+    # constant dead time this is the end of the previous event, but with a
+    # variable one (``dt_sigma``) an earlier event can still be keeping it dead.
+    dead_time_end = np.maximum.accumulate(event_list + dead_time)
     bad = dead_time_end[:-1] > event_list[1:]
-    # Easy: paralyzable case. Here, events coming during dead time produce
-    # more dead time. So...
     mask[1:][bad] = False
 
     return event_list[mask], mask
